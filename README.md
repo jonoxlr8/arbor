@@ -1,6 +1,6 @@
 # 🌳 Arbor
 
-Arbor is an AI-powered investment companion designed to help Filipinos build long-term wealth through global investing.
+Arbor is an AI-powered investment companion designed to help anyone build long-term wealth through global investing.
 
 ## Vision
 
