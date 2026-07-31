@@ -8,17 +8,33 @@ def calculate_projection(
     monthly_rate = annual_return / 12
     months = years * 12
 
-    future_value = (
-        current_value * (1 + monthly_rate) ** months
-        +
-        monthly_investment *
-        (((1 + monthly_rate) ** months - 1) / monthly_rate)
-    )
+    yearly_projection = []
+
+    for year in range(years + 1):
+
+        current_month = year * 12
+
+        value = (
+            current_value * (1 + monthly_rate) ** current_month
+            +
+            monthly_investment *
+            (((1 + monthly_rate) ** current_month - 1) / monthly_rate)
+            if current_month > 0
+            else current_value
+        )
+
+        yearly_projection.append({
+            "year": year,
+            "value": round(value, 2)
+        })
+
+    future_value = yearly_projection[-1]["value"]
 
     return {
         "starting_value": current_value,
         "monthly_contribution": monthly_investment,
         "investment_period_years": years,
         "assumed_return": annual_return,
-        "projected_value": round(future_value, 2)
+        "projected_value": future_value,
+        "yearly_projection": yearly_projection,
     }
