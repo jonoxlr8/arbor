@@ -16,6 +16,10 @@ from app.services.projection_engine import (
 )
 from app.schemas.investment_plan import InvestmentPlan
 
+from app.services.health_engine import (
+    calculate_health_score,
+)
+
 
 def build_investment_plan(profile):
 
@@ -45,9 +49,20 @@ def build_investment_plan(profile):
         profile.investment_horizon,
     )
 
+    # Health Score
+    print("HEALTH PORTFOLIO:", portfolio)
+
+    health = calculate_health_score(
+        {
+            "portfolio": portfolio,
+            "profile": data,
+        }
+    )
+
     return InvestmentPlan(
         profile_data=data,
         portfolio=portfolio,
         explanation=explanation,
         projection=projection,
+        health=health,
     )

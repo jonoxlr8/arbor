@@ -9,10 +9,12 @@ from app.services.investment_plan_service import build_investment_plan
 
 router = APIRouter()
 
+
 @router.get("/profiles")
 def get_profiles():
     response = supabase.table("profiles").select("*").execute()
     return response.data
+
 
 @router.post("/profiles")
 def create_profile(profile: ProfileCreate):
@@ -29,4 +31,5 @@ def create_profile(profile: ProfileCreate):
         "portfolio": plan.portfolio,
         "explanation": plan.explanation,
         "projection": plan.projection,
+        "health": plan.health,
     }

@@ -34,11 +34,8 @@ def calculate_risk_score(profile):
 
 def classify_risk(score):
 
-    if score >= 80:
+    if score >= 70:
         return "Aggressive"
-
-    elif score >= 60:
-        return "Growth"
 
     elif score >= 40:
         return "Balanced"

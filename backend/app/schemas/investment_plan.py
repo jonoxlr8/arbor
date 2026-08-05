@@ -6,3 +6,4 @@ class InvestmentPlan(BaseModel):
     portfolio: list
     explanation: dict
     projection: dict
+    health: dict
