@@ -1,6 +1,10 @@
 def calculate_risk_score(profile):
     score = 0
 
+    # Normalize text inputs
+    experience_level = str(profile.experience_level).lower()
+    risk_tolerance = str(profile.risk_tolerance).lower()
+
     # Age factor
     if profile.age < 40:
         score += 20
@@ -14,19 +18,19 @@ def calculate_risk_score(profile):
         score += 15
 
     # Experience
-    if profile.experience_level == "Beginner":
+    if experience_level == "beginner":
         score += 10
-    elif profile.experience_level == "Intermediate":
+    elif experience_level == "intermediate":
         score += 20
-    elif profile.experience_level == "Advanced":
+    elif experience_level == "advanced":
         score += 25
 
     # Risk tolerance
-    if profile.risk_tolerance == "Aggressive":
+    if risk_tolerance == "aggressive":
         score += 35
-    elif profile.risk_tolerance == "Growth":
+    elif risk_tolerance == "growth":
         score += 25
-    elif profile.risk_tolerance == "Balanced":
+    elif risk_tolerance == "balanced":
         score += 15
 
     return score

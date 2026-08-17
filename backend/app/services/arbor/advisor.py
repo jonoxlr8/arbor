@@ -1,6 +1,7 @@
 from app.services.arbor.portfolio_analyzer import PortfolioAnalyzer
 from textwrap import dedent
 from app.services.arbor.knowledge.service import get_asset
+from app.services.arbor.advisor_brain import AdvisorBrain
 
 
 class PortfolioAdvisor:
@@ -9,6 +10,9 @@ class PortfolioAdvisor:
 
         self.plan = plan
         self.analyzer = PortfolioAnalyzer(plan)
+
+        self.brain = AdvisorBrain(plan)
+        self.brain_data = self.brain.build()
 
     def biggest_strength(self):
 
@@ -22,9 +26,14 @@ class PortfolioAdvisor:
             key=lambda holding: holding["allocation"],
         )
 
+        asset = get_asset(largest["ticker"])
+
         return {
             "ticker": largest["ticker"],
             "allocation": largest["allocation"],
+            "role": (
+                asset.get("role", "Portfolio Holding") if asset else "Portfolio Holding"
+            ),
         }
 
     def strongest_holding_response(self):
@@ -136,9 +145,9 @@ class PortfolioAdvisor:
     I need your portfolio information before I can identify your biggest risk.
     """
 
-        technology_exposure = 0
-        crypto_exposure = 0
-        semiconductor_exposure = 0
+        technology_exposure = self.brain_data["technology_exposure"]
+        crypto_exposure = self.brain_data["crypto_exposure"]
+        semiconductor_exposure = self.brain_data["semiconductor_exposure"]
         growth_exposure = 0
 
         for holding in portfolio:
@@ -154,21 +163,17 @@ class PortfolioAdvisor:
             if growth in ["high", "very high"]:
                 growth_exposure += allocation
 
-            asset = get_asset(ticker)
+            for holding in portfolio:
 
-            if asset:
+                ticker = holding["ticker"]
+                allocation = holding.get("allocation", 0)
 
-                category = asset.get("category", "").lower()
-                advisor_type = asset.get("advisor_type", "").lower()
+                asset = get_asset(ticker)
 
-                if "technology" in category or advisor_type == "technology":
-                    technology_exposure += allocation
+                growth = asset.get("growth", "").lower() if asset else ""
 
-                if advisor_type == "crypto":
-                    crypto_exposure += allocation
-
-                if ticker in ["SMH", "NVDA", "AMD"]:
-                    semiconductor_exposure += allocation
+                if growth in ["high", "very high"]:
+                    growth_exposure += allocation
 
         risks = []
 

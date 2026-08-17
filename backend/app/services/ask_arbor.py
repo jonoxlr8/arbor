@@ -8,6 +8,10 @@ from app.services.arbor.aliases import ASSET_ALIASES
 from app.services.arbor.portfolio_analyzer import PortfolioAnalyzer
 from app.services.arbor.advisor import PortfolioAdvisor
 from app.services.arbor.knowledge.service import get_asset
+from app.services.arbor.health_score import PortfolioHealthScore
+from app.services.arbor.health_review import HealthReview
+from app.services.arbor.improvements import PortfolioImprovements
+from app.services.arbor.insights import PortfolioInsights
 
 
 def ask_arbor(question: str, plan=None):
@@ -20,11 +24,13 @@ def ask_arbor(question: str, plan=None):
     comparison_intent = intents["comparison"]
     strength_intent = intents["strength"]
     risk_intent = intents["risk"]
+    improve_intent = intents["improve"]
 
     rebalance_intent = intents["rebalance"]
     portfolio_health_intent = intents["portfolio_health"]
     portfolio_review_intent = intents["portfolio_review"]
     dashboard_intent = intents["dashboard"]
+    portfolio_insights_intent = intents["portfolio_insights"]
 
     buy_intent = intents["buy"]
     sell_intent = intents["sell"]
@@ -95,8 +101,12 @@ def ask_arbor(question: str, plan=None):
 
     if plan:
         analyzer = PortfolioAnalyzer(plan)
-
         advisor = PortfolioAdvisor(plan)
+
+        health = PortfolioHealthScore(analyzer)
+        review = HealthReview(health)
+        insights = PortfolioInsights(plan)
+        improvements = PortfolioImprovements(analyzer)
 
         profile = plan.get("profile", {})
 
@@ -188,6 +198,20 @@ def ask_arbor(question: str, plan=None):
             "comparison",
             context_data,
         )
+
+    if portfolio_insights_intent and plan:
+        return insights.generate()
+
+    if portfolio_health_intent and plan:
+        return review.generate()
+
+    if portfolio_review_intent and plan:
+        from app.services.arbor.review import portfolio_review_response
+
+        return portfolio_review_response(plan)
+
+    if improve_intent and plan:
+        return improvements.generate()
 
     if risk_intent and plan:
         return advisor.biggest_risk_response()

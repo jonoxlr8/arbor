@@ -33,6 +33,13 @@ def detect_intent(question: str):
         or "analyse my portfolio" in question
         or "what do you think of my portfolio" in question
     )
+    portfolio_insights_intent = (
+        "portfolio insights" in question
+        or "my portfolio insights" in question
+        or "show portfolio insights" in question
+        or "show me my portfolio insights" in question
+        or "what are my portfolio insights" in question
+    )
     dashboard_intent = (
         question == "dashboard"
         or "show dashboard" in question
@@ -107,6 +114,17 @@ def detect_intent(question: str):
         or "portfolio risk" in question
         or "risk of my portfolio" in question
     )
+    improve_intent = (
+        "improve" in question
+        or "improvement" in question
+        or "improve my portfolio" in question
+        or "make my portfolio better" in question
+        or "optimize my portfolio" in question
+        or "recommendation" in question
+        or "recommendations" in question
+        or "what should i change" in question
+        or "what would you change" in question
+    )
 
     return {
         "crypto": crypto_intent,
@@ -117,6 +135,7 @@ def detect_intent(question: str):
         "risk": risk_intent,
         "portfolio_health": portfolio_health_intent,
         "portfolio_review": portfolio_review_intent,
+        "portfolio_insights": portfolio_insights_intent,
         "dashboard": dashboard_intent,
         "retirement": retirement_intent,
         "technology": technology_intent,
@@ -131,4 +150,5 @@ def detect_intent(question: str):
         "portfolio_strategy": portfolio_strategy_intent,
         "strength": strength_intent,
         "ownership": ownership_intent,
+        "improve": improve_intent,
     }

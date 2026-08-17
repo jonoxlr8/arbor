@@ -30,6 +30,7 @@ def build_investment_plan(profile):
     # Prepare data for database
     data = profile.model_dump()
 
+    data["goal_target"] = profile.goal_target
     data["risk_score"] = risk_score
     data["risk_level"] = risk_level
 

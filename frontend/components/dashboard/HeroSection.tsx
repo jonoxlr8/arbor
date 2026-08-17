@@ -7,6 +7,12 @@ type HeroSectionProps = {
 };
 
 export default function HeroSection({ plan }: HeroSectionProps) {
+  const goalTarget = plan.profile?.goal_target ?? 0;
+  const currency = plan.profile?.currency ?? "USD";
+
+  console.log("Hero goal_target:", goalTarget);
+  console.log("Hero currency:", currency);
+
   return (
     <>
       <SectionHeader
@@ -26,7 +32,8 @@ export default function HeroSection({ plan }: HeroSectionProps) {
           currentValue={plan.profile.current_portfolio_value}
           projectedValue={plan.projection.projected_value}
           years={plan.profile.investment_horizon}
-          goalAmount={1000000}
+          goalAmount={goalTarget}
+          currency={currency}
         />
       </div>
     </>

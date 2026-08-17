@@ -5,6 +5,7 @@ class ProfileCreate(BaseModel):
     full_name: str
     country: str
     investment_goal: str
+    goal_target: float
     investment_horizon: int
     experience_level: str
     age: int
@@ -12,3 +13,4 @@ class ProfileCreate(BaseModel):
     current_portfolio_value: float
     risk_tolerance: str
     risk_score: int | None = None
+    currency: str = "USD"

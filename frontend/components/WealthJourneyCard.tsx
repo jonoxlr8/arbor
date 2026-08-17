@@ -4,6 +4,7 @@ type WealthJourneyCardProps = {
   projectedValue: number;
   years: number;
   goalAmount: number;
+  currency: string;
 };
 
 export default function WealthJourneyCard({
@@ -12,10 +13,21 @@ export default function WealthJourneyCard({
   projectedValue,
   years,
   goalAmount,
+  currency,
 }: WealthJourneyCardProps) {
+  console.log("WealthJourney currency:", currency);
+
   const target = goalAmount;
 
-  const progress = Math.min((currentValue / target) * 100, 100);
+  const progress =
+    target > 0 ? Math.min((currentValue / target) * 100, 100) : 0;
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(value);
 
   return (
     <div className="rounded-3xl bg-gradient-to-br from-emerald-600 to-emerald-700 p-8 text-white shadow-xl">
@@ -29,7 +41,7 @@ export default function WealthJourneyCard({
 
       <div className="mt-8">
         <div className="mb-2 flex justify-between">
-          <span>Progress to ${goalAmount.toLocaleString()} Goal</span>
+          <span>Progress to {formatCurrency(target)} Goal</span>
           <span>{progress.toFixed(1)}%</span>
         </div>
 
@@ -48,7 +60,7 @@ export default function WealthJourneyCard({
           <p className="text-sm text-emerald-200">Current Portfolio</p>
 
           <p className="mt-2 text-3xl font-bold">
-            ${currentValue.toLocaleString()}
+            {formatCurrency(currentValue)}
           </p>
         </div>
 
@@ -56,7 +68,7 @@ export default function WealthJourneyCard({
           <p className="text-sm text-emerald-200">Estimated Future Value</p>
 
           <p className="mt-2 text-3xl font-bold">
-            ${Math.round(projectedValue).toLocaleString()}
+            {formatCurrency(Math.round(projectedValue))}
           </p>
         </div>
 

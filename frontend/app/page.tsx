@@ -14,6 +14,7 @@ export default function Home() {
   const [country, setCountry] = useState("");
   const [age, setAge] = useState("");
   const [investmentGoal, setInvestmentGoal] = useState("");
+  const [goalTarget, setGoalTarget] = useState("");
   const [investmentHorizon, setInvestmentHorizon] = useState("");
   const [riskTolerance, setRiskTolerance] = useState("");
   const [plan, setPlan] = useState<any | null>(null);
@@ -61,13 +62,15 @@ export default function Home() {
           : step === 4
             ? investmentGoal
             : step === 5
-              ? investmentHorizon
-              : riskTolerance;
+              ? goalTarget
+              : step === 6
+                ? investmentHorizon
+                : riskTolerance;
 
   const handleNext = async () => {
     console.log("Button clicked");
 
-    if (step < 6) {
+    if (step < 7) {
       setStep(step + 1);
       return;
     }
@@ -100,13 +103,23 @@ export default function Home() {
         country,
         age: Number(age),
         investment_goal: investmentGoal,
+        goal_target: Number(goalTarget),
         investment_horizon: Number(investmentHorizon),
         risk_tolerance: riskTolerance,
+
+        currency:
+          country === "New Zealand"
+            ? "NZD"
+            : country === "Philippines"
+              ? "PHP"
+              : "USD",
 
         experience_level: "Beginner",
         monthly_investment: 400,
         current_portfolio_value: 50000,
       });
+
+      console.log("Frontend result:", result);
 
       setLoadingMessage("Your Arbor plan is ready 🌳");
       setPlan(result);
@@ -149,7 +162,7 @@ export default function Home() {
         <Card>
           <Logo />
 
-          <ProgressBar step={step} totalSteps={6} />
+          <ProgressBar step={step} totalSteps={7} />
 
           <Welcome step={step} name={name} />
 
@@ -163,6 +176,8 @@ export default function Home() {
             setAge={setAge}
             investmentGoal={investmentGoal}
             setInvestmentGoal={setInvestmentGoal}
+            goalTarget={goalTarget}
+            setGoalTarget={setGoalTarget}
             investmentHorizon={investmentHorizon}
             setInvestmentHorizon={setInvestmentHorizon}
             riskTolerance={riskTolerance}
@@ -178,7 +193,7 @@ export default function Home() {
                 : "cursor-not-allowed bg-slate-200 text-slate-400 shadow-none"
             }`}
           >
-            {step === 6 ? "Create My Plan →" : "Next →"}
+            {step === 7 ? "Create My Plan →" : "Next →"}
           </button>
         </Card>
       )}
