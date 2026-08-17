@@ -22,6 +22,11 @@ export default function WealthJourneyCard({
   const progress =
     target > 0 ? Math.min((currentValue / target) * 100, 100) : 0;
 
+  const projectedProgress =
+    target > 0 ? Math.min((projectedValue / target) * 100, 100) : 0;
+
+  const projectedGap = Math.max(target - projectedValue, 0);
+
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -81,10 +86,21 @@ export default function WealthJourneyCard({
 
       <div className="mt-8 rounded-2xl bg-white/10 p-4">
         <p className="text-sm text-emerald-100">
-          Based on your current investment plan, Arbor estimates your portfolio
-          can grow significantly over time. Increasing contributions can help
-          accelerate your journey toward your long-term wealth goal.
+          Based on your current investment plan, Arbor projects your portfolio
+          could reach {formatCurrency(Math.round(projectedValue))} in {years}{" "}
+          years.
         </p>
+
+        {projectedGap > 0 ? (
+          <p className="mt-2 text-sm font-semibold text-white">
+            That is {formatCurrency(Math.round(projectedGap))} below your{" "}
+            {formatCurrency(target)} goal.
+          </p>
+        ) : (
+          <p className="mt-2 text-sm font-semibold text-white">
+            Your projected portfolio reaches your {formatCurrency(target)} goal.
+          </p>
+        )}
       </div>
     </div>
   );
