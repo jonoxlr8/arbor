@@ -46,7 +46,7 @@ export default function AssetCard({ asset }: AssetCardProps) {
         </div>
 
         <div className="rounded-full bg-green-100 px-4 py-2 text-lg font-bold text-green-700">
-          {asset.allocation}% Allocation
+          {asset.allocation}% of portfolio
         </div>
       </div>
 

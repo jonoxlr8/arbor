@@ -34,6 +34,49 @@ export default function InsightsSection({ plan }: InsightsSectionProps) {
 
           <p className="mt-2 text-slate-600">{insights.outlook}</p>
         </div>
+
+        <div className="rounded-2xl border border-purple-200 bg-purple-50 p-6 shadow-sm">
+          <h3 className="font-bold text-slate-900">🎯 Goal Check</h3>
+
+          <p className="mt-2 text-slate-600">
+            {plan.projection.projected_value >= plan.profile.goal_target
+              ? `Based on your current plan, Arbor projects that you could reach your ${new Intl.NumberFormat(
+                  "en-US",
+                  {
+                    style: "currency",
+                    currency: plan.profile.currency,
+                    maximumFractionDigits: 0,
+                  },
+                ).format(
+                  plan.profile.goal_target,
+                )} goal within your ${plan.profile.investment_horizon}-year horizon.`
+              : `Your current plan is projected to reach ${new Intl.NumberFormat(
+                  "en-US",
+                  {
+                    style: "currency",
+                    currency: plan.profile.currency,
+                    maximumFractionDigits: 0,
+                  },
+                ).format(
+                  Math.round(plan.projection.projected_value),
+                )}, below your ${new Intl.NumberFormat("en-US", {
+                  style: "currency",
+                  currency: plan.profile.currency,
+                  maximumFractionDigits: 0,
+                }).format(plan.profile.goal_target)} goal.`}
+          </p>
+
+          <p className="mt-3 text-sm font-semibold text-slate-900">
+            To reach your goal within {plan.profile.investment_horizon} years,
+            Arbor estimates you would need to invest{" "}
+            {new Intl.NumberFormat("en-US", {
+              style: "currency",
+              currency: plan.profile.currency,
+              maximumFractionDigits: 0,
+            }).format(plan.projection.required_monthly_investment)}{" "}
+            per month.
+          </p>
+        </div>
       </div>
 
       <div className="mt-10">
