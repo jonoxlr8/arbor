@@ -46,7 +46,7 @@ export default function WealthJourneyCard({
 
       <div className="mt-8">
         <div className="mb-2 flex justify-between">
-          <span>Progress to {formatCurrency(target)} Goal</span>
+          <span>Current Progress</span>
           <span>{progress.toFixed(1)}%</span>
         </div>
 
@@ -55,6 +55,20 @@ export default function WealthJourneyCard({
             className="h-full rounded-full bg-white"
             style={{
               width: `${progress}%`,
+            }}
+          />
+        </div>
+
+        <div className="mt-5 mb-2 flex justify-between">
+          <span>Projected Progress</span>
+          <span>{projectedProgress.toFixed(1)}%</span>
+        </div>
+
+        <div className="h-3 overflow-hidden rounded-full bg-emerald-400/30">
+          <div
+            className="h-full rounded-full bg-emerald-200"
+            style={{
+              width: `${projectedProgress}%`,
             }}
           />
         </div>
@@ -91,16 +105,11 @@ export default function WealthJourneyCard({
           years.
         </p>
 
-        {projectedGap > 0 ? (
-          <p className="mt-2 text-sm font-semibold text-white">
-            That is {formatCurrency(Math.round(projectedGap))} below your{" "}
-            {formatCurrency(target)} goal.
-          </p>
-        ) : (
-          <p className="mt-2 text-sm font-semibold text-white">
-            Your projected portfolio reaches your {formatCurrency(target)} goal.
-          </p>
-        )}
+        <p className="mt-3 text-sm font-semibold text-white">
+          {projectedValue >= target
+            ? `You're projected to reach your ${formatCurrency(target)} goal. 🌳`
+            : `You're projected to be ${formatCurrency(Math.round(projectedGap))} below your ${formatCurrency(target)} goal.`}
+        </p>
       </div>
     </div>
   );
