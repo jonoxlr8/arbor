@@ -7,6 +7,7 @@ from app.services.explanation_engine import generate_explanation
 from app.services.projection_engine import calculate_projection
 from app.services.investment_plan_service import build_investment_plan
 from app.services.arbor.insights import PortfolioInsights
+from app.schemas.projection import ProjectionRequest
 
 router = APIRouter()
 
@@ -46,3 +47,16 @@ def create_profile(profile: ProfileCreate):
         "projection": plan.projection,
         "health": plan.health,
     }
+
+
+@router.post("/projection")
+def create_projection(request: ProjectionRequest):
+
+    projection = calculate_projection(
+        request.current_value,
+        request.monthly_investment,
+        request.years,
+        request.annual_return,
+    )
+
+    return projection

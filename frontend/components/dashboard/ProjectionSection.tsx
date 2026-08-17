@@ -1,22 +1,35 @@
 import GrowthChart from "@/components/GrowthChart";
-import { formatMoney } from "@/lib/format";
 import SectionHeader from "@/components/dashboard/SectionHeader";
 import { getProjectionMessage } from "@/lib/projectionMessages";
 
 type ProjectionSectionProps = {
   projection: any;
+  currency: string;
+  goalAmount: number;
 };
 
 export default function ProjectionSection({
   projection,
+  currency,
+  goalAmount,
 }: ProjectionSectionProps) {
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(value);
   const totalInvested =
     projection.starting_value +
     projection.monthly_contribution * projection.investment_period_years * 12;
 
   const investmentGrowth = projection.projected_value - totalInvested;
 
-  const projectionMessage = getProjectionMessage(projection.projected_value);
+  const projectionMessage = getProjectionMessage(
+    projection.projected_value,
+    goalAmount,
+  );
 
   return (
     <div className="mt-12">
@@ -32,7 +45,7 @@ export default function ProjectionSection({
         </p>
 
         <h3 className="mt-3 break-words text-4xl font-extrabold sm:text-5xl lg:text-6xl">
-          ${formatMoney(projection.projected_value)}
+          {formatCurrency(projection.projected_value)}
         </h3>
 
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -46,7 +59,7 @@ export default function ProjectionSection({
 
           <div className="rounded-2xl bg-white/10 p-5 text-center backdrop-blur-sm">
             <p className="text-3xl font-bold">
-              ${projection.monthly_contribution}
+              {formatCurrency(projection.monthly_contribution)}
             </p>
 
             <p className="text-xs uppercase tracking-wide opacity-80">
@@ -74,7 +87,7 @@ export default function ProjectionSection({
             <p className="text-sm text-slate-500">Total Invested</p>
 
             <p className="mt-2 text-2xl font-bold text-slate-900">
-              ${formatMoney(totalInvested)}
+              {formatCurrency(totalInvested)}
             </p>
           </div>
 
@@ -82,7 +95,7 @@ export default function ProjectionSection({
             <p className="text-sm text-slate-500">Market Growth</p>
 
             <p className="mt-2 text-2xl font-bold text-emerald-600">
-              +${formatMoney(investmentGrowth)}
+              +{formatCurrency(investmentGrowth)}
             </p>
           </div>
 
@@ -90,14 +103,18 @@ export default function ProjectionSection({
             <p className="text-sm text-slate-500">Future Value</p>
 
             <p className="mt-2 text-2xl font-bold text-slate-900">
-              ${formatMoney(projection.projected_value)}
+              {formatCurrency(projection.projected_value)}
             </p>
           </div>
         </div>
       </div>
 
       <div className="mt-10">
-        <GrowthChart projection={projection} />
+        <GrowthChart
+          projection={projection}
+          goalAmount={goalAmount}
+          currency={currency}
+        />
 
         <div className="mt-6 rounded-2xl bg-emerald-50 p-5">
           <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">

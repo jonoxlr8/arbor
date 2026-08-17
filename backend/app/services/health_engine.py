@@ -25,20 +25,43 @@ def calculate_health_score(plan):
         if ticker in ["BTC", "ETH"]:
             crypto_allocation += item.get("allocation", 0)
 
-    # Base diversification score
-    if holding_count >= 5:
-        score = 8.5
-    elif holding_count >= 3:
-        score = 7.5
-    elif holding_count >= 2:
-        score = 6.5
-    else:
-        score = 5.0
+    # --------------------------------
+    # Health categories
+    # --------------------------------
+
+    diversification_score = 0
+    risk_alignment_score = 0
+    growth_score = 0
+    concentration_score = 0
+    crypto_score = 0
 
     strengths = []
     warnings = []
 
-    # Risk profile alignment
+    # --------------------------------
+    # 1. Diversification
+    # --------------------------------
+
+    if holding_count >= 5:
+        diversification_score = 2
+        strengths.append("Diversified portfolio")
+
+    elif holding_count >= 3:
+        diversification_score = 1.5
+        strengths.append("Portfolio has a good level of diversification")
+
+    elif holding_count >= 2:
+        diversification_score = 1
+        warnings.append("Portfolio could benefit from greater diversification")
+
+    else:
+        diversification_score = 0.5
+        warnings.append("Portfolio may be too concentrated")
+
+    # --------------------------------
+    # 2. Risk profile alignment
+    # --------------------------------
+
     growth_assets = 0
 
     for item in portfolio:
@@ -49,74 +72,138 @@ def calculate_health_score(plan):
             growth_assets += allocation
 
     if risk_level == "Conservative":
+
         if growth_assets <= 40:
-            score += 0.3
+            risk_alignment_score = 2
             strengths.append("Portfolio matches your conservative risk profile")
         else:
-            score -= 0.5
+            risk_alignment_score = 0.5
             warnings.append(
                 "Portfolio may be more aggressive than your conservative profile"
             )
 
     elif risk_level == "Balanced":
+
         if 30 <= growth_assets <= 70:
-            score += 0.3
+            risk_alignment_score = 2
             strengths.append("Portfolio matches your balanced investment profile")
         else:
-            score -= 0.3
+            risk_alignment_score = 1
             warnings.append("Portfolio allocation may not match your balanced profile")
 
     elif risk_level == "Aggressive":
+
         if growth_assets >= 50:
-            score += 0.3
+            risk_alignment_score = 2
             strengths.append("Portfolio matches your aggressive growth profile")
         else:
+            risk_alignment_score = 1
             warnings.append(
                 "Portfolio may be too conservative for your growth objectives"
             )
 
-    if risk_level == "Conservative" and crypto_allocation >= 20:
-        score -= 0.5
-        warnings.append("Your portfolio may be more aggressive than your risk profile")
+    else:
+        risk_alignment_score = 1
 
-    elif risk_level == "Aggressive" and crypto_allocation <= 5:
-        strengths.append("Portfolio matches your aggressive growth profile")
+    # --------------------------------
+    # 3. Growth potential
+    # --------------------------------
+
+    if risk_level == "Aggressive" and growth_assets >= 70:
+        growth_score = 2
+        strengths.append("Strong long-term growth potential")
+
+    elif growth_assets >= 50:
+        growth_score = 1.5
+        strengths.append("Good long-term growth potential")
+
+    else:
+        growth_score = 1
+
+    # --------------------------------
+    # 4. Cryptocurrency exposure
+    # --------------------------------
 
     if crypto_allocation >= 40:
-        score -= 1.5
+
+        crypto_score = 0
+
         warnings.append("High cryptocurrency exposure increases portfolio volatility")
 
     elif crypto_allocation >= 20:
-        score -= 0.5
+
+        crypto_score = 0.5
+
         warnings.append("Cryptocurrency exposure may increase short-term volatility")
 
-    # Concentration risk
+    elif crypto_allocation > 0:
+
+        crypto_score = 1
+
+        strengths.append(
+            "Measured cryptocurrency exposure adds alternative asset exposure"
+        )
+
+    else:
+
+        crypto_score = 1
+
+    # --------------------------------
+    # 5. Concentration risk
+    # --------------------------------
+
     if largest_holding >= 50:
-        score -= 1
+
+        concentration_score = 0
+
         warnings.append("Your portfolio has high concentration risk in one investment")
 
-    elif largest_holding >= 35 and largest_ticker not in ["VOO", "VT", "VTI"]:
-        score -= 0.5
+    elif largest_holding >= 35 and largest_ticker not in [
+        "VOO",
+        "VT",
+        "VTI",
+    ]:
+
+        concentration_score = 0.5
+
         warnings.append(
             "Your largest holding represents a significant portion of your portfolio"
         )
 
-    if holding_count >= 5:
-        strengths.append("Diversified portfolio")
+    else:
 
-    if holding_count >= 3:
-        strengths.append("Good balance between simplicity and diversification")
+        concentration_score = 2
 
-    strengths.append("Strong long-term growth potential")
+        if largest_holding > 0:
+            strengths.append("No excessive concentration in a single investment")
 
-    if holding_count < 3:
-        warnings.append("Portfolio may be too concentrated")
+    # --------------------------------
+    # Calculate total score
+    # --------------------------------
 
-    # Keep score between 0 and 10
+    score = (
+        diversification_score
+        + risk_alignment_score
+        + growth_score
+        + crypto_score
+        + concentration_score
+    )
+
     score = round(max(0, min(score, 10)), 1)
+
+    # --------------------------------
+    # Return health result
+    # --------------------------------
 
     return {
         "score": score,
+        "breakdown": {
+            "diversification": round(diversification_score, 1),
+            "risk_alignment": round(risk_alignment_score, 1),
+            "growth_potential": round(growth_score, 1),
+            "crypto_exposure": round(crypto_score, 1),
+            "concentration": round(concentration_score, 1),
+        },
         "strengths": strengths,
         "warnings": warnings,
     }
