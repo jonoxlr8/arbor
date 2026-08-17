@@ -34,6 +34,10 @@ export default function HeroSection({ plan }: HeroSectionProps) {
           years={plan.profile.investment_horizon}
           goalAmount={goalTarget}
           currency={currency}
+          requiredMonthlyInvestment={
+            plan.projection.required_monthly_investment
+          }
+          monthlyInvestment={plan.profile.monthly_investment}
         />
       </div>
     </>

@@ -5,6 +5,8 @@ type WealthJourneyCardProps = {
   years: number;
   goalAmount: number;
   currency: string;
+  requiredMonthlyInvestment: number;
+  monthlyInvestment: number;
 };
 
 export default function WealthJourneyCard({
@@ -14,6 +16,8 @@ export default function WealthJourneyCard({
   years,
   goalAmount,
   currency,
+  requiredMonthlyInvestment,
+  monthlyInvestment,
 }: WealthJourneyCardProps) {
   console.log("WealthJourney currency:", currency);
 
@@ -26,6 +30,11 @@ export default function WealthJourneyCard({
     target > 0 ? Math.min((projectedValue / target) * 100, 100) : 0;
 
   const projectedGap = Math.max(target - projectedValue, 0);
+
+  const monthlyContributionGap = Math.max(
+    requiredMonthlyInvestment - monthlyInvestment,
+    0,
+  );
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("en-US", {
@@ -74,7 +83,7 @@ export default function WealthJourneyCard({
         </div>
       </div>
 
-      <div className="mt-8 grid gap-6 sm:grid-cols-3">
+      <div className="mt-8 grid gap-6 sm:grid-cols-2">
         <div>
           <p className="text-sm text-emerald-200">Current Portfolio</p>
 
@@ -96,6 +105,16 @@ export default function WealthJourneyCard({
 
           <p className="mt-2 text-3xl font-bold">{years} yrs</p>
         </div>
+
+        <div>
+          <p className="text-sm text-emerald-200">
+            Required Monthly Investment
+          </p>
+
+          <p className="mt-2 text-3xl font-bold">
+            {formatCurrency(Math.round(requiredMonthlyInvestment))}
+          </p>
+        </div>
       </div>
 
       <div className="mt-8 rounded-2xl bg-white/10 p-4">
@@ -109,6 +128,24 @@ export default function WealthJourneyCard({
           {projectedValue >= target
             ? `You're projected to reach your ${formatCurrency(target)} goal. 🌳`
             : `You're projected to be ${formatCurrency(Math.round(projectedGap))} below your ${formatCurrency(target)} goal.`}
+        </p>
+
+        <p className="mt-3 text-sm text-emerald-100">
+          You're currently investing{" "}
+          {formatCurrency(Math.round(monthlyInvestment))} per month.
+        </p>
+
+        {monthlyContributionGap > 0 && (
+          <p className="mt-2 text-sm font-semibold text-white">
+            To reach your goal on this timeline, Arbor estimates you would need
+            to invest an additional{" "}
+            {formatCurrency(Math.round(monthlyContributionGap))} per month.
+          </p>
+        )}
+
+        <p className="mt-3 text-xs text-emerald-200">
+          Projections are based on an assumed 8% annual return. Actual
+          investment returns will vary.
         </p>
       </div>
     </div>

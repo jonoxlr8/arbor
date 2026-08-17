@@ -13,6 +13,7 @@ from app.services.explanation_engine import (
 
 from app.services.projection_engine import (
     calculate_projection,
+    calculate_required_monthly_investment,
 )
 from app.schemas.investment_plan import InvestmentPlan
 
@@ -50,6 +51,12 @@ def build_investment_plan(profile):
         profile.investment_horizon,
     )
 
+    required_monthly_investment = calculate_required_monthly_investment(
+        profile.current_portfolio_value,
+        profile.goal_target,
+        profile.investment_horizon,
+    )
+
     # Health Score
     print("HEALTH PORTFOLIO:", portfolio)
 
@@ -64,6 +71,9 @@ def build_investment_plan(profile):
         profile_data=data,
         portfolio=portfolio,
         explanation=explanation,
-        projection=projection,
+        projection={
+            **projection,
+            "required_monthly_investment": required_monthly_investment,
+        },
         health=health,
     )
