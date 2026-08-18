@@ -1,4 +1,5 @@
 from textwrap import dedent
+from app.services.arbor.currency_formatter import format_currency
 
 
 def investing_enough_response(
@@ -6,13 +7,14 @@ def investing_enough_response(
     monthly_contribution,
     horizon,
     return_percent,
+    currency,
 ):
     return dedent(f"""
-Based on your current plan, you are investing ${monthly_contribution:,.0f} per month toward your long-term goal.
+Based on your current plan, you are investing {format_currency(monthly_contribution, currency)} per month toward your long-term goal.
 
 Your current strategy:
-- Current portfolio: ${current_value:,.0f}
-- Monthly investment: ${monthly_contribution:,.0f}
+- Current portfolio: {format_currency(current_value, currency)}
+- Monthly investment: {format_currency(monthly_contribution, currency)}
 - Time horizon: {horizon} years
 - Expected return assumption: {return_percent:.0f}%
 
@@ -35,11 +37,12 @@ def retirement_response(
     projected_value,
     investment_years,
     return_percent,
+    currency,
 ):
     return dedent(f"""
 Based on your {risk.lower()} risk profile and {horizon}-year investment horizon, Arbor estimates your current plan is focused on long-term wealth building.
 
-Your portfolio is projected to grow to approximately ${projected_value:,.0f} over {investment_years} years, assuming an annual return of {return_percent:.0f}%.
+Your portfolio is projected to grow to approximately {format_currency(projected_value, currency)} over {investment_years} years, assuming an annual return of {return_percent:.0f}%.
 
 To retire earlier, the biggest factors are:
 
@@ -59,9 +62,10 @@ def millionaire_response(
     investment_years,
     current_value,
     monthly_contribution,
+    currency,
 ):
     return dedent(f"""
-Based on your current investment plan, your portfolio is projected to grow to approximately ${projected_value:,.0f} after {investment_years} years.
+Based on your current investment plan, your portfolio is projected to grow to approximately {format_currency(projected_value, currency)} after {investment_years} years.
 
 While this is strong long-term growth, it does not reach the millionaire milestone under the current assumptions.
 

@@ -1,5 +1,7 @@
 from textwrap import dedent
 
+from app.services.arbor.currency_formatter import format_currency
+
 
 def dashboard_response(plan):
 
@@ -11,6 +13,7 @@ def dashboard_response(plan):
     monthly = profile.get("monthly_investment", 0)
     projected = projection.get("projected_value", 0)
     years = projection.get("investment_period_years", 0)
+    currency = profile.get("currency", "USD")
 
     top = sorted(
         portfolio,
@@ -18,22 +21,19 @@ def dashboard_response(plan):
         reverse=True,
     )
 
-    holdings = "\n".join(
-        f"• {item['ticker']} — {item['allocation']}%"
-        for item in top
-    )
+    holdings = "\n".join(f"• {item['ticker']} — {item['allocation']}%" for item in top)
 
     return dedent(f"""
 🌳 Arbor Dashboard
 
 Portfolio Value
-${current_value:,.0f}
+{format_currency(current_value, currency)}
 
 Monthly Investment
-${monthly:,.0f}
+{format_currency(monthly, currency)}
 
 Projected Value
-${projected:,.0f}
+{format_currency(projected, currency)}
 
 Investment Horizon
 {years} years

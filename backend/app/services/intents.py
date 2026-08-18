@@ -10,7 +10,6 @@ INTENTS = {
     "retirement": [
         "retire",
         "financial freedom",
-        "wealth",
         "millionaire",
         "become rich",
     ],

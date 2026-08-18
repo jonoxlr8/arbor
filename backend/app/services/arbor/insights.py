@@ -35,12 +35,10 @@ class PortfolioInsights:
             0,
         )
 
-        goal = self.plan.get("profile", {}).get(
-            "investment_goal",
-            "",
+        goal_target = self.plan.get("profile", {}).get(
+            "goal_target",
+            0,
         )
-
-        goal_text = str(goal).lower()
 
         currency = self.plan.get("profile", {}).get(
             "currency",
@@ -48,41 +46,18 @@ class PortfolioInsights:
         )
 
         if monthly > 0:
-
-            if (
-                "million" in goal_text
-                or "1m" in goal_text
-                or "2m" in goal_text
-                or "500k" in goal_text
-                or "500,000" in goal_text
-            ):
-
-                insights.append(
-                    {
-                        "priority": InsightPriority.IMPORTANT,
-                        "type": "CONTRIBUTION",
-                        "text": (
-                            f"💰 Your {format_currency(monthly, currency)} monthly contribution is a key driver "
-                            "of your progress toward your long-term wealth goal. Increasing "
-                            "contributions over time could accelerate your path toward your long-term wealth goal."
-                        ),
-                    }
-                )
-
-            else:
-
-                insights.append(
-                    {
-                        "priority": InsightPriority.IMPORTANT,
-                        "type": "CONTRIBUTION",
-                        "text": (
-                            f"💰 Your {format_currency(monthly, currency)} monthly contribution is an important "
-                            "part of your long-term wealth strategy. Continuing to invest "
-                            "consistently can help build your portfolio over time and reduce "
-                            "the temptation to react to short-term market movements."
-                        ),
-                    }
-                )
+            insights.append(
+                {
+                    "priority": InsightPriority.IMPORTANT,
+                    "type": "CONTRIBUTION",
+                    "text": (
+                        f"💰 Your {format_currency(monthly, currency)} monthly contribution "
+                        f"is a key part of your plan toward your "
+                        f"{format_currency(goal_target, currency)} goal. "
+                        "Increasing your contributions over time could accelerate your progress."
+                    ),
+                }
+            )
 
         horizon = self.plan.get("profile", {}).get("investment_horizon", 0)
 
@@ -134,29 +109,7 @@ class PortfolioInsights:
                     }
                 )
 
-        # ADD GOAL PROGRESS HERE
-        goal_target = None
-
-        if (
-            "1m" in goal_text
-            or "1 million" in goal_text
-            or "1,000,000" in goal_text
-            or "1000000" in goal_text
-        ):
-            goal_target = 1_000_000
-
-        elif (
-            "2m" in goal_text
-            or "2 million" in goal_text
-            or "2,000,000" in goal_text
-            or "2000000" in goal_text
-        ):
-            goal_target = 2_000_000
-
-        elif "500k" in goal_text or "500,000" in goal_text or "500000" in goal_text:
-            goal_target = 500_000
-
-        if goal_target and current_value > 0:
+        if goal_target > 0:
 
             progress = min(
                 (current_value / goal_target) * 100,
@@ -185,18 +138,18 @@ class PortfolioInsights:
                         (
                             f"🎯 Your current portfolio is equivalent to approximately "
                             f"{progress:.0f}% of your "
-                            f"{format_currency(goal_target, currency)} target. "
+                            f"{format_currency(goal_target, currency)} goal. "
                             f"Based on your current assumptions, Arbor projects your portfolio "
                             f"could reach approximately {projected_goal_progress:.0f}% of your "
-                            f"target over your investment horizon."
+                            f"goal over your investment horizon."
                         )
                         if projected_shortfall > 0
                         else (
                             f"🎯 Your current portfolio is equivalent to approximately "
                             f"{progress:.0f}% of your "
-                            f"{format_currency(goal_target, currency)} target. "
+                            f"{format_currency(goal_target, currency)} goal. "
                             f"Based on your current assumptions, Arbor projects that your portfolio "
-                            "could reach or exceed the target over your investment horizon."
+                            "could reach or exceed the goal over your investment horizon."
                         )
                     ),
                 }

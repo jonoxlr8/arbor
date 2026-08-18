@@ -4,10 +4,10 @@ type QuestionProps = {
   setName: (value: string) => void;
   country: string;
   setCountry: (value: string) => void;
-  age: string;
-  setAge: (value: string) => void;
-  investmentGoal: string;
-  setInvestmentGoal: (value: string) => void;
+  currentPortfolioValue: string;
+  setCurrentPortfolioValue: (value: string) => void;
+  monthlyInvestment: string;
+  setMonthlyInvestment: (value: string) => void;
   goalTarget: string;
   setGoalTarget: (value: string) => void;
   investmentHorizon: string;
@@ -22,10 +22,10 @@ export default function Question({
   setName,
   country,
   setCountry,
-  age,
-  setAge,
-  investmentGoal,
-  setInvestmentGoal,
+  currentPortfolioValue,
+  setCurrentPortfolioValue,
+  monthlyInvestment,
+  setMonthlyInvestment,
   goalTarget,
   setGoalTarget,
   investmentHorizon,
@@ -70,51 +70,78 @@ export default function Question({
       ) : step === 3 ? (
         <>
           <label className="mb-3 block text-lg font-semibold text-slate-900">
-            How old are you?
-          </label>
-
-          <input
-            type="number"
-            placeholder="Enter your age"
-            value={age}
-            onChange={(e) => setAge(e.target.value)}
-            className="w-full rounded-xl border border-slate-300 px-5 py-4 text-lg text-slate-900 outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-100"
-          />
-        </>
-      ) : step === 4 ? (
-        <>
-          <label className="mb-3 block text-lg font-semibold text-slate-900">
-            What are you investing for?
-          </label>
-
-          <select
-            value={investmentGoal}
-            onChange={(e) => setInvestmentGoal(e.target.value)}
-            className="w-full rounded-xl border border-slate-300 px-5 py-4 text-lg text-slate-900 outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-100"
-          >
-            <option value="">Select your goal</option>
-
-            <option>Build long-term wealth</option>
-
-            <option>Retirement</option>
-
-            <option>Buy a home</option>
-
-            <option>Financial independence</option>
-          </select>
-        </>
-      ) : step === 5 ? (
-        <>
-          <label className="mb-3 block text-lg font-semibold text-slate-900">
-            What's your target amount?
+            How much do you have invested today?
           </label>
 
           <p className="mb-4 text-slate-600">
-            How much would you like to build toward with your investments?
+            Include your stocks, ETFs, crypto, and other investments.
           </p>
 
           <input
             type="number"
+            min="0"
+            placeholder="Enter your current portfolio value"
+            value={currentPortfolioValue}
+            onChange={(e) => setCurrentPortfolioValue(e.target.value)}
+            className="w-full rounded-xl border border-slate-300 px-5 py-4 text-lg text-slate-900 outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-100"
+          />
+
+          <button
+            type="button"
+            onClick={() => setCurrentPortfolioValue("0")}
+            className={`mt-3 text-sm font-medium ${
+              currentPortfolioValue === "0"
+                ? "text-emerald-700"
+                : "text-slate-500 hover:text-emerald-700"
+            }`}
+          >
+            I haven't invested yet
+          </button>
+        </>
+      ) : step === 4 ? (
+        <>
+          <label className="mb-3 block text-lg font-semibold text-slate-900">
+            How much can you invest each month?
+          </label>
+
+          <p className="mb-4 text-slate-600">
+            Choose an amount you're comfortable investing regularly.
+          </p>
+
+          <input
+            type="number"
+            min="0"
+            placeholder="Enter your monthly investment"
+            value={monthlyInvestment}
+            onChange={(e) => setMonthlyInvestment(e.target.value)}
+            className="w-full rounded-xl border border-slate-300 px-5 py-4 text-lg text-slate-900 outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-100"
+          />
+
+          <button
+            type="button"
+            onClick={() => setMonthlyInvestment("0")}
+            className={`mt-3 text-sm font-medium ${
+              monthlyInvestment === "0"
+                ? "text-emerald-700"
+                : "text-slate-500 hover:text-emerald-700"
+            }`}
+          >
+            I don't invest regularly yet
+          </button>
+        </>
+      ) : step === 5 ? (
+        <>
+          <label className="mb-3 block text-lg font-semibold text-slate-900">
+            How much money would you like to build?
+          </label>
+
+          <p className="mb-4 text-slate-600">
+            Set the amount you'd like Arbor to help you work toward.
+          </p>
+
+          <input
+            type="number"
+            min="0"
             placeholder="Enter your target amount"
             value={goalTarget}
             onChange={(e) => setGoalTarget(e.target.value)}
@@ -124,7 +151,7 @@ export default function Question({
       ) : step === 6 ? (
         <>
           <label className="mb-3 block text-lg font-semibold text-slate-900">
-            How long do you plan to invest?
+            When do you want to reach your target?
           </label>
 
           <select
@@ -132,12 +159,12 @@ export default function Question({
             onChange={(e) => setInvestmentHorizon(e.target.value)}
             className="w-full rounded-xl border border-slate-300 px-5 py-4 text-lg text-slate-900 outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-100"
           >
-            <option value="">Select your investment horizon</option>
-
-            <option value="5">Less than 5 years</option>
-            <option value="10">5–10 years</option>
-            <option value="15">10–20 years</option>
-            <option value="20">20+ years</option>
+            <option value="">Select a timeframe</option>
+            <option value="5">5 years</option>
+            <option value="10">10 years</option>
+            <option value="15">15 years</option>
+            <option value="20">20 years</option>
+            <option value="30">30 years</option>
           </select>
         </>
       ) : (
@@ -161,7 +188,7 @@ export default function Question({
               </div>
 
               <div className="mt-1 text-slate-600">
-                Protect my money with lower volatility.
+                I prefer smaller ups and downs.
               </div>
             </button>
 
@@ -179,7 +206,7 @@ export default function Question({
               </div>
 
               <div className="mt-1 text-slate-600">
-                Growth with some stability.
+                I want a mix of growth and stability.
               </div>
             </button>
 
@@ -197,7 +224,7 @@ export default function Question({
               </div>
 
               <div className="mt-1 text-slate-600">
-                Higher growth potential, bigger swings.
+                I'm comfortable with bigger swings for higher growth potential.
               </div>
             </button>
           </div>

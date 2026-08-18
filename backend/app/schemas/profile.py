@@ -4,11 +4,8 @@ from pydantic import BaseModel
 class ProfileCreate(BaseModel):
     full_name: str
     country: str
-    investment_goal: str
     goal_target: float
     investment_horizon: int
-    experience_level: str
-    age: int
     monthly_investment: float
     current_portfolio_value: float
     risk_tolerance: str

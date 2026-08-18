@@ -12,8 +12,8 @@ export default function Home() {
   const [name, setName] = useState("");
   const [step, setStep] = useState(1);
   const [country, setCountry] = useState("");
-  const [age, setAge] = useState("");
-  const [investmentGoal, setInvestmentGoal] = useState("");
+  const [currentPortfolioValue, setCurrentPortfolioValue] = useState("");
+  const [monthlyInvestment, setMonthlyInvestment] = useState("");
   const [goalTarget, setGoalTarget] = useState("");
   const [investmentHorizon, setInvestmentHorizon] = useState("");
   const [riskTolerance, setRiskTolerance] = useState("");
@@ -58,13 +58,13 @@ export default function Home() {
       : step === 2
         ? country
         : step === 3
-          ? age
+          ? currentPortfolioValue !== ""
           : step === 4
-            ? investmentGoal
+            ? monthlyInvestment !== ""
             : step === 5
-              ? goalTarget
+              ? goalTarget !== ""
               : step === 6
-                ? investmentHorizon
+                ? investmentHorizon !== ""
                 : riskTolerance;
 
   const handleNext = async () => {
@@ -101,8 +101,7 @@ export default function Home() {
       const result = await createProfile({
         full_name: name,
         country,
-        age: Number(age),
-        investment_goal: investmentGoal,
+
         goal_target: Number(goalTarget),
         investment_horizon: Number(investmentHorizon),
         risk_tolerance: riskTolerance,
@@ -114,9 +113,8 @@ export default function Home() {
               ? "PHP"
               : "USD",
 
-        experience_level: "Beginner",
-        monthly_investment: 400,
-        current_portfolio_value: 50000,
+        monthly_investment: Number(monthlyInvestment),
+        current_portfolio_value: Number(currentPortfolioValue),
       });
 
       console.log("Frontend result:", result);
@@ -172,10 +170,10 @@ export default function Home() {
             setName={setName}
             country={country}
             setCountry={setCountry}
-            age={age}
-            setAge={setAge}
-            investmentGoal={investmentGoal}
-            setInvestmentGoal={setInvestmentGoal}
+            currentPortfolioValue={currentPortfolioValue}
+            setCurrentPortfolioValue={setCurrentPortfolioValue}
+            monthlyInvestment={monthlyInvestment}
+            setMonthlyInvestment={setMonthlyInvestment}
             goalTarget={goalTarget}
             setGoalTarget={setGoalTarget}
             investmentHorizon={investmentHorizon}

@@ -1,9 +1,15 @@
 from textwrap import dedent
+from app.services.arbor.currency_formatter import format_currency
 
 
-def explanation_response(risk, horizon, goal):
+def explanation_response(
+    risk,
+    horizon,
+    goal,
+    currency,
+):
     return dedent(f"""
-Arbor created your portfolio based on your {risk.lower()} risk profile, {horizon}-year investment horizon, and goal of {goal.lower()}.
+Arbor created your portfolio based on your {risk.lower()} risk profile, {horizon}-year investment horizon, and wealth goal of {format_currency(goal, currency)}.
 
 Your portfolio is designed around five key ideas:
 

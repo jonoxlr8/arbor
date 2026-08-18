@@ -1,37 +1,29 @@
 def calculate_risk_score(profile):
     score = 0
 
-    # Normalize text inputs
-    experience_level = str(profile.experience_level).lower()
+    # Investment horizon — 30 points
+    if profile.investment_horizon >= 30:
+        score += 30
+    elif profile.investment_horizon >= 20:
+        score += 27
+    elif profile.investment_horizon >= 15:
+        score += 24
+    elif profile.investment_horizon >= 10:
+        score += 18
+    elif profile.investment_horizon >= 5:
+        score += 12
+    else:
+        score += 5
+
+    # Risk tolerance — 70 points
     risk_tolerance = str(profile.risk_tolerance).lower()
 
-    # Age factor
-    if profile.age < 40:
-        score += 20
-    elif profile.age < 55:
-        score += 10
-
-    # Investment horizon
-    if profile.investment_horizon >= 15:
-        score += 25
-    elif profile.investment_horizon >= 5:
-        score += 15
-
-    # Experience
-    if experience_level == "beginner":
-        score += 10
-    elif experience_level == "intermediate":
-        score += 20
-    elif experience_level == "advanced":
-        score += 25
-
-    # Risk tolerance
     if risk_tolerance == "aggressive":
-        score += 35
-    elif risk_tolerance == "growth":
-        score += 25
+        score += 70
     elif risk_tolerance == "balanced":
-        score += 15
+        score += 45
+    elif risk_tolerance == "conservative":
+        score += 20
 
     return score
 

@@ -12,6 +12,7 @@ from app.services.arbor.health_score import PortfolioHealthScore
 from app.services.arbor.health_review import HealthReview
 from app.services.arbor.improvements import PortfolioImprovements
 from app.services.arbor.insights import PortfolioInsights
+from app.services.arbor.currency_formatter import format_currency
 
 
 def ask_arbor(question: str, plan=None):
@@ -31,6 +32,7 @@ def ask_arbor(question: str, plan=None):
     portfolio_review_intent = intents["portfolio_review"]
     dashboard_intent = intents["dashboard"]
     portfolio_insights_intent = intents["portfolio_insights"]
+    increase_contributions_intent = intents["increase_contributions"]
 
     buy_intent = intents["buy"]
     sell_intent = intents["sell"]
@@ -84,7 +86,8 @@ def ask_arbor(question: str, plan=None):
         "name": "investor",
         "risk": "unknown",
         "horizon": "unknown",
-        "goal": "building long-term wealth",
+        "goal_target": 0,
+        "currency": "USD",
         "current_value": 0,
         "monthly_contribution": 0,
         "projected_value": 0,
@@ -126,7 +129,13 @@ def ask_arbor(question: str, plan=None):
         investment_years = projection.get("investment_period_years", horizon)
         expected_return = projection.get("assumed_return", 0)
 
-        goal = profile.get("investment_goal", "building long-term wealth")
+        goal_target = profile.get("goal_target", 0)
+        currency = profile.get("currency", "USD")
+
+        required_monthly_investment = projection.get(
+            "required_monthly_investment",
+            0,
+        )
 
         return_percent = expected_return * 100
 
@@ -143,10 +152,10 @@ def ask_arbor(question: str, plan=None):
         context = (
             f"The investor is {name}. "
             f"They have {article} {risk.lower()} risk profile and a {horizon}-year investment horizon. "
-            f"Their goal is {goal}. "
-            f"Their current portfolio value is ${current_value:,}. "
-            f"They contribute ${monthly_contribution} per month. "
-            f"Their projected portfolio value is ${projected_value:,.0f} "
+            f"Their wealth goal is {format_currency(goal_target, currency)}. "
+            f"Their current portfolio value is {format_currency(current_value, currency)}. "
+            f"They contribute {format_currency(monthly_contribution, currency)} per month. "
+            f"Their projected portfolio value is {format_currency(projected_value, currency)} "
             f"after {investment_years} years "
             f"assuming {return_article} {return_percent:.0f}% annual return."
         )
@@ -156,10 +165,12 @@ def ask_arbor(question: str, plan=None):
                 "name": name,
                 "risk": risk,
                 "horizon": horizon,
-                "goal": goal,
+                "goal_target": goal_target,
+                "currency": currency,
                 "current_value": current_value,
                 "monthly_contribution": monthly_contribution,
                 "projected_value": projected_value,
+                "required_monthly_investment": required_monthly_investment,
                 "investment_years": investment_years,
                 "return_percent": return_percent,
                 "left": comparison_assets[0] if len(comparison_assets) > 0 else None,
@@ -215,6 +226,12 @@ def ask_arbor(question: str, plan=None):
 
     if risk_intent and plan:
         return advisor.biggest_risk_response()
+
+    if rebalance_intent and plan:
+        return route_intent(
+            "rebalance",
+            context_data,
+        )
 
     # Check if user asks about a portfolio holding
     if plan:
@@ -332,7 +349,6 @@ def ask_arbor(question: str, plan=None):
         "portfolio_health",
         "dashboard",
         "millionaire",
-        "retirement",
         "crypto",
         "semiconductor",
         "technology",
@@ -381,13 +397,7 @@ def ask_arbor(question: str, plan=None):
             context_data,
         )
 
-    elif (
-        "invest more" in question
-        or "increase contribution" in question
-        or "contribute more" in question
-        or "grow wealth faster" in question
-        or "reach $1m faster" in question
-    ):
+    elif increase_contributions_intent:
         return route_intent(
             "increase_contributions",
             context_data,
@@ -488,24 +498,25 @@ def ask_arbor(question: str, plan=None):
 
     else:
         return f"""
-I'm Arbor 🌳
+        I'm Arbor 🌳
 
-I can help you understand your personalized investment strategy.
+        I can help you understand your personalized investment strategy.
 
-Based on your current plan:
-- Risk profile: {risk}
-- Investment horizon: {horizon} years
-- Current portfolio: ${current_value:,.0f}
-- Monthly investment: ${monthly_contribution:,.0f}
-- Projected value: ${projected_value:,.0f}
+        Based on your current plan:
+        - Risk profile: {risk}
+        - Investment horizon: {horizon} years
+        - Wealth goal: {format_currency(goal_target, currency)}
+        - Current portfolio: {format_currency(current_value, currency)}
+        - Monthly investment: {format_currency(monthly_contribution, currency)}
+        - Projected value: {format_currency(projected_value, currency)}
 
-You can ask me things like:
+        You can ask me things like:
 
-- Why did you choose these investments?
-- Am I on track for financial freedom?
-- How can I retire earlier?
-- Should I increase my contributions?
-- What happens during a market crash?
+        - Why did you choose these investments?
+        - Am I on track for my wealth goal?
+        - How can I reach my goal faster?
+        - Should I increase my contributions?
+        - What happens during a market crash?
 
-My goal is to help you make better long-term investing decisions.
-"""
+        My goal is to help you make better long-term investing decisions.
+        """

@@ -150,6 +150,9 @@ class PortfolioAdvisor:
         semiconductor_exposure = self.brain_data["semiconductor_exposure"]
         growth_exposure = 0
 
+        semiconductor_exposure = self.brain_data["semiconductor_exposure"]
+        growth_exposure = 0
+
         for holding in portfolio:
 
             ticker = holding["ticker"]
@@ -162,18 +165,6 @@ class PortfolioAdvisor:
 
             if growth in ["high", "very high"]:
                 growth_exposure += allocation
-
-            for holding in portfolio:
-
-                ticker = holding["ticker"]
-                allocation = holding.get("allocation", 0)
-
-                asset = get_asset(ticker)
-
-                growth = asset.get("growth", "").lower() if asset else ""
-
-                if growth in ["high", "very high"]:
-                    growth_exposure += allocation
 
         risks = []
 

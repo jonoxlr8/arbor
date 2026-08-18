@@ -86,18 +86,21 @@ ROUTES = {
         c["projected_value"],
         c["investment_years"],
         c["return_percent"],
+        c["currency"],
     ),
     "millionaire": lambda c: millionaire_response(
         c["projected_value"],
         c["investment_years"],
         c["current_value"],
         c["monthly_contribution"],
+        c["currency"],
     ),
     "investing_enough": lambda c: investing_enough_response(
         c["current_value"],
         c["monthly_contribution"],
         c["horizon"],
         c["return_percent"],
+        c["currency"],
     ),
     "buy_more": lambda c: buy_more_response(
         c["ticker"],
@@ -154,11 +157,15 @@ ROUTES = {
         c["current_value"],
         c["monthly_contribution"],
         c["return_percent"],
+        c["goal_target"],
+        c["currency"],
+        c["required_monthly_investment"],
     ),
     "increase_contributions": lambda c: increase_contributions_response(
         c["current_value"],
         c["monthly_contribution"],
         c["horizon"],
+        c["currency"],
     ),
     "projection": lambda c: projection_response(
         c["current_value"],
@@ -166,6 +173,7 @@ ROUTES = {
         c["investment_years"],
         c["return_percent"],
         c["projected_value"],
+        c["currency"],
     ),
     "portfolio_risk": lambda c: portfolio_risk_response(
         c["risk"],
@@ -178,18 +186,21 @@ ROUTES = {
     "explanation": lambda c: explanation_response(
         c["risk"],
         c["horizon"],
-        c["goal"],
+        c["goal_target"],
+        c["currency"],
     ),
     "year_projection": lambda c: year_projection_response(
         c["projection_value"],
         c["requested_year"],
         c["monthly_contribution"],
         c["return_percent"],
+        c["currency"],
     ),
     "ten_year_projection": lambda c: ten_year_projection_response(
         c["projection_value"],
         c["monthly_contribution"],
         c["return_percent"],
+        c["currency"],
     ),
     "semiconductor": lambda c: semiconductor_response(
         c["risk"],
@@ -214,7 +225,7 @@ ROUTES = {
     "portfolio_strategy": lambda c: portfolio_strategy_response(
         c["risk"],
         c["horizon"],
-        c["goal"],
+        c["goal_target"],
         c["holdings"],
     ),
 }

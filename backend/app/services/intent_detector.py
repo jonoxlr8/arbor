@@ -44,7 +44,9 @@ def detect_intent(question: str):
         question == "dashboard"
         or "show dashboard" in question
         or "show my dashboard" in question
+        or "show me my dashboard" in question
         or "show my portfolio" in question
+        or "show me my portfolio" in question
         or "portfolio dashboard" in question
     )
     retirement_intent = any(keyword in question for keyword in INTENTS["retirement"])
@@ -114,6 +116,15 @@ def detect_intent(question: str):
         or "portfolio risk" in question
         or "risk of my portfolio" in question
     )
+    increase_contributions_intent = (
+        "increase my contributions" in question
+        or "increase contributions" in question
+        or "increase my investment" in question
+        or "increase my investments" in question
+        or "invest more" in question
+        or "should i invest more" in question
+        or "should i increase my contributions" in question
+    )
     improve_intent = (
         "improve" in question
         or "improvement" in question
@@ -150,5 +161,6 @@ def detect_intent(question: str):
         "portfolio_strategy": portfolio_strategy_intent,
         "strength": strength_intent,
         "ownership": ownership_intent,
+        "increase_contributions": increase_contributions_intent,
         "improve": improve_intent,
     }

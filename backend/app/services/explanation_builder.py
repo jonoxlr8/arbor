@@ -54,7 +54,7 @@ def generate_strength(profile):
 
 def generate_recommendation(profile):
     horizon = profile.investment_horizon
-    experience = profile.experience_level
+    risk = classify_risk(calculate_risk_score(profile))
 
     if horizon < 5:
         return (
@@ -62,21 +62,27 @@ def generate_recommendation(profile):
             "and avoiding unnecessary portfolio changes."
         )
 
-    if experience == "Beginner":
-        return (
-            "Continue investing consistently and focus on building good "
-            "long-term investing habits rather than reacting to market movements."
-        )
-
-    if horizon >= 15:
+    if risk == "Aggressive" and horizon >= 15:
         return (
             "Stay invested through market cycles and allow time and "
-            "compounding to work toward your long-term wealth goals."
+            "compounding to work toward your long-term wealth goal."
+        )
+
+    if risk == "Aggressive":
+        return (
+            "Focus on consistent investing while being prepared for "
+            "larger market swings along the way to your goal."
+        )
+
+    if risk == "Balanced":
+        return (
+            "Continue investing consistently and review your portfolio "
+            "periodically to keep it aligned with your target and timeline."
         )
 
     return (
-        "Continue investing regularly and review your portfolio periodically "
-        "to ensure it remains aligned with your goals."
+        "Focus on consistent investing, protecting your capital, "
+        "and keeping your portfolio aligned with your target and timeline."
     )
 
 
