@@ -22,10 +22,12 @@ def ask_arbor(question: str, plan=None):
     intents = detect_intent(question)
 
     comparison_assets = []
+    overlap_assets = []
     comparison_intent = intents["comparison"]
     strength_intent = intents["strength"]
     risk_intent = intents["risk"]
     improve_intent = intents["improve"]
+    overlap_intent = intents["overlap"]
 
     rebalance_intent = intents["rebalance"]
     portfolio_health_intent = intents["portfolio_health"]
@@ -49,7 +51,7 @@ def ask_arbor(question: str, plan=None):
     retirement_intent = intents["retirement"]
     year_match = intents["year_match"]
 
-    if comparison_intent and plan:
+    if (comparison_intent or overlap_intent) and plan:
 
         portfolio = plan.get("portfolio", [])
 
@@ -61,7 +63,13 @@ def ask_arbor(question: str, plan=None):
 
             if ticker in available_tickers:
 
-                comparison_assets.append(ticker.upper())
+                ticker_upper = ticker.upper()
+
+                if comparison_intent and ticker_upper not in comparison_assets:
+                    comparison_assets.append(ticker_upper)
+
+                if overlap_intent and ticker_upper not in overlap_assets:
+                    overlap_assets.append(ticker_upper)
 
     simple_routes = {
         "market_crash": intents["market_crash"],
@@ -99,7 +107,9 @@ def ask_arbor(question: str, plan=None):
         "left": comparison_assets[0] if len(comparison_assets) > 0 else None,
         "right": comparison_assets[1] if len(comparison_assets) > 1 else None,
         "plan": plan,
+        "overlap_assets": overlap_assets,
         "holdings": [],
+        "portfolio": [],
     }
 
     if plan:
@@ -173,8 +183,10 @@ def ask_arbor(question: str, plan=None):
                 "required_monthly_investment": required_monthly_investment,
                 "investment_years": investment_years,
                 "return_percent": return_percent,
+                "portfolio": portfolio,
                 "left": comparison_assets[0] if len(comparison_assets) > 0 else None,
                 "right": comparison_assets[1] if len(comparison_assets) > 1 else None,
+                "overlap_assets": overlap_assets,
             }
         )
 
@@ -207,6 +219,14 @@ def ask_arbor(question: str, plan=None):
 
         return route_intent(
             "comparison",
+            context_data,
+        )
+
+    if overlap_intent and plan:
+        context_data["overlap_assets"] = overlap_assets
+
+        return route_intent(
+            "overlap",
             context_data,
         )
 
@@ -259,6 +279,7 @@ def ask_arbor(question: str, plan=None):
                     )
 
                     context_data["risk"] = asset.get("risk", risk)
+                    context_data["portfolio"] = portfolio
 
                 return route_intent(
                     "ownership",
@@ -341,6 +362,7 @@ def ask_arbor(question: str, plan=None):
     intent_priority = [
         "market_crash",
         "portfolio_strategy",
+        "overlap",
         "comparison",
         "strength",
         "risk",

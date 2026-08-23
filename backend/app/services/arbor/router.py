@@ -70,6 +70,7 @@ from app.services.arbor.ownership import (
 from app.services.arbor.portfolio_strategy import (
     portfolio_strategy_response,
 )
+from app.services.arbor.overlap import overlap_response
 
 ROUTES = {
     "greeting": lambda c: greeting_response(c["name"]),
@@ -217,10 +218,16 @@ ROUTES = {
         c["ticker"],
         c.get("role", "Portfolio Holding"),
         c.get(
-            "why_owned", "This investment supports your long-term investment strategy."
+            "why_owned",
+            "This investment supports your long-term investment strategy.",
         ),
         c.get("risk", "unknown"),
         c.get("horizon", "unknown"),
+        c.get("portfolio", []),
+    ),
+    "overlap": lambda c: overlap_response(
+        c["plan"],
+        c.get("overlap_assets", []),
     ),
     "portfolio_strategy": lambda c: portfolio_strategy_response(
         c["risk"],
