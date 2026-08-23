@@ -7,6 +7,86 @@ type ArborChatProps = {
   plan: any;
 };
 
+function ArborResponse({ text }: { text: string }) {
+  const lines = text
+    .split("\n")
+    .filter(
+      (line) =>
+        line.trim() !== "🌳" &&
+        line.trim() !== "Arbor" &&
+        line.trim() !== "AI Investment Companion",
+    );
+
+  return (
+    <div className="mt-4 space-y-3 leading-7 text-slate-700">
+      {lines.map((line, index) => {
+        const trimmed = line.trim();
+
+        if (!trimmed) {
+          return null;
+        }
+
+        if (trimmed.startsWith("#### ")) {
+          return (
+            <h4
+              key={index}
+              className="pt-2 text-base font-semibold text-slate-900"
+            >
+              {renderBold(trimmed.replace("#### ", ""))}
+            </h4>
+          );
+        }
+
+        if (trimmed.startsWith("### ")) {
+          return (
+            <h3 key={index} className="pt-3 text-xl font-bold text-slate-900">
+              {renderBold(trimmed.replace("### ", ""))}
+            </h3>
+          );
+        }
+
+        if (trimmed.startsWith("## ")) {
+          return (
+            <h2 key={index} className="pt-3 text-2xl font-bold text-slate-900">
+              {renderBold(trimmed.replace("## ", ""))}
+            </h2>
+          );
+        }
+
+        if (trimmed.startsWith("- ")) {
+          return (
+            <div key={index} className="flex items-start gap-3 pl-2">
+              <span className="mt-1 text-emerald-600">•</span>
+
+              <span className="flex-1">
+                {renderBold(trimmed.substring(2).trim())}
+              </span>
+            </div>
+          );
+        }
+
+        return <p key={index}>{renderBold(trimmed)}</p>;
+      })}
+    </div>
+  );
+}
+
+function renderBold(text: string) {
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+
+  return parts.map((part, index) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={index} className="font-semibold text-slate-900">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+
+    return part;
+  });
+}
+
 export default function ArborChat({ plan }: ArborChatProps) {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<
@@ -102,19 +182,19 @@ export default function ArborChat({ plan }: ArborChatProps) {
               key={prompt}
               onClick={() => handlePromptClick(prompt)}
               className="
-        rounded-full
-        border
-        border-slate-300
-        bg-white
-        px-4
-        py-2
-        text-sm
-        font-medium
-        text-slate-700
-        transition
-        hover:border-emerald-400
-        hover:bg-emerald-50
-        "
+                rounded-full
+                border
+                border-slate-300
+                bg-white
+                px-4
+                py-2
+                text-sm
+                font-medium
+                text-slate-700
+                transition
+                hover:border-emerald-400
+                hover:bg-emerald-50
+              "
             >
               {prompt}
             </button>
@@ -135,18 +215,18 @@ export default function ArborChat({ plan }: ArborChatProps) {
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="Ask anything about your investment plan..."
           className="
-          w-full
-          rounded-2xl
-          border
-          border-slate-300
-          bg-slate-50
-          p-4
-          text-slate-900
-          placeholder:text-slate-400
-          outline-none
-          transition
-          focus:border-emerald-500
-          focus:bg-white
+            w-full
+            rounded-2xl
+            border
+            border-slate-300
+            bg-slate-50
+            p-4
+            text-slate-900
+            placeholder:text-slate-400
+            outline-none
+            transition
+            focus:border-emerald-500
+            focus:bg-white
           "
         />
 
@@ -154,18 +234,18 @@ export default function ArborChat({ plan }: ArborChatProps) {
           onClick={handleAsk}
           disabled={loading || !question.trim()}
           className={`
-    mt-4
-    w-full
-    rounded-xl
-    py-4
-    font-semibold
-    transition
-    ${
-      loading || !question.trim()
-        ? "cursor-not-allowed bg-slate-300 text-slate-500"
-        : "bg-emerald-600 text-white hover:bg-emerald-700"
-    }
-  `}
+            mt-4
+            w-full
+            rounded-xl
+            py-4
+            font-semibold
+            transition
+            ${
+              loading || !question.trim()
+                ? "cursor-not-allowed bg-slate-300 text-slate-500"
+                : "bg-emerald-600 text-white hover:bg-emerald-700"
+            }
+          `}
         >
           {loading ? "Thinking..." : "Ask Arbor 🌳"}
         </button>
@@ -197,9 +277,13 @@ export default function ArborChat({ plan }: ArborChatProps) {
                   </div>
                 )}
 
-                <p className="mt-3 whitespace-pre-wrap leading-7 text-slate-700">
-                  {message.text}
-                </p>
+                {message.role === "arbor" ? (
+                  <ArborResponse text={message.text} />
+                ) : (
+                  <p className="mt-3 whitespace-pre-wrap leading-7 text-slate-700">
+                    {message.text}
+                  </p>
+                )}
               </div>
             ))}
           </div>

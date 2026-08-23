@@ -108,6 +108,29 @@ def detect_intent(question: str):
     portfolio_strategy_intent = any(
         keyword in question for keyword in INTENTS["portfolio_strategy"]
     )
+    portfolio_tickers = [
+        "voo",
+        "qqqm",
+        "smh",
+        "btc",
+        "bitcoin",
+        "eth",
+        "ethereum",
+    ]
+
+    mentioned_tickers = [ticker for ticker in portfolio_tickers if ticker in question]
+
+    overlap_intent = len(mentioned_tickers) >= 2 and (
+        "both" in question
+        or "overlap" in question
+        or "overlapping" in question
+        or "too much" in question
+        or "too concentrated" in question
+        or "concentrated" in question
+        or "why do i own" in question
+        or "why own" in question
+        or "why do i have" in question
+    )
     strength_intent = any(keyword in question for keyword in INTENTS["strength"])
     ownership_intent = any(keyword in question for keyword in INTENTS["ownership"])
     risk_intent = (
@@ -159,6 +182,7 @@ def detect_intent(question: str):
         "year_match": year_match,
         "comparison": comparison_intent,
         "portfolio_strategy": portfolio_strategy_intent,
+        "overlap": overlap_intent,
         "strength": strength_intent,
         "ownership": ownership_intent,
         "increase_contributions": increase_contributions_intent,
