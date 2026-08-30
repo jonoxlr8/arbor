@@ -4,6 +4,8 @@ import re
 
 def detect_intent(question: str):
 
+    question = question.lower().strip()
+
     crypto_intent = any(keyword in question for keyword in INTENTS["crypto"])
     buy_intent = (
         "buy more" in question
@@ -36,9 +38,31 @@ def detect_intent(question: str):
     portfolio_insights_intent = (
         "portfolio insights" in question
         or "my portfolio insights" in question
+        or "give me an overview of my portfolio" in question
+        or "portfolio overview" in question
+        or "overview of my portfolio" in question
         or "show portfolio insights" in question
         or "show me my portfolio insights" in question
         or "what are my portfolio insights" in question
+        or "how am i doing" in question
+        or "how am i doing with my portfolio" in question
+        or "how is my portfolio doing" in question
+        or "how's my portfolio doing" in question
+        or "am i doing well" in question
+        or "am i doing okay" in question
+        or "am i doing ok" in question
+    )
+    goal_progress_intent = (
+        "am i on track" in question
+        or "am i on track to reach my goal" in question
+        or "on track to reach my goal" in question
+        or "on track for my goal" in question
+        or "will i reach my goal" in question
+        or "will i reach my wealth goal" in question
+        or "will i reach my target" in question
+        or "how close am i to my goal" in question
+        or "how far am i from my goal" in question
+        or "how much closer am i to my goal" in question
     )
     dashboard_intent = (
         question == "dashboard"
@@ -138,6 +162,18 @@ def detect_intent(question: str):
         or "main risk" in question
         or "portfolio risk" in question
         or "risk of my portfolio" in question
+        or "how risky" in question
+        or "how much risk" in question
+    )
+    concentration_intent = (
+        "too concentrated" in question
+        or "concentrated" in question
+        or "portfolio concentrated" in question
+        or "portfolio concentration" in question
+        or "too much concentration" in question
+        or "too much exposure" in question
+        or "overexposed" in question
+        or "over exposure" in question
     )
     increase_contributions_intent = (
         "increase my contributions" in question
@@ -159,6 +195,16 @@ def detect_intent(question: str):
         or "what should i change" in question
         or "what would you change" in question
     )
+    next_steps_intent = (
+        "what should i do next" in question
+        or "what should i do now" in question
+        or "what do i do next" in question
+        or "what should i do" in question
+        or "what should i focus on" in question
+        or "what should i focus on next" in question
+        or "what are my next steps" in question
+        or "what should i change" in question
+    )
 
     return {
         "crypto": crypto_intent,
@@ -167,6 +213,8 @@ def detect_intent(question: str):
         "sell": sell_intent,
         "rebalance": rebalance_intent,
         "risk": risk_intent,
+        "concentration": concentration_intent,
+        "goal_progress": goal_progress_intent,
         "portfolio_health": portfolio_health_intent,
         "portfolio_review": portfolio_review_intent,
         "portfolio_insights": portfolio_insights_intent,
@@ -187,4 +235,5 @@ def detect_intent(question: str):
         "ownership": ownership_intent,
         "increase_contributions": increase_contributions_intent,
         "improve": improve_intent,
+        "next_steps": next_steps_intent,
     }

@@ -35,6 +35,9 @@ def ask_arbor(question: str, plan=None):
     dashboard_intent = intents["dashboard"]
     portfolio_insights_intent = intents["portfolio_insights"]
     increase_contributions_intent = intents["increase_contributions"]
+    concentration_intent = intents["concentration"]
+    goal_progress_intent = intents["goal_progress"]
+    next_steps_intent = intents["next_steps"]
 
     buy_intent = intents["buy"]
     sell_intent = intents["sell"]
@@ -232,6 +235,15 @@ def ask_arbor(question: str, plan=None):
 
     if portfolio_insights_intent and plan:
         return insights.generate()
+
+    if goal_progress_intent and plan:
+        return insights.generate_goal_progress()
+
+    if concentration_intent and plan:
+        return insights.generate_concentration()
+
+    if next_steps_intent and plan:
+        return insights.generate_next_steps()
 
     if portfolio_health_intent and plan:
         return review.generate()

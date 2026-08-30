@@ -14,7 +14,7 @@ class PortfolioInsights:
         self.advisor = PortfolioAdvisor(plan)
         self.health = PortfolioHealthScore(self.analyzer)
 
-    def generate(self):
+    def generate(self, mode="overview"):
 
         insights = []
 
@@ -60,6 +60,15 @@ class PortfolioInsights:
             )
 
         horizon = self.plan.get("profile", {}).get("investment_horizon", 0)
+
+        risk_level = (
+            self.plan.get("profile", {})
+            .get(
+                "risk_level",
+                "",
+            )
+            .lower()
+        )
 
         if horizon >= 10:
             insights.append(
@@ -196,7 +205,7 @@ class PortfolioInsights:
             insights.append(
                 {
                     "priority": InsightPriority.IMPORTANT,
-                    "type": "RISK",
+                    "type": "CRYPTO_RISK",
                     "text": (
                         f"⚠️ Cryptocurrency represents "
                         f"{self.analyzer.crypto_allocation:.0f}% of your portfolio. "
@@ -206,47 +215,67 @@ class PortfolioInsights:
                 }
             )
 
-        if self.analyzer.technology_allocation >= 40:
-            insights.append(
-                {
-                    "priority": InsightPriority.IMPORTANT,
-                    "type": "SECTOR",
-                    "text": (
-                        "⚠️ Your portfolio has significant exposure "
-                        "to technology and growth companies."
-                    ),
-                }
-            )
-
         semiconductor = self.analyzer.semiconductor_exposure()
+        technology = self.analyzer.technology_allocation
 
-        if semiconductor >= 20:
+        # Combine overlapping technology, semiconductor and growth exposures
+        # into one decision-relevant concentration insight.
+        if technology >= 40 or semiconductor >= 20:
+
+            if risk_level == "aggressive":
+                concentration_text = (
+                    f"⚖️ Your portfolio has a strong technology and growth tilt, "
+                    f"with approximately {technology:.0f}% allocated to technology-related "
+                    f"exposure"
+                )
+
+                if semiconductor >= 20:
+                    concentration_text += f", including approximately {semiconductor:.0f}% in semiconductor companies"
+
+                concentration_text += (
+                    ". Given your aggressive risk profile and long investment horizon, "
+                    "this concentration can be intentional, but it is important to make sure "
+                    "future contributions do not unintentionally increase it."
+                )
+
+            elif risk_level == "moderate":
+                concentration_text = (
+                    f"⚠️ Your portfolio has significant technology and growth concentration, "
+                    f"with approximately {technology:.0f}% allocated to technology-related exposure"
+                )
+
+                if semiconductor >= 20:
+                    concentration_text += f", including approximately {semiconductor:.0f}% in semiconductor companies"
+
+                concentration_text += (
+                    ". Consider directing future contributions toward broader-market exposure "
+                    "if you want to gradually reduce this concentration."
+                )
+
+            else:
+                concentration_text = (
+                    f"⚠️ Your portfolio has significant technology and growth concentration, "
+                    f"with approximately {technology:.0f}% allocated to technology-related exposure"
+                )
+
+                if semiconductor >= 20:
+                    concentration_text += f", including approximately {semiconductor:.0f}% in semiconductor companies"
+
+                concentration_text += (
+                    ". This may create more volatility than is appropriate for your risk profile "
+                    "or shorter investment horizon. Consider prioritizing broader-market and "
+                    "lower-volatility investments through future contributions."
+                )
+
             insights.append(
                 {
                     "priority": InsightPriority.IMPORTANT,
                     "type": "CONCENTRATION",
-                    "text": (
-                        f"⚠️ Approximately {semiconductor:.0f}% of your portfolio "
-                        "is exposed to semiconductor companies. This gives you strong exposure "
-                        "to AI and chip-driven growth, but also means a downturn in the semiconductor "
-                        "sector could have a noticeable impact on your portfolio."
-                    ),
+                    "text": concentration_text,
                 }
             )
 
-        if self.analyzer.growth_allocation >= 30:
-            insights.append(
-                {
-                    "priority": InsightPriority.IMPORTANT,
-                    "type": "GROWTH",
-                    "text": (
-                        f"📈 {self.analyzer.growth_allocation:.0f}% of your portfolio is allocated "
-                        "to high-growth equities. This supports your aggressive strategy and "
-                        "provides strong exposure to long-term technology and innovation trends."
-                    ),
-                }
-            )
-
+        # High-risk exposure is a separate portfolio-level risk signal.
         if self.analyzer.high_risk_allocation >= 60:
             insights.append(
                 {
@@ -273,41 +302,46 @@ class PortfolioInsights:
             }
 
         largest_allocation = largest.get("allocation", 0)
-        risk_level = self.plan.get("profile", {}).get("risk_level", "").lower()
 
         concentration_threshold = 35
 
         if "moderate" in risk_level or "conservative" in risk_level:
             concentration_threshold = 30
 
+        # Only surface individual-position concentration when it adds
+        # information beyond the broader portfolio concentration insight.
         if largest_allocation >= concentration_threshold:
 
-            if risk_level == "aggressive":
-                insights.append(
-                    {
-                        "priority": InsightPriority.IMPORTANT,
-                        "type": "CONCENTRATION",
-                        "text": (
-                            f"⚖️ {largest['ticker']} is your largest individual position "
-                            f"at {largest_allocation:.0f}%. This gives your portfolio strong "
-                            "growth exposure, but it also means this holding's performance will have "
-                            "a meaningful impact on your overall results."
-                        ),
-                    }
-                )
+            # Avoid repeating the broader technology/semiconductor
+            # concentration insight when the largest position is QQQM or SMH.
+            if largest["ticker"].upper() not in {"QQQM", "SMH"} or technology < 40:
 
-            else:
-                insights.append(
-                    {
-                        "priority": InsightPriority.IMPORTANT,
-                        "type": "CONCENTRATION",
-                        "text": (
-                            f"⚠️ {largest['ticker']} represents {largest_allocation:.0f}% "
-                            "of your portfolio. A large individual position can increase "
-                            "portfolio concentration and volatility."
-                        ),
-                    }
-                )
+                if risk_level == "aggressive":
+                    insights.append(
+                        {
+                            "priority": InsightPriority.IMPORTANT,
+                            "type": "POSITION_CONCENTRATION",
+                            "text": (
+                                f"⚖️ {largest['ticker']} is your largest individual position "
+                                f"at {largest_allocation:.0f}%. This gives your portfolio strong "
+                                "exposure to the investment, but it also means its performance "
+                                "will have a meaningful impact on your overall results."
+                            ),
+                        }
+                    )
+
+                else:
+                    insights.append(
+                        {
+                            "priority": InsightPriority.IMPORTANT,
+                            "type": "POSITION_CONCENTRATION",
+                            "text": (
+                                f"⚠️ {largest['ticker']} represents {largest_allocation:.0f}% "
+                                "of your portfolio. A large individual position can increase "
+                                "portfolio concentration and volatility."
+                            ),
+                        }
+                    )
 
         # Remove duplicate insights while preserving their order.
         unique_insights = []
@@ -376,7 +410,11 @@ class PortfolioInsights:
                 "your sector concentration."
             )
 
-        if largest_weight >= concentration_threshold:
+        largest_is_concentration = (
+            largest["ticker"].upper() not in {"QQQM", "SMH"} or technology < 40
+        )
+
+        if largest_weight >= concentration_threshold and largest_is_concentration:
 
             if risk_level == "aggressive":
                 actions.append(
@@ -496,3 +534,315 @@ class PortfolioInsights:
 
     {chr(10).join(actions)}
     """
+
+    def generate_goal_progress(self):
+
+        profile = self.plan.get("profile", {})
+        projection = self.plan.get("projection", {})
+
+        current_value = profile.get("current_portfolio_value", 0)
+        goal_target = profile.get("goal_target", 0)
+        monthly = profile.get("monthly_investment", 0)
+        horizon = profile.get("investment_horizon", 0)
+        currency = profile.get("currency", "USD")
+
+        projected_value = projection.get("projected_value", 0)
+
+        if goal_target <= 0:
+            return """
+    🌳
+    Arbor
+    AI Investment Companion
+
+    ## Goal Progress
+
+    I don't have a target goal available yet, so I can't calculate
+    your progress toward it.
+"""
+
+        current_progress = min(
+            (current_value / goal_target) * 100,
+            100,
+        )
+
+        projected_progress = min(
+            (projected_value / goal_target) * 100,
+            100,
+        )
+
+        shortfall = max(
+            goal_target - projected_value,
+            0,
+        )
+
+        if shortfall > 0:
+
+            outlook = (
+                f"⚠️ Based on your current assumptions, Arbor projects "
+                f"a shortfall of approximately "
+                f"{format_currency(shortfall, currency)}."
+            )
+
+        else:
+
+            outlook = (
+                "🎯 Based on your current assumptions, Arbor projects "
+                "that you could reach or exceed your goal."
+            )
+
+        return f"""
+    🌳
+    Arbor
+    AI Investment Companion
+
+    ## Goal Progress
+
+    🎯 Goal
+
+    {format_currency(goal_target, currency)}
+
+    💰 Current Portfolio
+
+    {format_currency(current_value, currency)}
+
+    📊 Current Progress
+
+    {current_progress:.0f}% of your goal
+
+    📈 Projected Value
+
+    {format_currency(projected_value, currency)}
+
+    🕒 Investment Horizon
+
+    {horizon} years
+
+    💵 Monthly Contribution
+
+    {format_currency(monthly, currency)}
+
+    ## Arbor's Assessment
+
+    Based on your current assumptions, Arbor projects your portfolio
+    could reach approximately {projected_progress:.0f}% of your goal
+    over your investment horizon.
+
+    {outlook}
+
+    💡 Increasing your regular contributions or extending your
+    investment horizon could improve your projected outcome.
+
+    This projection is an illustration, not a guaranteed result.
+"""
+
+    def generate_concentration(self):
+
+        profile = self.plan.get("profile", {})
+
+        risk_level = profile.get("risk_level", "unknown")
+        horizon = profile.get("investment_horizon", 0)
+
+        technology = self.analyzer.technology_allocation
+        semiconductor = self.analyzer.semiconductor_exposure()
+        crypto = self.analyzer.crypto_allocation
+
+        portfolio = self.analyzer.portfolio
+
+        if portfolio:
+            largest = max(
+                portfolio,
+                key=lambda holding: holding.get("allocation", 0),
+            )
+        else:
+            largest = {
+                "ticker": "N/A",
+                "allocation": 0,
+            }
+
+        largest_ticker = largest.get("ticker", "N/A")
+        largest_allocation = largest.get("allocation", 0)
+
+        concentration_areas = []
+
+        if technology >= 40:
+            concentration_areas.append(f"technology/growth ({technology:.0f}%)")
+
+        if semiconductor >= 20:
+            concentration_areas.append(f"semiconductors ({semiconductor:.0f}%)")
+
+        if crypto >= 20:
+            concentration_areas.append(f"cryptocurrency ({crypto:.0f}%)")
+
+        if largest_allocation >= 35:
+            concentration_areas.append(f"{largest_ticker} ({largest_allocation:.0f}%)")
+
+        if concentration_areas:
+
+            areas = ", ".join(concentration_areas)
+
+            assessment = (
+                f"Your main concentration areas are {areas}. "
+                f"That means a relatively small number of investment themes "
+                f"can have a meaningful impact on your overall portfolio."
+            )
+
+        else:
+
+            assessment = (
+                "Arbor does not identify a major concentration issue "
+                "based on your current portfolio allocations."
+            )
+
+        if str(risk_level).lower() == "aggressive" and horizon >= 10:
+
+            recommendation = (
+                "Because you have an aggressive risk profile and a long "
+                f"{horizon}-year investment horizon, some concentration "
+                "can be intentional. However, future contributions should "
+                "be monitored so that these exposures do not become "
+                "unintentionally dominant."
+            )
+
+        else:
+
+            recommendation = (
+                "If you want to reduce concentration, consider directing "
+                "future contributions toward broader and less concentrated "
+                "investments rather than immediately selling existing holdings."
+            )
+
+        return f"""
+    🌳
+    Arbor
+    AI Investment Companion
+
+    ## Portfolio Concentration
+
+    🔎 Arbor's Assessment
+
+    {assessment}
+
+    ## Main Concentration Areas
+
+    {areas if concentration_areas else "No major concentration areas identified."}
+
+    ## What This Means
+
+    {recommendation}
+
+        💡 Arbor generally prefers using future contributions to gradually
+    adjust portfolio exposure when appropriate, rather than making
+    unnecessary short-term trades.
+"""
+
+    def generate_next_steps(self):
+
+        profile = self.plan.get("profile", {})
+        projection = self.plan.get("projection", {})
+
+        currency = profile.get("currency", "USD")
+        monthly = profile.get("monthly_investment", 0)
+        horizon = profile.get("investment_horizon", 0)
+        goal_target = profile.get("goal_target", 0)
+        projected_value = projection.get("projected_value", 0)
+
+        risk_level = str(profile.get("risk_level", "unknown")).lower()
+
+        crypto = self.analyzer.crypto_allocation
+        semiconductor = self.analyzer.semiconductor_exposure()
+        technology = self.analyzer.technology_allocation
+
+        next_steps = []
+
+        # 1. Contribution
+        if monthly > 0:
+            next_steps.append(
+                f"💰 Continue your {format_currency(monthly, currency)} "
+                "monthly contribution consistently."
+            )
+
+        # 2. Concentration
+        if technology >= 40 or semiconductor >= 20:
+            next_steps.append(
+                f"⚖️ Monitor your technology exposure of approximately "
+                f"{technology:.0f}%"
+                + (
+                    f" and semiconductor exposure of approximately "
+                    f"{semiconductor:.0f}%."
+                    if semiconductor >= 20
+                    else "."
+                )
+                + " Consider directing future contributions toward "
+                "other areas if you want to gradually reduce concentration."
+            )
+
+        # 3. Crypto
+        if crypto >= 20:
+            next_steps.append(
+                f"₿ Review your {crypto:.0f}% cryptocurrency allocation "
+                "and make sure you are comfortable holding it through "
+                "major market declines."
+            )
+
+        # 4. Goal
+        if goal_target > 0 and projected_value > 0:
+
+            shortfall = max(
+                goal_target - projected_value,
+                0,
+            )
+
+            if shortfall > 0:
+                next_steps.append(
+                    f"🎯 Your current projection is approximately "
+                    f"{format_currency(projected_value, currency)} "
+                    f"against your {format_currency(goal_target, currency)} "
+                    "goal. Consider increasing contributions over time "
+                    "if reaching the goal sooner is important."
+                )
+            else:
+                next_steps.append(
+                    "🎯 Your current projection reaches your goal. "
+                    "Focus on maintaining consistent contributions and "
+                    "staying invested for the long term."
+                )
+
+        # 5. Risk
+        if risk_level == "aggressive":
+            next_steps.append(
+                "📉 Make sure you have the discipline to continue investing "
+                "during major market declines. Your aggressive strategy "
+                "will likely experience significant volatility."
+            )
+
+        if not next_steps:
+            next_steps.append(
+                "💡 Continue following your long-term investment plan "
+                "and review your portfolio periodically."
+            )
+
+        # Keep the response focused on the most useful actions.
+        next_steps = next_steps[:4]
+
+        action_text = "\n\n".join(
+            f"{index}. {action}" for index, action in enumerate(next_steps, start=1)
+        )
+
+        return f"""
+    🌳
+    Arbor
+    AI Investment Companion
+
+    ## Your Next Steps
+
+    Based on your current portfolio, goals, risk profile, and investment
+    horizon, these are the areas Arbor recommends focusing on next:
+
+    {action_text}
+
+    ## Bottom Line
+
+    Your biggest priority is consistency. Stay aligned with your
+    investment plan, monitor concentration and risk, and adjust your
+    contributions over time as your financial situation changes.
+"""
