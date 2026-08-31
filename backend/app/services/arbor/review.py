@@ -17,6 +17,8 @@ def portfolio_review_response(plan):
 
     health_score = health.score()["overall"]
 
+    risk = plan.get("profile", {}).get("risk_level", "Unknown")
+
     strongest = advisor.biggest_strength()
 
     holding_count = metrics["holding_count"]
@@ -50,7 +52,7 @@ def portfolio_review_response(plan):
 
     Overall Assessment
 
-    Your portfolio is well designed for long-term wealth creation and aligns with an aggressive investor seeking long-term growth.
+    Your portfolio is designed for long-term wealth creation and aligns with your {risk.lower()} risk profile.
 
     Your strongest holding is **{strongest["ticker"]}**, which plays an important role in your investment strategy.
 

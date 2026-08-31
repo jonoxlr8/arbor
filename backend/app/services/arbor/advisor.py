@@ -1,18 +1,29 @@
-from app.services.arbor.portfolio_analyzer import PortfolioAnalyzer
 from textwrap import dedent
-from app.services.arbor.knowledge.service import get_asset
+
 from app.services.arbor.advisor_brain import AdvisorBrain
+from app.services.arbor.knowledge.service import get_asset
+from app.services.arbor.portfolio_analyzer import PortfolioAnalyzer
 
 
 class PortfolioAdvisor:
 
     def __init__(self, plan):
-
-        self.plan = plan
-        self.analyzer = PortfolioAnalyzer(plan)
-
-        self.brain = AdvisorBrain(plan)
+        self.plan = plan or {}
+        self.analyzer = PortfolioAnalyzer(self.plan)
+        self.brain = AdvisorBrain(self.plan)
         self.brain_data = self.brain.build()
+
+    def _risk_profile(self):
+        return self.analyzer.profile.get(
+            "risk_level",
+            self.analyzer.profile.get("risk_tolerance", "unknown"),
+        )
+
+    def _horizon(self):
+        return self.analyzer.profile.get(
+            "investment_horizon",
+            0,
+        )
 
     def biggest_strength(self):
 
@@ -23,14 +34,14 @@ class PortfolioAdvisor:
 
         largest = max(
             portfolio,
-            key=lambda holding: holding["allocation"],
+            key=lambda holding: holding.get("allocation", 0),
         )
 
         asset = get_asset(largest["ticker"])
 
         return {
             "ticker": largest["ticker"],
-            "allocation": largest["allocation"],
+            "allocation": largest.get("allocation", 0),
             "role": (
                 asset.get("role", "Portfolio Holding") if asset else "Portfolio Holding"
             ),
@@ -42,26 +53,23 @@ class PortfolioAdvisor:
 
         if not portfolio:
             return """
-    🌳
-    Arbor
+🌳
+Arbor
 
-    I need your portfolio information before I can identify your strongest holding.
-    """
+I need your portfolio information before I can identify your strongest holding.
+"""
 
         strongest = None
-        highest_score = 0
+        highest_score = float("-inf")
 
         for holding in portfolio:
 
             ticker = holding["ticker"]
+            allocation = holding.get("allocation", 0)
 
-            score = 0
-
-            # Allocation importance
-            score += holding.get("allocation", 0) * 0.5
-
-            # Strategic roles and growth characteristics
             asset = get_asset(ticker)
+
+            score = allocation * 0.5
 
             if asset:
 
@@ -72,66 +80,87 @@ class PortfolioAdvisor:
                 if role == "Growth Holding":
                     score += 30
 
-                if role == "Core Holding":
+                elif role == "Core Holding":
                     score += 20
 
-                if role == "Satellite":
+                elif role in ["Satellite", "AI & Semiconductor Exposure"]:
                     score += 10
 
                 if growth == "High":
                     score += 20
 
+                elif growth == "Very High":
+                    score += 25
+
                 if risk == "High":
                     score += 5
 
-            if score > highest_score:
+                elif risk == "Very High":
+                    score += 3
 
+            if score > highest_score:
                 highest_score = score
                 strongest = holding
 
-        asset = get_asset(strongest["ticker"])
+        if not strongest:
+            return """
+🌳
+Arbor
+
+I couldn't identify a strong holding from the available portfolio data.
+"""
+
+        ticker = strongest["ticker"]
+        allocation = strongest.get("allocation", 0)
+        asset = get_asset(ticker) or {}
+
+        role = asset.get("role", "Portfolio Holding")
+        why_owned = asset.get(
+            "why_owned",
+            asset.get(
+                "description",
+                "This investment supports your long-term strategy.",
+            ),
+        )
 
         return dedent(f"""
-    🌳
-    Arbor
-    AI Investment Companion
+🌳
+Arbor
+AI Investment Companion
 
 
-    ## Your strongest holding
+## Your strongest holding
 
-    Your strongest strategic holding is **{strongest["ticker"]}**.
+Arbor considers **{ticker}** your strongest strategic holding.
 
-    Allocation:
-    **{strongest["allocation"]}%**
+Allocation:
+**{allocation}%**
 
-    Why Arbor considers this a strong holding:
-
-    {asset.get(
-        "why_owned",
-        asset.get(
-            "description",
-            asset.get(
-                "summary",
-                "This investment supports your long-term strategy."
-            )
-        )
-    )}
+Strategic role:
+**{role}**
 
 
-    Strategic role:
+### Why it stands out
 
-    {asset.get("role", "Portfolio Holding")}
+{why_owned}
 
 
-    With your long-term investment horizon, Arbor evaluates holdings based on:
+### Why it matters in your portfolio
 
-    - Portfolio importance
-    - Strategic purpose
-    - Growth potential
-    - Role within your overall investment strategy
+Arbor considers more than allocation when evaluating a strong holding.
 
-    A strong holding is not always the biggest position. It is the investment that best supports your long-term goals.
-    """)
+It looks at:
+
+- Portfolio importance
+- Strategic purpose
+- Growth potential
+- Risk characteristics
+- How the investment fits alongside your other holdings
+
+A strong holding is not necessarily the investment with the highest expected return.
+
+It is the investment that makes an important contribution to your overall strategy.
+""")
 
     def biggest_risk_response(self):
 
@@ -139,32 +168,19 @@ class PortfolioAdvisor:
 
         if not portfolio:
             return """
-    🌳
-    Arbor
+🌳
+Arbor
 
-    I need your portfolio information before I can identify your biggest risk.
-    """
+I need your portfolio information before I can identify your biggest portfolio risk.
+"""
 
         technology_exposure = self.brain_data["technology_exposure"]
         crypto_exposure = self.brain_data["crypto_exposure"]
         semiconductor_exposure = self.brain_data["semiconductor_exposure"]
-        growth_exposure = 0
+        growth_exposure = self.analyzer.growth_allocation
 
-        semiconductor_exposure = self.brain_data["semiconductor_exposure"]
-        growth_exposure = 0
-
-        for holding in portfolio:
-
-            ticker = holding["ticker"]
-
-            allocation = holding.get("allocation", 0)
-
-            asset = get_asset(ticker)
-
-            growth = asset.get("growth", "").lower() if asset else ""
-
-            if growth in ["high", "very high"]:
-                growth_exposure += allocation
+        risk = self._risk_profile()
+        horizon = self._horizon()
 
         risks = []
 
@@ -186,41 +202,68 @@ class PortfolioAdvisor:
             )
 
         if crypto_exposure >= 20:
-            main_risk = "the combination of cryptocurrency volatility and concentrated growth exposure."
+            main_risk = (
+                "the combination of cryptocurrency volatility and "
+                "concentrated growth exposure."
+            )
+
         elif technology_exposure >= 30:
             main_risk = (
                 "high concentration in technology and growth-focused investments."
             )
+
+        elif semiconductor_exposure > 15:
+            main_risk = "concentrated exposure to the semiconductor industry."
+
         elif growth_exposure >= 25:
             main_risk = "concentration in higher-growth assets."
+
         else:
             main_risk = "limited diversification across asset classes."
 
+        if crypto_exposure >= 20:
+            management = (
+                f"Your {horizon}-year investment horizon gives you more "
+                "time to tolerate volatility. However, your cryptocurrency "
+                "allocation can experience significant drawdowns, so Arbor "
+                "recommends keeping the position at a level you can remain "
+                "comfortable holding during major market declines."
+            )
+
+        else:
+            management = (
+                "Arbor recommends maintaining diversification across sectors "
+                "and asset classes while continuing your long-term investment plan."
+            )
+
         return dedent(f"""
-    🌳
-    Arbor
-    AI Investment Companion
+🌳
+Arbor
+AI Investment Companion
 
 
-    ## Your biggest portfolio risk
+## Your biggest portfolio risk
 
-    Your main portfolio risk is {main_risk}
-
-    Arbor identified:
-
-    {chr(10).join(f"- {risk}" for risk in risks)}
+Your main portfolio risk is **{main_risk}**
 
 
-    Your aggressive risk profile and long-term investment horizon allow for higher volatility, but these investments may experience larger declines during market downturns.
+Arbor identified:
 
-    Arbor's approach is not to eliminate risk, but to ensure you understand the risks you are accepting while pursuing long-term wealth creation.
+{chr(10).join(f"- {item}" for item in risks)}
 
-    ## How Arbor would manage this risk
 
-    {(
-    f"Your {self.analyzer.plan.get('profile', {}).get('investment_horizon', 15)}-year investment horizon allows exposure to volatile assets like cryptocurrency. However, Arbor recommends keeping your crypto allocation at a level where you can continue investing during major market declines."
-    if crypto_exposure >= 20
-    else
-    "Arbor recommends maintaining diversification across sectors and asset classes while continuing your long-term investment plan."
-    )}
-    """)
+### How your risk profile affects this
+
+Your risk profile is **{risk}** and your investment horizon is **{horizon} years**.
+
+Your {risk.lower()} risk profile reflects your willingness to accept investment volatility, but it does not eliminate the underlying risk of concentrated investments.
+
+Arbor's approach is not to eliminate risk.
+
+It is to make sure you understand the risks you are accepting while pursuing long-term wealth creation.
+
+
+### How Arbor would manage this risk
+
+{management}
+""")
