@@ -59,48 +59,10 @@ Arbor
 I need your portfolio information before I can identify your strongest holding.
 """
 
-        strongest = None
-        highest_score = float("-inf")
-
-        for holding in portfolio:
-
-            ticker = holding["ticker"]
-            allocation = holding.get("allocation", 0)
-
-            asset = get_asset(ticker)
-
-            score = allocation * 0.5
-
-            if asset:
-
-                role = asset.get("role", "")
-                growth = asset.get("growth", "")
-                risk = asset.get("risk", "")
-
-                if role == "Growth Holding":
-                    score += 30
-
-                elif role == "Core Holding":
-                    score += 20
-
-                elif role in ["Satellite", "AI & Semiconductor Exposure"]:
-                    score += 10
-
-                if growth == "High":
-                    score += 20
-
-                elif growth == "Very High":
-                    score += 25
-
-                if risk == "High":
-                    score += 5
-
-                elif risk == "Very High":
-                    score += 3
-
-            if score > highest_score:
-                highest_score = score
-                strongest = holding
+        strongest = max(
+            portfolio,
+            key=lambda holding: holding.get("allocation", 0),
+        )
 
         if not strongest:
             return """
@@ -147,15 +109,9 @@ Strategic role:
 
 ### Why it matters in your portfolio
 
-Arbor considers more than allocation when evaluating a strong holding.
+Arbor identifies your strongest holding based on its importance within your current portfolio.
 
-It looks at:
-
-- Portfolio importance
-- Strategic purpose
-- Growth potential
-- Risk characteristics
-- How the investment fits alongside your other holdings
+A larger allocation generally means the investment plays a more significant role in your overall strategy.
 
 A strong holding is not necessarily the investment with the highest expected return.
 
