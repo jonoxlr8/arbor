@@ -26,6 +26,10 @@ def portfolio_review_response(plan):
     crypto = metrics["crypto"]
     largest_holding = metrics["largest_holding"]
     largest_weight = metrics["largest_weight"]
+    risk_level = analyzer.profile.get(
+        "risk_level",
+        analyzer.profile.get("risk_tolerance", "unknown"),
+    )
 
     return dedent(f"""
     🌳
@@ -52,7 +56,7 @@ def portfolio_review_response(plan):
 
     Overall Assessment
 
-    Your portfolio is designed for long-term wealth creation and aligns with your {risk.lower()} risk profile.
+    Your portfolio is designed for long-term wealth creation and is structured around your {risk_level} risk profile.
 
     Your strongest holding is **{strongest["ticker"]}**, which plays an important role in your investment strategy.
 
