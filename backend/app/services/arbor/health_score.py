@@ -68,7 +68,7 @@ class PortfolioHealthScore:
 
             return 80
 
-        if risk == "moderate":
+        if risk == "balanced":
 
             if tech <= 35 and crypto <= 10:
                 return 100
