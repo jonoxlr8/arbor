@@ -152,17 +152,19 @@ def calculate_health_score(plan):
     # 5. Concentration risk
     # --------------------------------
 
-    if largest_holding >= 50:
+    broad_market_tickers = [
+        "VOO",
+        "VT",
+        "VTI",
+    ]
+
+    if largest_holding >= 50 and largest_ticker not in broad_market_tickers:
 
         concentration_score = 0
 
         warnings.append("Your portfolio has high concentration risk in one investment")
 
-    elif largest_holding >= 35 and largest_ticker not in [
-        "VOO",
-        "VT",
-        "VTI",
-    ]:
+    elif largest_holding >= 35 and largest_ticker not in broad_market_tickers:
 
         concentration_score = 0.5
 
