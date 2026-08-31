@@ -13,19 +13,27 @@ import {
 
 import SectionHeader from "@/components/dashboard/SectionHeader";
 
+import type { Plan, YearlyProjection } from "@/lib/types/plan";
+
 type WhatIfSectionProps = {
-  plan: any;
+  plan: Plan;
+};
+
+type ProjectionResponse = {
+  projected_value: number;
+  yearly_projection: YearlyProjection[];
 };
 
 export default function WhatIfSection({ plan }: WhatIfSectionProps) {
   const currentInvestment = plan.profile.monthly_investment;
+
   const [monthlyInvestment, setMonthlyInvestment] = useState(currentInvestment);
 
   const [projectedValue, setProjectedValue] = useState(
     plan.projection.projected_value,
   );
 
-  const [yearlyProjection, setYearlyProjection] = useState(
+  const [yearlyProjection, setYearlyProjection] = useState<YearlyProjection[]>(
     plan.projection.yearly_projection,
   );
 
@@ -43,8 +51,6 @@ export default function WhatIfSection({ plan }: WhatIfSectionProps) {
 
   useEffect(() => {
     if (monthlyInvestment === currentInvestment) {
-      setProjectedValue(plan.projection.projected_value);
-      setYearlyProjection(plan.projection.yearly_projection);
       return;
     }
 
@@ -69,7 +75,7 @@ export default function WhatIfSection({ plan }: WhatIfSectionProps) {
           throw new Error("Projection request failed");
         }
 
-        const data = await response.json();
+        const data: ProjectionResponse = await response.json();
 
         setProjectedValue(data.projected_value);
         setYearlyProjection(data.yearly_projection);
@@ -87,7 +93,6 @@ export default function WhatIfSection({ plan }: WhatIfSectionProps) {
     plan.profile.current_portfolio_value,
     plan.profile.investment_horizon,
     plan.projection.assumed_return,
-    plan.projection.projected_value,
   ]);
 
   const projectedProgress =
@@ -106,9 +111,9 @@ export default function WhatIfSection({ plan }: WhatIfSectionProps) {
 
   const investmentGrowth = projectedValue - totalInvested;
 
-  const chartData = yearlyProjection.map((item: any) => {
+  const chartData = yearlyProjection.map((item) => {
     const currentPlanPoint = plan.projection.yearly_projection.find(
-      (current: any) => current.year === item.year,
+      (current) => current.year === item.year,
     );
 
     return {
@@ -162,7 +167,7 @@ export default function WhatIfSection({ plan }: WhatIfSectionProps) {
           <div className="flex flex-col gap-3 rounded-2xl bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-slate-900">
-                🎯 Arbor's recommended contribution
+                🎯 Arbor&apos;s recommended contribution
               </p>
 
               <p className="mt-1 text-sm text-slate-500">
@@ -190,6 +195,7 @@ export default function WhatIfSection({ plan }: WhatIfSectionProps) {
 
           <div className="flex justify-between text-sm text-slate-500">
             <span>{formatCurrency(currentInvestment)}</span>
+
             <span>
               {formatCurrency(
                 Math.max(
@@ -273,7 +279,9 @@ export default function WhatIfSection({ plan }: WhatIfSectionProps) {
           </div>
 
           <div className="rounded-2xl bg-white p-6 shadow-sm">
-            <p className="font-semibold text-slate-900">Your Money Breakdown</p>
+            <p className="font-semibold text-slate-900">
+              Your Money Breakdown
+            </p>
 
             <div className="mt-5 grid gap-4 sm:grid-cols-3">
               <div>
@@ -350,7 +358,7 @@ export default function WhatIfSection({ plan }: WhatIfSectionProps) {
                   />
 
                   <Tooltip
-                    formatter={(value: number, name: string) => [
+                    formatter={(value, name) => [
                       formatCurrency(Number(value)),
                       name === "selected"
                         ? "Selected Plan"
@@ -526,13 +534,15 @@ export default function WhatIfSection({ plan }: WhatIfSectionProps) {
           {improvement > 0 && (
             <div className="rounded-2xl bg-emerald-100 p-5">
               <p className="text-sm font-semibold text-emerald-800">
-                Increasing your contribution could make a meaningful difference.
+                Increasing your contribution could make a meaningful
+                difference.
               </p>
 
               <p className="mt-1 text-sm text-emerald-700">
-                At {formatCurrency(monthlyInvestment)} per month, Arbor projects
-                approximately {formatCurrency(Math.round(improvement))} more
-                wealth than your current plan.
+                At {formatCurrency(monthlyInvestment)} per month, Arbor
+                projects approximately{" "}
+                {formatCurrency(Math.round(improvement))} more wealth than
+                your current plan.
               </p>
             </div>
           )}

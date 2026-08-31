@@ -50,7 +50,7 @@ export default function WealthJourneyCard({
       </p>
 
       <h2 className="mt-2 text-3xl font-bold">
-        {name}'s path to financial freedom 🌳
+        {name}&apos;s path to financial freedom 🌳
       </h2>
 
       <div className="mt-8">
@@ -131,7 +131,7 @@ export default function WealthJourneyCard({
         </p>
 
         <p className="mt-3 text-sm text-emerald-100">
-          You're currently investing{" "}
+          You&apos;re currently investing{" "}
           {formatCurrency(Math.round(monthlyInvestment))} per month.
         </p>
 

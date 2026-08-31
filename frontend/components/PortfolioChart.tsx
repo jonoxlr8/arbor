@@ -1,26 +1,13 @@
 import { useEffect, useState } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { getPortfolioAnalysis } from "@/lib/portfolioAnalysis";
+import type { PortfolioHolding } from "@/lib/types/plan";
 
 type PortfolioChartProps = {
-  portfolio: any[] | undefined;
+  portfolio: PortfolioHolding[] | undefined;
 };
 
 export default function PortfolioChart({ portfolio }: PortfolioChartProps) {
-  if (!portfolio || portfolio.length === 0) {
-    return null;
-  }
-
-  const analysis = getPortfolioAnalysis(portfolio);
-
-  const COLORS = [
-    "#16a34a", // emerald
-    "#22c55e", // green
-    "#059669", // teal
-    "#f59e0b", // bitcoin
-    "#f97316", // ethereum
-  ];
-
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -33,6 +20,14 @@ export default function PortfolioChart({ portfolio }: PortfolioChartProps) {
 
     return () => window.removeEventListener("resize", checkScreen);
   }, []);
+
+  if (!portfolio || portfolio.length === 0) {
+    return null;
+  }
+
+  const analysis = getPortfolioAnalysis(portfolio);
+
+  const COLORS = ["#16a34a", "#22c55e", "#059669", "#f59e0b", "#f97316"];
 
   return (
     <div className="mt-10 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -89,7 +84,7 @@ export default function PortfolioChart({ portfolio }: PortfolioChartProps) {
             <div className="flex items-center gap-3">
               <div
                 className="h-3 w-3 rounded-full"
-                style={{ backgroundColor: COLORS[index] }}
+                style={{ backgroundColor: COLORS[index % COLORS.length] }}
               />
 
               <div>

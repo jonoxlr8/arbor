@@ -6,9 +6,11 @@ import InsightsSection from "@/components/dashboard/InsightsSection";
 import ChatSection from "@/components/dashboard/ChatSection";
 import HealthSection from "@/components/dashboard/HealthSection";
 import WhatIfSection from "@/components/dashboard/WhatIfSection";
+import type { Plan } from "@/lib/types/plan";
 
 type ResultsDashboardProps = {
-  plan: any;
+  plan: Plan;
+  name?: string;
 };
 
 export default function ResultsDashboard({ plan }: ResultsDashboardProps) {

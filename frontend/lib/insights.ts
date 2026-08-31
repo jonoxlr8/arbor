@@ -1,5 +1,7 @@
-export function getInsights(plan: any) {
-  const risk = plan.profile.risk_level.toLowerCase();
+import type { Plan } from "@/lib/types/plan";
+
+export function getInsights(plan: Plan) {
+  const risk = (plan.profile.risk_level ?? "balanced").toLowerCase();
   const years = plan.profile.investment_horizon;
 
   if (risk.includes("aggressive")) {

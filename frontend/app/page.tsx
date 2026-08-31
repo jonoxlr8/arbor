@@ -7,6 +7,7 @@ import Question from "@/components/Question";
 import ProgressBar from "@/components/ProgressBar";
 import { createProfile } from "@/lib/api";
 import ResultsDashboard from "@/components/ResultsDashboard";
+import type { Plan } from "@/lib/types/plan";
 
 export default function Home() {
   const [name, setName] = useState("");
@@ -17,7 +18,7 @@ export default function Home() {
   const [goalTarget, setGoalTarget] = useState("");
   const [investmentHorizon, setInvestmentHorizon] = useState("");
   const [riskTolerance, setRiskTolerance] = useState("");
-  const [plan, setPlan] = useState<any | null>(null);
+  const [plan, setPlan] = useState<Plan | null>(null);
   const [started, setStarted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState(

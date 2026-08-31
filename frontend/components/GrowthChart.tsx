@@ -74,7 +74,7 @@ export default function GrowthChart({
             />
 
             <Tooltip
-              formatter={(value: number, name: string) => [
+              formatter={(value, name) => [
                 formatCurrency(Number(value)),
                 name === "value" ? "Estimated Portfolio" : "Goal",
               ]}

@@ -38,7 +38,7 @@ export default function Question({
       {step === 1 ? (
         <>
           <label className="mb-3 block text-lg font-semibold text-slate-900">
-            What's your name?
+            What&apos;s your name?
           </label>
 
           <input
@@ -95,7 +95,7 @@ export default function Question({
                 : "text-slate-500 hover:text-emerald-700"
             }`}
           >
-            I haven't invested yet
+            I haven&apos;t invested yet
           </button>
         </>
       ) : step === 4 ? (
@@ -105,7 +105,7 @@ export default function Question({
           </label>
 
           <p className="mb-4 text-slate-600">
-            Choose an amount you're comfortable investing regularly.
+            Choose an amount you&apos;re comfortable investing regularly.
           </p>
 
           <input
@@ -126,7 +126,7 @@ export default function Question({
                 : "text-slate-500 hover:text-emerald-700"
             }`}
           >
-            I don't invest regularly yet
+            I don&apos;t invest regularly yet
           </button>
         </>
       ) : step === 5 ? (
@@ -136,7 +136,7 @@ export default function Question({
           </label>
 
           <p className="mb-4 text-slate-600">
-            Set the amount you'd like Arbor to help you work toward.
+            Set the amount you&apos;d like Arbor to help you work toward.
           </p>
 
           <input
@@ -224,7 +224,8 @@ export default function Question({
               </div>
 
               <div className="mt-1 text-slate-600">
-                I'm comfortable with bigger swings for higher growth potential.
+                I&apos;m comfortable with bigger swings for higher growth
+                potential.
               </div>
             </button>
           </div>

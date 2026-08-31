@@ -1,14 +1,15 @@
 import PortfolioChart from "@/components/PortfolioChart";
 import AssetCard from "@/components/AssetCard";
 import SectionHeader from "@/components/dashboard/SectionHeader";
+import type { Plan, PortfolioHolding } from "@/lib/types/plan";
 
 type PortfolioSectionProps = {
-  plan: any;
+  plan: Plan;
 };
 
 export default function PortfolioSection({ plan }: PortfolioSectionProps) {
   const hasCrypto = plan.portfolio.some(
-    (asset: any) => asset.asset_type === "Crypto",
+    (asset: PortfolioHolding) => asset.asset_type === "Crypto",
   );
 
   return (
@@ -41,8 +42,14 @@ export default function PortfolioSection({ plan }: PortfolioSectionProps) {
         </h3>
 
         <div className="mt-6 space-y-4">
-          {plan.portfolio.map((asset: any) => (
-            <AssetCard key={asset.ticker} asset={asset} />
+          {plan.portfolio.map((asset) => (
+            <AssetCard
+              key={asset.ticker}
+              asset={{
+                ...asset,
+                asset_type: asset.asset_type ?? "ETF",
+              }}
+            />
           ))}
         </div>
       </div>

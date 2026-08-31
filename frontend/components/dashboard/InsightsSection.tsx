@@ -1,8 +1,9 @@
 import SectionHeader from "@/components/dashboard/SectionHeader";
 import { getInsights } from "@/lib/insights";
+import type { Plan } from "@/lib/types/plan";
 
 type InsightsSectionProps = {
-  plan: any;
+  plan: Plan;
 };
 
 export default function InsightsSection({ plan }: InsightsSectionProps) {

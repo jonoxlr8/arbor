@@ -1,8 +1,9 @@
 import ArborChat from "@/components/ArborChat";
 import SectionHeader from "@/components/dashboard/SectionHeader";
+import type { Plan } from "@/lib/types/plan";
 
 type ChatSectionProps = {
-  plan: any;
+  plan: Plan;
 };
 
 export default function ChatSection({ plan }: ChatSectionProps) {

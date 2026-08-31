@@ -1,9 +1,10 @@
 import RecommendationCard from "@/components/dashboard/RecommendationCard";
 import WealthJourneyCard from "@/components/WealthJourneyCard";
 import SectionHeader from "@/components/dashboard/SectionHeader";
+import type { Plan } from "@/lib/types/plan";
 
 type HeroSectionProps = {
-  plan: any;
+  plan: Plan;
 };
 
 export default function HeroSection({ plan }: HeroSectionProps) {
@@ -22,7 +23,7 @@ export default function HeroSection({ plan }: HeroSectionProps) {
       />
 
       <RecommendationCard
-        riskLevel={plan.profile.risk_level}
+        riskLevel={plan.profile.risk_level ?? plan.profile.risk_tolerance}
         horizon={plan.profile.investment_horizon}
       />
 

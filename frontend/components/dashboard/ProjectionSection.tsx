@@ -1,9 +1,10 @@
 import GrowthChart from "@/components/GrowthChart";
 import SectionHeader from "@/components/dashboard/SectionHeader";
 import { getProjectionMessage } from "@/lib/projectionMessages";
+import type { Projection } from "@/lib/types/plan";
 
 type ProjectionSectionProps = {
-  projection: any;
+  projection: Projection;
   currency: string;
   goalAmount: number;
 };

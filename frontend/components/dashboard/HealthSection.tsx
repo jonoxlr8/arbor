@@ -1,5 +1,7 @@
+import type { Plan } from "@/lib/types/plan";
+
 type HealthSectionProps = {
-  plan: any;
+  plan: Plan;
 };
 
 export default function HealthSection({ plan }: HealthSectionProps) {
@@ -81,7 +83,9 @@ export default function HealthSection({ plan }: HealthSectionProps) {
 
         <div className="mt-8 grid gap-6 md:grid-cols-2">
           <div className="rounded-2xl bg-emerald-50 p-6">
-            <h3 className="font-bold text-slate-900">✅ What's working well</h3>
+            <h3 className="font-bold text-slate-900">
+              ✅ What&apos;s working well
+            </h3>
 
             <div className="mt-4 space-y-3">
               {strengths.length > 0 ? (
@@ -114,7 +118,7 @@ export default function HealthSection({ plan }: HealthSectionProps) {
                 ))
               ) : (
                 <p className="text-sm text-slate-600">
-                  Arbor hasn't identified any major portfolio concerns.
+                  Arbor hasn&apos;t identified any major portfolio concerns.
                 </p>
               )}
             </div>
@@ -123,7 +127,7 @@ export default function HealthSection({ plan }: HealthSectionProps) {
 
         <div className="mt-6 rounded-2xl bg-slate-50 p-5">
           <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            Arbor's assessment
+            Arbor&apos;s assessment
           </p>
 
           <p className="mt-2 text-sm leading-6 text-slate-700">
