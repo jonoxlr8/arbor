@@ -158,43 +158,51 @@ export default function Home() {
       )}
 
       {started && (
-        <Card>
-          <Logo />
+        <div
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && canContinue) {
+              handleNext();
+            }
+          }}
+        >
+          <Card>
+            <Logo />
 
-          <ProgressBar step={step} totalSteps={7} />
+            <ProgressBar step={step} totalSteps={7} />
 
-          <Welcome step={step} name={name} />
+            <Welcome step={step} name={name} />
 
-          <Question
-            step={step}
-            name={name}
-            setName={setName}
-            country={country}
-            setCountry={setCountry}
-            currentPortfolioValue={currentPortfolioValue}
-            setCurrentPortfolioValue={setCurrentPortfolioValue}
-            monthlyInvestment={monthlyInvestment}
-            setMonthlyInvestment={setMonthlyInvestment}
-            goalTarget={goalTarget}
-            setGoalTarget={setGoalTarget}
-            investmentHorizon={investmentHorizon}
-            setInvestmentHorizon={setInvestmentHorizon}
-            riskTolerance={riskTolerance}
-            setRiskTolerance={setRiskTolerance}
-          />
+            <Question
+              step={step}
+              name={name}
+              setName={setName}
+              country={country}
+              setCountry={setCountry}
+              currentPortfolioValue={currentPortfolioValue}
+              setCurrentPortfolioValue={setCurrentPortfolioValue}
+              monthlyInvestment={monthlyInvestment}
+              setMonthlyInvestment={setMonthlyInvestment}
+              goalTarget={goalTarget}
+              setGoalTarget={setGoalTarget}
+              investmentHorizon={investmentHorizon}
+              setInvestmentHorizon={setInvestmentHorizon}
+              riskTolerance={riskTolerance}
+              setRiskTolerance={setRiskTolerance}
+            />
 
-          <button
-            onClick={handleNext}
-            disabled={!canContinue}
-            className={`mt-10 w-full rounded-2xl py-5 text-lg font-semibold shadow-lg transition-all duration-200 ${
-              canContinue
-                ? "bg-emerald-700 text-white hover:-translate-y-1 hover:bg-emerald-800 hover:shadow-xl"
-                : "cursor-not-allowed bg-slate-200 text-slate-400 shadow-none"
-            }`}
-          >
-            {step === 7 ? "Create My Plan →" : "Next →"}
-          </button>
-        </Card>
+            <button
+              onClick={handleNext}
+              disabled={!canContinue}
+              className={`mt-10 w-full rounded-2xl py-5 text-lg font-semibold shadow-lg transition-all duration-200 ${
+                canContinue
+                  ? "bg-emerald-700 text-white hover:-translate-y-1 hover:bg-emerald-800 hover:shadow-xl"
+                  : "cursor-not-allowed bg-slate-200 text-slate-400 shadow-none"
+              }`}
+            >
+              {step === 7 ? "Create My Plan →" : "Next →"}
+            </button>
+          </Card>
+        </div>
       )}
     </main>
   );
