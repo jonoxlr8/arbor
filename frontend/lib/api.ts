@@ -1,4 +1,5 @@
 import type { Plan } from "@/lib/types/plan";
+import { supabase } from "@/lib/supabase";
 
 const API_URL = "http://localhost:8000";
 
@@ -13,13 +14,30 @@ export type CreateProfileRequest = {
   current_portfolio_value: number;
 };
 
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session?.access_token) {
+    throw new Error("You must be signed in.");
+  }
+
+  return {
+    Authorization: `Bearer ${session.access_token}`,
+  };
+}
+
 export async function createProfile(
   data: CreateProfileRequest,
 ): Promise<Plan> {
+  const authHeaders = await getAuthHeaders();
+
   const response = await fetch(`${API_URL}/profiles`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...authHeaders,
     },
     body: JSON.stringify(data),
   });
@@ -39,10 +57,13 @@ export async function askArbor(
   message: string,
   plan: Plan,
 ): Promise<ArborChatResponse> {
+  const authHeaders = await getAuthHeaders();
+
   const response = await fetch(`${API_URL}/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...authHeaders,
     },
     body: JSON.stringify({
       message,
