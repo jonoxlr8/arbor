@@ -531,18 +531,15 @@ def ask_arbor(question: str, plan=None):
         )
 
     else:
-        return f"""
+        return """
         I'm Arbor 🌳
 
-        I can help you understand your personalized investment strategy.
+        I can help you understand investing, build your investment plan,
+        and answer questions about your portfolio.
 
-        Based on your current plan:
-        - Risk profile: {risk}
-        - Investment horizon: {horizon} years
-        - Wealth goal: {format_currency(goal_target, currency)}
-        - Current portfolio: {format_currency(current_value, currency)}
-        - Monthly investment: {format_currency(monthly_contribution, currency)}
-        - Projected value: {format_currency(projected_value, currency)}
+        To give you personalized advice based on your portfolio, goals,
+        risk profile, and investment horizon, please provide your investment
+        plan first.
 
         You can ask me things like:
 
@@ -551,6 +548,7 @@ def ask_arbor(question: str, plan=None):
         - How can I reach my goal faster?
         - Should I increase my contributions?
         - What happens during a market crash?
+        - Is my portfolio too concentrated?
 
         My goal is to help you make better long-term investing decisions.
         """
