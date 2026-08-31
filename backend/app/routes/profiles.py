@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from app.database import supabase
+from app.auth import get_current_user_id
 from app.schemas.profile import ProfileCreate
 from app.services.risk_engine import calculate_risk_score, classify_risk
 from app.services.portfolio_engine import get_portfolio_recommendation
@@ -19,7 +20,7 @@ def get_profiles():
 
 
 @router.post("/profiles")
-def create_profile(profile: ProfileCreate):
+def create_profile(profile: ProfileCreate, user_id: str = Depends(get_current_user_id)):
 
     plan = build_investment_plan(profile)
 
@@ -32,7 +33,10 @@ def create_profile(profile: ProfileCreate):
         }
     ).generate()
 
-    data = plan.profile_data
+    data = {
+        **plan.profile_data,
+        "user_id": user_id,
+    }
 
     response = supabase.table("profiles").insert(data).execute()
 
