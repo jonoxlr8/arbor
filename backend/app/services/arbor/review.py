@@ -17,8 +17,6 @@ def portfolio_review_response(plan):
 
     health_score = health.score()["overall"]
 
-    risk = plan.get("profile", {}).get("risk_level", "Unknown")
-
     strongest = advisor.biggest_strength()
 
     holding_count = metrics["holding_count"]
