@@ -129,29 +129,141 @@ def generate_outlook(profile):
 def generate_reasons(profile, portfolio):
     reasons = []
 
-    if profile.investment_horizon >= 10:
+    risk = classify_risk(calculate_risk_score(profile))
+    horizon = profile.investment_horizon
+
+    holdings = {asset["ticker"].upper(): asset for asset in portfolio}
+
+    # --------------------------------
+    # 1. Investment horizon
+    # --------------------------------
+
+    if horizon >= 15:
         reasons.append(
-            "Your long investment horizon allows greater exposure "
-            "to growth assets despite short-term market volatility."
+            f"Your {horizon}-year investment horizon gives Arbor more flexibility "
+            "to use growth assets while allowing time to recover from short-term "
+            "market volatility."
         )
 
-    if classify_risk(calculate_risk_score(profile)) == "Aggressive":
+    elif horizon >= 10:
         reasons.append(
-            "Your aggressive risk profile supports higher allocations "
-            "to equities and digital assets."
+            f"Your {horizon}-year investment horizon provides time for "
+            "long-term market growth and compounding to work."
         )
 
-    tickers = [asset["ticker"] for asset in portfolio]
-
-    if "SMH" in tickers:
+    elif horizon >= 5:
         reasons.append(
-            "SMH provides exposure to semiconductor companies "
-            "that support long-term technology and AI growth."
+            f"With a {horizon}-year horizon, Arbor balances growth opportunities "
+            "with greater attention to short-term volatility."
         )
 
-    if "BTC" in tickers:
+    else:
         reasons.append(
-            "Bitcoin and Ethereum provide a measured allocation " "to digital assets."
+            f"Because your investment horizon is {horizon} years, Arbor places "
+            "greater emphasis on managing short-term investment risk."
+        )
+
+    # --------------------------------
+    # 2. Risk profile
+    # --------------------------------
+
+    if risk == "Aggressive":
+        reasons.append(
+            "Your aggressive risk profile supports a higher allocation to "
+            "growth-oriented equities and digital assets."
+        )
+
+    elif risk == "Balanced":
+        reasons.append(
+            "Your balanced risk profile supports a mix of broad-market exposure "
+            "and targeted growth investments."
+        )
+
+    else:
+        reasons.append(
+            "Your conservative risk profile leads Arbor to place greater emphasis "
+            "on broad-market exposure while keeping growth and alternative assets "
+            "at more limited allocations."
+        )
+
+    # --------------------------------
+    # 3. Broad-market core
+    # --------------------------------
+
+    if "VOO" in holdings:
+        allocation = holdings["VOO"]["allocation"]
+
+        if allocation >= 50:
+            reasons.append(
+                f"VOO makes up {allocation}% of your portfolio, providing a "
+                "broad-market core across large U.S. companies."
+            )
+        else:
+            reasons.append(
+                f"VOO provides a {allocation}% broad-market foundation, "
+                "helping diversify your more targeted growth exposures."
+            )
+
+    elif "VTI" in holdings:
+        allocation = holdings["VTI"]["allocation"]
+        reasons.append(
+            f"VTI provides a {allocation}% broad U.S. equity foundation "
+            "across companies of different sizes."
+        )
+
+    elif "VT" in holdings:
+        allocation = holdings["VT"]["allocation"]
+        reasons.append(
+            f"VT provides a {allocation}% globally diversified equity foundation."
+        )
+
+    # --------------------------------
+    # 4. Technology / growth exposure
+    # --------------------------------
+
+    if "QQQM" in holdings:
+        allocation = holdings["QQQM"]["allocation"]
+
+        reasons.append(
+            f"QQQM contributes {allocation}% in large technology and growth "
+            "companies, increasing your exposure to long-term innovation."
+        )
+
+    # --------------------------------
+    # 5. Semiconductor exposure
+    # --------------------------------
+
+    if "SMH" in holdings:
+        allocation = holdings["SMH"]["allocation"]
+
+        reasons.append(
+            f"SMH contributes {allocation}% in semiconductor companies, "
+            "giving the portfolio additional exposure to AI and technology "
+            "infrastructure growth."
+        )
+
+    # --------------------------------
+    # 6. Cryptocurrency exposure
+    # --------------------------------
+
+    crypto_allocation = sum(
+        asset["allocation"]
+        for ticker, asset in holdings.items()
+        if ticker in ["BTC", "ETH"]
+    )
+
+    if crypto_allocation >= 30:
+        reasons.append(
+            f"Your {crypto_allocation}% cryptocurrency allocation adds meaningful "
+            "digital-asset exposure and potential growth, while also increasing "
+            "portfolio volatility."
+        )
+
+    elif crypto_allocation > 0:
+        reasons.append(
+            f"Your {crypto_allocation}% cryptocurrency allocation adds "
+            "digital-asset exposure while keeping most of the portfolio "
+            "invested in traditional assets."
         )
 
     return reasons
