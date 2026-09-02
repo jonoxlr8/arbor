@@ -1,10 +1,7 @@
-from fastapi import APIRouter, Depends
-from app.database import supabase
+from fastapi import APIRouter, Depends, Header
+from app.database import get_authenticated_client
 from app.auth import get_current_user_id
 from app.schemas.profile import ProfileCreate
-from app.services.risk_engine import calculate_risk_score, classify_risk
-from app.services.portfolio_engine import get_portfolio_recommendation
-from app.services.explanation_engine import generate_explanation
 from app.services.projection_engine import calculate_projection
 from app.services.investment_plan_service import build_investment_plan
 from app.services.arbor.insights import PortfolioInsights
@@ -15,16 +12,23 @@ router = APIRouter()
 
 @router.get("/profiles")
 def get_profiles():
-    response = supabase.table("profiles").select("*").execute()
-    return response.data
+    return {"message": "Profile lookup requires authentication."}
 
 
 @router.post("/profiles")
-def create_profile(profile: ProfileCreate, user_id: str = Depends(get_current_user_id)):
+def create_profile(
+    profile: ProfileCreate,
+    user_id: str = Depends(get_current_user_id),
+    authorization: str | None = Header(default=None),
+):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise ValueError("Missing authorization token")
+
+    access_token = authorization.split(" ", 1)[1]
 
     plan = build_investment_plan(profile)
 
-    insights = PortfolioInsights(
+    PortfolioInsights(
         {
             "profile": plan.profile_data,
             "portfolio": plan.portfolio,
@@ -38,7 +42,14 @@ def create_profile(profile: ProfileCreate, user_id: str = Depends(get_current_us
         "user_id": user_id,
     }
 
-    response = supabase.table("profiles").insert(data).execute()
+    authenticated_supabase = get_authenticated_client(access_token)
+
+    response = (
+        authenticated_supabase
+        .table("profiles")
+        .insert(data)
+        .execute()
+    )
 
     return {
         "message": "Profile created successfully",
@@ -55,12 +66,10 @@ def create_profile(profile: ProfileCreate, user_id: str = Depends(get_current_us
 
 @router.post("/projection")
 def create_projection(request: ProjectionRequest):
-
     projection = calculate_projection(
         request.current_value,
         request.monthly_investment,
         request.years,
         request.annual_return,
     )
-
     return projection

@@ -1,15 +1,27 @@
 import os
+import ssl
 
+import certifi
 import jwt
+from dotenv import load_dotenv
 from fastapi import Header, HTTPException
 from jwt import PyJWKClient
 
+load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 
+if not SUPABASE_URL:
+    raise RuntimeError("SUPABASE_URL is not configured")
+
 JWKS_URL = f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json"
 
-jwks_client = PyJWKClient(JWKS_URL)
+ssl_context = ssl.create_default_context(cafile=certifi.where())
+
+jwks_client = PyJWKClient(
+    JWKS_URL,
+    ssl_context=ssl_context,
+)
 
 
 def get_current_user_id(

@@ -43,7 +43,11 @@ export async function createProfile(
   });
 
   if (!response.ok) {
-    throw new Error("Failed to create profile");
+    const errorText = await response.text();
+    console.error("Create profile failed:", response.status, errorText);
+    throw new Error(
+      `Failed to create profile (${response.status}): ${errorText}`,
+    );
   }
 
   return response.json();

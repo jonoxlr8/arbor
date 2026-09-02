@@ -1,15 +1,20 @@
 "use client";
-import { useState } from "react";
+
+import { useEffect, useState } from "react";
 import Logo from "@/components/Logo";
 import Card from "@/components/Card";
 import Welcome from "@/components/Welcome";
 import Question from "@/components/Question";
 import ProgressBar from "@/components/ProgressBar";
+import AuthForm from "@/components/AuthForm";
 import { createProfile } from "@/lib/api";
+import { getCurrentUser } from "@/lib/auth";
 import ResultsDashboard from "@/components/ResultsDashboard";
 import type { Plan } from "@/lib/types/plan";
 
 export default function Home() {
+  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+
   const [name, setName] = useState("");
   const [step, setStep] = useState(1);
   const [country, setCountry] = useState("");
@@ -25,6 +30,43 @@ export default function Home() {
     "Understanding your goals...",
   );
 
+  useEffect(() => {
+    async function checkAuth() {
+      const user = await getCurrentUser();
+      setAuthenticated(!!user);
+    }
+
+    checkAuth();
+  }, []);
+
+  if (authenticated === null) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-100 px-6">
+        <Card>
+          <Logo />
+
+          <div className="mt-12 text-center">
+            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-green-200 border-t-green-600" />
+
+            <p className="mt-6 text-slate-600">
+              Loading Arbor...
+            </p>
+          </div>
+        </Card>
+      </main>
+    );
+  }
+
+  if (!authenticated) {
+    return (
+      <AuthForm
+        onAuthenticated={() => {
+          setAuthenticated(true);
+        }}
+      />
+    );
+  }
+
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-100 px-6">
@@ -32,7 +74,7 @@ export default function Home() {
           <Logo />
 
           <div className="mt-12 text-center">
-            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-green-200 border-t-green-600"></div>
+            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-green-200 border-t-green-600" />
 
             <h2 className="mt-8 text-2xl font-bold text-slate-900">
               Arbor is building your plan 🌳
@@ -69,8 +111,6 @@ export default function Home() {
                 : riskTolerance;
 
   const handleNext = async () => {
-    console.log("Button clicked");
-
     if (step < 7) {
       setStep(step + 1);
       return;
@@ -102,18 +142,15 @@ export default function Home() {
       const result = await createProfile({
         full_name: name,
         country,
-
         goal_target: Number(goalTarget),
         investment_horizon: Number(investmentHorizon),
         risk_tolerance: riskTolerance,
-
         currency:
           country === "New Zealand"
             ? "NZD"
             : country === "Philippines"
               ? "PHP"
               : "USD",
-
         monthly_investment: Number(monthlyInvestment),
         current_portfolio_value: Number(currentPortfolioValue),
       });
@@ -129,6 +166,7 @@ export default function Home() {
       if (interval) {
         clearInterval(interval);
       }
+
       setLoading(false);
     }
   };
