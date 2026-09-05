@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { createHolding, getMyHoldings, type Holding } from "@/lib/api";
-import { calculatePortfolioSummary } from "@/lib/portfolio/calculations";
+import {
+  calculatePortfolioSummary,
+  comparePortfolio,
+} from "@/lib/portfolio/calculations";
 import Card from "@/components/Card";
 import type { Plan } from "@/lib/types/plan";
 
@@ -50,6 +53,11 @@ export default function HoldingsSection({ plan }: HoldingsSectionProps) {
   }, []);
 
   const portfolioSummary = calculatePortfolioSummary(holdings);
+
+  const portfolioComparison = comparePortfolio(
+    portfolioSummary.holdings,
+    plan.portfolio,
+  );
 
   function resetForm() {
     setTicker("");
@@ -317,6 +325,63 @@ export default function HoldingsSection({ plan }: HoldingsSectionProps) {
               Add the investments you currently own so Arbor can analyze your
               actual portfolio.
             </p>
+          </div>
+        )}
+
+        {!loading && holdings.length > 0 && (
+          <div className="mt-8">
+            <h3 className="text-xl font-bold text-slate-900">
+              Portfolio Alignment
+            </h3>
+
+            <p className="mt-2 text-sm text-slate-600">
+              See how your current portfolio compares with Arbor's recommended
+              allocation.
+            </p>
+
+            <div className="mt-4 space-y-3">
+              {portfolioComparison.map((comparison) => (
+                <div
+                  key={comparison.ticker}
+                  className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-slate-900">
+                        {comparison.ticker}
+                      </p>
+                      <p className="text-sm text-slate-600">
+                        {comparison.asset_name}
+                      </p>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="font-semibold text-slate-900">
+                        {comparison.actual_allocation.toFixed(1)}%
+                      </p>
+                      <p className="text-xs text-slate-500">actual</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex justify-between text-sm">
+                    <span className="text-slate-600">Arbor target</span>
+
+                    <span className="font-medium text-slate-900">
+                      {comparison.target_allocation.toFixed(1)}%
+                    </span>
+                  </div>
+
+                  <div className="mt-1 flex justify-between text-sm">
+                    <span className="text-slate-600">Difference</span>
+
+                    <span className="font-semibold text-slate-900">
+                      {comparison.difference >= 0 ? "+" : ""}
+                      {comparison.difference.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
