@@ -136,3 +136,119 @@ export async function updateMyProfile(profile: {
 
   return response.json();
 }
+
+export type Holding = {
+  id: number;
+  created_at: string;
+  ticker: string;
+  asset_name: string;
+  asset_type: string;
+  quantity: number;
+  average_cost: number;
+  currency: string;
+};
+
+export async function getMyHoldings(): Promise<Holding[]> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_BASE_URL}/holdings`, {
+    method: "GET",
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Get holdings failed:", response.status, errorText);
+    throw new Error(
+      `Failed to get holdings (${response.status}): ${errorText}`,
+    );
+  }
+
+  const data = await response.json();
+
+  return data.holdings;
+}
+
+export async function createHolding(holding: {
+  ticker: string;
+  asset_name: string;
+  asset_type: string;
+  quantity: number;
+  average_cost: number;
+  currency: string;
+}): Promise<Holding> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_BASE_URL}/holdings`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...headers,
+    },
+    body: JSON.stringify(holding),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Create holding failed:", response.status, errorText);
+    throw new Error(
+      `Failed to create holding (${response.status}): ${errorText}`,
+    );
+  }
+
+  const data = await response.json();
+
+  return data.holding;
+}
+
+export async function updateHolding(
+  holdingId: number,
+  holding: {
+    ticker: string;
+    asset_name: string;
+    asset_type: string;
+    quantity: number;
+    average_cost: number;
+    currency: string;
+  },
+): Promise<Holding> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_BASE_URL}/holdings/${holdingId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...headers,
+    },
+    body: JSON.stringify(holding),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Update holding failed:", response.status, errorText);
+    throw new Error(
+      `Failed to update holding (${response.status}): ${errorText}`,
+    );
+  }
+
+  const data = await response.json();
+
+  return data.holding;
+}
+
+export async function deleteHolding(holdingId: number): Promise<void> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_BASE_URL}/holdings/${holdingId}`, {
+    method: "DELETE",
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Delete holding failed:", response.status, errorText);
+    throw new Error(
+      `Failed to delete holding (${response.status}): ${errorText}`,
+    );
+  }
+}
