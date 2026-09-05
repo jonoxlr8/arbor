@@ -8,7 +8,7 @@ import Question from "@/components/Question";
 import ProgressBar from "@/components/ProgressBar";
 import AuthForm from "@/components/AuthForm";
 import { createProfile, getMyProfile } from "@/lib/api";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, signOut } from "@/lib/auth";
 import ResultsDashboard from "@/components/ResultsDashboard";
 import type { Plan } from "@/lib/types/plan";
 
@@ -71,9 +71,7 @@ export default function Home() {
           <div className="mt-12 text-center">
             <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-green-200 border-t-green-600" />
 
-            <p className="mt-6 text-slate-600">
-              Loading Arbor...
-            </p>
+            <p className="mt-6 text-slate-600">Loading Arbor...</p>
           </div>
         </Card>
       </main>
@@ -90,6 +88,11 @@ export default function Home() {
           getMyProfile()
             .then((savedProfile) => {
               console.log("Saved Arbor profile:", savedProfile);
+
+              if (savedProfile) {
+                setName(savedProfile.profile.full_name);
+                setPlan(savedProfile);
+              }
             })
             .catch((error) => {
               console.error("Failed to load Arbor profile:", error);
@@ -127,7 +130,28 @@ export default function Home() {
   }
 
   if (plan) {
-    return <ResultsDashboard plan={plan} name={name} />;
+    return (
+      <>
+        <div className="flex justify-end bg-slate-100 px-6 pt-6">
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await signOut();
+                window.location.reload();
+              } catch (error) {
+                console.error("Failed to sign out:", error);
+              }
+            }}
+            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            Sign Out
+          </button>
+        </div>
+
+        <ResultsDashboard plan={plan} name={name} />
+      </>
+    );
   }
 
   const canContinue =
