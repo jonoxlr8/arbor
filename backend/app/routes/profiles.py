@@ -27,8 +27,7 @@ def get_my_profile(
     authenticated_supabase = get_authenticated_client(access_token)
 
     response = (
-        authenticated_supabase
-        .table("profiles")
+        authenticated_supabase.table("profiles")
         .select("*")
         .eq("user_id", user_id)
         .limit(1)
@@ -79,6 +78,55 @@ def get_my_profile(
     }
 
 
+@router.put("/profiles/me")
+def update_my_profile(
+    profile: ProfileCreate,
+    user_id: str = Depends(get_current_user_id),
+    authorization: str | None = Header(default=None),
+):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="Missing authorization token",
+        )
+
+    access_token = authorization.split(" ", 1)[1]
+
+    plan = build_investment_plan(profile)
+
+    data = {
+        **plan.profile_data,
+        "user_id": user_id,
+    }
+
+    authenticated_supabase = get_authenticated_client(access_token)
+
+    response = (
+        authenticated_supabase.table("profiles")
+        .update(data)
+        .eq("user_id", user_id)
+        .execute()
+    )
+
+    if not response.data:
+        raise HTTPException(
+            status_code=404,
+            detail="Profile not found",
+        )
+
+    return {
+        "message": "Profile updated successfully",
+        "profile": {
+            **response.data[0],
+            "goal_target": plan.profile_data.get("goal_target"),
+        },
+        "portfolio": plan.portfolio,
+        "explanation": plan.explanation,
+        "projection": plan.projection,
+        "health": plan.health,
+    }
+
+
 @router.post("/profiles")
 def create_profile(
     profile: ProfileCreate,
@@ -111,12 +159,7 @@ def create_profile(
 
     authenticated_supabase = get_authenticated_client(access_token)
 
-    response = (
-        authenticated_supabase
-        .table("profiles")
-        .insert(data)
-        .execute()
-    )
+    response = authenticated_supabase.table("profiles").insert(data).execute()
 
     return {
         "message": "Profile created successfully",

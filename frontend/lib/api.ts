@@ -104,3 +104,35 @@ export async function getMyProfile() {
 
   return response.json();
 }
+
+export async function updateMyProfile(profile: {
+  full_name: string;
+  country: string;
+  goal_target: number;
+  investment_horizon: number;
+  monthly_investment: number;
+  current_portfolio_value: number;
+  risk_tolerance: string;
+  currency: string;
+}) {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_BASE_URL}/profiles/me`, {
+    method: "PUT",
+    headers: {
+      ...headers,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(profile),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Update profile failed:", response.status, errorText);
+    throw new Error(
+      `Failed to update profile (${response.status}): ${errorText}`,
+    );
+  }
+
+  return response.json();
+}
