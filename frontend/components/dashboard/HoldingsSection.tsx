@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createHolding, getMyHoldings, type Holding } from "@/lib/api";
+import { calculatePortfolioSummary } from "@/lib/portfolio/calculations";
 import Card from "@/components/Card";
 import type { Plan } from "@/lib/types/plan";
 
@@ -47,6 +48,8 @@ export default function HoldingsSection({ plan }: HoldingsSectionProps) {
   useEffect(() => {
     loadHoldings();
   }, []);
+
+  const portfolioSummary = calculatePortfolioSummary(holdings);
 
   function resetForm() {
     setTicker("");
@@ -124,6 +127,20 @@ export default function HoldingsSection({ plan }: HoldingsSectionProps) {
               Track the investments you currently own. Arbor will compare these
               holdings with your recommended portfolio.
             </p>
+
+            {holdings.length > 0 && (
+              <div className="mt-4">
+                <p className="text-sm text-slate-500">Total cost basis</p>
+
+                <p className="text-2xl font-bold text-slate-900">
+                  USD{" "}
+                  {portfolioSummary.total_cost_basis.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </p>
+              </div>
+            )}
           </div>
 
           <button
@@ -305,7 +322,7 @@ export default function HoldingsSection({ plan }: HoldingsSectionProps) {
 
         {!loading && holdings.length > 0 && (
           <div className="mt-6 space-y-3">
-            {holdings.map((holding) => (
+            {portfolioSummary.holdings.map((holding) => (
               <div
                 key={holding.id}
                 className="rounded-xl border border-slate-200 bg-white p-4"
@@ -328,11 +345,28 @@ export default function HoldingsSection({ plan }: HoldingsSectionProps) {
                   </div>
                 </div>
 
-                <div className="mt-3 border-t border-slate-100 pt-3">
+                <div className="mt-3 border-t border-slate-100 pt-3 space-y-2">
                   <p className="text-sm text-slate-600">
                     Average cost:{" "}
                     <span className="font-medium text-slate-900">
                       {holding.currency} {holding.average_cost.toLocaleString()}
+                    </span>
+                  </p>
+
+                  <p className="text-sm text-slate-600">
+                    Cost basis:{" "}
+                    <span className="font-medium text-slate-900">
+                      {holding.cost_basis.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </p>
+
+                  <p className="text-sm text-slate-600">
+                    Portfolio allocation:{" "}
+                    <span className="font-semibold text-slate-900">
+                      {holding.allocation.toFixed(1)}%
                     </span>
                   </p>
                 </div>

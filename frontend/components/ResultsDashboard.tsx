@@ -11,6 +11,7 @@ import HealthSection from "@/components/dashboard/HealthSection";
 import WhatIfSection from "@/components/dashboard/WhatIfSection";
 import EditProfileForm from "@/components/EditProfileForm";
 import type { Plan } from "@/lib/types/plan";
+import HoldingsSection from "@/components/dashboard/HoldingsSection";
 
 type ResultsDashboardProps = {
   plan: Plan;
@@ -54,6 +55,8 @@ export default function ResultsDashboard({
 
           <div className="mt-8">
             <PortfolioSection plan={plan} />
+
+            <HoldingsSection plan={plan} />
 
             <ProjectionSection
               projection={plan.projection}
