@@ -1,7 +1,7 @@
 import type { Plan } from "@/lib/types/plan";
 import { supabase } from "@/lib/supabase";
 
-const API_URL = "http://localhost:8000";
+const API_BASE_URL = "http://localhost:8000";
 
 export type CreateProfileRequest = {
   full_name: string;
@@ -33,7 +33,7 @@ export async function createProfile(
 ): Promise<Plan> {
   const authHeaders = await getAuthHeaders();
 
-  const response = await fetch(`${API_URL}/profiles`, {
+  const response = await fetch(`${API_BASE_URL}/profiles`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -63,7 +63,7 @@ export async function askArbor(
 ): Promise<ArborChatResponse> {
   const authHeaders = await getAuthHeaders();
 
-  const response = await fetch(`${API_URL}/chat`, {
+  const response = await fetch(`${API_BASE_URL}/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -77,6 +77,29 @@ export async function askArbor(
 
   if (!response.ok) {
     throw new Error("Failed to get Arbor response");
+  }
+
+  return response.json();
+}
+
+export async function getMyProfile() {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_BASE_URL}/profiles/me`, {
+    method: "GET",
+    headers,
+  });
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Get profile failed:", response.status, errorText);
+    throw new Error(
+      `Failed to get profile (${response.status}): ${errorText}`,
+    );
   }
 
   return response.json();

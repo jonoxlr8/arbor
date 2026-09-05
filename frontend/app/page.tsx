@@ -7,13 +7,14 @@ import Welcome from "@/components/Welcome";
 import Question from "@/components/Question";
 import ProgressBar from "@/components/ProgressBar";
 import AuthForm from "@/components/AuthForm";
-import { createProfile } from "@/lib/api";
+import { createProfile, getMyProfile } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import ResultsDashboard from "@/components/ResultsDashboard";
 import type { Plan } from "@/lib/types/plan";
 
 export default function Home() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  const [checkingProfile, setCheckingProfile] = useState(true);
 
   const [name, setName] = useState("");
   const [step, setStep] = useState(1);
@@ -31,15 +32,37 @@ export default function Home() {
   );
 
   useEffect(() => {
-    async function checkAuth() {
-      const user = await getCurrentUser();
-      setAuthenticated(!!user);
+    async function initialize() {
+      try {
+        const user = await getCurrentUser();
+
+        if (!user) {
+          setAuthenticated(false);
+          setCheckingProfile(false);
+          return;
+        }
+
+        setAuthenticated(true);
+
+        const savedProfile = await getMyProfile();
+
+        console.log("Saved Arbor profile:", savedProfile);
+
+        if (savedProfile) {
+          setName(savedProfile.profile.full_name);
+          setPlan(savedProfile);
+        }
+      } catch (error) {
+        console.error("Failed to initialize Arbor:", error);
+      } finally {
+        setCheckingProfile(false);
+      }
     }
 
-    checkAuth();
+    initialize();
   }, []);
 
-  if (authenticated === null) {
+  if (authenticated === null || checkingProfile) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-100 px-6">
         <Card>
@@ -62,6 +85,18 @@ export default function Home() {
       <AuthForm
         onAuthenticated={() => {
           setAuthenticated(true);
+          setCheckingProfile(true);
+
+          getMyProfile()
+            .then((savedProfile) => {
+              console.log("Saved Arbor profile:", savedProfile);
+            })
+            .catch((error) => {
+              console.error("Failed to load Arbor profile:", error);
+            })
+            .finally(() => {
+              setCheckingProfile(false);
+            });
         }}
       />
     );

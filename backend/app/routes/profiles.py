@@ -1,18 +1,82 @@
-from fastapi import APIRouter, Depends, Header
-from app.database import get_authenticated_client
+from fastapi import APIRouter, Depends, Header, HTTPException
+
 from app.auth import get_current_user_id
+from app.database import get_authenticated_client
 from app.schemas.profile import ProfileCreate
-from app.services.projection_engine import calculate_projection
-from app.services.investment_plan_service import build_investment_plan
-from app.services.arbor.insights import PortfolioInsights
 from app.schemas.projection import ProjectionRequest
+from app.services.arbor.insights import PortfolioInsights
+from app.services.investment_plan_service import build_investment_plan
+from app.services.projection_engine import calculate_projection
 
 router = APIRouter()
 
 
-@router.get("/profiles")
-def get_profiles():
-    return {"message": "Profile lookup requires authentication."}
+@router.get("/profiles/me")
+def get_my_profile(
+    user_id: str = Depends(get_current_user_id),
+    authorization: str | None = Header(default=None),
+):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="Missing authorization token",
+        )
+
+    access_token = authorization.split(" ", 1)[1]
+
+    authenticated_supabase = get_authenticated_client(access_token)
+
+    response = (
+        authenticated_supabase
+        .table("profiles")
+        .select("*")
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+
+    if not response.data:
+        raise HTTPException(
+            status_code=404,
+            detail="Profile not found",
+        )
+
+    saved_profile = response.data[0]
+
+    profile = ProfileCreate(
+        full_name=saved_profile["full_name"],
+        country=saved_profile["country"],
+        goal_target=saved_profile["goal_target"],
+        investment_horizon=saved_profile["investment_horizon"],
+        monthly_investment=saved_profile["monthly_investment"],
+        current_portfolio_value=saved_profile["current_portfolio_value"],
+        risk_tolerance=saved_profile["risk_tolerance"],
+        risk_score=saved_profile.get("risk_score"),
+        currency=saved_profile.get("currency", "USD"),
+    )
+
+    plan = build_investment_plan(profile)
+
+    PortfolioInsights(
+        {
+            "profile": plan.profile_data,
+            "portfolio": plan.portfolio,
+            "projection": plan.projection,
+            "health": plan.health,
+        }
+    ).generate()
+
+    return {
+        "message": "Profile loaded successfully",
+        "profile": {
+            **plan.profile_data,
+            "goal_target": plan.profile_data.get("goal_target"),
+        },
+        "portfolio": plan.portfolio,
+        "explanation": plan.explanation,
+        "projection": plan.projection,
+        "health": plan.health,
+    }
 
 
 @router.post("/profiles")
@@ -22,7 +86,10 @@ def create_profile(
     authorization: str | None = Header(default=None),
 ):
     if not authorization or not authorization.startswith("Bearer "):
-        raise ValueError("Missing authorization token")
+        raise HTTPException(
+            status_code=401,
+            detail="Missing authorization token",
+        )
 
     access_token = authorization.split(" ", 1)[1]
 
