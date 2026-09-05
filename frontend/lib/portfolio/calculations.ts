@@ -1,4 +1,5 @@
 import type { Holding } from "@/lib/api";
+import type { PortfolioHolding } from "@/lib/types/plan";
 
 export type CalculatedHolding = Holding & {
   cost_basis: number;
@@ -35,4 +36,34 @@ export function calculatePortfolioSummary(
     holdings: calculatedHoldings,
     total_cost_basis: totalCostBasis,
   };
+}
+
+export type PortfolioComparison = {
+  ticker: string;
+  asset_name: string;
+  actual_allocation: number;
+  target_allocation: number;
+  difference: number;
+};
+
+export function comparePortfolio(
+  actualHoldings: CalculatedHolding[],
+  recommendedPortfolio: PortfolioHolding[],
+): PortfolioComparison[] {
+  return recommendedPortfolio.map((target) => {
+    const actual = actualHoldings.find(
+      (holding) => holding.ticker === target.ticker,
+    );
+
+    const actualAllocation = actual?.allocation ?? 0;
+    const targetAllocation = target.allocation;
+
+    return {
+      ticker: target.ticker,
+      asset_name: target.asset_name,
+      actual_allocation: actualAllocation,
+      target_allocation: targetAllocation,
+      difference: actualAllocation - targetAllocation,
+    };
+  });
 }
