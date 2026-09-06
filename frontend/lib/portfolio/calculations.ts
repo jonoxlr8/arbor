@@ -67,3 +67,32 @@ export function comparePortfolio(
     };
   });
 }
+
+export type PortfolioAlignmentStatus =
+  | "Well aligned"
+  | "Moderately different"
+  | "Needs attention";
+
+export function getPortfolioAlignmentStatus(
+  comparisons: PortfolioComparison[],
+): PortfolioAlignmentStatus {
+  if (comparisons.length === 0) {
+    return "Well aligned";
+  }
+
+  const largestDifference = Math.max(
+    ...comparisons.map((comparison) =>
+      Math.abs(comparison.difference),
+    ),
+  );
+
+  if (largestDifference < 5) {
+    return "Well aligned";
+  }
+
+  if (largestDifference <= 15) {
+    return "Moderately different";
+  }
+
+  return "Needs attention";
+}
