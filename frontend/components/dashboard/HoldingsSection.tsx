@@ -5,6 +5,7 @@ import { createHolding, getMyHoldings, type Holding } from "@/lib/api";
 import {
   calculatePortfolioSummary,
   comparePortfolio,
+  getPortfolioAlignmentStatus,
 } from "@/lib/portfolio/calculations";
 import Card from "@/components/Card";
 import type { Plan } from "@/lib/types/plan";
@@ -58,6 +59,8 @@ export default function HoldingsSection({ plan }: HoldingsSectionProps) {
     portfolioSummary.holdings,
     plan.portfolio,
   );
+
+  const alignmentStatus = getPortfolioAlignmentStatus(portfolioComparison);
 
   function resetForm() {
     setTicker("");
@@ -333,6 +336,10 @@ export default function HoldingsSection({ plan }: HoldingsSectionProps) {
             <h3 className="text-xl font-bold text-slate-900">
               Portfolio Alignment
             </h3>
+
+            <p className="mt-2 text-sm font-semibold text-slate-700">
+              Alignment status: {alignmentStatus}
+            </p>
 
             <p className="mt-2 text-sm text-slate-600">
               See how your current portfolio compares with Arbor's recommended
