@@ -96,3 +96,76 @@ export function getPortfolioAlignmentStatus(
 
   return "Needs attention";
 }
+
+const meaningfulAllocationDifference = 5;
+
+function describeAllocation(
+  comparisons: PortfolioComparison[],
+  description: (comparison: PortfolioComparison) => string,
+): string {
+  return comparisons.slice(0, 2).map(description).join(" and ");
+}
+
+export function getPortfolioAlignmentInterpretation(
+  comparisons: PortfolioComparison[],
+): string {
+  const missingHoldings = comparisons.filter(
+    (comparison) =>
+      comparison.actual_allocation === 0 &&
+      comparison.target_allocation >= meaningfulAllocationDifference,
+  );
+
+  const overAllocated = comparisons
+    .filter(
+      (comparison) =>
+        comparison.difference >= meaningfulAllocationDifference &&
+        !missingHoldings.includes(comparison),
+    )
+    .sort((a, b) => b.difference - a.difference);
+
+  const underAllocated = comparisons
+    .filter(
+      (comparison) =>
+        comparison.difference <= -meaningfulAllocationDifference &&
+        !missingHoldings.includes(comparison),
+    )
+    .sort((a, b) => a.difference - b.difference);
+
+  const interpretation: string[] = [];
+
+  if (overAllocated.length > 0) {
+    interpretation.push(
+      `Your portfolio is more heavily weighted toward ${describeAllocation(
+        overAllocated,
+        (comparison) =>
+          `${comparison.ticker} (${comparison.difference.toFixed(1)}% above target)`,
+      )}.`,
+    );
+  }
+
+  if (underAllocated.length > 0) {
+    interpretation.push(
+      `It has less in ${describeAllocation(
+        underAllocated,
+        (comparison) =>
+          `${comparison.ticker} (${Math.abs(comparison.difference).toFixed(1)}% below target)`,
+      )}.`,
+    );
+  }
+
+  if (missingHoldings.length > 0) {
+    interpretation.push(
+      `It does not currently include ${describeAllocation(
+        missingHoldings,
+        (comparison) =>
+          `${comparison.ticker} (${comparison.target_allocation.toFixed(1)}% target)`,
+      )}.`,
+    );
+  }
+
+  if (interpretation.length === 0) {
+    return "Your current allocations are close to Arbor's target.";
+  }
+
+  return interpretation.join(" ");
+}

@@ -6,6 +6,7 @@ import {
   calculatePortfolioSummary,
   comparePortfolio,
   getPortfolioAlignmentStatus,
+  getPortfolioAlignmentInterpretation,
 } from "@/lib/portfolio/calculations";
 import Card from "@/components/Card";
 import type { Plan } from "@/lib/types/plan";
@@ -61,6 +62,9 @@ export default function HoldingsSection({ plan }: HoldingsSectionProps) {
   );
 
   const alignmentStatus = getPortfolioAlignmentStatus(portfolioComparison);
+  const alignmentInterpretation = getPortfolioAlignmentInterpretation(
+    portfolioComparison,
+  );
 
   function resetForm() {
     setTicker("");
@@ -339,6 +343,10 @@ export default function HoldingsSection({ plan }: HoldingsSectionProps) {
 
             <p className="mt-2 text-sm font-semibold text-slate-700">
               Alignment status: {alignmentStatus}
+            </p>
+
+            <p className="mt-2 text-sm text-slate-600">
+              {alignmentInterpretation}
             </p>
 
             <p className="mt-2 text-sm text-slate-600">
