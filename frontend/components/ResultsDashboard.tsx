@@ -29,6 +29,7 @@ export default function ResultsDashboard({
   const [editing, setEditing] = useState(false);
   const [actualHealth, setActualHealth] =
     useState<ActualPortfolioHealthResponse | null>(null);
+  const [healthRefreshKey, setHealthRefreshKey] = useState(0);
 
   useEffect(() => {
     async function loadActualHealth() {
@@ -41,7 +42,7 @@ export default function ResultsDashboard({
     }
 
     loadActualHealth();
-  }, []);
+  }, [healthRefreshKey]);
 
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-10">
@@ -75,7 +76,10 @@ export default function ResultsDashboard({
           <div className="mt-8">
             <PortfolioSection plan={plan} />
 
-            <HoldingsSection plan={plan} />
+            <HoldingsSection
+              plan={plan}
+              onHoldingsChanged={() => setHealthRefreshKey((key) => key + 1)}
+            />
 
             <ProjectionSection
               projection={plan.projection}

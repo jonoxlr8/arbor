@@ -14,9 +14,13 @@ import type { Plan } from "@/lib/types/plan";
 
 type HoldingsSectionProps = {
   plan: Plan;
+  onHoldingsChanged?: () => void;
 };
 
-export default function HoldingsSection({ plan }: HoldingsSectionProps) {
+export default function HoldingsSection({
+  plan,
+  onHoldingsChanged,
+}: HoldingsSectionProps) {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -63,9 +67,8 @@ export default function HoldingsSection({ plan }: HoldingsSectionProps) {
   );
 
   const alignmentStatus = getPortfolioAlignmentStatus(portfolioComparison);
-  const alignmentInterpretation = getPortfolioAlignmentInterpretation(
-    portfolioComparison,
-  );
+  const alignmentInterpretation =
+    getPortfolioAlignmentInterpretation(portfolioComparison);
 
   function resetForm() {
     setTicker("");
@@ -118,6 +121,7 @@ export default function HoldingsSection({ plan }: HoldingsSectionProps) {
       });
 
       setHoldings((currentHoldings) => [...currentHoldings, newHolding]);
+      onHoldingsChanged?.();
 
       resetForm();
       setShowForm(false);
