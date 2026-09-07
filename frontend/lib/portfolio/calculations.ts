@@ -73,6 +73,27 @@ export type PortfolioAlignmentStatus =
   | "Moderately different"
   | "Needs attention";
 
+export type PortfolioHoldingAlignment =
+  | "On target"
+  | "Overweight"
+  | "Underweight";
+
+const meaningfulAllocationDifference = 5;
+
+export function getPortfolioHoldingAlignment(
+  difference: number,
+): PortfolioHoldingAlignment {
+  if (difference >= meaningfulAllocationDifference) {
+    return "Overweight";
+  }
+
+  if (difference <= -meaningfulAllocationDifference) {
+    return "Underweight";
+  }
+
+  return "On target";
+}
+
 export function getPortfolioAlignmentStatus(
   comparisons: PortfolioComparison[],
 ): PortfolioAlignmentStatus {
@@ -96,8 +117,6 @@ export function getPortfolioAlignmentStatus(
 
   return "Needs attention";
 }
-
-const meaningfulAllocationDifference = 5;
 
 function describeAllocation(
   comparisons: PortfolioComparison[],

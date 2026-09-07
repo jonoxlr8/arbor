@@ -1,9 +1,27 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  getPortfolioHoldingAlignment,
   getPortfolioAlignmentInterpretation,
   type PortfolioComparison,
 } from "./calculations";
+
+test("labels a positive difference of at least five points as overweight", () => {
+  assert.equal(getPortfolioHoldingAlignment(19), "Overweight");
+});
+
+test("labels a negative difference of at least five points as underweight", () => {
+  assert.equal(getPortfolioHoldingAlignment(-30), "Underweight");
+});
+
+test("labels a difference within five percentage points as on target", () => {
+  assert.equal(getPortfolioHoldingAlignment(0.9), "On target");
+});
+
+test("uses overweight and underweight labels at the five-point boundaries", () => {
+  assert.equal(getPortfolioHoldingAlignment(5), "Overweight");
+  assert.equal(getPortfolioHoldingAlignment(-5), "Underweight");
+});
 
 test("explains meaningful overweights and missing target holdings", () => {
   const comparisons: PortfolioComparison[] = [

@@ -5,6 +5,7 @@ import { createHolding, getMyHoldings, type Holding } from "@/lib/api";
 import {
   calculatePortfolioSummary,
   comparePortfolio,
+  getPortfolioHoldingAlignment,
   getPortfolioAlignmentStatus,
   getPortfolioAlignmentInterpretation,
 } from "@/lib/portfolio/calculations";
@@ -392,6 +393,14 @@ export default function HoldingsSection({ plan }: HoldingsSectionProps) {
                     <span className="font-semibold text-slate-900">
                       {comparison.difference >= 0 ? "+" : ""}
                       {comparison.difference.toFixed(1)}%
+                    </span>
+                  </div>
+
+                  <div className="mt-1 flex justify-between text-sm">
+                    <span className="text-slate-600">Alignment</span>
+
+                    <span className="font-semibold text-slate-900">
+                      {getPortfolioHoldingAlignment(comparison.difference)}
                     </span>
                   </div>
                 </div>
