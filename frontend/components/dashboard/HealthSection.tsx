@@ -1,14 +1,21 @@
+import type { ActualPortfolioHealthResponse } from "@/lib/api";
 import type { Plan } from "@/lib/types/plan";
 
 type HealthSectionProps = {
   plan: Plan;
+  actualHealth: ActualPortfolioHealthResponse | null;
 };
 
-export default function HealthSection({ plan }: HealthSectionProps) {
-  const score = plan.health?.score ?? 0;
-  const breakdown = plan.health?.breakdown;
-  const strengths = plan.health?.strengths ?? [];
-  const warnings = plan.health?.warnings ?? [];
+export default function HealthSection({
+  plan,
+  actualHealth,
+}: HealthSectionProps) {
+  const health = actualHealth?.available ? actualHealth.health : null;
+
+  const score = health?.score ?? 0;
+  const breakdown = health?.breakdown;
+  const strengths = health?.strengths ?? [];
+  const warnings = health?.warnings ?? [];
 
   const scorePercentage = Math.min((score / 10) * 100, 100);
 
@@ -22,6 +29,32 @@ export default function HealthSection({ plan }: HealthSectionProps) {
 
   const scoreLabel = getScoreLabel();
 
+  if (actualHealth && !actualHealth.available) {
+    return (
+      <section className="mt-12">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <p className="text-sm font-semibold uppercase tracking-widest text-emerald-600">
+            Portfolio Health
+          </p>
+
+          <h2 className="mt-2 text-3xl font-bold text-slate-900">
+            How healthy is your portfolio?
+          </h2>
+
+          <p className="mt-3 max-w-2xl leading-7 text-slate-600">
+            Arbor can calculate your Portfolio Health once you have recorded
+            your current investments.
+          </p>
+
+          <div className="mt-6 rounded-2xl bg-slate-50 p-5">
+            <p className="text-sm font-medium text-slate-700">
+              {actualHealth.reason}
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
   return (
     <section className="mt-12">
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
@@ -40,6 +73,13 @@ export default function HealthSection({ plan }: HealthSectionProps) {
               with your risk profile, long-term growth potential, and overall
               investment balance.
             </p>
+
+            {actualHealth?.available && (
+              <p className="mt-3 text-sm font-medium text-slate-500">
+                Based on your recorded cost basis
+                {actualHealth.currency ? ` (${actualHealth.currency})` : ""}.
+              </p>
+            )}
           </div>
 
           <div className="flex items-center gap-5">
@@ -84,13 +124,18 @@ export default function HealthSection({ plan }: HealthSectionProps) {
 
         {breakdown && (
           <div className="mt-8 rounded-2xl bg-slate-50 p-6">
-            <h3 className="font-bold text-slate-900">What affected your score</h3>
+            <h3 className="font-bold text-slate-900">
+              What affected your score
+            </h3>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               {[
                 { factor: "Diversification", score: breakdown.diversification },
                 { factor: "Risk alignment", score: breakdown.risk_alignment },
-                { factor: "Growth potential", score: breakdown.growth_potential },
+                {
+                  factor: "Growth potential",
+                  score: breakdown.growth_potential,
+                },
                 { factor: "Crypto exposure", score: breakdown.crypto_exposure },
                 { factor: "Concentration", score: breakdown.concentration },
               ].map(({ factor, score: factorScore }) => (

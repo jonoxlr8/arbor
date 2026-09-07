@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Card from "@/components/Card";
 import HeroSection from "@/components/dashboard/HeroSection";
 import PortfolioSection from "@/components/dashboard/PortfolioSection";
@@ -12,6 +12,10 @@ import WhatIfSection from "@/components/dashboard/WhatIfSection";
 import EditProfileForm from "@/components/EditProfileForm";
 import type { Plan } from "@/lib/types/plan";
 import HoldingsSection from "@/components/dashboard/HoldingsSection";
+import {
+  getMyPortfolioHealth,
+  type ActualPortfolioHealthResponse,
+} from "@/lib/api";
 
 type ResultsDashboardProps = {
   plan: Plan;
@@ -23,6 +27,21 @@ export default function ResultsDashboard({
 }: ResultsDashboardProps) {
   const [plan, setPlan] = useState(initialPlan);
   const [editing, setEditing] = useState(false);
+  const [actualHealth, setActualHealth] =
+    useState<ActualPortfolioHealthResponse | null>(null);
+
+  useEffect(() => {
+    async function loadActualHealth() {
+      try {
+        const health = await getMyPortfolioHealth();
+        setActualHealth(health);
+      } catch (error) {
+        console.error("Failed to load actual portfolio health:", error);
+      }
+    }
+
+    loadActualHealth();
+  }, []);
 
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-10">
@@ -66,7 +85,7 @@ export default function ResultsDashboard({
 
             <WhatIfSection plan={plan} />
 
-            <HealthSection plan={plan} />
+            <HealthSection plan={plan} actualHealth={actualHealth} />
 
             <InsightsSection plan={plan} />
 

@@ -252,3 +252,34 @@ export async function deleteHolding(holdingId: number): Promise<void> {
     );
   }
 }
+
+export type ActualPortfolioHealthResponse = {
+  basis: "cost_basis";
+  currency: string | null;
+  available: boolean;
+  reason?: string;
+  health: Plan["health"] | null;
+};
+
+export async function getMyPortfolioHealth(): Promise<ActualPortfolioHealthResponse> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_BASE_URL}/holdings/health`, {
+    method: "GET",
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(
+      "Get actual portfolio health failed:",
+      response.status,
+      errorText,
+    );
+    throw new Error(
+      `Failed to get actual portfolio health (${response.status}): ${errorText}`,
+    );
+  }
+
+  return response.json();
+}
