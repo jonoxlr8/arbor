@@ -6,6 +6,7 @@ type HealthSectionProps = {
 
 export default function HealthSection({ plan }: HealthSectionProps) {
   const score = plan.health?.score ?? 0;
+  const breakdown = plan.health?.breakdown;
   const strengths = plan.health?.strengths ?? [];
   const warnings = plan.health?.warnings ?? [];
 
@@ -80,6 +81,33 @@ export default function HealthSection({ plan }: HealthSectionProps) {
             />
           </div>
         </div>
+
+        {breakdown && (
+          <div className="mt-8 rounded-2xl bg-slate-50 p-6">
+            <h3 className="font-bold text-slate-900">What affected your score</h3>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              {[
+                { factor: "Diversification", score: breakdown.diversification },
+                { factor: "Risk alignment", score: breakdown.risk_alignment },
+                { factor: "Growth potential", score: breakdown.growth_potential },
+                { factor: "Crypto exposure", score: breakdown.crypto_exposure },
+                { factor: "Concentration", score: breakdown.concentration },
+              ].map(({ factor, score: factorScore }) => (
+                <div
+                  key={factor}
+                  className="rounded-xl border border-slate-200 bg-white p-4"
+                >
+                  <p className="text-sm text-slate-600">{factor}</p>
+
+                  <p className="mt-1 font-bold text-slate-900">
+                    {factorScore.toFixed(1)} / 2
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-8 grid gap-6 md:grid-cols-2">
           <div className="rounded-2xl bg-emerald-50 p-6">

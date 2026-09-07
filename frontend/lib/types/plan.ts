@@ -39,9 +39,18 @@ export type Insight = {
 };
 
 export type Health = {
-  score?: number;
-  strengths?: string[];
-  warnings?: string[];
+  score: number;
+  breakdown: HealthBreakdown;
+  strengths: string[];
+  warnings: string[];
+};
+
+export type HealthBreakdown = {
+  diversification: number;
+  risk_alignment: number;
+  growth_potential: number;
+  crypto_exposure: number;
+  concentration: number;
 };
 
 export type Explanation = {
