@@ -3,6 +3,8 @@ from pydantic import BaseModel
 
 from app.auth import get_current_user_id
 from app.database import get_authenticated_client
+from app.services.actual_portfolio_service import build_actual_portfolio
+from app.services.health_engine import calculate_health_score
 
 router = APIRouter()
 
@@ -54,6 +56,73 @@ def get_my_holdings(
 
     return {
         "holdings": response.data,
+    }
+
+
+@router.get("/holdings/health")
+def get_actual_portfolio_health(
+    user_id: str = Depends(get_current_user_id),
+    authorization: str | None = Header(default=None),
+):
+    access_token = get_access_token(authorization)
+
+    authenticated_supabase = get_authenticated_client(access_token)
+
+    profile_response = (
+        authenticated_supabase.table("profiles")
+        .select("*")
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+
+    if not profile_response.data:
+        raise HTTPException(
+            status_code=404,
+            detail="Profile not found",
+        )
+
+    holdings_response = (
+        authenticated_supabase.table("holdings")
+        .select("*")
+        .eq("user_id", user_id)
+        .order("created_at", desc=False)
+        .execute()
+    )
+
+    actual_portfolio = build_actual_portfolio(holdings_response.data)
+
+    response = {
+        "basis": "cost_basis",
+        "currency": actual_portfolio["currency"],
+    }
+
+    if actual_portfolio["unavailable_reason"]:
+        return {
+            **response,
+            "available": False,
+            "reason": actual_portfolio["unavailable_reason"],
+            "health": None,
+        }
+
+    saved_profile = profile_response.data[0]
+    profile = {
+        **saved_profile,
+        "risk_level": saved_profile.get("risk_level")
+        or saved_profile.get("risk_tolerance", ""),
+    }
+
+    health = calculate_health_score(
+        {
+            "portfolio": actual_portfolio["portfolio"],
+            "profile": profile,
+        }
+    )
+
+    return {
+        **response,
+        "available": True,
+        "health": health,
     }
 
 
