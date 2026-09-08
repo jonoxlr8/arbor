@@ -10,6 +10,8 @@ export default function HealthSection({
   plan,
   actualHealth,
 }: HealthSectionProps) {
+  const healthLoading = actualHealth === null;
+
   const health = actualHealth?.available ? actualHealth.health : null;
 
   const score = health?.score ?? 0;
@@ -28,6 +30,28 @@ export default function HealthSection({
   };
 
   const scoreLabel = getScoreLabel();
+
+  if (healthLoading) {
+    return (
+      <section className="mt-12">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <p className="text-sm font-semibold uppercase tracking-widest text-emerald-600">
+            Portfolio Health
+          </p>
+
+          <h2 className="mt-2 text-3xl font-bold text-slate-900">
+            How healthy is your portfolio?
+          </h2>
+
+          <div className="mt-6 rounded-2xl bg-slate-50 p-5">
+            <p className="text-sm font-medium text-slate-600">
+              Analyzing your portfolio...
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   if (actualHealth && !actualHealth.available) {
     return (
