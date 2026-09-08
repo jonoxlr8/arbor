@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createHolding, getMyHoldings, type Holding } from "@/lib/api";
+import {
+  createHolding,
+  deleteHolding,
+  getMyHoldings,
+  type Holding,
+} from "@/lib/api";
 import {
   calculatePortfolioSummary,
   comparePortfolio,
@@ -135,6 +140,31 @@ export default function HoldingsSection({
       setSaving(false);
     }
   }
+
+  const handleDeleteHolding = async (holdingId: number) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this holding?",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteHolding(holdingId);
+
+      setHoldings((currentHoldings) =>
+        currentHoldings.filter((holding) => holding.id !== holdingId),
+      );
+
+      onHoldingsChanged?.();
+    } catch (error) {
+      console.error("Failed to delete holding:", error);
+      setError(
+        error instanceof Error ? error.message : "Failed to delete holding.",
+      );
+    }
+  };
 
   return (
     <section className="mt-8">
@@ -429,12 +459,22 @@ export default function HoldingsSection({
                     </p>
                   </div>
 
-                  <div className="text-right">
-                    <p className="font-semibold text-slate-900">
-                      {holding.quantity}
-                    </p>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="font-semibold text-slate-900">
+                        {holding.quantity}
+                      </p>
 
-                    <p className="text-xs text-slate-500">units</p>
+                      <p className="text-xs text-slate-500">units</p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteHolding(holding.id)}
+                      className="text-sm font-medium text-red-600 hover:text-red-700"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
 
