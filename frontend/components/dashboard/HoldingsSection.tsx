@@ -5,6 +5,7 @@ import {
   createHolding,
   deleteHolding,
   getMyHoldings,
+  updateHolding,
   type Holding,
 } from "@/lib/api";
 import {
@@ -32,6 +33,14 @@ export default function HoldingsSection({
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const [editingHoldingId, setEditingHoldingId] = useState<number | null>(null);
+  const [editTicker, setEditTicker] = useState("");
+  const [editAssetName, setEditAssetName] = useState("");
+  const [editAssetType, setEditAssetType] = useState("ETF");
+  const [editQuantity, setEditQuantity] = useState("");
+  const [editAverageCost, setEditAverageCost] = useState("");
+  const [editCurrency, setEditCurrency] = useState("USD");
 
   const [ticker, setTicker] = useState("");
   const [assetName, setAssetName] = useState("");
@@ -140,6 +149,63 @@ export default function HoldingsSection({
       setSaving(false);
     }
   }
+
+  const startEditingHolding = (holding: Holding) => {
+    setEditingHoldingId(holding.id);
+    setEditTicker(holding.ticker);
+    setEditAssetName(holding.asset_name);
+    setEditAssetType(holding.asset_type);
+    setEditQuantity(String(holding.quantity));
+    setEditAverageCost(String(holding.average_cost));
+    setEditCurrency(holding.currency);
+    setError("");
+  };
+
+  const handleSaveHolding = async () => {
+    if (editingHoldingId === null) {
+      return;
+    }
+
+    if (
+      !editTicker.trim() ||
+      !editAssetName.trim() ||
+      !editQuantity ||
+      !editAverageCost
+    ) {
+      setError("Please fill in all holding fields.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError("");
+
+      const updatedHolding = await updateHolding(editingHoldingId, {
+        ticker: editTicker.trim().toUpperCase(),
+        asset_name: editAssetName.trim(),
+        asset_type: editAssetType,
+        quantity: Number(editQuantity),
+        average_cost: Number(editAverageCost),
+        currency: editCurrency,
+      });
+
+      setHoldings((currentHoldings) =>
+        currentHoldings.map((holding) =>
+          holding.id === editingHoldingId ? updatedHolding : holding,
+        ),
+      );
+
+      setEditingHoldingId(null);
+      onHoldingsChanged?.();
+    } catch (error) {
+      console.error("Failed to update holding:", error);
+      setError(
+        error instanceof Error ? error.message : "Failed to update holding.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleDeleteHolding = async (holdingId: number) => {
     const confirmed = window.confirm(
@@ -470,6 +536,14 @@ export default function HoldingsSection({
 
                     <button
                       type="button"
+                      onClick={() => startEditingHolding(holding)}
+                      className="text-sm font-medium text-slate-600 hover:text-slate-900"
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => handleDeleteHolding(holding.id)}
                       className="text-sm font-medium text-red-600 hover:text-red-700"
                     >
@@ -477,6 +551,127 @@ export default function HoldingsSection({
                     </button>
                   </div>
                 </div>
+
+                {editingHoldingId === holding.id && (
+                  <div className="mt-5 border-t border-slate-200 pt-5">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="text-sm font-medium text-slate-700">
+                          Ticker
+                        </label>
+                        <input
+                          type="text"
+                          value={editTicker}
+                          onChange={(event) =>
+                            setEditTicker(event.target.value)
+                          }
+                          className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-slate-700">
+                          Asset name
+                        </label>
+                        <input
+                          type="text"
+                          value={editAssetName}
+                          onChange={(event) =>
+                            setEditAssetName(event.target.value)
+                          }
+                          className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-slate-700">
+                          Asset type
+                        </label>
+                        <select
+                          value={editAssetType}
+                          onChange={(event) =>
+                            setEditAssetType(event.target.value)
+                          }
+                          className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                        >
+                          <option value="ETF">ETF</option>
+                          <option value="Stock">Stock</option>
+                          <option value="Crypto">Crypto</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-slate-700">
+                          Quantity
+                        </label>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={editQuantity}
+                          onChange={(event) =>
+                            setEditQuantity(event.target.value)
+                          }
+                          className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-slate-700">
+                          Average cost
+                        </label>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={editAverageCost}
+                          onChange={(event) =>
+                            setEditAverageCost(event.target.value)
+                          }
+                          className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-slate-700">
+                          Currency
+                        </label>
+                        <select
+                          value={editCurrency}
+                          onChange={(event) =>
+                            setEditCurrency(event.target.value)
+                          }
+                          className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                        >
+                          <option value="USD">USD</option>
+                          <option value="NZD">NZD</option>
+                          <option value="PHP">PHP</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 flex gap-3">
+                      <button
+                        type="button"
+                        onClick={handleSaveHolding}
+                        disabled={saving}
+                        className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                      >
+                        {saving ? "Saving..." : "Save changes"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setEditingHoldingId(null)}
+                        disabled={saving}
+                        className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div className="mt-3 border-t border-slate-100 pt-3 space-y-2">
                   <p className="text-sm text-slate-600">
