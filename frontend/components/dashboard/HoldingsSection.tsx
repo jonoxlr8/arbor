@@ -17,6 +17,7 @@ import {
   getPortfolioAlignmentInterpretation,
 } from "@/lib/portfolio/calculations";
 import Card from "@/components/Card";
+import { allocateContribution } from "@/lib/portfolio/contributions";
 import type { Plan } from "@/lib/types/plan";
 
 type HoldingsSectionProps = {
@@ -34,6 +35,7 @@ export default function HoldingsSection({
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [contribution, setContribution] = useState("");
 
   const [editingHoldingId, setEditingHoldingId] = useState<number | null>(null);
   const [editTicker, setEditTicker] = useState("");
@@ -75,6 +77,12 @@ export default function HoldingsSection({
   }, []);
 
   const portfolioSummary = calculatePortfolioSummary(holdings);
+  const contributionPreview = allocateContribution(
+    holdings, plan.portfolio, Number(contribution),
+  );
+  const formatScenarioAmount = (amount: number) => amount.toLocaleString(undefined, {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  });
 
   const portfolioComparison = comparePortfolio(
     portfolioSummary.holdings,
@@ -564,6 +572,68 @@ export default function HoldingsSection({
               </ul>
             </div>
           )}
+
+        {!loading && holdings.length > 0 && (
+          <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
+            <h3 className="text-lg font-bold text-slate-900">
+              Hypothetical contribution allocation
+            </h3>
+            <p className="mt-2 text-sm text-slate-600">
+              This hypothetical allocation applies new contributions toward your
+              existing Arbor targets without selling holdings.
+            </p>
+            <p className="mt-2 text-sm text-slate-600">
+              Based on cost basis, not current market value. This educational
+              preview does not change your saved holdings.
+            </p>
+            <label htmlFor="hypothetical-contribution" className="mt-4 block text-sm font-medium text-slate-700">
+              Contribution amount — {contributionPreview.currency ?? "multiple currencies"}
+            </label>
+            <input
+              id="hypothetical-contribution"
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={contribution}
+              onChange={(event) => setContribution(event.target.value)}
+              placeholder="Enter an amount"
+              className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 sm:max-w-xs"
+            />
+            <div aria-live="polite">
+              {contribution !== "" && !contributionPreview.available && (
+                <p className="mt-3 text-sm text-amber-800">{contributionPreview.reason}</p>
+              )}
+              {contribution !== "" && contributionPreview.available && (
+                <>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {contributionPreview.allocations.map((allocation) => (
+                      <div key={allocation.ticker} className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+                        <p className="font-bold text-slate-900">{allocation.ticker}</p>
+                        <p className="mt-2">
+                          Hypothetical contribution: {contributionPreview.currency}{" "}
+                          {formatScenarioAmount(allocation.contribution_amount)}
+                          {" "}({allocation.contribution_percentage.toFixed(1)}% of contribution)
+                        </p>
+                        <p className="mt-2">
+                          Resulting cost basis: {contributionPreview.currency}{" "}
+                          {formatScenarioAmount(allocation.resulting_cost_basis)}
+                        </p>
+                        <p className="mt-2">
+                          Resulting allocation: {allocation.resulting_allocation.toFixed(1)}%
+                          {" "}— Arbor target: {allocation.target_allocation.toFixed(1)}%
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-sm font-semibold text-slate-700">
+                    Total allocated: {contributionPreview.currency}{" "}
+                    {formatScenarioAmount(contributionPreview.contribution)}
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {!loading && holdings.length > 0 && (
           <div className="mt-6 space-y-3">
