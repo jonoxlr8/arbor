@@ -117,8 +117,12 @@ export default function HoldingsSection({
       return;
     }
 
-    if (!averageCost || parsedAverageCost < 0) {
-      setError("Average cost cannot be negative.");
+    if (
+      !averageCost ||
+      !Number.isFinite(parsedAverageCost) ||
+      parsedAverageCost <= 0
+    ) {
+      setError("Average cost must be greater than 0.");
       return;
     }
 
@@ -176,6 +180,19 @@ export default function HoldingsSection({
       return;
     }
 
+    const parsedQuantity = Number(editQuantity);
+    const parsedAverageCost = Number(editAverageCost);
+
+    if (!Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
+      setError("Quantity must be greater than 0.");
+      return;
+    }
+
+    if (!Number.isFinite(parsedAverageCost) || parsedAverageCost <= 0) {
+      setError("Average cost must be greater than 0.");
+      return;
+    }
+
     try {
       setSaving(true);
       setError("");
@@ -184,8 +201,8 @@ export default function HoldingsSection({
         ticker: editTicker.trim().toUpperCase(),
         asset_name: editAssetName.trim(),
         asset_type: editAssetType,
-        quantity: Number(editQuantity),
-        average_cost: Number(editAverageCost),
+        quantity: parsedQuantity,
+        average_cost: parsedAverageCost,
         currency: editCurrency,
       });
 
