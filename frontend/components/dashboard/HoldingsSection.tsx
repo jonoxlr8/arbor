@@ -11,6 +11,7 @@ import {
 import {
   calculatePortfolioSummary,
   comparePortfolio,
+  getMeaningfulAllocationGaps,
   getPortfolioHoldingAlignment,
   getPortfolioAlignmentStatus,
   getPortfolioAlignmentInterpretation,
@@ -81,6 +82,9 @@ export default function HoldingsSection({
   );
 
   const alignmentStatus = getPortfolioAlignmentStatus(portfolioComparison);
+  const allocationGaps = getMeaningfulAllocationGaps(portfolioComparison);
+  const hasSingleCurrency =
+    new Set(holdings.map((holding) => holding.currency)).size === 1;
   const alignmentInterpretation =
     getPortfolioAlignmentInterpretation(portfolioComparison);
 
@@ -536,6 +540,30 @@ export default function HoldingsSection({
             </div>
           </div>
         )}
+
+        {!loading &&
+          portfolioSummary.total_cost_basis > 0 &&
+          hasSingleCurrency &&
+          allocationGaps.length > 0 && (
+            <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
+              <h3 className="text-lg font-bold text-slate-900">
+                Rebalancing considerations
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                This comparison covers recommended holdings and is based on cost
+                basis, not current market value.
+              </p>
+              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-700">
+                {allocationGaps.map((gap) => (
+                  <li key={gap.ticker}>
+                    {gap.ticker} is {Number(Math.abs(gap.difference).toFixed(1))}{" "}
+                    percentage points {gap.difference > 0 ? "above" : "below"}{" "}
+                    its target allocation.
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
         {!loading && holdings.length > 0 && (
           <div className="mt-6 space-y-3">

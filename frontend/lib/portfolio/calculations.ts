@@ -83,15 +83,26 @@ const meaningfulAllocationDifference = 5;
 export function getPortfolioHoldingAlignment(
   difference: number,
 ): PortfolioHoldingAlignment {
-  if (difference >= meaningfulAllocationDifference) {
+  if (difference > meaningfulAllocationDifference) {
     return "Overweight";
   }
 
-  if (difference <= -meaningfulAllocationDifference) {
+  if (difference < -meaningfulAllocationDifference) {
     return "Underweight";
   }
 
   return "On target";
+}
+
+export function getMeaningfulAllocationGaps(
+  comparisons: PortfolioComparison[],
+): PortfolioComparison[] {
+  return comparisons
+    .filter(
+      (comparison) =>
+        Math.abs(comparison.difference) > meaningfulAllocationDifference,
+    )
+    .sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference));
 }
 
 export function getPortfolioAlignmentStatus(
@@ -107,7 +118,7 @@ export function getPortfolioAlignmentStatus(
     ),
   );
 
-  if (largestDifference < 5) {
+  if (largestDifference <= meaningfulAllocationDifference) {
     return "Well aligned";
   }
 
@@ -131,13 +142,13 @@ export function getPortfolioAlignmentInterpretation(
   const missingHoldings = comparisons.filter(
     (comparison) =>
       comparison.actual_allocation === 0 &&
-      comparison.target_allocation >= meaningfulAllocationDifference,
+      comparison.target_allocation > meaningfulAllocationDifference,
   );
 
   const overAllocated = comparisons
     .filter(
       (comparison) =>
-        comparison.difference >= meaningfulAllocationDifference &&
+        comparison.difference > meaningfulAllocationDifference &&
         !missingHoldings.includes(comparison),
     )
     .sort((a, b) => b.difference - a.difference);
@@ -145,7 +156,7 @@ export function getPortfolioAlignmentInterpretation(
   const underAllocated = comparisons
     .filter(
       (comparison) =>
-        comparison.difference <= -meaningfulAllocationDifference &&
+        comparison.difference < -meaningfulAllocationDifference &&
         !missingHoldings.includes(comparison),
     )
     .sort((a, b) => a.difference - b.difference);
