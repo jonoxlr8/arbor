@@ -107,6 +107,17 @@ export default function HoldingsSection({
       return;
     }
 
+    if (
+      holdings.some(
+        (holding) => holding.ticker.trim().toUpperCase() === normalizedTicker,
+      )
+    ) {
+      setError(
+        `${normalizedTicker} already exists in your portfolio. Please edit the existing holding instead.`,
+      );
+      return;
+    }
+
     if (!normalizedAssetName) {
       setError("Please enter the asset name.");
       return;
