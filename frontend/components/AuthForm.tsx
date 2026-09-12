@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { signIn, signUp } from "@/lib/auth";
+import type { AccountSession } from "@/lib/accountRecovery";
 
 type AuthFormProps = {
-  onAuthenticated: () => void;
+  onAuthenticated: (session: AccountSession) => void;
 };
 
 export default function AuthForm({ onAuthenticated }: AuthFormProps) {
@@ -13,9 +14,15 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const submitting = useRef(false);
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (submitting.current || !email || !password) return;
+    submitting.current = true;
     setError("");
+    setConfirmation("");
     setLoading(true);
 
     try {
@@ -29,14 +36,19 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
       }
 
       if (isSignUp && !result.data.session) {
-        setError("Account created. Please check your email to confirm your account.");
+        setConfirmation("Account created. Please check your email to confirm your account.");
         return;
       }
 
-      onAuthenticated();
-    } catch {
-      setError("Something went wrong. Please try again.");
+      if (!result.data.session) {
+        setError("We couldn’t complete sign-in. Please try again.");
+        return;
+      }
+      onAuthenticated(result.data.session);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Something went wrong. Please try again.");
     } finally {
+      submitting.current = false;
       setLoading(false);
     }
   };
@@ -54,7 +66,7 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
             : "Sign in to continue building your investment strategy."}
         </p>
 
-        <div className="mt-8 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           <input
             type="email"
             placeholder="Email address"
@@ -71,6 +83,7 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
             className="w-full rounded-xl border border-slate-300 px-5 py-4 text-slate-900 outline-none focus:border-green-600 focus:ring-4 focus:ring-green-100"
           />
 
+          {confirmation && <p role="status" className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">{confirmation}</p>}
           {error && (
             <p className="rounded-xl bg-red-50 p-4 text-sm text-red-700">
               {error}
@@ -78,8 +91,7 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
           )}
 
           <button
-            type="button"
-            onClick={handleSubmit}
+            type="submit"
             disabled={loading || !email || !password}
             className={`w-full rounded-2xl py-4 text-lg font-semibold transition ${
               loading || !email || !password
@@ -96,9 +108,11 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
 
           <button
             type="button"
+            disabled={loading}
             onClick={() => {
               setIsSignUp(!isSignUp);
               setError("");
+              setConfirmation("");
             }}
             className="w-full py-2 text-sm font-medium text-emerald-700 hover:text-emerald-800"
           >
@@ -106,7 +120,7 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
               ? "Already have an account? Sign in"
               : "Don't have an account? Create one"}
           </button>
-        </div>
+        </form>
       </div>
     </main>
   );
