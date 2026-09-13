@@ -19,6 +19,7 @@ import {
 import Card from "@/components/Card";
 import { allocateContribution } from "@/lib/portfolio/contributions";
 import type { Plan } from "@/lib/types/plan";
+import { currencies, normalizeCurrency, normalizeTicker } from "@/lib/currency";
 
 type HoldingsSectionProps = {
   plan: Plan;
@@ -84,15 +85,15 @@ export default function HoldingsSection({
     minimumFractionDigits: 2, maximumFractionDigits: 2,
   });
 
-  const portfolioComparison = comparePortfolio(
-    portfolioSummary.holdings,
+  const portfolioComparison = portfolioSummary.available ? comparePortfolio(
+    portfolioSummary.positions,
     plan.portfolio,
-  );
+  ) : [];
 
   const alignmentStatus = getPortfolioAlignmentStatus(portfolioComparison);
   const allocationGaps = getMeaningfulAllocationGaps(portfolioComparison);
-  const hasSingleCurrency =
-    new Set(holdings.map((holding) => holding.currency)).size === 1;
+  const outsideTargets = portfolioSummary.positions.filter(h =>
+    !plan.portfolio.some(target => normalizeTicker(target.ticker) === h.ticker));
   const alignmentInterpretation =
     getPortfolioAlignmentInterpretation(portfolioComparison);
 
@@ -103,7 +104,7 @@ export default function HoldingsSection({
     setQuantity("");
     setAverageCost("");
     setError("");
-    setCurrency("USD");
+    setCurrency(portfolioSummary.currency ?? "USD");
   }
 
   async function handleAddHolding() {
@@ -184,7 +185,7 @@ export default function HoldingsSection({
     setEditAssetType(holding.asset_type);
     setEditQuantity(String(holding.quantity));
     setEditAverageCost(String(holding.average_cost));
-    setEditCurrency(holding.currency);
+    setEditCurrency(normalizeCurrency(holding.currency) ?? "");
     setError("");
   };
 
@@ -192,12 +193,17 @@ export default function HoldingsSection({
     if (editingHoldingId === null) {
       return;
     }
+    const original = holdings.find(h => h.id === editingHoldingId);
+    if (normalizeTicker(original?.ticker) !== normalizeTicker(editTicker) && holdings.some(h => h.id !== editingHoldingId && normalizeTicker(h.ticker) === normalizeTicker(editTicker))) {
+      setError(`${normalizeTicker(editTicker)} already exists in your portfolio. Please edit the existing holding instead.`);
+      return;
+    }
 
     if (
       !editTicker.trim() ||
       !editAssetName.trim() ||
       !editQuantity ||
-      !editAverageCost
+      !editAverageCost || !normalizeCurrency(editCurrency)
     ) {
       setError("Please fill in all holding fields.");
       return;
@@ -281,15 +287,15 @@ export default function HoldingsSection({
 
             <p className="mt-2 text-sm text-slate-600">
               Track the investments you currently own. Arbor will compare these
-              holdings with your recommended portfolio.
+              holdings with your recommended portfolio. Recorded cost basis comes from these entries and does not update your separately entered planning starting value.
             </p>
 
-            {holdings.length > 0 && (
+            {portfolioSummary.total_cost_basis !== null && (
               <div className="mt-4">
-                <p className="text-sm text-slate-500">Total cost basis</p>
+                <p className="text-sm text-slate-500">Total recorded cost basis</p>
 
                 <p className="text-2xl font-bold text-slate-900">
-                  USD{" "}
+                  {portfolioSummary.currency}{" "}
                   {portfolioSummary.total_cost_basis.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
@@ -303,6 +309,7 @@ export default function HoldingsSection({
             type="button"
             onClick={() => {
               setShowForm(!showForm);
+              if (!showForm) setCurrency(portfolioSummary.currency ?? "USD");
               setError("");
             }}
             className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
@@ -371,7 +378,7 @@ export default function HoldingsSection({
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Currency
+                  Recorded currency (no conversion)
                 </label>
 
                 <select
@@ -476,7 +483,10 @@ export default function HoldingsSection({
           </div>
         )}
 
-        {!loading && holdings.length > 0 && (
+        {!loading && !portfolioSummary.available && holdings.length > 0 && (
+          <p className="mt-6 rounded-xl bg-amber-50 p-4 text-amber-900">{portfolioSummary.reason} Holdings remain editable. Alignment and rebalancing are unavailable.</p>
+        )}
+        {!loading && portfolioSummary.available && (
           <div className="mt-8">
             <h3 className="text-xl font-bold text-slate-900">
               Portfolio Alignment
@@ -491,8 +501,8 @@ export default function HoldingsSection({
             </p>
 
             <p className="mt-2 text-sm text-slate-600">
-              See how your current portfolio compares with Arbor's recommended
-              allocation.
+              See how your current portfolio compares with Arbor&apos;s recommended
+              allocation. Based on cost basis, not current market value.
             </p>
 
             <div className="mt-4 space-y-3">
@@ -549,9 +559,15 @@ export default function HoldingsSection({
           </div>
         )}
 
+        {!loading && portfolioSummary.available && outsideTargets.length > 0 && (
+          <div className="mt-6 rounded-xl bg-slate-50 p-5">
+            <h3 className="font-semibold text-slate-900">Holdings outside your Arbor targets</h3>
+            <p className="text-sm text-slate-600">These holdings are included in your total recorded cost basis and actual allocations.</p>
+            {outsideTargets.map(h => <p key={h.ticker} className="mt-2 text-slate-700">{h.ticker}: {h.allocation?.toFixed(1)}%</p>)}
+          </div>
+        )}
         {!loading &&
-          portfolioSummary.total_cost_basis > 0 &&
-          hasSingleCurrency &&
+          portfolioSummary.available &&
           allocationGaps.length > 0 && (
             <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
               <h3 className="text-lg font-bold text-slate-900">
@@ -587,7 +603,7 @@ export default function HoldingsSection({
               preview does not change your saved holdings.
             </p>
             <label htmlFor="hypothetical-contribution" className="mt-4 block text-sm font-medium text-slate-700">
-              Contribution amount — {contributionPreview.currency ?? "multiple currencies"}
+              Contribution amount — {contributionPreview.currency ?? "currency unavailable"}
             </label>
             <input
               id="hypothetical-contribution"
@@ -761,7 +777,7 @@ export default function HoldingsSection({
 
                       <div>
                         <label className="text-sm font-medium text-slate-700">
-                          Currency
+                          Recorded currency (changing this label does not convert amounts)
                         </label>
                         <select
                           value={editCurrency}
@@ -770,9 +786,8 @@ export default function HoldingsSection({
                           }
                           className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
                         >
-                          <option value="USD">USD</option>
-                          <option value="NZD">NZD</option>
-                          <option value="PHP">PHP</option>
+                          <option value="">Choose recorded currency</option>
+                          {currencies.map(code => <option key={code} value={code}>{code}</option>)}
                         </select>
                       </div>
                     </div>
@@ -803,24 +818,24 @@ export default function HoldingsSection({
                   <p className="text-sm text-slate-600">
                     Average cost:{" "}
                     <span className="font-medium text-slate-900">
-                      {holding.currency} {holding.average_cost.toLocaleString()}
+                      {normalizeCurrency(holding.currency) ?? "Currency needs correction"} {Number.isFinite(holding.average_cost) ? holding.average_cost.toLocaleString() : "Invalid amount"}
                     </span>
                   </p>
 
                   <p className="text-sm text-slate-600">
                     Cost basis:{" "}
                     <span className="font-medium text-slate-900">
-                      {holding.cost_basis.toLocaleString(undefined, {
+                      {normalizeCurrency(holding.currency) ?? "Currency needs correction"}{" "}{Number.isFinite(holding.cost_basis) ? holding.cost_basis.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
-                      })}
+                      }) : "Invalid amount"}
                     </span>
                   </p>
 
                   <p className="text-sm text-slate-600">
                     Portfolio allocation:{" "}
                     <span className="font-semibold text-slate-900">
-                      {holding.allocation.toFixed(1)}%
+                      {holding.allocation === null ? "Unavailable" : `${holding.allocation.toFixed(1)}%`}
                     </span>
                   </p>
                 </div>

@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from app.schemas.validation import Money, Goal, Years, RiskCategory
+from app.schemas.currency import Currency
 
 
 class ProfileCreate(BaseModel):
@@ -11,4 +12,4 @@ class ProfileCreate(BaseModel):
     current_portfolio_value: Money
     risk_tolerance: RiskCategory
     risk_score: int | None = None
-    currency: str = "USD"
+    currency: Currency = "USD"

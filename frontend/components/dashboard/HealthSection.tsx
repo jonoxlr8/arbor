@@ -77,8 +77,7 @@ export default function HealthSection({
           </h2>
 
           <p className="mt-3 max-w-2xl leading-7 text-slate-600">
-            Arbor can calculate your Portfolio Health once you have recorded
-            your current investments.
+            Portfolio Health requires valid recorded holdings in one currency with a positive cost basis. No currency conversion is performed.
           </p>
 
           <div className="mt-6 rounded-2xl bg-slate-50 p-5">

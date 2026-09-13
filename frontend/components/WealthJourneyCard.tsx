@@ -85,7 +85,8 @@ export default function WealthJourneyCard({
 
       <div className="mt-8 grid gap-6 sm:grid-cols-2">
         <div>
-          <p className="text-sm text-emerald-200">Current Portfolio</p>
+          <p className="text-sm text-emerald-200">Planning starting value</p>
+          <p className="text-xs text-emerald-100">Entered separately for projections; not synchronized with recorded holdings cost basis.</p>
 
           <p className="mt-2 text-3xl font-bold">
             {formatCurrency(currentValue)}

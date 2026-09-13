@@ -12,6 +12,17 @@ BASE = dict(full_name="Example", country="Philippines", goal_target=100000,
             current_portfolio_value=0, risk_tolerance="Balanced", currency="PHP")
 
 
+@pytest.mark.parametrize("currency", ["usd", " USD ", "PHP", "NZD", "AUD", "EUR", "GBP", "CAD"])
+def test_planning_currency_normalized(currency):
+    assert ProfileCreate(**{**BASE, "currency": currency}).currency == currency.strip().upper()
+
+
+@pytest.mark.parametrize("currency", [None, "", " ", "unknown"])
+def test_invalid_planning_currency_write(currency):
+    with pytest.raises(ValidationError):
+        ProfileCreate(**{**BASE, "currency": currency})
+
+
 @pytest.mark.parametrize("risk", ["Conservative", "Balanced", "Aggressive"])
 def test_supported_categories(risk):
     assert ProfileCreate(**{**BASE, "risk_tolerance": risk}).risk_tolerance == risk

@@ -1,4 +1,30 @@
 from app.routes import holdings
+import pytest
+
+
+@pytest.mark.parametrize("currency", [None, "", "unknown"])
+def test_invalid_currency_never_reaches_health(monkeypatch, currency):
+    configure_authenticated_client(monkeypatch, make_profile(), [make_holding("QQQM", 1, 100, currency)])
+    def unexpected(_plan):
+        pytest.fail("Unavailable holdings must not reach scoring")
+    monkeypatch.setattr(holdings, "calculate_health_score", unexpected)
+    result = holdings.get_actual_portfolio_health(user_id="owner", authorization="Bearer test")
+    assert result["available"] is False
+    assert result["health"] is None
+
+
+def test_health_receives_aggregated_normalized_positions(monkeypatch):
+    configure_authenticated_client(monkeypatch, [{"risk_level": "Balanced", "currency": "PHP"}],
+        [make_holding(" qqqm ", 1, 100, " usd "), make_holding("QQQM", 1, 100)])
+    def score(plan):
+        assert len(plan["portfolio"]) == 1
+        assert plan["portfolio"][0]["ticker"] == "QQQM"
+        assert plan["portfolio"][0]["allocation"] == 100
+        return get_health_response()
+    monkeypatch.setattr(holdings, "calculate_health_score", score)
+    result = holdings.get_actual_portfolio_health(user_id="owner", authorization="Bearer test")
+    assert result["available"] is True
+    assert result["currency"] == "USD"
 
 
 class FakeResponse:

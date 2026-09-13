@@ -93,13 +93,13 @@ export default function EditProfileForm({
 
       <p className="mt-2 text-sm text-slate-600">
         Update your financial situation and Arbor will recalculate your
-        investment strategy.
+        investment strategy. Your planning starting value powers projections and is entered separately from recorded holdings cost basis. Changing recorded currency labels does not convert amounts.
       </p>
 
       <div className="mt-6 grid gap-5 md:grid-cols-2">
         <div>
           <label className="mb-2 block text-sm font-medium text-slate-700">
-            Current portfolio value
+            Planning starting value ({plan.profile.currency})
           </label>
           <input
             type="number"
@@ -114,7 +114,7 @@ export default function EditProfileForm({
 
         <div>
           <label className="mb-2 block text-sm font-medium text-slate-700">
-            Monthly investment
+            Monthly investment ({plan.profile.currency})
           </label>
           <input
             type="number"
@@ -129,7 +129,7 @@ export default function EditProfileForm({
 
         <div>
           <label className="mb-2 block text-sm font-medium text-slate-700">
-            Goal target
+            Goal target ({plan.profile.currency})
           </label>
           <input
             type="number"

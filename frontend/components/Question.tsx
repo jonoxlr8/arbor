@@ -1,4 +1,5 @@
 import { RISK_CATEGORIES, numericError, MAX_MONEY } from "@/lib/profileValidation";
+import { planningCurrency } from "@/lib/currency";
 
 type QuestionProps = {
   step: number;
@@ -35,8 +36,10 @@ export default function Question({
   riskTolerance,
   setRiskTolerance,
 }: QuestionProps) {
+  const currency = planningCurrency(country);
   return (
     <div className="mt-14">
+      {step >= 3 && step <= 5 && <p className="mb-3 text-sm text-slate-600">Planning currency: {currency ?? "Select a supported country"}. These amounts power projections, separately from recorded holdings cost basis.</p>}
       {step === 1 ? (
         <>
           <label className="mb-3 block text-lg font-semibold text-slate-900">
@@ -72,7 +75,7 @@ export default function Question({
       ) : step === 3 ? (
         <>
           <label className="mb-3 block text-lg font-semibold text-slate-900">
-            How much do you have invested today?
+            What is your planning starting value?
           </label>
 
           <p className="mb-4 text-slate-600">

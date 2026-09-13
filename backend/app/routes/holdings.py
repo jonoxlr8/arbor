@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Header, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, Field
+from app.schemas.currency import Currency
 
 from app.auth import get_current_user_id
 from app.database import get_authenticated_client
@@ -13,18 +14,30 @@ class HoldingCreate(BaseModel):
     ticker: str
     asset_name: str
     asset_type: str = "ETF"
-    quantity: float
-    average_cost: float
-    currency: str = "USD"
+    quantity: float = Field(ge=0, allow_inf_nan=False)
+    average_cost: float = Field(ge=0, allow_inf_nan=False)
+    currency: Currency
+
+    @field_validator("ticker")
+    @classmethod
+    def normalize_ticker(cls, value):
+        if not value.strip():
+            raise ValueError("Ticker is required")
+        return value.strip().upper()
 
 
-class HoldingUpdate(BaseModel):
-    ticker: str
-    asset_name: str
-    asset_type: str = "ETF"
-    quantity: float
-    average_cost: float
-    currency: str = "USD"
+class HoldingUpdate(HoldingCreate):
+    pass
+
+
+def ensure_unique_ticker(client, user_id, ticker, holding_id=None):
+    rows = client.table("holdings").select("id,ticker").eq("user_id", user_id).execute().data
+    # Legacy duplicates remain editable when this row's identity is unchanged.
+    if holding_id is not None and any(row.get("id") == holding_id and str(row.get("ticker", "")).strip().upper() == ticker for row in rows):
+        return
+    for row in rows:
+        if row.get("id") != holding_id and str(row.get("ticker", "")).strip().upper() == ticker:
+            raise HTTPException(status_code=409, detail=f"{ticker} already exists. Please edit the existing holding instead.")
 
 
 def get_access_token(authorization: str | None) -> str:
@@ -152,6 +165,7 @@ def create_holding(
         **holding.model_dump(),
         "user_id": user_id,
     }
+    ensure_unique_ticker(authenticated_supabase, user_id, holding.ticker)
 
     response = authenticated_supabase.table("holdings").insert(data).execute()
 
@@ -190,6 +204,7 @@ def update_holding(
 
     authenticated_supabase = get_authenticated_client(access_token)
 
+    ensure_unique_ticker(authenticated_supabase, user_id, holding.ticker, holding_id)
     response = (
         authenticated_supabase.table("holdings")
         .update(holding.model_dump())

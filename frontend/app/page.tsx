@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Logo from "@/components/Logo";
+import { planningCurrency } from "@/lib/currency";
 import Card from "@/components/Card";
 import Welcome from "@/components/Welcome";
 import Question from "@/components/Question";
@@ -227,12 +228,7 @@ export default function Home() {
         goal_target: Number(goalTarget),
         investment_horizon: Number(investmentHorizon),
         risk_tolerance: riskTolerance,
-        currency:
-          country === "New Zealand"
-            ? "NZD"
-            : country === "Philippines"
-              ? "PHP"
-              : "USD",
+        currency: planningCurrency(country) ?? "",
         monthly_investment: Number(monthlyInvestment),
         current_portfolio_value: Number(currentPortfolioValue),
       }));

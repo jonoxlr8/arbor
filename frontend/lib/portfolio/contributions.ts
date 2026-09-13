@@ -28,20 +28,13 @@ export function allocateContribution(
   targets: PortfolioHolding[],
   contribution: number,
 ): ContributionPreview {
-  const currencies = new Set(
-    holdings.map((holding) => holding.currency.trim().toUpperCase()),
-  );
-  const currency = currencies.size === 1 ? [...currencies][0] : null;
+  const summary = calculatePortfolioSummary(holdings);
+  const currency = summary.currency;
   const unavailable = (reason: string): ContributionPreview => ({
     available: false, reason, currency,
   });
 
-  if (currencies.size > 1) {
-    return unavailable("A preview requires all holdings to use the same currency.");
-  }
-  if (!currency) {
-    return unavailable("Add holdings with a portfolio currency to preview a contribution.");
-  }
+  if (!summary.available || !currency || summary.total_cost_basis === null) return unavailable(summary.reason ?? "Portfolio analysis is unavailable.");
   if (!Number.isFinite(contribution) || contribution <= 0) {
     return unavailable("Enter a contribution greater than zero.");
   }
@@ -55,19 +48,7 @@ export function allocateContribution(
   ) {
     return unavailable("Enter a contribution with at most two decimal places and a smaller amount if needed.");
   }
-  if (holdings.some((holding) =>
-    !holding.ticker.trim() ||
-    !Number.isFinite(holding.quantity) || holding.quantity < 0 ||
-    !Number.isFinite(holding.average_cost) || holding.average_cost < 0
-  )) {
-    return unavailable("Check the saved holding quantities, costs, and tickers before previewing.");
-  }
-
-  const summary = calculatePortfolioSummary(holdings);
   const newTotal = summary.total_cost_basis + contribution;
-  if (summary.total_cost_basis <= 0) {
-    return unavailable("A preview requires an existing portfolio with a positive total cost basis.");
-  }
   if (!Number.isFinite(newTotal)) {
     return unavailable("The portfolio amounts are too large to calculate a preview.");
   }
@@ -87,9 +68,9 @@ export function allocateContribution(
   }
 
   const costByTicker = new Map<string, number>();
-  for (const holding of summary.holdings) {
+  for (const holding of summary.positions) {
     const ticker = holding.ticker.trim().toUpperCase();
-    costByTicker.set(ticker, (costByTicker.get(ticker) ?? 0) + holding.cost_basis);
+    costByTicker.set(ticker, holding.cost_basis);
   }
   // Normalize tiny target-total rounding discrepancies, without modifying targets.
   const gaps = normalizedTargets.map((target) => {

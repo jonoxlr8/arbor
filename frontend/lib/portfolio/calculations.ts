@@ -1,14 +1,20 @@
 import type { Holding } from "@/lib/api";
 import type { PortfolioHolding } from "@/lib/types/plan";
+import { normalizeCurrency, normalizeTicker } from "../currency";
 
 export type CalculatedHolding = Holding & {
   cost_basis: number;
-  allocation: number;
+  allocation: number | null;
 };
 
 export type PortfolioSummary = {
   holdings: CalculatedHolding[];
-  total_cost_basis: number;
+  positions: CalculatedHolding[];
+  total_cost_basis: number | null;
+  currency: string | null;
+  available: boolean;
+  status: "empty" | "available" | "zero_basis" | "mixed_currency" | "invalid_currency" | "invalid_holding";
+  reason: string | null;
 };
 
 export function calculatePortfolioSummary(
@@ -19,22 +25,56 @@ export function calculatePortfolioSummary(
     cost_basis: holding.quantity * holding.average_cost,
   }));
 
+  const currencies = new Set(holdings.map(h => normalizeCurrency(h.currency)));
+  const currency = currencies.size === 1 ? [...currencies][0] : null;
   const totalCostBasis = holdingsWithValues.reduce(
     (total, holding) => total + holding.cost_basis,
     0,
   );
 
+  let status: PortfolioSummary["status"] = "available";
+  let reason: string | null = null;
+  if (!holdings.length) {
+    status = "empty";
+    reason = "Add holdings to calculate your recorded portfolio.";
+  } else if (currencies.has(null)) {
+    status = "invalid_currency";
+    reason = "Correct missing or unsupported holding currencies to enable portfolio analysis.";
+  } else if (currencies.size > 1) {
+    status = "mixed_currency";
+    reason = "Portfolio analysis is unavailable for mixed currencies. Arbor does not convert currencies.";
+  } else if (!Number.isFinite(totalCostBasis) || holdings.some(h =>
+    !normalizeTicker(h.ticker) || !Number.isFinite(h.quantity) || h.quantity < 0 ||
+    !Number.isFinite(h.average_cost) || h.average_cost < 0
+  )) {
+    status = "invalid_holding";
+    reason = "Correct invalid holding quantities, costs or tickers to enable analysis.";
+  } else if (totalCostBasis === 0) {
+    status = "zero_basis";
+    reason = "Allocation analysis requires a positive recorded cost basis.";
+  }
+  const available = status === "available";
   const calculatedHoldings = holdingsWithValues.map((holding) => ({
     ...holding,
     allocation:
-      totalCostBasis > 0
+      available
         ? (holding.cost_basis / totalCostBasis) * 100
-        : 0,
+        : null,
   }));
+
+  const positions = new Map<string, CalculatedHolding>();
+  if (available) for (const holding of calculatedHoldings) {
+    const ticker = normalizeTicker(holding.ticker);
+    const existing = positions.get(ticker);
+    const cost_basis = (existing?.cost_basis ?? 0) + holding.cost_basis;
+    positions.set(ticker, { ...holding, ticker, cost_basis, allocation: cost_basis / totalCostBasis * 100 });
+  }
 
   return {
     holdings: calculatedHoldings,
-    total_cost_basis: totalCostBasis,
+    positions: [...positions.values()],
+    total_cost_basis: available || status === "zero_basis" ? totalCostBasis : null,
+    available, status, reason, currency,
   };
 }
 
@@ -50,16 +90,14 @@ export function comparePortfolio(
   actualHoldings: CalculatedHolding[],
   recommendedPortfolio: PortfolioHolding[],
 ): PortfolioComparison[] {
+  if (actualHoldings.some(h => h.allocation === null)) return [];
   return recommendedPortfolio.map((target) => {
-    const actual = actualHoldings.find(
-      (holding) => holding.ticker === target.ticker,
-    );
-
-    const actualAllocation = actual?.allocation ?? 0;
+    const actualAllocation = actualHoldings.filter(h => normalizeTicker(h.ticker) === normalizeTicker(target.ticker))
+      .reduce((sum, h) => sum + (h.allocation ?? 0), 0);
     const targetAllocation = target.allocation;
 
     return {
-      ticker: target.ticker,
+      ticker: normalizeTicker(target.ticker),
       asset_name: target.asset_name,
       actual_allocation: actualAllocation,
       target_allocation: targetAllocation,

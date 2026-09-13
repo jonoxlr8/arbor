@@ -3,6 +3,27 @@ import pytest
 from app.services.actual_portfolio_service import build_actual_portfolio
 
 
+@pytest.mark.parametrize("currency", [None, "", "???"])
+def test_invalid_legacy_currency_is_unavailable(currency):
+    result = build_actual_portfolio([make_holding("VOO", 1, 100, currency)])
+    assert result["unavailable_reason"]
+    assert result["portfolio"] == []
+
+
+def test_normalized_duplicates_are_one_position_with_combined_cost():
+    result = build_actual_portfolio([make_holding(" qqqm ", 1, 100, " usd "),
+                                     make_holding("QQQM", 1, 100), make_holding("OTHER", 1, 150)])
+    assert result["currency"] == "USD"
+    assert len(result["portfolio"]) == 2
+    assert result["portfolio"][0]["ticker"] == "QQQM"
+    assert result["portfolio"][0]["allocation"] == pytest.approx(200 / 350 * 100)
+
+
+@pytest.mark.parametrize("value", [None, "bad", float("nan"), float("inf"), -1, True])
+def test_malformed_legacy_cost_is_unavailable(value):
+    assert build_actual_portfolio([make_holding("VOO", value, 100)])["unavailable_reason"]
+
+
 def make_holding(ticker, quantity, average_cost, currency="USD"):
     return {
         "ticker": ticker,
