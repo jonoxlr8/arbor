@@ -1,19 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { updateMyProfile } from "@/lib/api";
 import type { Plan } from "@/lib/types/plan";
+import { profileErrors, RISK_CATEGORIES, isRiskCategory, MAX_MONEY, MAX_YEARS } from "@/lib/profileValidation";
+import { createLatestRequest } from "@/lib/dashboardConsistency";
 
 type EditProfileFormProps = {
   plan: Plan;
   onUpdated: (updatedPlan: Plan) => void;
   onCancel: () => void;
+  onSavingChange: (saving: boolean) => void;
 };
 
 export default function EditProfileForm({
   plan,
   onUpdated,
   onCancel,
+  onSavingChange,
 }: EditProfileFormProps) {
   const [monthlyInvestment, setMonthlyInvestment] = useState(
     String(plan.profile.monthly_investment),
@@ -28,17 +32,35 @@ export default function EditProfileForm({
     String(plan.profile.investment_horizon),
   );
   const [riskTolerance, setRiskTolerance] = useState(
-    plan.profile.risk_tolerance,
+    isRiskCategory(plan.profile.risk_tolerance) ? plan.profile.risk_tolerance : "",
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const busy = useRef(false);
+  const [saveRequest] = useState(() => createLatestRequest<Plan>(state => {
+    setLoading(state.status === "loading");
+    onSavingChange(state.status === "loading");
+    if (state.status === "error") setError(state.error);
+  }));
+  useEffect(() => () => {
+    saveRequest.dispose();
+    onSavingChange(false);
+  }, [saveRequest, onSavingChange]);
 
   const handleSave = async () => {
+    if (busy.current) return;
+    const errors = profileErrors({
+      current_portfolio_value: currentPortfolioValue, monthly_investment: monthlyInvestment,
+      goal_target: goalTarget, investment_horizon: investmentHorizon, risk_tolerance: riskTolerance,
+    });
+    if (errors.length) { setError(errors.join("\n")); return; }
+    busy.current = true;
     setError("");
     setLoading(true);
+    onSavingChange(true);
 
     try {
-      const updatedPlan = await updateMyProfile({
+      const pending = saveRequest.run(signal => updateMyProfile({
         full_name: plan.profile.full_name,
         country: plan.profile.country,
         goal_target: Number(goalTarget),
@@ -47,18 +69,19 @@ export default function EditProfileForm({
         current_portfolio_value: Number(currentPortfolioValue),
         risk_tolerance: riskTolerance,
         currency: plan.profile.currency,
-      });
+      }, signal));
+      const isCurrent = saveRequest.guard();
+      const updatedPlan = await pending;
 
-      onUpdated(updatedPlan);
+      if (updatedPlan && isCurrent()) onUpdated(updatedPlan);
     } catch (error) {
-      console.error("Failed to update profile:", error);
       setError(
         error instanceof Error
           ? error.message
           : "Something went wrong. Please try again.",
       );
     } finally {
-      setLoading(false);
+      busy.current = false;
     }
   };
 
@@ -81,6 +104,8 @@ export default function EditProfileForm({
           <input
             type="number"
             min="0"
+            max={MAX_MONEY}
+            step="any"
             value={currentPortfolioValue}
             onChange={(e) => setCurrentPortfolioValue(e.target.value)}
             className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-green-600 focus:ring-4 focus:ring-green-100"
@@ -94,6 +119,8 @@ export default function EditProfileForm({
           <input
             type="number"
             min="0"
+            max={MAX_MONEY}
+            step="any"
             value={monthlyInvestment}
             onChange={(e) => setMonthlyInvestment(e.target.value)}
             className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-green-600 focus:ring-4 focus:ring-green-100"
@@ -107,6 +134,8 @@ export default function EditProfileForm({
           <input
             type="number"
             min="0"
+            max={MAX_MONEY}
+            step="any"
             value={goalTarget}
             onChange={(e) => setGoalTarget(e.target.value)}
             className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-green-600 focus:ring-4 focus:ring-green-100"
@@ -120,6 +149,8 @@ export default function EditProfileForm({
           <input
             type="number"
             min="1"
+            max={MAX_YEARS}
+            step="1"
             value={investmentHorizon}
             onChange={(e) => setInvestmentHorizon(e.target.value)}
             className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-green-600 focus:ring-4 focus:ring-green-100"
@@ -136,16 +167,14 @@ export default function EditProfileForm({
             onChange={(e) => setRiskTolerance(e.target.value)}
             className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-green-600 focus:ring-4 focus:ring-green-100"
           >
-            <option value="Conservative">Conservative</option>
-            <option value="Balanced">Balanced</option>
-            <option value="Growth">Growth</option>
-            <option value="Aggressive">Aggressive</option>
+            <option value="" disabled>Choose a supported category</option>
+            {RISK_CATEGORIES.map(category => <option key={category} value={category}>{category}</option>)}
           </select>
         </div>
       </div>
 
       {error && (
-        <p className="mt-5 rounded-xl bg-red-50 p-4 text-sm text-red-700">
+        <p role="alert" className="mt-5 whitespace-pre-line rounded-xl bg-red-50 p-4 text-sm text-red-700">
           {error}
         </p>
       )}

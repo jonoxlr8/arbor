@@ -59,6 +59,7 @@ export type Explanation = {
 };
 
 export type Plan = {
+  profile_warning?: string | null;
   profile: Profile;
   portfolio: PortfolioHolding[];
   projection: Projection;

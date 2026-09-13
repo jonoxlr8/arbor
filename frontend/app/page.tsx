@@ -12,6 +12,7 @@ import { getCurrentUser, signOut } from "@/lib/auth";
 import ResultsDashboard from "@/components/ResultsDashboard";
 import { createAccountRecovery, withDeadline, type AccountState } from "@/lib/accountRecovery";
 import { supabase } from "@/lib/supabase";
+import { numericError, profileErrors, isRiskCategory } from "@/lib/profileValidation";
 
 export default function Home() {
   const [account, setAccount] = useState<AccountState>({ status: "checking" });
@@ -27,6 +28,8 @@ export default function Home() {
   const [goalTarget, setGoalTarget] = useState("");
   const [investmentHorizon, setInvestmentHorizon] = useState("");
   const [riskTolerance, setRiskTolerance] = useState("");
+  const [profileError, setProfileError] = useState("");
+  const profileSaving = useRef(false);
   const [started, setStarted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState(
@@ -47,6 +50,7 @@ export default function Home() {
         setGoalTarget("");
         setInvestmentHorizon("");
         setRiskTolerance("");
+        setProfileError("");
         setStarted(false);
         setLoading(false);
         setLogoutError("");
@@ -166,21 +170,33 @@ export default function Home() {
         ? country
         : step === 3
           ? currentPortfolioValue !== ""
+            && !numericError("current_portfolio_value", currentPortfolioValue)
           : step === 4
             ? monthlyInvestment !== ""
+              && !numericError("monthly_investment", monthlyInvestment)
             : step === 5
               ? goalTarget !== ""
+                && !numericError("goal_target", goalTarget)
               : step === 6
                 ? investmentHorizon !== ""
-                : riskTolerance;
+                  && !numericError("investment_horizon", investmentHorizon)
+                : isRiskCategory(riskTolerance);
 
   const handleNext = async () => {
+    if (!canContinue || profileSaving.current) return;
     if (step < 7) {
       setStep(step + 1);
       return;
     }
 
     let interval: ReturnType<typeof setInterval> | undefined;
+    const errors = profileErrors({
+      current_portfolio_value: currentPortfolioValue, monthly_investment: monthlyInvestment,
+      goal_target: goalTarget, investment_horizon: investmentHorizon, risk_tolerance: riskTolerance,
+    });
+    if (errors.length) { setProfileError(errors.join("\n")); return; }
+    profileSaving.current = true;
+    setProfileError("");
     const isCurrent = recovery.current?.guard() ?? (() => false);
 
     try {
@@ -226,9 +242,9 @@ export default function Home() {
       recovery.current?.completeProfile(account.userId, result);
     } catch (error) {
       if (!isCurrent()) return;
-      console.error(error);
-      alert("Something went wrong. Please try again.");
+      setProfileError(error instanceof Error ? error.message : "Unable to create your plan. Please retry.");
     } finally {
+      profileSaving.current = false;
       if (interval) {
         clearInterval(interval);
       }
@@ -264,7 +280,8 @@ export default function Home() {
       {started && (
         <div
           onKeyDown={(event) => {
-            if (event.key === "Enter" && canContinue) {
+            if (event.key === "Enter" && event.target instanceof HTMLInputElement && canContinue) {
+              event.preventDefault();
               handleNext();
             }
           }}
@@ -305,6 +322,7 @@ export default function Home() {
             >
               {step === 7 ? "Create My Plan →" : "Next →"}
             </button>
+            {profileError && <p role="alert" className="mt-4 whitespace-pre-line text-red-700">{profileError}</p>}
           </Card>
         </div>
       )}

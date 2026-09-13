@@ -1,3 +1,5 @@
+import { RISK_CATEGORIES, numericError, MAX_MONEY } from "@/lib/profileValidation";
+
 type QuestionProps = {
   step: number;
   name: string;
@@ -80,6 +82,8 @@ export default function Question({
           <input
             type="number"
             min="0"
+            max={MAX_MONEY}
+            step="any"
             placeholder="Enter your current portfolio value"
             value={currentPortfolioValue}
             onChange={(e) => setCurrentPortfolioValue(e.target.value)}
@@ -111,6 +115,8 @@ export default function Question({
           <input
             type="number"
             min="0"
+            max={MAX_MONEY}
+            step="any"
             placeholder="Enter your monthly investment"
             value={monthlyInvestment}
             onChange={(e) => setMonthlyInvestment(e.target.value)}
@@ -142,6 +148,8 @@ export default function Question({
           <input
             type="number"
             min="0"
+            max={MAX_MONEY}
+            step="any"
             placeholder="Enter your target amount"
             value={goalTarget}
             onChange={(e) => setGoalTarget(e.target.value)}
@@ -174,62 +182,25 @@ export default function Question({
           </label>
 
           <div className="space-y-4">
-            <button
-              type="button"
-              onClick={() => setRiskTolerance("Conservative")}
-              className={`w-full rounded-xl border p-5 text-left transition ${
-                riskTolerance === "Conservative"
-                  ? "border-green-600 bg-green-50"
-                  : "border-slate-300 hover:border-green-400"
-              }`}
-            >
-              <div className="text-lg font-semibold text-slate-900">
-                Conservative
-              </div>
-
-              <div className="mt-1 text-slate-600">
-                I prefer smaller ups and downs.
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setRiskTolerance("Balanced")}
-              className={`w-full rounded-xl border p-5 text-left transition ${
-                riskTolerance === "Balanced"
-                  ? "border-green-600 bg-green-50"
-                  : "border-slate-300 hover:border-green-400"
-              }`}
-            >
-              <div className="text-lg font-semibold text-slate-900">
-                Balanced
-              </div>
-
-              <div className="mt-1 text-slate-600">
-                I want a mix of growth and stability.
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setRiskTolerance("Aggressive")}
-              className={`w-full rounded-xl border p-5 text-left transition ${
-                riskTolerance === "Aggressive"
-                  ? "border-green-600 bg-green-50"
-                  : "border-slate-300 hover:border-green-400"
-              }`}
-            >
-              <div className="text-lg font-semibold text-slate-900">
-                Aggressive
-              </div>
-
-              <div className="mt-1 text-slate-600">
-                I&apos;m comfortable with bigger swings for higher growth
-                potential.
-              </div>
-            </button>
+            {RISK_CATEGORIES.map(category => (
+              <button key={category} type="button" onClick={() => setRiskTolerance(category)}
+                className={`w-full rounded-xl border p-5 text-left transition ${riskTolerance === category ? "border-green-600 bg-green-50" : "border-slate-300 hover:border-green-400"}`}>
+                <div className="text-lg font-semibold text-slate-900">{category}</div>
+                <div className="mt-1 text-slate-600">
+                  {category === "Conservative" ? "I prefer smaller ups and downs." :
+                    category === "Balanced" ? "I want a mix of growth and stability." :
+                    "I'm comfortable with bigger swings for higher growth potential."}
+                </div>
+              </button>
+            ))}
           </div>
         </>
+      )}
+      {step >= 3 && step <= 5 && (
+        <p role="alert" className="mt-3 text-sm text-red-700">
+          {step === 3 ? numericError("current_portfolio_value", currentPortfolioValue) :
+            step === 4 ? numericError("monthly_investment", monthlyInvestment) : numericError("goal_target", goalTarget)}
+        </p>
       )}
     </div>
   );

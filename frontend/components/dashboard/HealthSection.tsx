@@ -1,14 +1,15 @@
 import type { ActualPortfolioHealthResponse } from "@/lib/api";
-import type { Plan } from "@/lib/types/plan";
 
 type HealthSectionProps = {
-  plan: Plan;
   actualHealth: ActualPortfolioHealthResponse | null;
+  error?: string;
+  onRetry?: () => void;
 };
 
 export default function HealthSection({
-  plan,
   actualHealth,
+  error,
+  onRetry,
 }: HealthSectionProps) {
   const healthLoading = actualHealth === null;
 
@@ -30,6 +31,16 @@ export default function HealthSection({
   };
 
   const scoreLabel = getScoreLabel();
+
+  if (error) {
+    return (
+      <section className="mt-12 rounded-3xl border border-slate-200 bg-white p-6">
+        <h2 className="text-3xl font-bold text-slate-900">Portfolio Health</h2>
+        <p role="alert" className="mt-4 text-red-700">We couldn’t refresh your portfolio health. {error}</p>
+        <button type="button" onClick={onRetry} className="mt-4 rounded-xl bg-emerald-700 px-5 py-3 text-white">Retry</button>
+      </section>
+    );
+  }
 
   if (healthLoading) {
     return (

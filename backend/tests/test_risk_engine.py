@@ -2,6 +2,7 @@ from app.services.risk_engine import (
     calculate_risk_score,
     classify_risk,
 )
+import pytest
 
 
 class Profile:
@@ -53,3 +54,15 @@ def test_conservative_long_horizon_stays_conservative():
 
     assert score == 39
     assert classify_risk(score) == "Conservative"
+
+
+@pytest.mark.parametrize("horizon", [1, 4, 5, 9, 10, 14, 15, 19, 20, 29, 30, 100])
+@pytest.mark.parametrize("risk", ["Conservative", "Balanced", "Aggressive"])
+def test_horizon_boundaries_preserve_chosen_category(horizon, risk):
+    assert classify_risk(calculate_risk_score(Profile(horizon, risk))) == risk
+
+
+@pytest.mark.parametrize("risk", ["Growth", "unknown", ""])
+def test_unknown_category_does_not_silently_become_conservative(risk):
+    with pytest.raises(ValueError):
+        calculate_risk_score(Profile(15, risk))

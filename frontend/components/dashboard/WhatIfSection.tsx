@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   ResponsiveContainer,
@@ -13,31 +13,38 @@ import {
 
 import SectionHeader from "@/components/dashboard/SectionHeader";
 
-import type { Plan, YearlyProjection } from "@/lib/types/plan";
+import type { Plan } from "@/lib/types/plan";
+import { getProjection } from "@/lib/api";
+import { createProjectionScenario, scenarioControls, type ProjectionResult } from "@/lib/projectionScenario";
+import { scenarioKey, type RequestState } from "@/lib/dashboardConsistency";
 
 type WhatIfSectionProps = {
   plan: Plan;
 };
 
-type ProjectionResponse = {
-  projected_value: number;
-  yearly_projection: YearlyProjection[];
-};
-
 export default function WhatIfSection({ plan }: WhatIfSectionProps) {
+  return <ScenarioView key={scenarioKey(plan)} plan={plan} />;
+}
+
+function ScenarioView({ plan }: WhatIfSectionProps) {
   const currentInvestment = plan.profile.monthly_investment;
-
+  const [baseline] = useState(plan);
   const [monthlyInvestment, setMonthlyInvestment] = useState(currentInvestment);
-
-  const [projectedValue, setProjectedValue] = useState(
-    plan.projection.projected_value,
-  );
-
-  const [yearlyProjection, setYearlyProjection] = useState<YearlyProjection[]>(
-    plan.projection.yearly_projection,
-  );
-
-  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<RequestState<ProjectionResult>>({ status: "ready", data: plan.projection });
+  const scenario = useRef<ReturnType<typeof createProjectionScenario> | null>(null);
+  useEffect(() => {
+    const coordinator = createProjectionScenario(baseline, getProjection, setResult);
+    scenario.current = coordinator;
+    return () => coordinator.dispose();
+  }, [baseline]);
+  const selectContribution = (amount: number) => {
+    setMonthlyInvestment(amount);
+    void scenario.current?.select(amount);
+  };
+  const controls = scenarioControls(plan);
+  const projectedValue = result.status === "ready" ? result.data.projected_value : 0;
+  const yearlyProjection = result.status === "ready" ? result.data.yearly_projection : [];
+  const loading = result.status === "loading";
 
   const currency = plan.profile.currency;
   const goalAmount = plan.profile.goal_target;
@@ -48,52 +55,6 @@ export default function WhatIfSection({ plan }: WhatIfSectionProps) {
       currency,
       maximumFractionDigits: 0,
     }).format(value);
-
-  useEffect(() => {
-    if (monthlyInvestment === currentInvestment) {
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      try {
-        setLoading(true);
-
-        const response = await fetch("http://127.0.0.1:8000/projection", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            current_value: plan.profile.current_portfolio_value,
-            monthly_investment: monthlyInvestment,
-            years: plan.profile.investment_horizon,
-            annual_return: plan.projection.assumed_return,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Projection request failed");
-        }
-
-        const data: ProjectionResponse = await response.json();
-
-        setProjectedValue(data.projected_value);
-        setYearlyProjection(data.yearly_projection);
-      } catch (error) {
-        console.error("What If projection error:", error);
-      } finally {
-        setLoading(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [
-    monthlyInvestment,
-    currentInvestment,
-    plan.profile.current_portfolio_value,
-    plan.profile.investment_horizon,
-    plan.projection.assumed_return,
-  ]);
 
   const projectedProgress =
     goalAmount > 0 ? Math.min((projectedValue / goalAmount) * 100, 100) : 0;
@@ -150,16 +111,12 @@ export default function WhatIfSection({ plan }: WhatIfSectionProps) {
 
           <input
             type="range"
-            min={currentInvestment}
-            max={Math.max(
-              5000,
-              Math.ceil(plan.projection.required_monthly_investment / 500) *
-                500,
-            )}
-            step={10}
+            min={controls.min}
+            max={controls.max}
+            step="any"
             value={monthlyInvestment}
             onChange={(event) =>
-              setMonthlyInvestment(Number(event.target.value))
+              selectContribution(Number(event.target.value))
             }
             className="w-full accent-emerald-600"
           />
@@ -172,7 +129,7 @@ export default function WhatIfSection({ plan }: WhatIfSectionProps) {
 
               <p className="mt-1 text-sm text-slate-500">
                 {formatCurrency(
-                  Math.round(plan.projection.required_monthly_investment),
+                  controls.required,
                 )}{" "}
                 per month to reach your goal within{" "}
                 {plan.profile.investment_horizon} years, assuming the same
@@ -182,9 +139,10 @@ export default function WhatIfSection({ plan }: WhatIfSectionProps) {
 
             <button
               type="button"
+              disabled={controls.required > controls.max}
               onClick={() =>
-                setMonthlyInvestment(
-                  Math.round(plan.projection.required_monthly_investment),
+                selectContribution(
+                  controls.required,
                 )
               }
               className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
@@ -194,52 +152,24 @@ export default function WhatIfSection({ plan }: WhatIfSectionProps) {
           </div>
 
           <div className="flex justify-between text-sm text-slate-500">
-            <span>{formatCurrency(currentInvestment)}</span>
+            <span>{formatCurrency(controls.min)}</span>
 
             <span>
               {formatCurrency(
-                Math.max(
-                  5000,
-                  Math.ceil(plan.projection.required_monthly_investment / 500) *
-                    500,
-                ),
+                controls.max,
               )}
             </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              {
-                label: "Current",
-                value: currentInvestment,
-              },
-              {
-                label: "2× Current",
-                value: currentInvestment * 2,
-              },
-              {
-                label: "3× Current",
-                value: currentInvestment * 3,
-              },
-              {
-                label: "Goal Target",
-                value: Math.round(plan.projection.required_monthly_investment),
-              },
-            ].map((option) => (
+            {controls.presets.map((option) => (
               <button
                 key={option.label}
                 type="button"
-                onClick={() => {
-                  const sliderMax = Math.max(
-                    5000,
-                    Math.ceil(
-                      plan.projection.required_monthly_investment / 500,
-                    ) * 500,
-                  );
-
-                  setMonthlyInvestment(Math.min(option.value, sliderMax));
-                }}
-                className={`rounded-xl border px-3 py-3 text-sm font-semibold transition ${
+                disabled={option.disabled}
+                title={option.disabled ? "This amount exceeds the supported contribution limit." : undefined}
+                onClick={() => selectContribution(option.value)}
+                className={`rounded-xl border px-3 py-3 text-sm font-semibold transition disabled:opacity-50 ${
                   monthlyInvestment === option.value
                     ? "border-emerald-600 bg-emerald-600 text-white"
                     : "border-slate-200 bg-white text-slate-700 hover:border-emerald-400 hover:bg-emerald-50"
@@ -254,14 +184,20 @@ export default function WhatIfSection({ plan }: WhatIfSectionProps) {
             ))}
           </div>
 
+          {loading && <p role="status" className="text-slate-700">Calculating your scenario…</p>}
+          {result.status === "error" && (
+            <div role="alert" className="rounded-xl bg-red-50 p-4 text-red-800">
+              <p>{result.error}</p>
+              <button type="button" onClick={() => selectContribution(monthlyInvestment)} className="mt-3 font-semibold underline">Retry</button>
+            </div>
+          )}
+          {result.status === "ready" && <>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-2xl bg-white p-6 shadow-sm">
               <p className="text-sm text-slate-500">Projected Future Value</p>
 
               <p className="mt-2 text-3xl font-bold text-slate-900">
-                {loading
-                  ? "Calculating..."
-                  : formatCurrency(Math.round(projectedValue))}
+                {formatCurrency(Math.round(projectedValue))}
               </p>
             </div>
 
@@ -547,6 +483,7 @@ export default function WhatIfSection({ plan }: WhatIfSectionProps) {
             </div>
           )}
 
+          </>}
           <p className="text-xs leading-5 text-slate-500">
             Estimates use the same{" "}
             {(plan.projection.assumed_return * 100).toFixed(0)}% annual return

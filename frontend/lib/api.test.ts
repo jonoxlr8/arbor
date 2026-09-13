@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createProfileReader, ProfileApiError } from "./api";
+import { createProfileReader, ProfileApiError, createProfileWriter, createProjectionReader, createHealthReader } from "./api";
 import { createAccountRecovery, InvalidSessionError, type AccountState } from "./accountRecovery";
 import { createAuthHelpers } from "./auth";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -12,8 +12,76 @@ const plan = {
   explanation: { summary: "Example", reasons: [] },
 };
 const token = async () => "token";
+const updatedPlan = {
+  ...plan,
+  projection: { ...plan.projection, yearly_projection: Array.from({ length: 6 }, (_, year) => ({ year, value: year === 5 ? 100 : 20 })) },
+};
 const reply = (body: unknown, status = 200): typeof fetch => async () => new Response(JSON.stringify(body), { status });
 test("valid plan is restored", async () => assert.deepEqual(await createProfileReader(token, reply(plan))("a"), plan));
+
+test("malformed health is an error, not an endless loading result", async () => {
+  for (const body of [null, {}, { basis: "cost_basis", available: true, health: null }]) {
+    await assert.rejects(createHealthReader(async () => ({}), reply(body))(), /incomplete/);
+  }
+});
+
+test("health unavailable remains distinct from request failure", async () => {
+  const unavailable = { basis: "cost_basis", available: false, health: null, reason: "No portfolio", currency: null };
+  assert.deepEqual(await createHealthReader(async () => ({}), reply(unavailable))(), unavailable);
+  await assert.rejects(createHealthReader(async () => ({}), reply({}, 500))(), /500/);
+});
+
+test("health API timeout terminates even before headers resolve", async () => {
+  await assert.rejects(createHealthReader(() => new Promise(() => {}), fetch, 5)(), /timed out/);
+});
+
+test("profile save returns the rebuilt plan without another read", async () => {
+  let calls = 0;
+  const writer = createProfileWriter(async () => ({}), async (_url, options) => {
+    calls++;
+    assert.equal(options?.method, "PUT");
+    assert.deepEqual(JSON.parse(String(options?.body)), plan.profile);
+    return new Response(JSON.stringify(updatedPlan));
+  });
+  assert.deepEqual(await writer(plan.profile), updatedPlan);
+  assert.equal(calls, 1);
+});
+
+test("profile save rejects malformed or mismatched rebuilt plans", async () => {
+  for (const body of [{}, { ...updatedPlan, profile: { ...plan.profile, monthly_investment: 999 } }]) {
+    await assert.rejects(createProfileWriter(async () => ({}), reply(body))(plan.profile), /incomplete|did not match/);
+  }
+});
+
+test("profile save exposes field-level validation errors", async () => {
+  const writer = createProfileWriter(async () => ({}), reply({ detail: [{ loc: ["body", "goal_target"], msg: "Input should be greater than 0" }] }, 422));
+  await assert.rejects(writer(plan.profile), /Goal target: Input should be greater than 0/);
+});
+
+test("profile save timeout aborts even a never-settling request", async () => {
+  let signal: AbortSignal | undefined | null;
+  const writer = createProfileWriter(async () => ({}), async (_url, options) => {
+    signal = options?.signal;
+    return new Promise(() => {});
+  }, 5);
+  await assert.rejects(writer(plan.profile), /timed out/);
+  assert.equal(signal?.aborted, true);
+});
+
+test("profile save cancellation does not return a late plan", async () => {
+  const controller = new AbortController();
+  const writer = createProfileWriter(async () => ({}), () => new Promise(() => {}));
+  const pending = writer(plan.profile, controller.signal);
+  controller.abort();
+  await assert.rejects(pending, /abort/i);
+});
+
+test("projection requests validate complete yearly results", async () => {
+  const input = { current_value: 20, monthly_investment: 10, years: 5, annual_return: 0 };
+  const result = await createProjectionReader(reply(updatedPlan.projection))(input);
+  assert.equal(result.projected_value, 100);
+  await assert.rejects(createProjectionReader(reply({ projected_value: 100, yearly_projection: [] }))(input), /incomplete/);
+});
 test("exact 404 contract means missing profile", async () => assert.equal(await createProfileReader(token, reply({ detail: "Profile not found" }, 404))("a"), null));
 for (const status of [404, 500]) test(`unexpected ${status} remains API error`, async () => {
   await assert.rejects(createProfileReader(token, reply({ detail: "Not Found" }, status))("a"), ProfileApiError);

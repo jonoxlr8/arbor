@@ -1,6 +1,9 @@
 import type { Plan } from "@/lib/types/plan";
 import { getAccessToken } from "./auth";
 import { InvalidSessionError, withDeadline } from "./accountRecovery";
+import { boundedRequest } from "./dashboardConsistency";
+import { FIELD_LABELS } from "./profileValidation";
+import type { ProjectionInput, ProjectionResult } from "./projectionScenario";
 
 const API_BASE_URL = "http://localhost:8000";
 
@@ -14,6 +17,63 @@ export type CreateProfileRequest = {
   monthly_investment: number;
   current_portfolio_value: number;
 };
+
+async function checkedJson(response: Response): Promise<unknown> {
+  const body: unknown = await response.json();
+  if (response.ok) return body;
+  if (typeof body === "object" && body !== null && "detail" in body && Array.isArray(body.detail)) {
+    const messages = body.detail.map((item: { loc?: string[]; msg?: string }) => {
+      const field = item.loc?.at(-1) ?? "Input";
+      return `${FIELD_LABELS[field] ?? field}: ${item.msg ?? "invalid value"}`;
+    });
+    throw new Error(messages.join("\n"));
+  }
+  throw new Error(`Request failed (${response.status}). Please try again.`);
+}
+
+export function createProfileWriter(headers = getAuthHeaders, request: typeof fetch = fetch, timeoutMs = 12000) {
+  return (profile: CreateProfileRequest, signal?: AbortSignal): Promise<Plan> =>
+    boundedRequest(async activeSignal => {
+      const authHeaders = await headers();
+      activeSignal.throwIfAborted();
+      const body = await checkedJson(await request(`${API_BASE_URL}/profiles/me`, {
+        method: "PUT", headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify(profile), signal: activeSignal,
+      }));
+      if (!isPlan(body)) throw new Error("The updated plan was incomplete. Please retry.");
+      const projection = body.projection;
+      if (Object.entries(profile).some(([field, value]) => body.profile[field as keyof typeof body.profile] !== value) ||
+          projection.starting_value !== profile.current_portfolio_value ||
+          projection.monthly_contribution !== profile.monthly_investment ||
+          projection.investment_period_years !== profile.investment_horizon ||
+          projection.required_monthly_investment < 0 ||
+          projection.yearly_projection.length !== profile.investment_horizon + 1 ||
+          !projection.yearly_projection.every((point, year) => point.year === year) ||
+          projection.yearly_projection.at(-1)?.value !== projection.projected_value) {
+        throw new Error("The updated plan did not match your saved profile. Please retry.");
+      }
+      return body;
+    }, signal, timeoutMs);
+}
+
+export function createProjectionReader(request: typeof fetch = fetch, timeoutMs = 12000) {
+  return (input: ProjectionInput, signal?: AbortSignal): Promise<ProjectionResult> =>
+    boundedRequest(async activeSignal => {
+      const body = await checkedJson(await request(`${API_BASE_URL}/projection`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input), signal: activeSignal,
+      }));
+      if (typeof body !== "object" || body === null ||
+          !("projected_value" in body) || typeof body.projected_value !== "number" || !Number.isFinite(body.projected_value) ||
+          !("yearly_projection" in body) || !Array.isArray(body.yearly_projection) ||
+          body.yearly_projection.length !== input.years + 1 ||
+          !body.yearly_projection.every((point, year) => point && point.year === year && typeof point.value === "number" && Number.isFinite(point.value))) {
+        throw new Error("The projection response was incomplete. Please retry.");
+      }
+      return body as ProjectionResult;
+    }, signal, timeoutMs);
+}
+export const getProjection = createProjectionReader();
 
 async function getAuthHeaders(): Promise<HeadersInit> {
   const { supabase } = await import("./supabase");
@@ -44,15 +104,9 @@ export async function createProfile(
     body: JSON.stringify(data),
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Create profile failed:", response.status, errorText);
-    throw new Error(
-      `Failed to create profile (${response.status}): ${errorText}`,
-    );
-  }
-
-  return response.json();
+  const body = await checkedJson(response);
+  if (!isPlan(body)) throw new Error("The new plan was incomplete. Please retry.");
+  return body;
 }
 
 export type ArborChatResponse = {
@@ -156,37 +210,7 @@ export function createProfileReader(
 
 export const getMyProfile = createProfileReader();
 
-export async function updateMyProfile(profile: {
-  full_name: string;
-  country: string;
-  goal_target: number;
-  investment_horizon: number;
-  monthly_investment: number;
-  current_portfolio_value: number;
-  risk_tolerance: string;
-  currency: string;
-}) {
-  const headers = await getAuthHeaders();
-
-  const response = await fetch(`${API_BASE_URL}/profiles/me`, {
-    method: "PUT",
-    headers: {
-      ...headers,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(profile),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Update profile failed:", response.status, errorText);
-    throw new Error(
-      `Failed to update profile (${response.status}): ${errorText}`,
-    );
-  }
-
-  return response.json();
-}
+export const updateMyProfile = createProfileWriter();
 
 export type Holding = {
   id: number;
@@ -312,25 +336,32 @@ export type ActualPortfolioHealthResponse = {
   health: Plan["health"] | null;
 };
 
-export async function getMyPortfolioHealth(): Promise<ActualPortfolioHealthResponse> {
-  const headers = await getAuthHeaders();
-
-  const response = await fetch(`${API_BASE_URL}/holdings/health`, {
-    method: "GET",
-    headers,
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(
-      "Get actual portfolio health failed:",
-      response.status,
-      errorText,
-    );
-    throw new Error(
-      `Failed to get actual portfolio health (${response.status}): ${errorText}`,
-    );
-  }
-
-  return response.json();
+export function createHealthReader(headers = getAuthHeaders, request: typeof fetch = fetch, timeoutMs = 12000) {
+  return (signal?: AbortSignal): Promise<ActualPortfolioHealthResponse> =>
+    boundedRequest(async activeSignal => {
+      const authHeaders = await headers();
+      activeSignal.throwIfAborted();
+      const body = await checkedJson(await request(`${API_BASE_URL}/holdings/health`, {
+        method: "GET", headers: authHeaders, signal: activeSignal,
+      }));
+      if (!body || typeof body !== "object" || !("available" in body) || typeof body.available !== "boolean" ||
+          !("health" in body) || !("basis" in body) || body.basis !== "cost_basis") {
+        throw new Error("The health response was incomplete. Please retry.");
+      }
+      if (body.available) {
+        const health = body.health as Plan["health"];
+        const scores = health?.breakdown;
+        if (!health || typeof health.score !== "number" || !Number.isFinite(health.score) ||
+            !Array.isArray(health.strengths) || !health.strengths.every(s => typeof s === "string") ||
+            !Array.isArray(health.warnings) || !health.warnings.every(s => typeof s === "string") ||
+            !scores || !["diversification", "risk_alignment", "growth_potential", "crypto_exposure", "concentration"]
+              .every(key => typeof scores[key as keyof typeof scores] === "number" && Number.isFinite(scores[key as keyof typeof scores]))) {
+          throw new Error("The health response was incomplete. Please retry.");
+        }
+      } else if (body.health !== null || !("reason" in body) || typeof body.reason !== "string") {
+        throw new Error("The health response was incomplete. Please retry.");
+      }
+      return body as ActualPortfolioHealthResponse;
+    }, signal, timeoutMs);
 }
+export const getMyPortfolioHealth = createHealthReader();

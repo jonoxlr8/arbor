@@ -1,8 +1,9 @@
 from pydantic import BaseModel
+from app.schemas.validation import Money, Years, AnnualReturn
 
 
 class ProjectionRequest(BaseModel):
-    current_value: float
-    monthly_investment: float
-    years: int
-    annual_return: float = 0.08
+    current_value: Money
+    monthly_investment: Money
+    years: Years
+    annual_return: AnnualReturn = 0.08

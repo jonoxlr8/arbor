@@ -28,7 +28,7 @@ def calculate_risk_score(profile):
     elif risk_tolerance == "aggressive":
         return 70 + horizon_score
 
-    return horizon_score
+    raise ValueError("Choose Conservative, Balanced, or Aggressive")
 
 
 def classify_risk(score):

@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from app.auth import get_current_user_id
 from app.database import get_authenticated_client
 from app.schemas.profile import ProfileCreate
+from app.schemas.validation import RISK_CATEGORIES
 from app.schemas.projection import ProjectionRequest
 from app.services.arbor.insights import PortfolioInsights
 from app.services.investment_plan_service import build_investment_plan
@@ -42,6 +43,15 @@ def get_my_profile(
 
     saved_profile = response.data[0]
 
+    # Read-only compatibility: preserve the old preference and explicitly show
+    # its saved classification. No database write or silent risk migration.
+    legacy_growth = saved_profile["risk_tolerance"] == "Growth"
+    calculation_risk = saved_profile["risk_tolerance"]
+    if legacy_growth:
+        calculation_risk = saved_profile.get("risk_level", "Conservative")
+        if calculation_risk not in RISK_CATEGORIES:
+            calculation_risk = "Conservative"  # Historical Growth fallback.
+
     profile = ProfileCreate(
         full_name=saved_profile["full_name"],
         country=saved_profile["country"],
@@ -49,7 +59,7 @@ def get_my_profile(
         investment_horizon=saved_profile["investment_horizon"],
         monthly_investment=saved_profile["monthly_investment"],
         current_portfolio_value=saved_profile["current_portfolio_value"],
-        risk_tolerance=saved_profile["risk_tolerance"],
+        risk_tolerance=calculation_risk,
         risk_score=saved_profile.get("risk_score"),
         currency=saved_profile.get("currency", "USD"),
     )
@@ -67,8 +77,15 @@ def get_my_profile(
 
     return {
         "message": "Profile loaded successfully",
+        "profile_warning": (
+            f"Your saved Growth preference is no longer supported. This plan shows its "
+            f"previous {calculation_risk} classification. Choose a supported risk "
+            f"category in Edit Profile to confirm your preference."
+            if legacy_growth else None
+        ),
         "profile": {
             **plan.profile_data,
+            "risk_tolerance": saved_profile["risk_tolerance"],
             "goal_target": plan.profile_data.get("goal_target"),
         },
         "portfolio": plan.portfolio,
