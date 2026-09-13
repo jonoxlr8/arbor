@@ -1,6 +1,5 @@
 from app.schemas.profile import ProfileCreate
 from app.services.explanation_engine import generate_explanation
-from app.services.portfolio_engine import get_portfolio_recommendation
 
 
 def make_profile(risk):
@@ -17,7 +16,10 @@ def make_profile(risk):
 
 
 def get_portfolio(risk):
-    return get_portfolio_recommendation(risk)
+    # Explanation fixtures, not assertions about live production allocations.
+    weights = {"Conservative": [70, 30], "Balanced": [50, 50], "Aggressive": [30, 70]}[risk]
+    return [{"ticker": ticker, "asset_name": ticker, "allocation": weight}
+            for ticker, weight in zip(["VOO", "QQQM"], weights)]
 
 
 def test_conservative_explanation():

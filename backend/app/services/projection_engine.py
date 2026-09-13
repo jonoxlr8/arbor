@@ -38,4 +38,6 @@ def calculate_required_monthly_investment(current_value, goal_target, years, ann
                                years=years, annual_return=annual_return)
     growth, annuity = _growth_factors(inputs.years * 12, inputs.annual_return)
     gap = max(goal - inputs.current_value * growth, 0)
-    return round(gap / annuity, 2)
+    # Do not round a positive requirement down to zero or below the goal.
+    # Preserve the unrounded formula until the final actionable cent amount.
+    return math.ceil((gap / annuity) * 100) / 100

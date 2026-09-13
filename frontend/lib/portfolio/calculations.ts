@@ -206,7 +206,7 @@ export function getPortfolioAlignmentInterpretation(
       `Your portfolio is more heavily weighted toward ${describeAllocation(
         overAllocated,
         (comparison) =>
-          `${comparison.ticker} (${comparison.difference.toFixed(1)}% above target)`,
+          `${comparison.ticker} (${comparison.difference.toFixed(1)} percentage points above target)`,
       )}.`,
     );
   }
@@ -216,7 +216,7 @@ export function getPortfolioAlignmentInterpretation(
       `It has less in ${describeAllocation(
         underAllocated,
         (comparison) =>
-          `${comparison.ticker} (${Math.abs(comparison.difference).toFixed(1)}% below target)`,
+          `${comparison.ticker} (${Math.abs(comparison.difference).toFixed(1)} percentage points below target)`,
       )}.`,
     );
   }

@@ -109,11 +109,11 @@ export default function WealthJourneyCard({
 
         <div>
           <p className="text-sm text-emerald-200">
-            Required Monthly Investment
+            Modeled monthly contribution
           </p>
 
           <p className="mt-2 text-3xl font-bold">
-            {formatCurrency(Math.round(requiredMonthlyInvestment))}
+            {formatCurrency(Math.ceil(requiredMonthlyInvestment))}
           </p>
         </div>
       </div>

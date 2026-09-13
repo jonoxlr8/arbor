@@ -19,7 +19,7 @@ export default function AssetCard({ asset }: AssetCardProps) {
 
   const whyChosen =
     assetReasons[asset.ticker] ??
-    "Selected to improve diversification and support your long-term investment strategy.";
+    "Included in the selected model portfolio. Arbor has limited explanatory information for this asset.";
 
   const role = assetRoles[asset.ticker] ?? "Portfolio Component";
 
@@ -39,7 +39,7 @@ export default function AssetCard({ asset }: AssetCardProps) {
 
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 {assetDescriptions[asset.ticker] ??
-                  "A diversified investment selected for your portfolio."}
+                  "An asset in your Arbor target portfolio."}
               </p>
             </div>
           </div>
@@ -62,7 +62,7 @@ export default function AssetCard({ asset }: AssetCardProps) {
 
       <div className="mt-5 rounded-xl bg-emerald-50 p-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-          Why Arbor chose this
+          Why this is in your Arbor plan
         </p>
 
         <p className="mt-2 leading-7 text-slate-700">{whyChosen}</p>

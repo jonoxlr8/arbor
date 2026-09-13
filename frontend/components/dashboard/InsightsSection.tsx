@@ -13,8 +13,8 @@ export default function InsightsSection({ plan }: InsightsSectionProps) {
     <section className="pt-12 pb-16">
       <SectionHeader
         eyebrow="Insights"
-        title="Arbor AI Insights"
-        description="Personalized observations and recommendations based on your investment profile."
+        title="Arbor plan insights"
+        description="Rule-based observations about your model plan and projection assumptions."
       />
 
       <div className="space-y-4">
@@ -74,8 +74,8 @@ export default function InsightsSection({ plan }: InsightsSectionProps) {
               style: "currency",
               currency: plan.profile.currency,
               maximumFractionDigits: 0,
-            }).format(plan.projection.required_monthly_investment)}{" "}
-            per month.
+            }).format(Math.ceil(plan.projection.required_monthly_investment))}{" "}
+            per month under the model assumptions. Affordability has not been assessed.
           </p>
         </div>
       </div>

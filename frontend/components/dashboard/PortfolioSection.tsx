@@ -16,24 +16,24 @@ export default function PortfolioSection({ plan }: PortfolioSectionProps) {
     <div className="mt-12">
       <SectionHeader
         eyebrow="Portfolio"
-        title="Your Portfolio"
-        description={`A globally diversified portfolio built for your ${plan.profile.risk_level?.toLowerCase() ?? "balanced"} investment strategy and ${plan.profile.investment_horizon}-year horizon.`}
+        title="Arbor target portfolio"
+        description={`A model portfolio selected using your ${plan.profile.risk_level?.toLowerCase() ?? "balanced"} risk category. Your goals and timeline inform projections, not separate target allocations.`}
       />
 
       <div className="mt-10">
         <h3 className="text-xl font-semibold text-slate-900">
-          How Your Money Is Allocated
+          Arbor target allocations
         </h3>
 
         <PortfolioChart portfolio={plan.portfolio} />
 
         <p className="mt-4 text-sm leading-6 text-slate-600">
-          Your portfolio combines diversified investments designed to balance
-          long-term growth with risk management
+          These are educational planning targets, not a record of investments you own
           {hasCrypto
-            ? " and includes a measured allocation to digital assets."
+            ? ". The targets include digital assets, which can be highly volatile."
             : "."}
         </p>
+        <p className="mt-3 text-sm leading-6 text-slate-600">Arbor does not purchase, custody or execute investments. What If, rebalancing and contribution previews are not orders. Recorded holdings do not automatically change these targets.</p>
       </div>
 
       <div className="mt-10">

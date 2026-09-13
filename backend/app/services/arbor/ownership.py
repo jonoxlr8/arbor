@@ -1,5 +1,26 @@
 from textwrap import dedent
 
+BETA_ROLES = {
+    "VOO": "broad U.S. large-company equity exposure through an S&P 500 fund",
+    "QQQM": "a Nasdaq-100 equity tilt, with more concentrated growth and technology exposure",
+    "SMH": "concentrated semiconductor-industry exposure",
+    "BTC": "Bitcoin digital-asset exposure, with substantial volatility risk",
+    "ETH": "Ethereum blockchain-asset exposure, with substantial volatility risk",
+}
+
+
+def recommended_ownership_response(target, profile):
+    ticker = target["ticker"]
+    role = BETA_ROLES.get(ticker)
+    if not role:
+        return f"{ticker} has a {target['allocation']:g}% target in your Arbor plan. I don't have a supported asset-role explanation for it. A target is not proof of ownership."
+    risk = profile.get("risk_level") or profile["risk_tolerance"]
+    return (f"## Why {ticker} is in your Arbor plan\n\n"
+            f"It provides {role}. Its recommended target is {target['allocation']:g}%.\n\n"
+            f"Your investor risk category is {risk}. This is separate from the asset's characteristics. "
+            "The asset comes from Arbor's model portfolio for that category, not an individual suitability assessment. "
+            "This explains a recommended target; it does not mean you actually own the asset.")
+
 
 def ownership_response(
     ticker,

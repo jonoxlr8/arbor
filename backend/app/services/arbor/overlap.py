@@ -1,5 +1,18 @@
 from app.services.arbor.knowledge.service import get_asset
 
+
+def qualitative_overlap_response(tickers):
+    pairs = {
+        frozenset(["VOO", "QQQM"]): "VOO provides broader U.S. large-company exposure; QQQM adds a Nasdaq-100 growth and technology tilt. Their equity exposures can overlap.",
+        frozenset(["QQQM", "SMH"]): "QQQM provides Nasdaq-100 exposure; SMH focuses on semiconductors. Combining them can increase technology-sector concentration.",
+        frozenset(["VOO", "SMH"]): "VOO provides broader U.S. large-company exposure; SMH concentrates on semiconductors. Their equity exposures can overlap.",
+        frozenset(["BTC", "ETH"]): "BTC and ETH are different digital assets, but both can fall during cryptocurrency market declines. Two assets do not establish independent risks.",
+    }
+    explanation = pairs.get(frozenset(tickers)) if len(tickers) == 2 else None
+    if not explanation:
+        return "I don't have an explicit overlap explanation for that pair. Try VOO and QQQM, QQQM and SMH, VOO and SMH, or BTC and ETH if they are in your Arbor targets."
+    return explanation + "\n\nThis is static, qualitative information about recommended targets—not actual ownership, live ETF constituent data or a measured overlap percentage."
+
 ETF_OVERLAP = {
     ("QQQM", "SMH"): [
         "NVDA",

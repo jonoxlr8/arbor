@@ -14,7 +14,7 @@ def test_zero_return_is_linear_and_inverse_is_consistent():
 @pytest.mark.parametrize("rate", [1e-16, 1e-12, -1e-16])
 def test_near_zero_is_stable(rate):
     assert calculate_projection(100, 10, 2, rate)["projected_value"] == pytest.approx(340, abs=.01)
-    assert calculate_required_monthly_investment(100, 1000, 1, rate) == 75
+    assert calculate_required_monthly_investment(100, 1000, 1, rate) == pytest.approx(75, abs=.01)
 
 
 def test_zero_contribution():
@@ -43,8 +43,15 @@ def test_required_contribution_reaches_goal_within_cent_rounding_precision(rate)
     goal = 100000
     amount = calculate_required_monthly_investment(1000, goal, 15, rate)
     value = calculate_projection(1000, amount, 15, rate)["projected_value"]
-    cent_rounding_effect = calculate_projection(0, .005, 15, rate)["projected_value"]
-    assert abs(value - goal) <= cent_rounding_effect + .02
+    cent_rounding_effect = calculate_projection(0, .01, 15, rate)["projected_value"]
+    assert goal <= value <= goal + cent_rounding_effect + .02
+
+
+@pytest.mark.parametrize("goal", [.01, .1, 1, 1000.001])
+def test_positive_requirement_rounds_up_and_reaches_goal(goal):
+    amount = calculate_required_monthly_investment(0, goal, 1)
+    assert amount > 0
+    assert calculate_projection(0, amount, 1)["projected_value"] >= goal
 
 
 @pytest.mark.parametrize("rate", [-1, 1])

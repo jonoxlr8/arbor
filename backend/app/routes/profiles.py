@@ -66,15 +66,6 @@ def get_my_profile(
 
     plan = build_investment_plan(profile)
 
-    PortfolioInsights(
-        {
-            "profile": plan.profile_data,
-            "portfolio": plan.portfolio,
-            "projection": plan.projection,
-            "health": plan.health,
-        }
-    ).generate()
-
     return {
         "message": "Profile loaded successfully",
         "profile_warning": (
@@ -159,15 +150,6 @@ def create_profile(
     access_token = authorization.split(" ", 1)[1]
 
     plan = build_investment_plan(profile)
-
-    PortfolioInsights(
-        {
-            "profile": plan.profile_data,
-            "portfolio": plan.portfolio,
-            "projection": plan.projection,
-            "health": plan.health,
-        }
-    ).generate()
 
     data = {
         **plan.profile_data,

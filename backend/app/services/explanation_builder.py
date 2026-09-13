@@ -21,7 +21,7 @@ def generate_summary(profile):
 
     return (
         f"Arbor recommends a {strategy} portfolio "
-        f"designed for a {horizon}-year investment horizon."
+        f"selected from its model portfolios using your risk category. Your {horizon}-year horizon informs projections, not separate target weights."
     )
 
 
@@ -47,8 +47,8 @@ def generate_strength(profile):
         )
 
     return (
-        f"With a {horizon}-year investment horizon, Arbor prioritizes "
-        "protecting capital while seeking reasonable growth opportunities."
+        f"A {horizon}-year horizon leaves limited time to manage market declines. "
+        "The selected model does not guarantee capital protection."
     )
 
 
@@ -121,8 +121,8 @@ def generate_outlook(profile):
         )
 
     return (
-        "Your conservative strategy prioritizes capital preservation and "
-        "reducing unnecessary volatility."
+        "Your conservative strategy uses Arbor's Conservative model. "
+        "Capital preservation is not guaranteed, particularly over short horizons."
     )
 
 
@@ -140,9 +140,8 @@ def generate_reasons(profile, portfolio):
 
     if horizon >= 15:
         reasons.append(
-            f"Your {horizon}-year investment horizon gives Arbor more flexibility "
-            "to use growth assets while allowing time to recover from short-term "
-            "market volatility."
+            f"Your {horizon}-year horizon gives the model more time to compound; "
+            "it does not guarantee recovery from losses or change target weights."
         )
 
     elif horizon >= 10:
@@ -153,14 +152,14 @@ def generate_reasons(profile, portfolio):
 
     elif horizon >= 5:
         reasons.append(
-            f"With a {horizon}-year horizon, Arbor balances growth opportunities "
-            "with greater attention to short-term volatility."
+            f"Your {horizon}-year horizon informs the projection. The selected "
+            "risk-category model retains its target weights."
         )
 
     else:
         reasons.append(
-            f"Because your investment horizon is {horizon} years, Arbor places "
-            "greater emphasis on managing short-term investment risk."
+            f"Your {horizon}-year horizon is short for long-term investing. "
+            "It does not automatically change the model portfolio's allocations."
         )
 
     # --------------------------------

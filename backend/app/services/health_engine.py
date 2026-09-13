@@ -37,6 +37,9 @@ def calculate_health_score(plan):
 
     strengths = []
     warnings = []
+    recognized = {"VOO", "VT", "VTI", "QQQM", "SMH", "BTC", "ETH"}
+    if any(item.get("ticker", "").strip().upper() not in recognized for item in portfolio):
+        warnings.append("Some assets are not recognized by Arbor's limited exposure rules; this score does not establish diversification or suitability")
 
     # --------------------------------
     # 1. Diversification
@@ -44,11 +47,11 @@ def calculate_health_score(plan):
 
     if holding_count >= 5:
         diversification_score = 2
-        strengths.append("Diversified portfolio")
+        strengths.append("Five or more recorded positions; this alone does not establish diversification")
 
     elif holding_count >= 3:
         diversification_score = 1.5
-        strengths.append("Portfolio has a good level of diversification")
+        strengths.append("Multiple recorded positions; underlying exposures may overlap")
 
     elif holding_count >= 2:
         diversification_score = 1
@@ -177,7 +180,7 @@ def calculate_health_score(plan):
         concentration_score = 2
 
         if largest_holding > 0:
-            strengths.append("No excessive concentration in a single investment")
+            strengths.append("No single-position concentration flag under Arbor's limited rules")
 
     # --------------------------------
     # Calculate total score

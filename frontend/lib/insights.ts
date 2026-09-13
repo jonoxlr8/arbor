@@ -6,20 +6,20 @@ export function getInsights(plan: Plan) {
 
   if (risk.includes("aggressive")) {
     return {
-      strength: `Your ${years}-year investment horizon gives your portfolio plenty of time to recover from market downturns and benefit from long-term growth.`,
+      strength: `Your ${years}-year projection illustrates a growth-focused model. A longer horizon does not guarantee recovery from losses; short horizons leave less time to manage market declines.`,
 
       recommendation:
         "Stay invested consistently and avoid reacting to short-term market volatility.",
 
       outlook:
-        "Historically, investors with long investment horizons have been rewarded for remaining invested through market cycles.",
+        "Growth-focused assets can experience substantial losses. The modeled return is an assumption, not a forecast for these assets.",
     };
   }
 
   if (risk.includes("balanced")) {
     return {
       strength:
-        "Your portfolio balances long-term growth with diversification to help reduce unnecessary risk.",
+        "Your Arbor targets use the Balanced model portfolio; this is not an assessment of your actual holdings.",
 
       recommendation:
         "Continue investing regularly and rebalance your portfolio only when your allocation changes significantly.",
@@ -31,12 +31,12 @@ export function getInsights(plan: Plan) {
 
   return {
     strength:
-      "Your portfolio prioritizes stability while still participating in long-term market growth.",
+      "Your Arbor targets use the Conservative model portfolio; capital losses are still possible.",
 
     recommendation:
       "Continue investing consistently rather than trying to time the market.",
 
     outlook:
-      "A conservative portfolio can produce steady long-term returns with lower volatility.",
+      "Conservative is a model category, not a guarantee of capital protection or steady returns.",
   };
 }

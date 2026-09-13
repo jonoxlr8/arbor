@@ -43,7 +43,7 @@ export default function ResultsDashboard({
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-10">
       <div className="mx-auto max-w-5xl">
-        <Card>
+        <Card compactOnMobile>
           <div className="flex justify-end">
             <button
               type="button"

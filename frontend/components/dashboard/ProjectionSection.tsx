@@ -73,7 +73,7 @@ export default function ProjectionSection({
               {(projection.assumed_return * 100).toFixed(0)}%
             </p>
 
-            <p className="text-xs uppercase tracking-wide opacity-80">Return</p>
+            <p className="text-xs uppercase tracking-wide opacity-80">Assumed annual return</p>
           </div>
         </div>
       </div>
@@ -93,7 +93,7 @@ export default function ProjectionSection({
           </div>
 
           <div>
-            <p className="text-sm text-slate-500">Market Growth</p>
+            <p className="text-sm text-slate-500">Illustrative growth</p>
 
             <p className="mt-2 text-2xl font-bold text-emerald-600">
               +{formatCurrency(investmentGrowth)}
@@ -127,8 +127,7 @@ export default function ProjectionSection({
       </div>
 
       <p className="mt-6 mb-6 text-sm text-slate-500">
-        Projections are estimates based on historical assumptions and are not
-        guaranteed.
+        Illustrations use an assumed nominal annual return for modeling, compounded monthly with end-of-month contributions. They exclude fees, taxes, inflation and currency movements. Returns are not guaranteed.
       </p>
     </div>
   );

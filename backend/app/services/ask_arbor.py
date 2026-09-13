@@ -1,4 +1,5 @@
 import re
+from app.services.beta_explanations import explain_plan
 
 from app.services.arbor.router import route_intent
 from app.services.arbor.portfolio import portfolio_asset_response
@@ -16,6 +17,11 @@ from app.services.arbor.currency_formatter import format_currency
 
 
 def ask_arbor(question: str, plan=None):
+    # The legacy advisor/Health templates are deliberately not reachable in beta.
+    return explain_plan(question, plan)
+
+
+def legacy_ask_arbor(question: str, plan=None):
 
     question = question.lower()
 

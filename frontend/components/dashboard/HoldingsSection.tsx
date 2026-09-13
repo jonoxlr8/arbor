@@ -279,8 +279,8 @@ export default function HoldingsSection({
   };
 
   return (
-    <section className="mt-8">
-      <Card>
+    <section className="mt-8 min-w-0 [overflow-wrap:anywhere] [&_input]:min-w-0 [&_input]:max-w-full [&_select]:min-w-0 [&_select]:max-w-full">
+      <Card compactOnMobile>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-2xl font-bold text-slate-900">My Portfolio</h2>
@@ -319,7 +319,7 @@ export default function HoldingsSection({
         </div>
 
         {showForm && (
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-6">
+          <div className="mt-6 min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-6">
             <h3 className="text-lg font-semibold text-slate-900">
               Add an Investment
             </h3>
@@ -328,7 +328,7 @@ export default function HoldingsSection({
               Enter the investment you currently own.
             </p>
 
-            <div className="mt-5 grid gap-5 md:grid-cols-2">
+            <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Ticker
@@ -435,7 +435,7 @@ export default function HoldingsSection({
               </p>
             )}
 
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <button
                 type="button"
                 onClick={handleAddHolding}
@@ -511,7 +511,7 @@ export default function HoldingsSection({
                   key={comparison.ticker}
                   className="rounded-xl border border-slate-200 bg-slate-50 p-4"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="font-bold text-slate-900">
                         {comparison.ticker}
@@ -529,7 +529,7 @@ export default function HoldingsSection({
                     </div>
                   </div>
 
-                  <div className="mt-3 flex justify-between text-sm">
+                  <div className="mt-3 flex justify-between gap-3 text-sm">
                     <span className="text-slate-600">Arbor target</span>
 
                     <span className="font-medium text-slate-900">
@@ -537,7 +537,7 @@ export default function HoldingsSection({
                     </span>
                   </div>
 
-                  <div className="mt-1 flex justify-between text-sm">
+                  <div className="mt-1 flex justify-between gap-3 text-sm">
                     <span className="text-slate-600">Difference</span>
 
                     <span className="font-semibold text-slate-900">
@@ -546,7 +546,7 @@ export default function HoldingsSection({
                     </span>
                   </div>
 
-                  <div className="mt-1 flex justify-between text-sm">
+                  <div className="mt-1 flex justify-between gap-3 text-sm">
                     <span className="text-slate-600">Alignment</span>
 
                     <span className="font-semibold text-slate-900">
@@ -621,7 +621,7 @@ export default function HoldingsSection({
               )}
               {contribution !== "" && contributionPreview.available && (
                 <>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {contributionPreview.allocations.map((allocation) => (
                       <div key={allocation.ticker} className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
                         <p className="font-bold text-slate-900">{allocation.ticker}</p>
@@ -656,10 +656,10 @@ export default function HoldingsSection({
             {portfolioSummary.holdings.map((holding) => (
               <div
                 key={holding.id}
-                className="rounded-xl border border-slate-200 bg-white p-4"
+                className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 sm:p-4"
               >
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 sm:flex-1">
                     <p className="font-bold text-slate-900">{holding.ticker}</p>
 
                     <p className="text-sm text-slate-600">
@@ -667,8 +667,8 @@ export default function HoldingsSection({
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
+                  <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-4">
+                    <div className="col-span-2 min-w-0 sm:text-right">
                       <p className="font-semibold text-slate-900">
                         {holding.quantity}
                       </p>
@@ -679,7 +679,7 @@ export default function HoldingsSection({
                     <button
                       type="button"
                       onClick={() => startEditingHolding(holding)}
-                      className="text-sm font-medium text-slate-600 hover:text-slate-900"
+                      className="min-h-11 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-600 hover:text-slate-900 sm:border-0 sm:px-0"
                     >
                       Edit
                     </button>
@@ -687,7 +687,7 @@ export default function HoldingsSection({
                     <button
                       type="button"
                       onClick={() => handleDeleteHolding(holding.id)}
-                      className="text-sm font-medium text-red-600 hover:text-red-700"
+                      className="min-h-11 rounded-lg border border-red-200 px-3 text-sm font-medium text-red-600 hover:text-red-700 sm:border-0 sm:px-0"
                     >
                       Delete
                     </button>
@@ -696,7 +696,7 @@ export default function HoldingsSection({
 
                 {editingHoldingId === holding.id && (
                   <div className="mt-5 border-t border-slate-200 pt-5">
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div>
                         <label className="text-sm font-medium text-slate-700">
                           Ticker
@@ -792,7 +792,7 @@ export default function HoldingsSection({
                       </div>
                     </div>
 
-                    <div className="mt-5 flex gap-3">
+                    <div className="mt-5 flex flex-col gap-3 sm:flex-row">
                       <button
                         type="button"
                         onClick={handleSaveHolding}

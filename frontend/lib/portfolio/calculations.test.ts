@@ -113,11 +113,11 @@ test("interpretation treats exactly plus and minus five points as aligned", () =
 test("interpretation includes gaps just beyond five points", () => {
   assert.equal(
     getPortfolioAlignmentInterpretation([comparison("QQQM", 5.01)]),
-    "Your portfolio is more heavily weighted toward QQQM (5.0% above target).",
+    "Your portfolio is more heavily weighted toward QQQM (5.0 percentage points above target).",
   );
   assert.equal(
     getPortfolioAlignmentInterpretation([comparison("VOO", -5.01)]),
-    "It has less in VOO (5.0% below target).",
+    "It has less in VOO (5.0 percentage points below target).",
   );
 });
 
@@ -183,7 +183,7 @@ test("explains meaningful overweights and missing target holdings", () => {
 
   assert.equal(
     getPortfolioAlignmentInterpretation(comparisons),
-    "Your portfolio is more heavily weighted toward QQQM (19.0% above target) and BTC (6.0% above target). It does not currently include VOO (30.0% target).",
+    "Your portfolio is more heavily weighted toward QQQM (19.0 percentage points above target) and BTC (6.0 percentage points above target). It does not currently include VOO (30.0% target).",
   );
 });
 
@@ -200,7 +200,7 @@ test("explains a meaningful under-allocation that is not a missing holding", () 
 
   assert.equal(
     getPortfolioAlignmentInterpretation(comparisons),
-    "It has less in VOO (20.0% below target).",
+    "It has less in VOO (20.0 percentage points below target).",
   );
 });
 

@@ -103,9 +103,7 @@ export default function HealthSection({
             </h2>
 
             <p className="mt-3 max-w-2xl leading-7 text-slate-600">
-              Arbor evaluates your portfolio based on diversification, alignment
-              with your risk profile, long-term growth potential, and overall
-              investment balance.
+              A heuristic cost-basis check using position sizes and the assets Arbor recognizes—not a measure of true diversification or personal suitability. Unknown assets and underlying fund overlap may not be assessed.
             </p>
 
             {actualHealth?.available && (
@@ -242,7 +240,7 @@ export default function HealthSection({
             <span className="font-semibold text-emerald-700">
               {scoreLabel.toLowerCase()}
             </span>{" "}
-            for your long-term investment strategy. Continue reviewing your
+            under this limited check, not as a suitability verdict. Continue reviewing your
             portfolio as your goals, timeline, and financial situation change.
           </p>
         </div>

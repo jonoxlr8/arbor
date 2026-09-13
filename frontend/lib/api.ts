@@ -21,6 +21,7 @@ export type CreateProfileRequest = {
 async function checkedJson(response: Response): Promise<unknown> {
   const body: unknown = await response.json();
   if (response.ok) return body;
+  if (response.status === 503) throw new Error("Your Arbor plan is temporarily unavailable. Please try again later.");
   if (typeof body === "object" && body !== null && "detail" in body && Array.isArray(body.detail)) {
     const messages = body.detail.map((item: { loc?: string[]; msg?: string }) => {
       const field = item.loc?.at(-1) ?? "Input";
@@ -113,30 +114,24 @@ export type ArborChatResponse = {
   reply: string;
 };
 
-export async function askArbor(
-  message: string,
-  plan: Plan,
-): Promise<ArborChatResponse> {
-  const authHeaders = await getAuthHeaders();
-
-  const response = await fetch(`${API_BASE_URL}/chat`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders,
-    },
-    body: JSON.stringify({
-      message,
-      plan,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to get Arbor response");
-  }
-
-  return response.json();
+export function createChatReader(headers = getAuthHeaders, request: typeof fetch = fetch, timeoutMs = 12000) {
+  return (message: string, signal?: AbortSignal): Promise<ArborChatResponse> => boundedRequest(async activeSignal => {
+    if (!message.trim() || message.length > 1000) throw new Error("Please enter a question of at most 1,000 characters.");
+    const authHeaders = await headers();
+    activeSignal.throwIfAborted();
+    const response = await request(`${API_BASE_URL}/chat`, {
+      method: "POST", headers: { ...authHeaders, "Content-Type": "application/json" },
+      body: JSON.stringify({ message }), signal: activeSignal,
+    });
+    if (!response.ok) throw new Error("We couldn’t explain your plan right now. Please retry.");
+    const body: unknown = await response.json();
+    if (!body || typeof body !== "object" || !("reply" in body) || typeof body.reply !== "string" || !body.reply.trim() || body.reply.length > 12000) {
+      throw new Error("The explanation was incomplete. Please retry.");
+    }
+    return { reply: body.reply };
+  }, signal, timeoutMs);
 }
+export const askArbor = createChatReader();
 
 export class ProfileApiError extends Error {
   constructor(public status: number, message: string) { super(message); }

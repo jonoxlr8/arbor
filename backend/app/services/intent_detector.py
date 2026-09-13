@@ -2,6 +2,28 @@ from app.services.intents import INTENTS
 import re
 
 
+def detect_beta_intent(question: str):
+    """Small allowlist. Unsupported topics take precedence over plan keywords."""
+    text = " ".join(question.lower().split())
+    if re.search(r"\b(tax\w*|broker\w*|buy\w*|sell\w*|trad\w*|execut\w*|price\w*|news|today|current market|live|constituent\w*)\b", text):
+        return "unsupported"
+    if re.search(r"\b(health|healthy)\b", text):
+        return "health_boundary"
+    if re.search(r"\b(actual|recorded|rebalance|rebalancing|concentrat\w*)\b", text):
+        return "unsupported"
+    if re.fullmatch(r"(hi|hello|hey|thanks|thank you)[!. ]*", text):
+        return "greeting"
+    if re.search(r"\b(overlap|both)\b", text):
+        return "overlap"
+    if re.search(r"\b(projection\w*|modeled|modelled|million\w*|assumption\w*|assumed|goal|years?)\b|on track", text):
+        return "projection"
+    if re.search(r"\b(why|role|explain|included)\b|what is", text):
+        return "asset"
+    if re.search(r"\b(target\w*|allocation\w*)\b", text):
+        return "targets"
+    return "unsupported"
+
+
 def detect_intent(question: str):
 
     question = question.lower().strip()
@@ -80,7 +102,7 @@ def detect_intent(question: str):
         keyword in question for keyword in INTENTS["semiconductors"]
     )
     greeting_intent = any(
-        word in question
+        re.search(r"\b" + re.escape(word) + r"\b", question)
         for word in [
             "hi",
             "hello",

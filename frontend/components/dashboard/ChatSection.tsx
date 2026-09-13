@@ -11,8 +11,8 @@ export default function ChatSection({ plan }: ChatSectionProps) {
     <section className="pt-8 pb-12">
       <SectionHeader
         eyebrow="Assistant"
-        title="Ask Arbor"
-        description="Get personalized answers about your portfolio, investing, and long-term strategy."
+        title="Explain my Arbor plan"
+        description="Rule-based explanations of your recommended targets and saved projection assumptions—not actual-portfolio or trading advice."
       />
 
       <ArborChat plan={plan} />

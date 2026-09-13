@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { chatPlanKey, createChatSession } from "@/lib/chatSession";
 import { askArbor } from "@/lib/api";
 import type { Plan } from "@/lib/types/plan";
 
@@ -142,7 +143,7 @@ function ArborMessage({ text }: { text: string }) {
         <div>
           <h4 className="font-semibold text-slate-900">Arbor</h4>
 
-          <p className="text-xs text-slate-500">AI Investment Companion</p>
+          <p className="text-xs text-slate-500">Rule-based plan explanation</p>
         </div>
       </div>
 
@@ -152,50 +153,35 @@ function ArborMessage({ text }: { text: string }) {
 }
 
 export default function ArborChat({ plan }: ArborChatProps) {
+  return <PlanChat key={chatPlanKey(plan)} plan={plan} />;
+}
+
+function PlanChat({ plan }: ArborChatProps) {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const session = useRef<ReturnType<typeof createChatSession> | null>(null);
+  const busy = useRef(false);
+  useEffect(() => {
+    const current = createChatSession(askArbor, state => {
+      busy.current = state.status === "loading";
+      setLoading(busy.current);
+      setError(state.status === "error" ? "We couldn’t explain your plan right now. Please try again." : "");
+      if (state.status === "ready") {
+        setMessages(previous => [...previous, { role: "user", text: state.data.question }, { role: "arbor", text: state.data.reply }]);
+        setQuestion("");
+      }
+    });
+    session.current = current;
+    return () => { current.dispose(); session.current = null; };
+  }, []);
 
   const sendMessage = async (prompt: string) => {
     const trimmedPrompt = prompt.trim();
 
-    if (!trimmedPrompt || loading) return;
-
-    setLoading(true);
-
-    try {
-      const result = await askArbor(trimmedPrompt, plan);
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "user",
-          text: trimmedPrompt,
-        },
-        {
-          role: "arbor",
-          text: result.reply,
-        },
-      ]);
-
-      setQuestion("");
-    } catch (error) {
-      console.error("Ask Arbor error:", error);
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "user",
-          text: trimmedPrompt,
-        },
-        {
-          role: "arbor",
-          text: "Sorry, I couldn't process that question right now. Please try again.",
-        },
-      ]);
-    } finally {
-      setLoading(false);
-    }
+    if (!trimmedPrompt || busy.current) return;
+    await session.current?.send(trimmedPrompt);
   };
 
   const handleAsk = async () => {
@@ -207,10 +193,10 @@ export default function ArborChat({ plan }: ArborChatProps) {
   };
 
   const prompts = [
-    "How am I doing?",
-    "Am I on track?",
-    "Is my portfolio too concentrated?",
-    "What should I do next?",
+    "Explain my Arbor plan",
+    "What are my target allocations?",
+    "What are my projection assumptions?",
+    "Does my projection reach my goal?",
   ];
 
   return (
@@ -219,8 +205,7 @@ export default function ArborChat({ plan }: ArborChatProps) {
       <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5">
         <p className="leading-7 text-slate-700">
           Hi {plan?.profile?.full_name || "there"}, I&apos;m Arbor 🌳. I can
-          help explain your portfolio, answer investing questions, and help you
-          stay focused on your long-term wealth goals.
+          explain your recommended plan and its modeled projections using a limited set of rule-based answers. I don’t analyze your actual holdings, live markets, taxes or trades here. Each question is answered independently.
         </p>
       </div>
 
@@ -259,7 +244,9 @@ export default function ArborChat({ plan }: ArborChatProps) {
 
       {/* Input */}
       <div className="mt-6">
+        {error && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-red-800">{error}</p>}
         <textarea
+          maxLength={1000}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           onKeyDown={(e) => {
@@ -270,7 +257,7 @@ export default function ArborChat({ plan }: ArborChatProps) {
           }}
           rows={3}
           disabled={loading}
-          placeholder="Ask anything about your investment plan..."
+          placeholder="Ask about Arbor targets, asset roles or projection assumptions..."
           className="
             w-full
             resize-none
@@ -316,7 +303,7 @@ export default function ArborChat({ plan }: ArborChatProps) {
             }
           `}
         >
-          {loading ? "Arbor is thinking..." : "Ask Arbor 🌳"}
+          {loading ? "Loading explanation..." : "Explain my Arbor plan"}
         </button>
 
         {/* Conversation */}

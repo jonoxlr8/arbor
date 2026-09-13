@@ -15,6 +15,7 @@ import SectionHeader from "@/components/dashboard/SectionHeader";
 
 import type { Plan } from "@/lib/types/plan";
 import { getProjection } from "@/lib/api";
+import { formatAxisTick } from "@/lib/axisFormat";
 import { createProjectionScenario, scenarioControls, type ProjectionResult } from "@/lib/projectionScenario";
 import { scenarioKey, type RequestState } from "@/lib/dashboardConsistency";
 
@@ -124,7 +125,7 @@ function ScenarioView({ plan }: WhatIfSectionProps) {
           <div className="flex flex-col gap-3 rounded-2xl bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-slate-900">
-                🎯 Arbor&apos;s recommended contribution
+                🎯 Modeled contribution
               </p>
 
               <p className="mt-1 text-sm text-slate-500">
@@ -282,12 +283,7 @@ function ScenarioView({ plan }: WhatIfSectionProps) {
                   />
 
                   <YAxis
-                    tickFormatter={(value) =>
-                      new Intl.NumberFormat("en-US", {
-                        notation: "compact",
-                        maximumFractionDigits: 0,
-                      }).format(value)
-                    }
+                    tickFormatter={formatAxisTick}
                     tickLine={false}
                     axisLine={false}
                     tick={{ fontSize: 12 }}
@@ -449,7 +445,7 @@ function ScenarioView({ plan }: WhatIfSectionProps) {
                 reachesGoal ? "text-emerald-800" : "text-purple-800"
               }`}
             >
-              {reachesGoal ? "🎯 Goal reached" : "🎯 Goal progress"}
+              {reachesGoal ? "🎯 Projected goal reached" : "🎯 Projected goal progress"}
             </p>
 
             <p className="mt-2 text-sm leading-6 text-slate-700">
