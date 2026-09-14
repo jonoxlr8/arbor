@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Card from "@/components/Card";
 import HeroSection from "@/components/dashboard/HeroSection";
 import PortfolioSection from "@/components/dashboard/PortfolioSection";
@@ -13,8 +13,10 @@ import EditProfileForm from "@/components/EditProfileForm";
 import type { Plan } from "@/lib/types/plan";
 import { createLatestRequest, healthDependency, scenarioKey, type RequestState } from "@/lib/dashboardConsistency";
 import HoldingsSection from "@/components/dashboard/HoldingsSection";
+import { createHoldingsRecovery, holdingsHealthKey, initialHoldingsState, type HoldingsState } from "@/lib/holdingsRecovery";
 import {
   getMyPortfolioHealth,
+  getMyHoldings,
   type ActualPortfolioHealthResponse,
 } from "@/lib/api";
 
@@ -29,16 +31,28 @@ export default function ResultsDashboard({
   const [plan, setPlan] = useState(initialPlan);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [healthState, setHealthState] =
-    useState<RequestState<ActualPortfolioHealthResponse>>({ status: "loading", data: null });
+  const [holdingsState, setHoldingsState] = useState<HoldingsState>(initialHoldingsState);
+  const holdingsRecovery = useRef<ReturnType<typeof createHoldingsRecovery> | null>(null);
+  const [healthResult, setHealthResult] = useState<{ key: string; state: RequestState<ActualPortfolioHealthResponse> } | null>(null);
   const [healthRefreshKey, setHealthRefreshKey] = useState(0);
   const riskDependency = healthDependency(plan);
+  const healthKey = holdingsHealthKey(holdingsState, riskDependency);
+  const healthState = healthKey !== null && healthResult?.key === `${healthKey}:${healthRefreshKey}` ? healthResult.state : null;
 
   useEffect(() => {
-    const request = createLatestRequest(setHealthState);
+    const recovery = createHoldingsRecovery(getMyHoldings, setHoldingsState);
+    holdingsRecovery.current = recovery;
+    void recovery.load();
+    return () => { recovery.dispose(); holdingsRecovery.current = null; };
+  }, []);
+
+  useEffect(() => {
+    if (healthKey === null) return;
+    const key = `${healthKey}:${healthRefreshKey}`;
+    const request = createLatestRequest<ActualPortfolioHealthResponse>(state => setHealthResult({ key, state }));
     void request.run(signal => getMyPortfolioHealth(signal));
     return () => request.dispose();
-  }, [healthRefreshKey, riskDependency]);
+  }, [healthRefreshKey, healthKey]);
 
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-10">
@@ -78,7 +92,9 @@ export default function ResultsDashboard({
 
             <HoldingsSection
               plan={plan}
-              onHoldingsChanged={() => setHealthRefreshKey((key) => key + 1)}
+              holdingsState={holdingsState}
+              onRetry={() => { void holdingsRecovery.current?.load(); }}
+              onMutate={work => holdingsRecovery.current?.mutate(work) ?? Promise.resolve(false)}
             />
 
             <ProjectionSection
@@ -89,11 +105,16 @@ export default function ResultsDashboard({
 
             <WhatIfSection plan={plan} />
 
-            <HealthSection
-              actualHealth={healthState.status === "ready" ? healthState.data : null}
-              error={healthState.status === "error" ? healthState.error : undefined}
+            {healthKey === null ? (
+              <section className="mt-8 rounded-xl bg-slate-50 p-4 text-sm text-slate-600" aria-live="polite">
+                <h2 className="font-semibold text-slate-900">Portfolio Health</h2>
+                <p className="mt-2">{holdingsState.status === "error" ? "Health is unavailable until saved holdings are reloaded. Use Retry in My Portfolio." : "Health will update after your saved holdings finish loading."}</p>
+              </section>
+            ) : <HealthSection
+              actualHealth={healthState?.status === "ready" ? healthState.data : null}
+              error={healthState?.status === "error" ? healthState.error : undefined}
               onRetry={() => setHealthRefreshKey(key => key + 1)}
-            />
+            />}
 
             <InsightsSection plan={plan} />
 

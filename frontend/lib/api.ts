@@ -2,6 +2,7 @@ import type { Plan } from "@/lib/types/plan";
 import { getAccessToken } from "./auth";
 import { InvalidSessionError, withDeadline } from "./accountRecovery";
 import { boundedRequest } from "./dashboardConsistency";
+import { HoldingsRequestError, parseHolding, parseHoldingsResponse } from "./holdingsRecovery";
 import { FIELD_LABELS } from "./profileValidation";
 import type { ProjectionInput, ProjectionResult } from "./projectionScenario";
 
@@ -215,113 +216,57 @@ export type Holding = {
   asset_type: string;
   quantity: number;
   average_cost: number;
-  currency: string;
+  currency?: string | null;
 };
 
-export async function getMyHoldings(): Promise<Holding[]> {
-  const headers = await getAuthHeaders();
+export type HoldingInput = {
+  ticker: string; asset_name: string; asset_type: string;
+  quantity: number; average_cost: number; currency: string;
+};
 
-  const response = await fetch(`${API_BASE_URL}/holdings`, {
-    method: "GET",
-    headers,
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Get holdings failed:", response.status, errorText);
-    throw new Error(
-      `Failed to get holdings (${response.status}): ${errorText}`,
-    );
+export function createHoldingsApi(headers = getAuthHeaders, request: typeof fetch = fetch, timeoutMs = 12000) {
+  async function call<T>(method: string, path: string, parse: (body: unknown) => T, input?: HoldingInput, signal?: AbortSignal): Promise<T> {
+    try {
+      return await boundedRequest(async activeSignal => {
+        const authHeaders = await headers();
+        activeSignal.throwIfAborted();
+        const response = await request(`${API_BASE_URL}/holdings${path}`, {
+          method, headers: { ...authHeaders, "Content-Type": "application/json" },
+          ...(input ? { body: JSON.stringify(input) } : {}), signal: activeSignal,
+        });
+        if (response.status === 401) throw new HoldingsRequestError("Your session could not be verified. Please sign in again.");
+        if (response.status === 409) throw new HoldingsRequestError("That holding already exists. Please edit the existing holding instead.");
+        if (!response.ok) throw new HoldingsRequestError("We couldn’t complete the holdings request. Please retry.");
+        let body: unknown;
+        try { body = await response.json(); }
+        catch { throw new HoldingsRequestError("The saved holdings response was unreadable. Please retry."); }
+        return parse(body);
+      }, signal, timeoutMs);
+    } catch (error) {
+      if (error instanceof HoldingsRequestError) throw error;
+      throw new HoldingsRequestError("We couldn’t complete the holdings request in time. Check your connection and retry.");
+    }
   }
-
-  const data = await response.json();
-
-  return data.holdings;
+  const single = (body: unknown) => {
+    if (!body || typeof body !== "object" || !("holding" in body)) throw new HoldingsRequestError("The saved holding response was incomplete. Please retry.");
+    return parseHolding(body.holding);
+  };
+  return {
+    read: (signal?: AbortSignal) => call("GET", "", parseHoldingsResponse, undefined, signal),
+    create: (input: HoldingInput, signal?: AbortSignal) => call("POST", "", single, input, signal),
+    update: (id: number, input: HoldingInput, signal?: AbortSignal) => call("PUT", `/${id}`, single, input, signal),
+    remove: (id: number, signal?: AbortSignal) => call("DELETE", `/${id}`, body => {
+      if (!body || typeof body !== "object" || !("message" in body) || body.message !== "Holding deleted successfully") {
+        throw new HoldingsRequestError("The deletion response was incomplete. Please retry loading.");
+      }
+    }, undefined, signal),
+  };
 }
-
-export async function createHolding(holding: {
-  ticker: string;
-  asset_name: string;
-  asset_type: string;
-  quantity: number;
-  average_cost: number;
-  currency: string;
-}): Promise<Holding> {
-  const headers = await getAuthHeaders();
-
-  const response = await fetch(`${API_BASE_URL}/holdings`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...headers,
-    },
-    body: JSON.stringify(holding),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Create holding failed:", response.status, errorText);
-    throw new Error(
-      `Failed to create holding (${response.status}): ${errorText}`,
-    );
-  }
-
-  const data = await response.json();
-
-  return data.holding;
-}
-
-export async function updateHolding(
-  holdingId: number,
-  holding: {
-    ticker: string;
-    asset_name: string;
-    asset_type: string;
-    quantity: number;
-    average_cost: number;
-    currency: string;
-  },
-): Promise<Holding> {
-  const headers = await getAuthHeaders();
-
-  const response = await fetch(`${API_BASE_URL}/holdings/${holdingId}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      ...headers,
-    },
-    body: JSON.stringify(holding),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Update holding failed:", response.status, errorText);
-    throw new Error(
-      `Failed to update holding (${response.status}): ${errorText}`,
-    );
-  }
-
-  const data = await response.json();
-
-  return data.holding;
-}
-
-export async function deleteHolding(holdingId: number): Promise<void> {
-  const headers = await getAuthHeaders();
-
-  const response = await fetch(`${API_BASE_URL}/holdings/${holdingId}`, {
-    method: "DELETE",
-    headers,
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Delete holding failed:", response.status, errorText);
-    throw new Error(
-      `Failed to delete holding (${response.status}): ${errorText}`,
-    );
-  }
-}
+const holdingsApi = createHoldingsApi();
+export const getMyHoldings = holdingsApi.read;
+export const createHolding = holdingsApi.create;
+export const updateHolding = holdingsApi.update;
+export const deleteHolding = holdingsApi.remove;
 
 export type ActualPortfolioHealthResponse = {
   basis: "cost_basis";

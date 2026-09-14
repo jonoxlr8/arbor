@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   createHolding,
   deleteHolding,
-  getMyHoldings,
   updateHolding,
   type Holding,
 } from "@/lib/api";
@@ -21,20 +20,20 @@ import { allocateContribution } from "@/lib/portfolio/contributions";
 import type { Plan } from "@/lib/types/plan";
 import { currencies, normalizeCurrency, normalizeTicker } from "@/lib/currency";
 
+import type { HoldingsState } from "@/lib/holdingsRecovery";
+
 type HoldingsSectionProps = {
   plan: Plan;
-  onHoldingsChanged?: () => void;
+  holdingsState: HoldingsState;
+  onRetry: () => void;
+  onMutate: (work: (signal: AbortSignal) => Promise<unknown>) => Promise<boolean>;
 };
 
 export default function HoldingsSection({
   plan,
-  onHoldingsChanged,
+  holdingsState, onRetry, onMutate,
 }: HoldingsSectionProps) {
-  const [holdings, setHoldings] = useState<Holding[]>([]);
-  const [loading, setLoading] = useState(true);
-
   const [showForm, setShowForm] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [contribution, setContribution] = useState("");
 
@@ -53,29 +52,29 @@ export default function HoldingsSection({
   const [averageCost, setAverageCost] = useState("");
   const [currency, setCurrency] = useState("USD");
 
-  async function loadHoldings() {
-    try {
-      setError("");
-
-      const savedHoldings = await getMyHoldings();
-
-      setHoldings(savedHoldings);
-    } catch (error) {
-      console.error("Failed to load holdings:", error);
-
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to load your holdings.",
-      );
-    } finally {
-      setLoading(false);
-    }
+  // No calculations or mutation controls exist before a complete canonical read.
+  // Form input values remain in state so recovery does not discard user input.
+  if (holdingsState.status !== "loaded") {
+    return (
+      <section className="mt-8 min-w-0 [overflow-wrap:anywhere]" aria-live="polite">
+        <Card compactOnMobile>
+          <h2 className="text-2xl font-bold text-slate-900">My Portfolio</h2>
+          {holdingsState.status === "error" ? (
+            <div role="alert" className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
+              <p>{holdingsState.error}</p>
+              <p className="mt-2">Portfolio analysis is unavailable until all saved holdings are loaded.</p>
+              <button type="button" onClick={onRetry} className="mt-4 min-h-11 rounded-xl bg-emerald-700 px-4 py-2 font-semibold text-white hover:bg-emerald-800">Retry</button>
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-slate-600">
+              {holdingsState.operation === "save" ? "Saving your change and reloading saved holdings…" : "Loading your saved holdings…"}
+            </p>
+          )}
+        </Card>
+      </section>
+    );
   }
-
-  useEffect(() => {
-    loadHoldings();
-  }, []);
+  const holdings = holdingsState.holdings;
 
   const portfolioSummary = calculatePortfolioSummary(holdings);
   const contributionPreview = allocateContribution(
@@ -136,7 +135,7 @@ export default function HoldingsSection({
       return;
     }
 
-    if (!quantity || parsedQuantity <= 0) {
+    if (!quantity || !Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
       setError("Quantity must be greater than 0.");
       return;
     }
@@ -150,31 +149,17 @@ export default function HoldingsSection({
       return;
     }
 
-    setSaving(true);
-
-    try {
-      const newHolding = await createHolding({
-        ticker: normalizedTicker,
-        asset_name: normalizedAssetName,
-        asset_type: assetType,
-        quantity: parsedQuantity,
-        average_cost: parsedAverageCost,
-        currency,
-      });
-
-      setHoldings((currentHoldings) => [...currentHoldings, newHolding]);
-      onHoldingsChanged?.();
-
+    const synchronized = await onMutate(signal => createHolding({
+      ticker: normalizedTicker,
+      asset_name: normalizedAssetName,
+      asset_type: assetType,
+      quantity: parsedQuantity,
+      average_cost: parsedAverageCost,
+      currency,
+    }, signal));
+    if (synchronized) {
       resetForm();
       setShowForm(false);
-    } catch (error) {
-      console.error("Failed to create holding:", error);
-
-      setError(
-        error instanceof Error ? error.message : "Failed to add holding.",
-      );
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -222,35 +207,17 @@ export default function HoldingsSection({
       return;
     }
 
-    try {
-      setSaving(true);
-      setError("");
-
-      const updatedHolding = await updateHolding(editingHoldingId, {
-        ticker: editTicker.trim().toUpperCase(),
-        asset_name: editAssetName.trim(),
-        asset_type: editAssetType,
-        quantity: parsedQuantity,
-        average_cost: parsedAverageCost,
-        currency: editCurrency,
-      });
-
-      setHoldings((currentHoldings) =>
-        currentHoldings.map((holding) =>
-          holding.id === editingHoldingId ? updatedHolding : holding,
-        ),
-      );
-
-      setEditingHoldingId(null);
-      onHoldingsChanged?.();
-    } catch (error) {
-      console.error("Failed to update holding:", error);
-      setError(
-        error instanceof Error ? error.message : "Failed to update holding.",
-      );
-    } finally {
-      setSaving(false);
-    }
+    setError("");
+    const holdingId = editingHoldingId;
+    const synchronized = await onMutate(signal => updateHolding(holdingId, {
+      ticker: editTicker.trim().toUpperCase(),
+      asset_name: editAssetName.trim(),
+      asset_type: editAssetType,
+      quantity: parsedQuantity,
+      average_cost: parsedAverageCost,
+      currency: editCurrency,
+    }, signal));
+    if (synchronized) setEditingHoldingId(null);
   };
 
   const handleDeleteHolding = async (holdingId: number) => {
@@ -262,27 +229,14 @@ export default function HoldingsSection({
       return;
     }
 
-    try {
-      await deleteHolding(holdingId);
-
-      setHoldings((currentHoldings) =>
-        currentHoldings.filter((holding) => holding.id !== holdingId),
-      );
-
-      onHoldingsChanged?.();
-    } catch (error) {
-      console.error("Failed to delete holding:", error);
-      setError(
-        error instanceof Error ? error.message : "Failed to delete holding.",
-      );
-    }
+    await onMutate(signal => deleteHolding(holdingId, signal));
   };
 
   return (
     <section className="mt-8 min-w-0 [overflow-wrap:anywhere] [&_input]:min-w-0 [&_input]:max-w-full [&_select]:min-w-0 [&_select]:max-w-full">
       <Card compactOnMobile>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
+          <div className="min-w-0 sm:flex-1">
             <h2 className="text-2xl font-bold text-slate-900">My Portfolio</h2>
 
             <p className="mt-2 text-sm text-slate-600">
@@ -312,7 +266,7 @@ export default function HoldingsSection({
               if (!showForm) setCurrency(portfolioSummary.currency ?? "USD");
               setError("");
             }}
-            className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
+            className="shrink-0 whitespace-nowrap rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
           >
             {showForm ? "Close" : "Add Holding"}
           </button>
@@ -439,14 +393,9 @@ export default function HoldingsSection({
               <button
                 type="button"
                 onClick={handleAddHolding}
-                disabled={saving}
-                className={`rounded-xl px-5 py-3 font-semibold text-white transition ${
-                  saving
-                    ? "cursor-not-allowed bg-slate-300"
-                    : "bg-emerald-700 hover:bg-emerald-800"
-                }`}
+                className="rounded-xl bg-emerald-700 px-5 py-3 font-semibold text-white transition hover:bg-emerald-800"
               >
-                {saving ? "Adding..." : "Add Investment"}
+                Add Investment
               </button>
 
               <button
@@ -455,7 +404,6 @@ export default function HoldingsSection({
                   resetForm();
                   setShowForm(false);
                 }}
-                disabled={saving}
                 className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
               >
                 Cancel
@@ -464,13 +412,7 @@ export default function HoldingsSection({
           </div>
         )}
 
-        {loading && (
-          <div className="mt-6 rounded-xl bg-slate-50 p-5 text-sm text-slate-600">
-            Loading your holdings...
-          </div>
-        )}
-
-        {!loading && !error && holdings.length === 0 && !showForm && (
+        {!error && holdings.length === 0 && !showForm && (
           <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
             <h3 className="text-lg font-semibold text-slate-900">
               No holdings added yet
@@ -483,10 +425,10 @@ export default function HoldingsSection({
           </div>
         )}
 
-        {!loading && !portfolioSummary.available && holdings.length > 0 && (
+        {!portfolioSummary.available && holdings.length > 0 && (
           <p className="mt-6 rounded-xl bg-amber-50 p-4 text-amber-900">{portfolioSummary.reason} Holdings remain editable. Alignment and rebalancing are unavailable.</p>
         )}
-        {!loading && portfolioSummary.available && (
+        {portfolioSummary.available && (
           <div className="mt-8">
             <h3 className="text-xl font-bold text-slate-900">
               Portfolio Alignment
@@ -559,14 +501,14 @@ export default function HoldingsSection({
           </div>
         )}
 
-        {!loading && portfolioSummary.available && outsideTargets.length > 0 && (
+        {portfolioSummary.available && outsideTargets.length > 0 && (
           <div className="mt-6 rounded-xl bg-slate-50 p-5">
             <h3 className="font-semibold text-slate-900">Holdings outside your Arbor targets</h3>
             <p className="text-sm text-slate-600">These holdings are included in your total recorded cost basis and actual allocations.</p>
             {outsideTargets.map(h => <p key={h.ticker} className="mt-2 text-slate-700">{h.ticker}: {h.allocation?.toFixed(1)}%</p>)}
           </div>
         )}
-        {!loading &&
+        {
           portfolioSummary.available &&
           allocationGaps.length > 0 && (
             <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
@@ -589,7 +531,7 @@ export default function HoldingsSection({
             </div>
           )}
 
-        {!loading && holdings.length > 0 && (
+        {holdings.length > 0 && (
           <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
             <h3 className="text-lg font-bold text-slate-900">
               Hypothetical contribution allocation
@@ -651,7 +593,7 @@ export default function HoldingsSection({
           </div>
         )}
 
-        {!loading && holdings.length > 0 && (
+        {holdings.length > 0 && (
           <div className="mt-6 space-y-3">
             {portfolioSummary.holdings.map((holding) => (
               <div
@@ -796,16 +738,14 @@ export default function HoldingsSection({
                       <button
                         type="button"
                         onClick={handleSaveHolding}
-                        disabled={saving}
                         className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
                       >
-                        {saving ? "Saving..." : "Save changes"}
+                        Save changes
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setEditingHoldingId(null)}
-                        disabled={saving}
                         className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                       >
                         Cancel
