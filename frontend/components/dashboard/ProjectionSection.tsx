@@ -33,14 +33,14 @@ export default function ProjectionSection({
   );
 
   return (
-    <div className="mt-12">
+    <div className="arbor-feature mt-12">
       <SectionHeader
         eyebrow="Projection"
-        title="Your Wealth Projection"
+        title="Your projection"
         description="Based on your current investment plan and long-term assumptions."
       />
 
-      <div className="mt-8 rounded-3xl bg-gradient-to-br from-emerald-600 to-green-500 p-8 sm:p-10 text-white">
+      <div className="mt-6 arbor-panel text-slate-900">
         <p className="text-sm uppercase tracking-widest opacity-80">
           Projected Portfolio Value
         </p>
@@ -50,7 +50,7 @@ export default function ProjectionSection({
         </h3>
 
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl bg-white/10 p-5 text-center backdrop-blur-sm">
+          <div className="rounded-2xl bg-background p-5 text-center backdrop-blur-sm">
             <p className="text-3xl font-bold">
               {projection.investment_period_years}
             </p>
@@ -58,7 +58,7 @@ export default function ProjectionSection({
             <p className="text-xs uppercase tracking-wide opacity-80">Years</p>
           </div>
 
-          <div className="rounded-2xl bg-white/10 p-5 text-center backdrop-blur-sm">
+          <div className="rounded-2xl bg-background p-5 text-center backdrop-blur-sm">
             <p className="text-3xl font-bold">
               {formatCurrency(projection.monthly_contribution)}
             </p>
@@ -68,7 +68,7 @@ export default function ProjectionSection({
             </p>
           </div>
 
-          <div className="rounded-2xl bg-white/10 p-5 text-center backdrop-blur-sm">
+          <div className="rounded-2xl bg-background p-5 text-center backdrop-blur-sm">
             <p className="text-3xl font-bold">
               {(projection.assumed_return * 100).toFixed(0)}%
             </p>
@@ -78,14 +78,14 @@ export default function ProjectionSection({
         </div>
       </div>
 
-      <div className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="mt-8 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
         <h3 className="text-xl font-bold text-slate-900">
           Your Money Breakdown
         </h3>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <div>
-            <p className="text-sm text-slate-500">Total Invested</p>
+            <p className="text-sm text-slate-500">Modeled contributions</p>
 
             <p className="mt-2 text-2xl font-bold text-slate-900">
               {formatCurrency(totalInvested)}

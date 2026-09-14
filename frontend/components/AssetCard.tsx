@@ -14,9 +14,6 @@ type AssetCardProps = {
 };
 
 export default function AssetCard({ asset }: AssetCardProps) {
-  const icon =
-    asset.ticker === "BTC" ? "₿" : asset.ticker === "ETH" ? "♦" : "🟢";
-
   const whyChosen =
     assetReasons[asset.ticker] ??
     "Included in the selected model portfolio. Arbor has limited explanatory information for this asset.";
@@ -24,11 +21,11 @@ export default function AssetCard({ asset }: AssetCardProps) {
   const role = assetRoles[asset.ticker] ?? "Portfolio Component";
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg">
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">{icon}</span>
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+      <div className="flex min-w-0 flex-col items-start gap-3">
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-start gap-3">
+            <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sage-soft text-sm font-semibold text-forest">{asset.ticker.slice(0, 1)}</span>
 
             <div>
               <h3 className="text-xl font-bold text-slate-900">
@@ -45,8 +42,8 @@ export default function AssetCard({ asset }: AssetCardProps) {
           </div>
         </div>
 
-        <div className="rounded-full bg-green-100 px-4 py-2 text-lg font-bold text-green-700">
-          {asset.allocation}% of portfolio
+        <div className="rounded-full bg-sage-soft px-3 py-2 text-sm font-semibold text-forest">
+          {asset.allocation}% target allocation
         </div>
       </div>
 

@@ -1,26 +1,106 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light dark;
+  --background: light-dark(#F7F8F5, #090B0A);
+  --foreground: light-dark(#1F2937, #e4ede7);
+  --surface: light-dark(#fff, #121714);
+  --muted-surface: light-dark(#f1f5f9, #1b231e);
+  --line: light-dark(#e2e8f0, #2b3730);
+  --feature-surface: light-dark(#edf4ee, #142019);
+  --feature-line: light-dark(#d9e6dc, #2d4134);
 }
+
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-forest: #0F5132;
+  --color-sage-soft: light-dark(#EAF2E8, #293f31);
+  --color-leaf: #A7D3A0;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+@layer base {
+  * { box-sizing: border-box; }
+  button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+  button:not(:disabled), a { cursor: pointer; }
+  :focus-visible { outline: 3px solid #0F5132; outline-offset: 3px; }
+  input, select, textarea { max-width: 100%; min-width: 0; }
+  [hidden] { display: none !important; }
+}
+
+@layer components {
+  .arbor-panel { @apply min-w-0 rounded-3xl border p-4 shadow-sm sm:p-6; background-color: var(--surface); border-color: var(--line); }
+  .arbor-feature { @apply min-w-0 rounded-3xl border p-4 sm:p-6; background-color: var(--feature-surface); border-color: var(--feature-line); }
+  .app-shell { overflow-wrap: anywhere; }
+  .app-shell h1, .app-shell h2, .app-shell h3 { text-wrap: balance; }
+  .app-destination { min-width: 0; }
+  .app-destination > :first-child { margin-top: 0; }
+  meter::-webkit-meter-bar { background: #e2e8df; border: 0; border-radius: 1rem; }
+  meter::-webkit-meter-optimum-value { background: #0F5132; border-radius: 1rem; }
+  meter::-moz-meter-bar { background: #0F5132; border-radius: 1rem; }
+}
+
+/* Shared presentation tokens cover existing cards without changing their state logic.
+   Brand-filled buttons retain white labels; pale status surfaces become dark tints. */
+@layer utilities {
+  .bg-white, .focus\:bg-white:focus { background-color: var(--surface); }
+  .bg-white\/95 { background-color: color-mix(in srgb, var(--surface) 95%, transparent); }
+  .bg-slate-50, .hover\:bg-slate-50:hover { background-color: light-dark(#f8fafc, #19211c); }
+  .bg-slate-100 { background-color: var(--muted-surface); }
+  .bg-slate-200 { background-color: light-dark(#e2e8f0, #3b5043); }
+  .bg-slate-300 { background-color: light-dark(#cbd5e1, #445d4d); }
+  .bg-emerald-50, .bg-green-50, .hover\:bg-emerald-50:hover { background-color: light-dark(#ecfdf5, #213a2b); }
+  .bg-emerald-100 { background-color: light-dark(#d1fae5, #2c4936); }
+  .bg-amber-50 { background-color: light-dark(#fffbeb, #3c3220); }
+  .bg-red-50 { background-color: light-dark(#fef2f2, #3d2528); }
+  .bg-purple-50 { background-color: light-dark(#faf5ff, #33283e); }
+  .text-slate-900, .text-slate-800 { color: var(--foreground); }
+  /* SVG annotations use fill, not the HTML color property. Keep light fills unchanged. */
+  .fill-slate-900 { fill: light-dark(#0f172a, #e4ede7); }
+  .fill-slate-500 { fill: light-dark(#64748b, #a1b4aa); }
+  .text-slate-700 { color: light-dark(#334155, #d3e0d8); }
+  .text-slate-600 { color: light-dark(#475569, #bdcdc3); }
+  .text-slate-500 { color: light-dark(#64748b, #a1b4aa); }
+  .text-slate-400 { color: light-dark(#64748b, #98aba0); }
+  .text-forest, .hover\:text-forest:hover { color: light-dark(#0F5132, #afd8b9); }
+  .text-emerald-600, .text-emerald-700, .text-emerald-800 { color: light-dark(#047857, #a4d9b4); }
+  .text-red-600, .text-red-700, .text-red-800 { color: light-dark(#b91c1c, #ffb7bd); }
+  .text-amber-600, .text-amber-800, .text-amber-900 { color: light-dark(#92400e, #f0d396); }
+  .text-purple-800 { color: light-dark(#6b21a8, #d9bdf2); }
+  .border-slate-100, .border-slate-200, .border-slate-200\/70, .border-slate-200\/80, .border-slate-300 { border-color: var(--line); }
+  .border-emerald-200, .border-green-200 { border-color: light-dark(#a7f3d0, #43664f); }
+  .border-red-200 { border-color: light-dark(#fecaca, #795057); }
+}
+
+:focus-visible { outline-color: light-dark(#0F5132, #a7d3a0); }
+.recharts-text { fill: light-dark(#64748b, #bdcdc3); }
+.recharts-default-tooltip { background: var(--surface) !important; border-color: var(--line) !important; color: var(--foreground); }
+.recharts-tooltip-item { color: var(--foreground) !important; }
+/* Hidden tooltips can retain a desktop translation after a mobile resize. */
+.recharts-tooltip-wrapper[style*="visibility: hidden"] { transform: none !important; }
+.recharts-cartesian-grid line { stroke: var(--line); }
+.bg-forest { --logo-cutout: #0F5132; }
+
+@media (max-width: 639px) {
+  .app-shell main > header { margin-bottom: 1.25rem; }
+  .app-shell main { padding-top: 1.25rem; }
+  .app-shell .p-6 { padding: 1rem; }
+  .app-shell .mt-8 { margin-top: 1.5rem; }
+  .app-shell .mt-10, .app-shell .mt-12 { margin-top: 1.75rem; }
+  .app-shell button, .app-shell input:not([type="radio"]):not([type="range"]), .app-shell select { min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }

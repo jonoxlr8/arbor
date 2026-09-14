@@ -43,24 +43,24 @@ export default function WealthJourneyCard({
     }).format(value);
 
   return (
-    <div className="rounded-3xl bg-gradient-to-br from-emerald-600 to-emerald-700 p-8 text-white shadow-xl">
-      <p className="text-sm uppercase tracking-widest text-emerald-200">
+    <div className="arbor-panel text-slate-900">
+      <p className="text-sm uppercase tracking-widest text-slate-500">
         Wealth Journey
       </p>
 
       <h2 className="mt-2 text-3xl font-bold">
-        {name}&apos;s path to financial freedom 🌳
+        {name}&apos;s long-term plan
       </h2>
 
       <div className="mt-8">
         <div className="mb-2 flex justify-between">
-          <span>Current Progress</span>
+          <span>Planning starting progress</span>
           <span>{progress.toFixed(1)}%</span>
         </div>
 
-        <div className="h-4 overflow-hidden rounded-full bg-emerald-400/30">
+        <div className="h-4 overflow-hidden rounded-full bg-slate-100">
           <div
-            className="h-full rounded-full bg-white"
+            className="h-full rounded-full bg-forest"
             style={{
               width: `${progress}%`,
             }}
@@ -68,13 +68,13 @@ export default function WealthJourneyCard({
         </div>
 
         <div className="mt-5 mb-2 flex justify-between">
-          <span>Projected Progress</span>
+          <span>Modeled goal progress</span>
           <span>{projectedProgress.toFixed(1)}%</span>
         </div>
 
-        <div className="h-3 overflow-hidden rounded-full bg-emerald-400/30">
+        <div className="h-3 overflow-hidden rounded-full bg-slate-100">
           <div
-            className="h-full rounded-full bg-emerald-200"
+            className="h-full rounded-full bg-leaf"
             style={{
               width: `${projectedProgress}%`,
             }}
@@ -84,8 +84,8 @@ export default function WealthJourneyCard({
 
       <div className="mt-8 grid gap-6 sm:grid-cols-2">
         <div>
-          <p className="text-sm text-emerald-200">Planning starting value</p>
-          <p className="text-xs text-emerald-100">Entered separately for projections; not synchronized with recorded holdings cost basis.</p>
+          <p className="text-sm text-slate-500">Planning starting value</p>
+          <p className="text-xs text-slate-600">Entered separately for projections; not synchronized with recorded holdings cost basis.</p>
 
           <p className="mt-2 text-3xl font-bold">
             {formatCurrency(currentValue)}
@@ -93,7 +93,7 @@ export default function WealthJourneyCard({
         </div>
 
         <div>
-          <p className="text-sm text-emerald-200">Estimated Future Value</p>
+          <p className="text-sm text-slate-500">Projected future value</p>
 
           <p className="mt-2 text-3xl font-bold">
             {formatCurrency(Math.round(projectedValue))}
@@ -101,13 +101,13 @@ export default function WealthJourneyCard({
         </div>
 
         <div>
-          <p className="text-sm text-emerald-200">Investment Horizon</p>
+          <p className="text-sm text-slate-500">Investment Horizon</p>
 
           <p className="mt-2 text-3xl font-bold">{years} yrs</p>
         </div>
 
         <div>
-          <p className="text-sm text-emerald-200">
+          <p className="text-sm text-slate-500">
             Modeled monthly contribution
           </p>
 
@@ -117,33 +117,33 @@ export default function WealthJourneyCard({
         </div>
       </div>
 
-      <div className="mt-8 rounded-2xl bg-white/10 p-4">
-        <p className="text-sm text-emerald-100">
+      <div className="mt-8 rounded-2xl bg-background p-4">
+        <p className="text-sm text-slate-600">
           Based on your current investment plan, Arbor projects your portfolio
           could reach {formatCurrency(Math.round(projectedValue))} in {years}{" "}
           years.
         </p>
 
-        <p className="mt-3 text-sm font-semibold text-white">
+        <p className="mt-3 text-sm font-semibold text-slate-900">
           {projectedValue >= target
-            ? `You're projected to reach your ${formatCurrency(target)} goal. 🌳`
+            ? `You're projected to reach your ${formatCurrency(target)} goal.`
             : `You're projected to be ${formatCurrency(Math.round(projectedGap))} below your ${formatCurrency(target)} goal.`}
         </p>
 
-        <p className="mt-3 text-sm text-emerald-100">
-          You&apos;re currently investing{" "}
+        <p className="mt-3 text-sm text-slate-600">
+          Your planned contribution is{" "}
           {formatCurrency(Math.round(monthlyInvestment))} per month.
         </p>
 
         {monthlyContributionGap > 0 && (
-          <p className="mt-2 text-sm font-semibold text-white">
+          <p className="mt-2 text-sm font-semibold text-slate-900">
             To reach your goal on this timeline, Arbor estimates you would need
             to invest an additional{" "}
             {formatCurrency(Math.round(monthlyContributionGap))} per month.
           </p>
         )}
 
-        <p className="mt-3 text-xs text-emerald-200">
+        <p className="mt-3 text-xs text-slate-500">
           Projections are based on an assumed 8% annual return. Actual
           investment returns will vary.
         </p>

@@ -10,34 +10,34 @@ export default function InsightsSection({ plan }: InsightsSectionProps) {
   const insights = getInsights(plan);
 
   return (
-    <section className="pt-12 pb-16">
+    <section className="arbor-feature">
       <SectionHeader
         eyebrow="Insights"
         title="Arbor plan insights"
-        description="Rule-based observations about your model plan and projection assumptions."
+        description="A closer look at your model plan and projection assumptions."
       />
 
-      <div className="space-y-4">
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm">
-          <h3 className="font-bold text-slate-900">✅ Strength</h3>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="font-bold text-slate-900">Model perspective</h3>
 
           <p className="mt-2 text-slate-600">{insights.strength}</p>
         </div>
 
-        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6 shadow-sm">
-          <h3 className="font-bold text-slate-900">💡 Recommendation</h3>
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="font-bold text-slate-900">Long-term approach</h3>
 
           <p className="mt-2 text-slate-600">{insights.recommendation}</p>
         </div>
 
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
-          <h3 className="font-bold text-slate-900">📈 Outlook</h3>
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="font-bold text-slate-900">Outlook</h3>
 
           <p className="mt-2 text-slate-600">{insights.outlook}</p>
         </div>
 
-        <div className="rounded-2xl border border-purple-200 bg-purple-50 p-6 shadow-sm">
-          <h3 className="font-bold text-slate-900">🎯 Goal Check</h3>
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="font-bold text-slate-900">Modeled goal check</h3>
 
           <p className="mt-2 text-slate-600">
             {plan.projection.projected_value >= plan.profile.goal_target

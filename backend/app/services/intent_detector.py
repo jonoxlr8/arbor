@@ -15,12 +15,15 @@ def detect_beta_intent(question: str):
         return "greeting"
     if re.search(r"\b(overlap|both)\b", text):
         return "overlap"
-    if re.search(r"\b(projection\w*|modeled|modelled|million\w*|assumption\w*|assumed|goal|years?)\b|on track", text):
+    if re.search(r"\b(monthly|each month|per month|a month)\b", text) and re.search(r"\b(invest\w*|contribut\w*)\b", text):
+        return "monthly_contribution"
+    if re.search(r"\b(projection\w*|projected|modeled|modelled|million\w*|assumption\w*|assumed|goal|years?)\b|on track|\bportfolio be worth\b", text):
         return "projection"
+    # Specific target questions must precede the broad asset-explanation wording.
+    if re.search(r"\b(target\w*|allocation\w*|percentage)\b", text):
+        return "targets"
     if re.search(r"\b(why|role|explain|included)\b|what is", text):
         return "asset"
-    if re.search(r"\b(target\w*|allocation\w*)\b", text):
-        return "targets"
     return "unsupported"
 
 

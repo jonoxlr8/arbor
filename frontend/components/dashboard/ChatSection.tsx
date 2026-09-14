@@ -8,11 +8,11 @@ type ChatSectionProps = {
 
 export default function ChatSection({ plan }: ChatSectionProps) {
   return (
-    <section className="pt-8 pb-12">
+    <section className="arbor-panel mx-auto max-w-3xl">
       <SectionHeader
-        eyebrow="Assistant"
-        title="Explain my Arbor plan"
-        description="Rule-based explanations of your recommended targets and saved projection assumptions—not actual-portfolio or trading advice."
+        eyebrow="Your plan, explained"
+        title="Ask Arbor about your plan."
+        description="Understand your target portfolio, allocations, projections, goals, and why each investment is included."
       />
 
       <ArborChat plan={plan} />

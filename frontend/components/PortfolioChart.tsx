@@ -27,10 +27,10 @@ export default function PortfolioChart({ portfolio }: PortfolioChartProps) {
 
   const analysis = getPortfolioAnalysis(portfolio);
 
-  const COLORS = ["#16a34a", "#22c55e", "#059669", "#f59e0b", "#f97316"];
+  const COLORS = ["#0F5132", "#6F9578", "#A7D3A0", "#96A6B5", "#D4B68A"];
 
   return (
-    <div className="mt-10 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="mt-10 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
       <h2 className="mb-6 text-2xl font-bold text-slate-900">
         Portfolio Allocation
       </h2>
@@ -80,10 +80,10 @@ export default function PortfolioChart({ portfolio }: PortfolioChartProps) {
 
       <div className="mt-6 space-y-3">
         {portfolio.map((asset, index) => (
-          <div key={asset.ticker} className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div key={asset.ticker} className="flex min-w-0 items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <div
-                className="h-3 w-3 rounded-full"
+                className="h-3 w-3 shrink-0 rounded-full"
                 style={{ backgroundColor: COLORS[index % COLORS.length] }}
               />
 
@@ -94,7 +94,7 @@ export default function PortfolioChart({ portfolio }: PortfolioChartProps) {
               </div>
             </div>
 
-            <p className="font-bold text-slate-900">{asset.allocation}%</p>
+            <p className="shrink-0 font-bold text-slate-900">{asset.allocation}%</p>
           </div>
         ))}
       </div>

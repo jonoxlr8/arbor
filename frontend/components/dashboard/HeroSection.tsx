@@ -1,6 +1,5 @@
 import RecommendationCard from "@/components/dashboard/RecommendationCard";
 import WealthJourneyCard from "@/components/WealthJourneyCard";
-import SectionHeader from "@/components/dashboard/SectionHeader";
 import type { Plan } from "@/lib/types/plan";
 
 type HeroSectionProps = {
@@ -14,18 +13,12 @@ export default function HeroSection({ plan }: HeroSectionProps) {
 
   return (
     <>
-      <SectionHeader
-        eyebrow="Your Investment Plan"
-        title={`${plan.profile.full_name}'s Wealth Strategy`}
-        description="A personalized long-term investment strategy designed around your goals, timeline, and risk profile."
-      />
-
       <RecommendationCard
         riskLevel={plan.profile.risk_level ?? plan.profile.risk_tolerance}
         horizon={plan.profile.investment_horizon}
       />
 
-      <div className="mt-8 mb-16">
+      <div className="mt-6">
         <WealthJourneyCard
           name={plan.profile.full_name}
           currentValue={plan.profile.current_portfolio_value}

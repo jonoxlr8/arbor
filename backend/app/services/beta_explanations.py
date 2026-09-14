@@ -16,7 +16,7 @@ def explain_plan(question, plan):
     if intent == "health_boundary":
         return "Actual Portfolio Health is shown in the dashboard, based on your recorded holdings and cost basis. This chat does not calculate a separate Health score."
     if intent == "greeting":
-        return "Hello! I can explain your Arbor plan using a limited set of rule-based explanations. Ask about its targets, asset roles or modeled projection."
+        return "Hello! I can help you understand your Arbor plan, target allocations, asset roles and modeled projections."
     if not plan:
         return "Please load your saved Arbor plan first. " + BOUNDARY
     targets = validate_targets(plan.get("portfolio"))
@@ -34,8 +34,8 @@ def explain_plan(question, plan):
         return recommended_ownership_response(row, profile)
     if intent == "targets" or (intent == "asset" and re.search(r"\b(plan|strategy|portfolio)\b", text)):
         return ("## Arbor target portfolio\n\nSelected from Arbor's model portfolios using your risk category. These targets do not establish what you own.\n\n" +
-                "\n".join(f"- {row['ticker']}: {row['allocation']:g}% target" for row in targets))
-    if intent != "projection":
+                "\n".join(f"- {row['ticker']}: {row['allocation']:g}% target" for row in (mentioned or targets)))
+    if intent not in {"projection", "monthly_contribution"}:
         return BOUNDARY
     if mentioned:
         return "The saved projection models the whole planning balance, not a forecast for an individual asset. " + BOUNDARY
@@ -43,6 +43,11 @@ def explain_plan(question, plan):
     amount = lambda value: f"{currency} {value:,.2f}"
     horizon = projection["investment_period_years"]
     final = projection["projected_value"]
+    if intent == "monthly_contribution":
+        return (f"Your Arbor plan's modeled required monthly contribution is {amount(projection['required_monthly_investment'])} "
+                f"toward your {amount(profile['goal_target'])} goal over {horizon} years. "
+                f"This uses the plan's {projection['assumed_return'] * 100:g}% assumed annual return, not guaranteed returns. "
+                "It is a planning estimate, not an assessment of what you can afford. Fees, taxes, inflation and currency movements are excluded.")
     year = re.search(r"\b(\d+)\s*years?\b", text)
     if year:
         requested = int(year.group(1))

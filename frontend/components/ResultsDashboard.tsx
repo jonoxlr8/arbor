@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import Card from "@/components/Card";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import AppShell from "@/components/app/AppShell";
+import HomeOverview from "@/components/app/HomeOverview";
+import { AppearanceSettings } from "@/components/app/Appearance";
+import { subscribeNavigation, navigationSnapshot, serverNavigationSnapshot } from "@/lib/appNavigation";
 import HeroSection from "@/components/dashboard/HeroSection";
 import PortfolioSection from "@/components/dashboard/PortfolioSection";
 import ProjectionSection from "@/components/dashboard/ProjectionSection";
@@ -22,12 +25,17 @@ import {
 
 type ResultsDashboardProps = {
   plan: Plan;
-  name?: string;
+  onSignOut: () => void;
+  signingOut: boolean;
+  logoutError: string;
 };
 
 export default function ResultsDashboard({
   plan: initialPlan,
+  onSignOut, signingOut, logoutError,
 }: ResultsDashboardProps) {
+  const active = useSyncExternalStore(subscribeNavigation, navigationSnapshot, serverNavigationSnapshot);
+  const [saveNotice, setSaveNotice] = useState("");
   const [plan, setPlan] = useState(initialPlan);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -54,74 +62,75 @@ export default function ResultsDashboard({
     return () => request.dispose();
   }, [healthRefreshKey, healthKey]);
 
+  const healthMessage = healthKey === null
+    ? holdingsState.status === "error"
+      ? "Health is unavailable until saved holdings are reloaded. Open Portfolio and choose Retry."
+      : "Health will update after your saved holdings finish loading."
+    : undefined;
+
   return (
-    <main className="min-h-screen bg-slate-100 px-4 py-10">
-      <div className="mx-auto max-w-5xl">
-        <Card compactOnMobile>
-          <div className="flex justify-end">
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => setEditing(!editing)}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              {editing ? "Close Editor" : "Edit Profile"}
-            </button>
-          </div>
-          {plan.profile_warning && <p role="alert" className="mt-4 rounded-xl bg-amber-50 p-4 text-amber-900">{plan.profile_warning}</p>}
+    <AppShell active={active} name={plan.profile.full_name} onSignOut={onSignOut} signingOut={signingOut} logoutError={logoutError}>
+      {plan.profile_warning && <p role="alert" className="mb-5 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">{plan.profile_warning} <a href="#settings" onClick={() => setEditing(true)} className="underline">Review profile</a></p>}
 
-          {editing && (
-            <div className="mt-6">
-              <EditProfileForm
-                key={scenarioKey(plan) + plan.profile.risk_tolerance}
-                plan={plan}
-                onSavingChange={setSaving}
-                onUpdated={(updatedPlan) => {
-                  setPlan(updatedPlan);
-                  setEditing(false);
-                }}
-                onCancel={() => setEditing(false)}
-              />
-            </div>
-          )}
-
-          <HeroSection plan={plan} />
-
-          <div className="mt-8">
-            <PortfolioSection plan={plan} />
-
-            <HoldingsSection
-              plan={plan}
-              holdingsState={holdingsState}
-              onRetry={() => { void holdingsRecovery.current?.load(); }}
-              onMutate={work => holdingsRecovery.current?.mutate(work) ?? Promise.resolve(false)}
-            />
-
-            <ProjectionSection
-              projection={plan.projection}
-              currency={plan.profile.currency}
-              goalAmount={plan.profile.goal_target}
-            />
-
-            <WhatIfSection plan={plan} />
-
-            {healthKey === null ? (
-              <section className="mt-8 rounded-xl bg-slate-50 p-4 text-sm text-slate-600" aria-live="polite">
-                <h2 className="font-semibold text-slate-900">Portfolio Health</h2>
-                <p className="mt-2">{holdingsState.status === "error" ? "Health is unavailable until saved holdings are reloaded. Use Retry in My Portfolio." : "Health will update after your saved holdings finish loading."}</p>
-              </section>
-            ) : <HealthSection
-              actualHealth={healthState?.status === "ready" ? healthState.data : null}
-              error={healthState?.status === "error" ? healthState.error : undefined}
-              onRetry={() => setHealthRefreshKey(key => key + 1)}
-            />}
-
-            <InsightsSection plan={plan} />
-
-            <ChatSection plan={plan} />
-          </div>
-        </Card>
+      {/* Keep these destinations mounted: navigation must not discard drafts,
+          cancel active portfolio synchronization, or recreate request owners. */}
+      <div hidden={active !== "home"} className="app-destination">
+        <HomeOverview plan={plan} actualHealth={healthState?.status === "ready" ? healthState.data : null} healthMessage={healthMessage} healthError={healthState?.status === "error" ? healthState.error : undefined} />
       </div>
-    </main>
+
+      <div hidden={active !== "portfolio"} className="app-destination">
+        <HoldingsSection
+          plan={plan}
+          holdingsState={holdingsState}
+          onRetry={() => { void holdingsRecovery.current?.load(); }}
+          onMutate={work => holdingsRecovery.current?.mutate(work) ?? Promise.resolve(false)}
+        />
+        {healthMessage ? (
+          <section className="arbor-panel mt-6 text-sm text-slate-600" aria-live="polite">
+            <h2 className="font-semibold text-slate-900">Actual Portfolio Health</h2>
+            <p className="mt-2">{healthMessage}</p>
+          </section>
+        ) : <HealthSection
+          actualHealth={healthState?.status === "ready" ? healthState.data : null}
+          error={healthState?.status === "error" ? healthState.error : undefined}
+          onRetry={() => setHealthRefreshKey(key => key + 1)}
+        />}
+      </div>
+
+      <div hidden={active !== "plan"} className="app-destination space-y-6">
+        <HeroSection plan={plan} />
+        <PortfolioSection plan={plan} />
+        <ProjectionSection projection={plan.projection} currency={plan.profile.currency} goalAmount={plan.profile.goal_target} />
+        <WhatIfSection plan={plan} />
+        <InsightsSection plan={plan} />
+      </div>
+
+      <div hidden={active !== "ask"} className="app-destination">
+        <ChatSection plan={plan} />
+      </div>
+
+      <div hidden={active !== "settings"} className="app-destination space-y-6">
+        <AppearanceSettings />
+        <section className="arbor-panel">
+          <h2 className="text-xl font-semibold text-slate-900">Your investment profile</h2>
+          <dl className="mt-5 grid gap-5 sm:grid-cols-2">
+            <div><dt className="text-xs font-medium text-slate-500">Name</dt><dd className="mt-1 text-sm font-semibold">{plan.profile.full_name}</dd></div>
+            <div><dt className="text-xs font-medium text-slate-500">Country</dt><dd className="mt-1 text-sm font-semibold">{plan.profile.country}</dd></div>
+            <div><dt className="text-xs font-medium text-slate-500">Planning currency</dt><dd className="mt-1 text-sm font-semibold">{plan.profile.currency}</dd></div>
+            <div><dt className="text-xs font-medium text-slate-500">Risk category</dt><dd className="mt-1 text-sm font-semibold">{plan.profile.risk_tolerance}</dd></div>
+          </dl>
+          <p className="mt-5 text-sm leading-6 text-slate-500">Your planning starting value powers projections. Recorded holdings keep their own currency and cost basis; the two are not automatically synchronized.</p>
+          <button type="button" disabled={saving} onClick={() => { setEditing(!editing); setSaveNotice(""); }} className="mt-5 rounded-xl bg-forest px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{editing ? "Close editor" : "Edit Profile"}</button>
+          {saveNotice && <p role="status" className="mt-4 text-sm text-forest">{saveNotice}</p>}
+        </section>
+        {editing && <EditProfileForm
+          key={scenarioKey(plan) + plan.profile.risk_tolerance}
+          plan={plan}
+          onSavingChange={setSaving}
+          onUpdated={updatedPlan => { setPlan(updatedPlan); setEditing(false); setSaveNotice("Profile saved. Your plan and projections are up to date."); }}
+          onCancel={() => setEditing(false)}
+        />}
+      </div>
+    </AppShell>
   );
 }

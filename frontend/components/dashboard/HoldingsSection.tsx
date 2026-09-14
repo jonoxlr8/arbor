@@ -425,174 +425,6 @@ export default function HoldingsSection({
           </div>
         )}
 
-        {!portfolioSummary.available && holdings.length > 0 && (
-          <p className="mt-6 rounded-xl bg-amber-50 p-4 text-amber-900">{portfolioSummary.reason} Holdings remain editable. Alignment and rebalancing are unavailable.</p>
-        )}
-        {portfolioSummary.available && (
-          <div className="mt-8">
-            <h3 className="text-xl font-bold text-slate-900">
-              Portfolio Alignment
-            </h3>
-
-            <p className="mt-2 text-sm font-semibold text-slate-700">
-              Alignment status: {alignmentStatus}
-            </p>
-
-            <p className="mt-2 text-sm text-slate-600">
-              {alignmentInterpretation}
-            </p>
-
-            <p className="mt-2 text-sm text-slate-600">
-              See how your current portfolio compares with Arbor&apos;s recommended
-              allocation. Based on cost basis, not current market value.
-            </p>
-
-            <div className="mt-4 space-y-3">
-              {portfolioComparison.map((comparison) => (
-                <div
-                  key={comparison.ticker}
-                  className="rounded-xl border border-slate-200 bg-slate-50 p-4"
-                >
-                  <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="font-bold text-slate-900">
-                        {comparison.ticker}
-                      </p>
-                      <p className="text-sm text-slate-600">
-                        {comparison.asset_name}
-                      </p>
-                    </div>
-
-                    <div className="text-right">
-                      <p className="font-semibold text-slate-900">
-                        {comparison.actual_allocation.toFixed(1)}%
-                      </p>
-                      <p className="text-xs text-slate-500">actual</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 flex justify-between gap-3 text-sm">
-                    <span className="text-slate-600">Arbor target</span>
-
-                    <span className="font-medium text-slate-900">
-                      {comparison.target_allocation.toFixed(1)}%
-                    </span>
-                  </div>
-
-                  <div className="mt-1 flex justify-between gap-3 text-sm">
-                    <span className="text-slate-600">Difference</span>
-
-                    <span className="font-semibold text-slate-900">
-                      {comparison.difference >= 0 ? "+" : ""}
-                      {comparison.difference.toFixed(1)}%
-                    </span>
-                  </div>
-
-                  <div className="mt-1 flex justify-between gap-3 text-sm">
-                    <span className="text-slate-600">Alignment</span>
-
-                    <span className="font-semibold text-slate-900">
-                      {getPortfolioHoldingAlignment(comparison.difference)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {portfolioSummary.available && outsideTargets.length > 0 && (
-          <div className="mt-6 rounded-xl bg-slate-50 p-5">
-            <h3 className="font-semibold text-slate-900">Holdings outside your Arbor targets</h3>
-            <p className="text-sm text-slate-600">These holdings are included in your total recorded cost basis and actual allocations.</p>
-            {outsideTargets.map(h => <p key={h.ticker} className="mt-2 text-slate-700">{h.ticker}: {h.allocation?.toFixed(1)}%</p>)}
-          </div>
-        )}
-        {
-          portfolioSummary.available &&
-          allocationGaps.length > 0 && (
-            <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
-              <h3 className="text-lg font-bold text-slate-900">
-                Rebalancing considerations
-              </h3>
-              <p className="mt-2 text-sm text-slate-600">
-                This comparison covers recommended holdings and is based on cost
-                basis, not current market value.
-              </p>
-              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-700">
-                {allocationGaps.map((gap) => (
-                  <li key={gap.ticker}>
-                    {gap.ticker} is {Number(Math.abs(gap.difference).toFixed(1))}{" "}
-                    percentage points {gap.difference > 0 ? "above" : "below"}{" "}
-                    its target allocation.
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-        {holdings.length > 0 && (
-          <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
-            <h3 className="text-lg font-bold text-slate-900">
-              Hypothetical contribution allocation
-            </h3>
-            <p className="mt-2 text-sm text-slate-600">
-              This hypothetical allocation applies new contributions toward your
-              existing Arbor targets without selling holdings.
-            </p>
-            <p className="mt-2 text-sm text-slate-600">
-              Based on cost basis, not current market value. This educational
-              preview does not change your saved holdings.
-            </p>
-            <label htmlFor="hypothetical-contribution" className="mt-4 block text-sm font-medium text-slate-700">
-              Contribution amount — {contributionPreview.currency ?? "currency unavailable"}
-            </label>
-            <input
-              id="hypothetical-contribution"
-              type="number"
-              min="0.01"
-              step="0.01"
-              value={contribution}
-              onChange={(event) => setContribution(event.target.value)}
-              placeholder="Enter an amount"
-              className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 sm:max-w-xs"
-            />
-            <div aria-live="polite">
-              {contribution !== "" && !contributionPreview.available && (
-                <p className="mt-3 text-sm text-amber-800">{contributionPreview.reason}</p>
-              )}
-              {contribution !== "" && contributionPreview.available && (
-                <>
-                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {contributionPreview.allocations.map((allocation) => (
-                      <div key={allocation.ticker} className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-                        <p className="font-bold text-slate-900">{allocation.ticker}</p>
-                        <p className="mt-2">
-                          Hypothetical contribution: {contributionPreview.currency}{" "}
-                          {formatScenarioAmount(allocation.contribution_amount)}
-                          {" "}({allocation.contribution_percentage.toFixed(1)}% of contribution)
-                        </p>
-                        <p className="mt-2">
-                          Resulting cost basis: {contributionPreview.currency}{" "}
-                          {formatScenarioAmount(allocation.resulting_cost_basis)}
-                        </p>
-                        <p className="mt-2">
-                          Resulting allocation: {allocation.resulting_allocation.toFixed(1)}%
-                          {" "}— Arbor target: {allocation.target_allocation.toFixed(1)}%
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-3 text-sm font-semibold text-slate-700">
-                    Total allocated: {contributionPreview.currency}{" "}
-                    {formatScenarioAmount(contributionPreview.contribution)}
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
         {holdings.length > 0 && (
           <div className="mt-6 space-y-3">
             {portfolioSummary.holdings.map((holding) => (
@@ -783,6 +615,175 @@ export default function HoldingsSection({
             ))}
           </div>
         )}
+
+        {!portfolioSummary.available && holdings.length > 0 && (
+          <p className="mt-6 rounded-xl bg-amber-50 p-4 text-amber-900">{portfolioSummary.reason} Holdings remain editable. Alignment and rebalancing are unavailable.</p>
+        )}
+        {portfolioSummary.available && (
+          <div className="mt-8">
+            <h3 className="text-xl font-bold text-slate-900">
+              Portfolio Alignment
+            </h3>
+
+            <p className="mt-2 text-sm font-semibold text-slate-700">
+              Alignment status: {alignmentStatus}
+            </p>
+
+            <p className="mt-2 text-sm text-slate-600">
+              {alignmentInterpretation}
+            </p>
+
+            <p className="mt-2 text-sm text-slate-600">
+              See how your current portfolio compares with Arbor&apos;s recommended
+              allocation. Based on cost basis, not current market value.
+            </p>
+
+            <div className="mt-4 space-y-3">
+              {portfolioComparison.map((comparison) => (
+                <div
+                  key={comparison.ticker}
+                  className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                >
+                  <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-bold text-slate-900">
+                        {comparison.ticker}
+                      </p>
+                      <p className="text-sm text-slate-600">
+                        {comparison.asset_name}
+                      </p>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="font-semibold text-slate-900">
+                        {comparison.actual_allocation.toFixed(1)}%
+                      </p>
+                      <p className="text-xs text-slate-500">actual</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex justify-between gap-3 text-sm">
+                    <span className="text-slate-600">Arbor target</span>
+
+                    <span className="font-medium text-slate-900">
+                      {comparison.target_allocation.toFixed(1)}%
+                    </span>
+                  </div>
+
+                  <div className="mt-1 flex justify-between gap-3 text-sm">
+                    <span className="text-slate-600">Difference</span>
+
+                    <span className="font-semibold text-slate-900">
+                      {comparison.difference >= 0 ? "+" : ""}
+                      {comparison.difference.toFixed(1)}%
+                    </span>
+                  </div>
+
+                  <div className="mt-1 flex justify-between gap-3 text-sm">
+                    <span className="text-slate-600">Alignment</span>
+
+                    <span className="font-semibold text-slate-900">
+                      {getPortfolioHoldingAlignment(comparison.difference)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {portfolioSummary.available && outsideTargets.length > 0 && (
+          <div className="mt-6 rounded-xl bg-slate-50 p-5">
+            <h3 className="font-semibold text-slate-900">Holdings outside your Arbor targets</h3>
+            <p className="text-sm text-slate-600">These holdings are included in your total recorded cost basis and actual allocations.</p>
+            {outsideTargets.map(h => <p key={h.ticker} className="mt-2 text-slate-700">{h.ticker}: {h.allocation?.toFixed(1)}%</p>)}
+          </div>
+        )}
+        {
+          portfolioSummary.available &&
+          allocationGaps.length > 0 && (
+            <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
+              <h3 className="text-lg font-bold text-slate-900">
+                Rebalancing considerations
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                This comparison covers recommended holdings and is based on cost
+                basis, not current market value.
+              </p>
+              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-700">
+                {allocationGaps.map((gap) => (
+                  <li key={gap.ticker}>
+                    {gap.ticker} is {Number(Math.abs(gap.difference).toFixed(1))}{" "}
+                    percentage points {gap.difference > 0 ? "above" : "below"}{" "}
+                    its target allocation.
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+        {holdings.length > 0 && (
+          <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
+            <h3 className="text-lg font-bold text-slate-900">
+              Hypothetical contribution allocation
+            </h3>
+            <p className="mt-2 text-sm text-slate-600">
+              This hypothetical allocation applies new contributions toward your
+              existing Arbor targets without selling holdings.
+            </p>
+            <p className="mt-2 text-sm text-slate-600">
+              Based on cost basis, not current market value. This educational
+              preview does not change your saved holdings.
+            </p>
+            <label htmlFor="hypothetical-contribution" className="mt-4 block text-sm font-medium text-slate-700">
+              Contribution amount — {contributionPreview.currency ?? "currency unavailable"}
+            </label>
+            <input
+              id="hypothetical-contribution"
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={contribution}
+              onChange={(event) => setContribution(event.target.value)}
+              placeholder="Enter an amount"
+              className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 sm:max-w-xs"
+            />
+            <div aria-live="polite">
+              {contribution !== "" && !contributionPreview.available && (
+                <p className="mt-3 text-sm text-amber-800">{contributionPreview.reason}</p>
+              )}
+              {contribution !== "" && contributionPreview.available && (
+                <>
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {contributionPreview.allocations.map((allocation) => (
+                      <div key={allocation.ticker} className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+                        <p className="font-bold text-slate-900">{allocation.ticker}</p>
+                        <p className="mt-2">
+                          Hypothetical contribution: {contributionPreview.currency}{" "}
+                          {formatScenarioAmount(allocation.contribution_amount)}
+                          {" "}({allocation.contribution_percentage.toFixed(1)}% of contribution)
+                        </p>
+                        <p className="mt-2">
+                          Resulting cost basis: {contributionPreview.currency}{" "}
+                          {formatScenarioAmount(allocation.resulting_cost_basis)}
+                        </p>
+                        <p className="mt-2">
+                          Resulting allocation: {allocation.resulting_allocation.toFixed(1)}%
+                          {" "}— Arbor target: {allocation.target_allocation.toFixed(1)}%
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-sm font-semibold text-slate-700">
+                    Total allocated: {contributionPreview.currency}{" "}
+                    {formatScenarioAmount(contributionPreview.contribution)}
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
       </Card>
     </section>
   );

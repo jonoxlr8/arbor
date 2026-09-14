@@ -102,3 +102,48 @@ def test_chat_uses_authenticated_canonical_plan(monkeypatch):
     response = client(monkeypatch).post("/chat", json={"message":"What are my targets?"})
     assert response.status_code == 200
     assert "VOO: 50% target" in response.json()["reply"]
+
+
+@pytest.mark.parametrize("question", [
+    "How much should I invest monthly?",
+    "How much do I need to contribute each month?",
+    "What is my required monthly investment?",
+])
+def test_monthly_phrases_use_saved_requirement(question):
+    response = ask_arbor(question, plan())
+    assert "required monthly contribution is PHP 1,000.00" in response
+    assert "afford" in response
+
+
+@pytest.mark.parametrize("question", [
+    "What percentage should I have in BTC?", "What is my BTC allocation?",
+    "What is my target allocation for BTC?",
+])
+def test_target_phrases_precede_asset_explanations(question):
+    fixture = plan()
+    fixture["portfolio"] = [{"ticker": "BTC", "asset_name": "Bitcoin", "allocation": 15}, {"ticker": "VOO", "asset_name": "Vanguard", "allocation": 85}]
+    response = ask_arbor(question, fixture)
+    assert "BTC: 15% target" in response
+    assert "do not establish what you own" in response
+    assert "VOO: 85%" not in response
+
+
+@pytest.mark.parametrize("question", ["What is my projected value?", "How much will my portfolio be worth?", "Will I reach my goal?", "Will I reach 1 million?"])
+def test_projection_natural_variants(question):
+    response = ask_arbor(question, plan())
+    assert "PHP 1,500,000.00" in response
+    assert "Illustration only" in response
+
+
+def test_after_year_phrase_uses_only_saved_points():
+    question = "What will I have after 15 years?"
+    fixture = plan()
+    assert "no saved value for year 15" in ask_arbor(question, fixture)
+    fixture["projection"]["investment_period_years"] = 15
+    fixture["projection"]["yearly_projection"].append({"year": 15, "value": 2345678})
+    assert "PHP 2,345,678.00" in ask_arbor(question, fixture)
+
+
+@pytest.mark.parametrize("question", ["What is my BTC allocation at today's price?", "How much should I invest monthly to avoid taxes?", "Should I buy BTC each month?"])
+def test_unsupported_topics_still_win_over_natural_plan_phrases(question):
+    assert "does not provide" in ask_arbor(question, plan())

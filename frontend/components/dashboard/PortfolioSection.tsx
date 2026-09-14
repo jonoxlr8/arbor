@@ -38,10 +38,10 @@ export default function PortfolioSection({ plan }: PortfolioSectionProps) {
 
       <div className="mt-10">
         <h3 className="text-xl font-semibold text-slate-900">
-          Your Recommended Holdings
+          Investments in your Arbor plan
         </h3>
 
-        <div className="mt-6 space-y-4">
+        <div className="mt-6 grid min-w-0 gap-4 md:grid-cols-2">
           {plan.portfolio.map((asset) => (
             <AssetCard
               key={asset.ticker}

@@ -90,7 +90,7 @@ export default function Home() {
 
   if (account.status === "error") {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-100 px-6">
+      <main className="flex min-h-screen items-center justify-center bg-background px-6">
         <Card>
           <Logo />
           <h1 className="mt-8 text-2xl font-bold text-slate-900">Let’s reconnect your account</h1>
@@ -107,7 +107,7 @@ export default function Home() {
 
   if (account.status === "checking") {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-100 px-6">
+      <main className="flex min-h-screen items-center justify-center bg-background px-6">
         <Card>
           <Logo />
 
@@ -127,7 +127,7 @@ export default function Home() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-100 px-6">
+      <main className="flex min-h-screen items-center justify-center bg-background px-6">
         <Card>
           <Logo />
 
@@ -135,7 +135,7 @@ export default function Home() {
             <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-green-200 border-t-green-600" />
 
             <h2 className="mt-8 text-2xl font-bold text-slate-900">
-              Arbor is building your plan 🌳
+              Arbor is building your plan
             </h2>
 
             <p className="mt-4 text-slate-600">{loadingMessage}</p>
@@ -150,23 +150,7 @@ export default function Home() {
   }
 
   if (account.status === "ready") {
-    return (
-      <>
-        <div className="flex justify-end bg-slate-100 px-6 pt-6">
-          <button
-            type="button"
-            onClick={handleSignOut}
-            disabled={signingOut}
-            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-          >
-            Sign Out
-          </button>
-        </div>
-
-        {logoutError && <p role="alert" className="bg-slate-100 px-6 text-right text-red-700">{logoutError}</p>}
-        <ResultsDashboard key={account.userId} plan={account.plan} name={account.plan.profile.full_name} />
-      </>
-    );
+    return <ResultsDashboard key={account.userId} plan={account.plan} onSignOut={handleSignOut} signingOut={signingOut} logoutError={logoutError} />;
   }
 
   const canContinue =
@@ -241,7 +225,7 @@ export default function Home() {
       }, account.userId, controller.signal);
 
       if (!isCurrent()) return;
-      setLoadingMessage("Your Arbor plan is ready 🌳");
+      setLoadingMessage("Your Arbor plan is ready");
       recovery.current?.completeProfile(account.userId, result);
     } catch (error) {
       if (!isCurrent()) return;
@@ -260,13 +244,13 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-6">
+    <main className="flex min-h-screen items-center justify-center bg-background px-6">
       {!started && (
         <Card>
           <Logo />
 
           <h1 className="mt-8 text-4xl font-bold text-slate-900">
-            Your Personal AI-Powered Investment Strategy
+            A clearer plan for your future.
           </h1>
 
           <p className="mt-4 text-slate-600">
@@ -278,7 +262,7 @@ export default function Home() {
             onClick={() => setStarted(true)}
             className="mt-10 w-full rounded-2xl bg-emerald-700 py-5 text-lg font-semibold text-white shadow-lg transition-all duration-200 hover:-translate-y-1 hover:bg-emerald-800 hover:shadow-xl"
           >
-            Build My Investment Strategy →
+            Build my Arbor plan →
           </button>
         </Card>
       )}
@@ -326,7 +310,7 @@ export default function Home() {
                   : "cursor-not-allowed bg-slate-200 text-slate-400 shadow-none"
               }`}
             >
-              {step === 7 ? "Create My Plan →" : "Next →"}
+              {step === 7 ? "Create my plan →" : "Next →"}
             </button>
             {profileError && <p role="alert" className="mt-4 whitespace-pre-line text-red-700">{profileError}</p>}
           </Card>

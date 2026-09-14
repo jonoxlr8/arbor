@@ -3,6 +3,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { signIn, signUp } from "@/lib/auth";
 import type { AccountSession } from "@/lib/accountRecovery";
+import Logo from "@/components/Logo";
 
 type AuthFormProps = {
   onAuthenticated: (session: AccountSession) => void;
@@ -54,10 +55,11 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-6">
-      <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl">
-        <h1 className="text-3xl font-bold text-slate-900">
-          Welcome to Arbor 🌳
+    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
+      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+        <Logo />
+        <h1 className="mt-8 text-2xl font-semibold tracking-tight text-slate-900">
+          {isSignUp ? "Start your longer-term story." : "Welcome back."}
         </h1>
 
         <p className="mt-3 text-slate-600">
@@ -68,6 +70,8 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           <input
+            aria-label="Email address"
+            autoComplete="email"
             type="email"
             placeholder="Email address"
             value={email}
@@ -76,6 +80,8 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
           />
 
           <input
+            aria-label="Password"
+            autoComplete={isSignUp ? "new-password" : "current-password"}
             type="password"
             placeholder="Password"
             value={password}
