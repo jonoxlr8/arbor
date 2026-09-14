@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   createHolding,
   deleteHolding,
@@ -24,6 +24,7 @@ import type { HoldingsState } from "@/lib/holdingsRecovery";
 
 type HoldingsSectionProps = {
   plan: Plan;
+  healthSummary?: ReactNode;
   holdingsState: HoldingsState;
   onRetry: () => void;
   onMutate: (work: (signal: AbortSignal) => Promise<unknown>) => Promise<boolean>;
@@ -31,7 +32,7 @@ type HoldingsSectionProps = {
 
 export default function HoldingsSection({
   plan,
-  holdingsState, onRetry, onMutate,
+  holdingsState, onRetry, onMutate, healthSummary,
 }: HoldingsSectionProps) {
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState("");
@@ -271,6 +272,9 @@ export default function HoldingsSection({
           </button>
         </div>
 
+        {portfolioSummary.available && <p className="mt-4 text-sm font-semibold text-slate-700">Alignment: {alignmentStatus}</p>}
+        {healthSummary}
+
         {showForm && (
           <div className="mt-6 min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-6">
             <h3 className="text-lg font-semibold text-slate-900">
@@ -426,7 +430,7 @@ export default function HoldingsSection({
             {portfolioSummary.holdings.map((holding) => (
               <div
                 key={holding.id}
-                className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 sm:p-4"
+                className="min-w-0 border-t border-slate-200 py-4"
               >
                 <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0 sm:flex-1">
@@ -440,10 +444,9 @@ export default function HoldingsSection({
                   <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-4">
                     <div className="col-span-2 min-w-0 sm:text-right">
                       <p className="font-semibold text-slate-900">
-                        {holding.quantity}
+                        {normalizeCurrency(holding.currency) ?? "Currency needs correction"} {Number.isFinite(holding.cost_basis) ? holding.cost_basis.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "Invalid amount"}
                       </p>
-
-                      <p className="text-xs text-slate-500">units</p>
+                      <p className="text-xs text-slate-500">Recorded value · {holding.allocation === null ? "Allocation unavailable" : `${holding.allocation.toFixed(1)}% allocation`}</p>
                     </div>
 
                     <button
@@ -582,31 +585,12 @@ export default function HoldingsSection({
                   </div>
                 )}
 
-                <div className="mt-3 border-t border-slate-100 pt-3 space-y-2">
-                  <p className="text-sm text-slate-600">
-                    Average cost:{" "}
-                    <span className="font-medium text-slate-900">
-                      {normalizeCurrency(holding.currency) ?? "Currency needs correction"} {Number.isFinite(holding.average_cost) ? holding.average_cost.toLocaleString() : "Invalid amount"}
-                    </span>
-                  </p>
-
-                  <p className="text-sm text-slate-600">
-                    Cost basis:{" "}
-                    <span className="font-medium text-slate-900">
-                      {normalizeCurrency(holding.currency) ?? "Currency needs correction"}{" "}{Number.isFinite(holding.cost_basis) ? holding.cost_basis.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      }) : "Invalid amount"}
-                    </span>
-                  </p>
-
-                  <p className="text-sm text-slate-600">
-                    Portfolio allocation:{" "}
-                    <span className="font-semibold text-slate-900">
-                      {holding.allocation === null ? "Unavailable" : `${holding.allocation.toFixed(1)}%`}
-                    </span>
-                  </p>
-                </div>
+                <details className="mt-2">
+                  <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-forest">Holding details</summary>
+                  <p className="text-sm text-slate-600">Units: {holding.quantity}</p>
+                  <p className="mt-2 text-sm text-slate-600">Average cost: {normalizeCurrency(holding.currency) ?? "Currency needs correction"} {Number.isFinite(holding.average_cost) ? holding.average_cost.toLocaleString() : "Invalid amount"}</p>
+                  <p className="mt-2 text-xs text-slate-500">Recorded value is cost basis, not current market value.</p>
+                </details>
               </div>
             ))}
           </div>
@@ -622,7 +606,7 @@ export default function HoldingsSection({
             </h3>
 
             <p className="mt-2 text-sm font-semibold text-slate-700">
-              Alignment status: {alignmentStatus}
+              Actual vs Arbor targets
             </p>
 
             <p className="mt-2 text-sm text-slate-600">
@@ -630,59 +614,21 @@ export default function HoldingsSection({
             </p>
 
             <p className="mt-2 text-sm text-slate-600">
-              Compared with Arbor targets using cost basis, not current market value.
+              Cost basis, not market value. Differences are percentage points (pp).
             </p>
 
-            <div className="mt-4 space-y-3">
-              {portfolioComparison.map((comparison) => (
-                <div
-                  key={comparison.ticker}
-                  className="rounded-xl border border-slate-200 bg-slate-50 p-4"
-                >
-                  <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="font-bold text-slate-900">
-                        {comparison.ticker}
-                      </p>
-                      <p className="text-sm text-slate-600">
-                        {comparison.asset_name}
-                      </p>
-                    </div>
-
-                    <div className="text-right">
-                      <p className="font-semibold text-slate-900">
-                        {comparison.actual_allocation.toFixed(1)}%
-                      </p>
-                      <p className="text-xs text-slate-500">actual</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 flex justify-between gap-3 text-sm">
-                    <span className="text-slate-600">Arbor target</span>
-
-                    <span className="font-medium text-slate-900">
-                      {comparison.target_allocation.toFixed(1)}%
-                    </span>
-                  </div>
-
-                  <div className="mt-1 flex justify-between gap-3 text-sm">
-                    <span className="text-slate-600">Difference</span>
-
-                    <span className="font-semibold text-slate-900">
-                      {comparison.difference >= 0 ? "+" : ""}
-                      {comparison.difference.toFixed(1)}%
-                    </span>
-                  </div>
-
-                  <div className="mt-1 flex justify-between gap-3 text-sm">
-                    <span className="text-slate-600">Alignment</span>
-
-                    <span className="font-semibold text-slate-900">
-                      {getPortfolioHoldingAlignment(comparison.difference)}
-                    </span>
-                  </div>
+            <div className="mt-4 divide-y divide-slate-200">
+              {portfolioComparison.map(comparison => <div key={comparison.ticker} className="py-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-semibold">{comparison.ticker} <span className="text-sm font-normal text-slate-500">{comparison.asset_name}</span></p>
+                  <span className="text-sm text-forest">{getPortfolioHoldingAlignment(comparison.difference)}</span>
                 </div>
-              ))}
+                <dl className="mt-3 grid grid-cols-3 gap-3 text-sm">
+                  <div><dt className="text-slate-500">Actual</dt><dd className="mt-1 font-semibold">{comparison.actual_allocation.toFixed(1)}%</dd></div>
+                  <div><dt className="text-slate-500">Target</dt><dd className="mt-1 font-semibold">{comparison.target_allocation.toFixed(1)}%</dd></div>
+                  <div><dt className="text-slate-500">Difference</dt><dd className="mt-1 font-semibold">{comparison.difference > 0 ? "+" : ""}{comparison.difference.toFixed(1)} pp</dd></div>
+                </dl>
+              </div>)}
             </div>
           </div>
         )}
@@ -697,10 +643,8 @@ export default function HoldingsSection({
         {
           portfolioSummary.available &&
           allocationGaps.length > 0 && (
-            <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
-              <h3 className="text-lg font-bold text-slate-900">
-                Rebalancing considerations
-              </h3>
+            <details className="mt-6 border-t border-slate-200 pt-2">
+              <summary className="min-h-11 cursor-pointer py-3 font-semibold">Allocation gaps</summary>
               <p className="mt-2 text-sm text-slate-600">
                 This comparison covers recommended holdings and is based on cost
                 basis, not current market value.
@@ -714,14 +658,12 @@ export default function HoldingsSection({
                   </li>
                 ))}
               </ul>
-            </div>
+            </details>
           )}
 
         {holdings.length > 0 && (
-          <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
-            <h3 className="text-lg font-bold text-slate-900">
-              Hypothetical contribution allocation
-            </h3>
+          <details className="mt-6 border-t border-slate-200 pt-2">
+            <summary className="min-h-11 cursor-pointer py-3 font-semibold">Explore a contribution</summary>
             <p className="mt-2 text-sm text-slate-600">
               Explore new contributions toward your targets without selling holdings.
             </p>
@@ -775,7 +717,7 @@ export default function HoldingsSection({
                 </>
               )}
             </div>
-          </div>
+          </details>
         )}
 
       </Card>

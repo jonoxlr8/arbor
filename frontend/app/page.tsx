@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import Logo from "@/components/Logo";
 import { planningCurrency } from "@/lib/currency";
 import Card from "@/components/Card";
-import Welcome from "@/components/Welcome";
 import Question from "@/components/Question";
 import ProgressBar from "@/components/ProgressBar";
 import PublicEntry from "@/components/entry/PublicEntry";
@@ -32,7 +31,6 @@ export default function Home() {
   const [profileError, setProfileError] = useState("");
   const profileSaving = useRef(false);
   const profileRequest = useRef<AbortController | null>(null);
-  const [started, setStarted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState(
     "Understanding your goals...",
@@ -56,7 +54,6 @@ export default function Home() {
         setInvestmentHorizon("");
         setRiskTolerance("");
         setProfileError("");
-        setStarted(false);
         setLoading(false);
         setLogoutError("");
       },
@@ -157,7 +154,7 @@ export default function Home() {
     step === 1
       ? name.trim()
       : step === 2
-        ? country
+        ? country === "Philippines"
         : step === 3
           ? currentPortfolioValue !== ""
             && !numericError("current_portfolio_value", currentPortfolioValue)
@@ -215,7 +212,7 @@ export default function Home() {
 
       const result = await createProfile({
         full_name: name,
-        country,
+        country: country,
         goal_target: Number(goalTarget),
         investment_horizon: Number(investmentHorizon),
         risk_tolerance: riskTolerance,
@@ -244,31 +241,8 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-6">
-      {!started && (
-        <Card>
-          <Logo />
-
-          <h1 className="mt-8 text-4xl font-bold text-slate-900">
-            A clearer plan for your future.
-          </h1>
-
-          <p className="mt-4 text-slate-600">
-            Create a personalized investment strategy based on your goals,
-            timeline, and risk profile.
-          </p>
-
-          <button
-            onClick={() => setStarted(true)}
-            className="mt-10 w-full rounded-2xl bg-emerald-700 py-5 text-lg font-semibold text-white shadow-lg transition-all duration-200 hover:-translate-y-1 hover:bg-emerald-800 hover:shadow-xl"
-          >
-            Build my Arbor plan →
-          </button>
-        </Card>
-      )}
-
-      {started && (
-        <div
+    <main className="flex min-h-dvh items-start justify-center bg-background px-4 py-6 sm:py-12">
+        <div className="w-full min-w-0 max-w-xl"
           onKeyDown={(event) => {
             if (event.key === "Enter" && event.target instanceof HTMLInputElement && canContinue) {
               event.preventDefault();
@@ -281,7 +255,7 @@ export default function Home() {
 
             <ProgressBar step={step} totalSteps={7} />
 
-            <Welcome step={step} name={name} />
+            <div className="mt-3 min-h-11">{step > 1 && <button type="button" className="min-h-11 text-sm font-medium text-slate-600" onClick={() => setStep(step - 1)}>← Back</button>}</div>
 
             <Question
               step={step}
@@ -304,18 +278,17 @@ export default function Home() {
             <button
               onClick={handleNext}
               disabled={!canContinue}
-              className={`mt-10 w-full rounded-2xl py-5 text-lg font-semibold shadow-lg transition-all duration-200 ${
+              className={`mt-6 min-h-12 w-full rounded-2xl py-3 text-base font-semibold transition ${
                 canContinue
                   ? "bg-emerald-700 text-white hover:-translate-y-1 hover:bg-emerald-800 hover:shadow-xl"
                   : "cursor-not-allowed bg-slate-200 text-slate-400 shadow-none"
               }`}
             >
-              {step === 7 ? "Create my plan →" : "Next →"}
+              {step === 7 ? "Create my plan →" : "Continue →"}
             </button>
             {profileError && <p role="alert" className="mt-4 whitespace-pre-line text-red-700">{profileError}</p>}
           </Card>
         </div>
-      )}
     </main>
   );
 }

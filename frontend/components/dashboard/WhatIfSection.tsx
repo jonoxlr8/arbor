@@ -89,8 +89,7 @@ function ScenarioView({ plan }: WhatIfSectionProps) {
   return (
     <section className="mt-12">
       <SectionHeader
-        eyebrow="What If?"
-        title="Explore Your Investment Options"
+        title="What If"
         description="Explore a different monthly contribution."
       />
 
@@ -106,7 +105,9 @@ function ScenarioView({ plan }: WhatIfSectionProps) {
             </p>
           </div>
 
+          <label htmlFor="scenario-contribution" className="sr-only">Hypothetical monthly contribution</label>
           <input
+            id="scenario-contribution"
             type="range"
             min={controls.min}
             max={controls.max}
@@ -115,7 +116,7 @@ function ScenarioView({ plan }: WhatIfSectionProps) {
             onChange={(event) =>
               selectContribution(Number(event.target.value))
             }
-            className="w-full accent-emerald-600"
+            className="min-h-11 w-full accent-emerald-600"
           />
 
           <div className="flex flex-col gap-3 rounded-2xl bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -144,7 +145,7 @@ function ScenarioView({ plan }: WhatIfSectionProps) {
               }
               className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
             >
-              Use recommended amount
+              Use modeled amount
             </button>
           </div>
 
@@ -189,60 +190,11 @@ function ScenarioView({ plan }: WhatIfSectionProps) {
             </div>
           )}
           {result.status === "ready" && <>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl bg-white p-6 shadow-sm">
-              <p className="text-sm text-slate-500">Projected Future Value</p>
-
-              <p className="mt-2 text-3xl font-bold text-slate-900">
-                {formatCurrency(Math.round(projectedValue))}
-              </p>
+            <div className="border-t border-slate-200 pt-5">
+              <p className="text-sm text-slate-500">Selected projected value</p>
+              <p className="planning-amount mt-2 text-3xl font-semibold">{formatCurrency(Math.round(projectedValue))}</p>
+              <p className="mt-2 text-sm text-slate-600">{projectedProgress.toFixed(1)}% of your {formatCurrency(goalAmount)} goal · {reachesGoal ? "Projected goal reached" : "Projected below goal"}</p>
             </div>
-
-            <div className="rounded-2xl bg-white p-6 shadow-sm">
-              <p className="text-sm text-slate-500">Goal Progress</p>
-
-              <p className="mt-2 text-3xl font-bold text-emerald-600">
-                {projectedProgress.toFixed(1)}%
-              </p>
-
-              <p className="mt-1 text-sm text-slate-500">
-                of your {formatCurrency(goalAmount)} goal
-              </p>
-            </div>
-          </div>
-
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
-            <p className="font-semibold text-slate-900">
-              Your Money Breakdown
-            </p>
-
-            <div className="mt-5 grid gap-4 sm:grid-cols-3">
-              <div>
-                <p className="text-sm text-slate-500">Total Invested</p>
-
-                <p className="mt-1 text-xl font-bold text-slate-900">
-                  {formatCurrency(Math.round(totalInvested))}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-sm text-slate-500">Investment Growth</p>
-
-                <p className="mt-1 text-xl font-bold text-emerald-600">
-                  +{formatCurrency(Math.round(investmentGrowth))}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-sm text-slate-500">Future Value</p>
-
-                <p className="mt-1 text-xl font-bold text-slate-900">
-                  {formatCurrency(Math.round(projectedValue))}
-                </p>
-              </div>
-            </div>
-          </div>
-
           <div className="rounded-2xl bg-white p-6 shadow-sm">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -342,40 +294,37 @@ function ScenarioView({ plan }: WhatIfSectionProps) {
               </span>
             </div>
 
-            <div
-              className={`mt-6 rounded-2xl p-4 ${
-                reachesGoal ? "bg-emerald-50" : "bg-slate-50"
-              }`}
-            >
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">
-                    {reachesGoal ? "🎯 Goal on track" : "Projected outcome"}
-                  </p>
+          </div>
+<details className="border-t border-slate-200 pt-2"><summary className="min-h-11 cursor-pointer py-3 font-semibold">Scenario breakdown and comparison</summary>
+          <div className="rounded-2xl bg-white p-6 shadow-sm">
+            <p className="font-semibold text-slate-900">
+              Your Money Breakdown
+            </p>
 
-                  <p className="mt-1 text-sm text-slate-500">
-                    {formatCurrency(monthlyInvestment)} per month
-                  </p>
-                </div>
+            <div className="mt-5 grid gap-4 sm:grid-cols-3">
+              <div>
+                <p className="text-sm text-slate-500">Total Invested</p>
 
-                <p
-                  className={`text-2xl font-bold ${
-                    reachesGoal ? "text-emerald-600" : "text-slate-900"
-                  }`}
-                >
-                  {formatCurrency(Math.round(projectedValue))}
+                <p className="mt-1 text-xl font-bold text-slate-900">
+                  {formatCurrency(Math.round(totalInvested))}
                 </p>
               </div>
 
-              <p className="mt-3 text-sm leading-6 text-slate-600">
-                {reachesGoal
-                  ? `This contribution is projected to reach your ${formatCurrency(
-                      goalAmount,
-                    )} goal within ${plan.profile.investment_horizon} years.`
-                  : `This contribution is projected to reach ${projectedProgress.toFixed(
-                      1,
-                    )}% of your ${formatCurrency(goalAmount)} goal.`}
-              </p>
+              <div>
+                <p className="text-sm text-slate-500">Investment Growth</p>
+
+                <p className="mt-1 text-xl font-bold text-emerald-600">
+                  +{formatCurrency(Math.round(investmentGrowth))}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-slate-500">Future Value</p>
+
+                <p className="mt-1 text-xl font-bold text-slate-900">
+                  {formatCurrency(Math.round(projectedValue))}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -475,6 +424,7 @@ function ScenarioView({ plan }: WhatIfSectionProps) {
             </div>
           )}
 
+</details>
           </>}
           <p className="text-xs leading-5 text-slate-500">
             Estimates use the same{" "}

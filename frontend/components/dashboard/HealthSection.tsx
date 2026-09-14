@@ -32,219 +32,37 @@ export default function HealthSection({
 
   const scoreLabel = getScoreLabel();
 
-  if (error) {
-    return (
-      <section className="mt-12 rounded-3xl border border-slate-200 bg-white p-6">
-        <h2 className="text-3xl font-bold text-slate-900">Portfolio Health</h2>
-        <p role="alert" className="mt-4 text-red-700">We couldn’t refresh your portfolio health. {error}</p>
-        <button type="button" onClick={onRetry} className="mt-4 rounded-xl bg-emerald-700 px-5 py-3 text-white">Retry</button>
-      </section>
-    );
+
+  if (error || healthLoading || !health) {
+    return <section className="mt-4 border-t border-slate-200 pt-4" aria-live="polite">
+      <h3 className="font-semibold">Portfolio Health</h3>
+      {error ? <><p role="alert" className="mt-2 text-sm text-red-700">We couldn’t refresh portfolio health. {error}</p><button type="button" onClick={onRetry} className="mt-2 min-h-11 font-semibold text-forest">Retry</button></>
+        : <p className="mt-2 text-sm text-slate-600">{healthLoading ? "Analyzing your portfolio…" : actualHealth?.reason}</p>}
+      {!healthLoading && !error && <p className="mt-2 text-xs text-slate-500">Requires valid holdings in one currency with positive cost basis. No currency conversion.</p>}
+    </section>;
   }
-
-  if (healthLoading) {
-    return (
-      <section className="mt-12">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-          <p className="text-sm font-semibold uppercase tracking-widest text-emerald-600">
-            Portfolio Health
-          </p>
-
-          <h2 className="mt-2 text-3xl font-bold text-slate-900">
-            How healthy is your portfolio?
-          </h2>
-
-          <div className="mt-6 rounded-2xl bg-slate-50 p-5">
-            <p className="text-sm font-medium text-slate-600">
-              Analyzing your portfolio...
-            </p>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  if (actualHealth && !actualHealth.available) {
-    return (
-      <section className="mt-12">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-          <p className="text-sm font-semibold uppercase tracking-widest text-emerald-600">
-            Portfolio Health
-          </p>
-
-          <h2 className="mt-2 text-3xl font-bold text-slate-900">
-            How healthy is your portfolio?
-          </h2>
-
-          <p className="mt-3 max-w-2xl leading-7 text-slate-600">
-            Portfolio Health requires valid recorded holdings in one currency with a positive cost basis. No currency conversion is performed.
-          </p>
-
-          <div className="mt-6 rounded-2xl bg-slate-50 p-5">
-            <p className="text-sm font-medium text-slate-700">
-              {actualHealth.reason}
-            </p>
-          </div>
-        </div>
-      </section>
-    );
-  }
-  return (
-    <section className="mt-12">
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-        <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-widest text-emerald-600">
-              Portfolio Health
-            </p>
-
-            <h2 className="mt-2 text-3xl font-bold text-slate-900">
-              How healthy is your portfolio?
-            </h2>
-
-            <p className="mt-3 max-w-2xl leading-7 text-slate-600">
-              A heuristic cost-basis check using position sizes and the assets Arbor recognizes—not a measure of true diversification or personal suitability. Unknown assets and underlying fund overlap may not be assessed.
-            </p>
-
-            {actualHealth?.available && (
-              <p className="mt-3 text-sm font-medium text-slate-500">
-                Based on your recorded cost basis
-                {actualHealth.currency ? ` (${actualHealth.currency})` : ""}.
-              </p>
-            )}
-          </div>
-
-          <div className="flex items-center gap-5">
-            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-emerald-50">
-              <div className="text-center">
-                <p className="text-3xl font-extrabold text-emerald-700">
-                  {score}
-                </p>
-
-                <p className="text-xs font-medium text-emerald-600">/ 10</p>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-lg font-bold text-slate-900">{scoreLabel}</p>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Overall portfolio health
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-8">
-          <div className="mb-2 flex justify-between text-sm">
-            <span className="font-medium text-slate-600">Portfolio Health</span>
-
-            <span className="font-semibold text-emerald-700">
-              {score.toFixed(1)} / 10
-            </span>
-          </div>
-
-          <div className="h-3 overflow-hidden rounded-full bg-slate-100">
-            <div
-              className="h-full rounded-full bg-emerald-600 transition-all"
-              style={{
-                width: `${scorePercentage}%`,
-              }}
-            />
-          </div>
-        </div>
-
-        {breakdown && (
-          <div className="mt-8 rounded-2xl bg-slate-50 p-6">
-            <h3 className="font-bold text-slate-900">
-              What affected your score
-            </h3>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-              {[
-                { factor: "Diversification", score: breakdown.diversification },
-                { factor: "Risk alignment", score: breakdown.risk_alignment },
-                {
-                  factor: "Growth potential",
-                  score: breakdown.growth_potential,
-                },
-                { factor: "Crypto exposure", score: breakdown.crypto_exposure },
-                { factor: "Concentration", score: breakdown.concentration },
-              ].map(({ factor, score: factorScore }) => (
-                <div
-                  key={factor}
-                  className="rounded-xl border border-slate-200 bg-white p-4"
-                >
-                  <p className="text-sm text-slate-600">{factor}</p>
-
-                  <p className="mt-1 font-bold text-slate-900">
-                    {factorScore.toFixed(1)} / 2
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="mt-8 grid gap-6 md:grid-cols-2">
-          <div className="rounded-2xl bg-emerald-50 p-6">
-            <h3 className="font-bold text-slate-900">
-              ✅ What&apos;s working well
-            </h3>
-
-            <div className="mt-4 space-y-3">
-              {strengths.length > 0 ? (
-                strengths.map((item: string) => (
-                  <div key={item} className="flex gap-3">
-                    <span className="text-emerald-600">✓</span>
-
-                    <p className="text-sm leading-6 text-slate-700">{item}</p>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-slate-600">
-                  Your portfolio has several positive characteristics.
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-2xl bg-amber-50 p-6">
-            <h3 className="font-bold text-slate-900">⚠️ Things to consider</h3>
-
-            <div className="mt-4 space-y-3">
-              {warnings.length > 0 ? (
-                warnings.map((item: string) => (
-                  <div key={item} className="flex gap-3">
-                    <span className="text-amber-600">!</span>
-
-                    <p className="text-sm leading-6 text-slate-700">{item}</p>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-slate-600">
-                  Arbor hasn&apos;t identified any major portfolio concerns.
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-6 rounded-2xl bg-slate-50 p-5">
-          <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            Arbor&apos;s assessment
-          </p>
-
-          <p className="mt-2 text-sm leading-6 text-slate-700">
-            Your portfolio is currently rated{" "}
-            <span className="font-semibold text-emerald-700">
-              {scoreLabel.toLowerCase()}
-            </span>{" "}
-            under this limited check, not as a suitability verdict. Continue reviewing your
-            portfolio as your goals, timeline, and financial situation change.
-          </p>
-        </div>
+  return <section className="mt-4 border-t border-slate-200 pt-4">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <h3 className="font-semibold text-slate-900">Portfolio Health</h3>
+      <p className="text-xl font-semibold text-forest">{score} / 10 <span className="text-sm font-normal text-slate-600">· {scoreLabel}</span></p>
+    </div>
+    <p className="mt-2 text-xs leading-5 text-slate-500">A limited {actualHealth?.currency} cost-basis check—not a suitability verdict.</p>
+    <details className="mt-2">
+      <summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold text-forest">What affected this score</summary>
+      <p className="text-sm leading-6 text-slate-600">Uses position sizes and assets Arbor recognizes. Unknown assets and underlying fund overlap may not be assessed; this is not a measure of true diversification.</p>
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-emerald-600" style={{width: `${scorePercentage}%`}} /></div>
+      {breakdown && <dl className="mt-4 divide-y divide-slate-200">
+        {[
+          ["Diversification", breakdown.diversification], ["Risk alignment", breakdown.risk_alignment],
+          ["Growth potential", breakdown.growth_potential], ["Crypto exposure", breakdown.crypto_exposure],
+          ["Concentration", breakdown.concentration],
+        ].map(([factor, value]) => <div key={factor} className="flex justify-between gap-3 py-3 text-sm"><dt>{factor}</dt><dd>{Number(value).toFixed(1)} / 2</dd></div>)}
+      </dl>}
+      <div className="mt-4 grid gap-5 sm:grid-cols-2">
+        <div><h4 className="font-semibold">What’s working well</h4><ul className="mt-2 space-y-2 text-sm text-slate-600">{strengths.map(item=><li key={item}>{item}</li>)}</ul>{strengths.length === 0 && <p className="mt-2 text-sm text-slate-600">No specific strengths reported.</p>}</div>
+        <div><h4 className="font-semibold">Things to consider</h4><ul className="mt-2 space-y-2 text-sm text-slate-600">{warnings.map(item=><li key={item}>{item}</li>)}</ul>{warnings.length === 0 && <p className="mt-2 text-sm text-slate-600">No concerns flagged by this limited check.</p>}</div>
       </div>
-    </section>
-  );
+      <p className="mt-4 text-xs leading-5 text-slate-500">Continue reviewing your portfolio as your goals, timeline and financial situation change.</p>
+    </details>
+  </section>;
 }

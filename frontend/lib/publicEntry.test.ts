@@ -14,30 +14,25 @@ const render = (screen: EntryScreen) => renderToStaticMarkup(createElement(Entry
 
 test("public destinations survive refresh and unknown/authenticated hashes safely start at landing", () => {
   for (const screen of Object.keys(entryLinks) as EntryScreen[]) assert.equal(entryFromHash(entryLinks[screen]), screen);
-  for (const hash of ["", "#plan", "#signup", "#signup-nz", "#invalid"]) assert.equal(entryFromHash(hash), "landing");
+  for (const hash of ["", "#plan", "#signup-nz", "#invalid"]) assert.equal(entryFromHash(hash), "landing");
 });
 test("landing has clear start/login paths without invented financial data or app navigation", () => {
   const html = render("landing");
   assert.match(html, /Build wealth/); assert.match(html, /Grow with Arbor/);
-  assert.match(html, /href="#country"/); assert.match(html, /href="#login"/);
+  assert.match(html, /href="#signup"/); assert.match(html, /href="#login"/);
   assert.match(html, /Your investments stay with your chosen provider/);
   assert.doesNotMatch(html, /Mobile navigation|Primary navigation|Sign out|Projected wealth/);
 });
-test("only Philippines offers signup; unsupported countries have an explicit boundary and Back", () => {
-  const country = render("country");
-  assert.match(country, /Where do you live/); assert.match(country, /href="#signup-ph"/);
-  assert.match(country, /href="#other-country"/);
-  const other = render("other-country");
-  assert.match(other, /Signup isn’t available for other countries yet/);
-  assert.match(other, /Back to country selection/);
-  assert.doesNotMatch(other, /href="#signup-ph"/);
+test("public entry has no country question", () => {
+  for (const screen of ["landing", "signup", "login"] as const) assert.doesNotMatch(render(screen), /Where do you live|Other country/);
+  assert.equal(entryFromHash("#country"), "landing");
 });
 test("dedicated auth screens retain semantic form submission, labels and correct footer paths", () => {
   const signup = render("signup"), login = render("login");
   assert.match(signup, /Create your Arbor account/); assert.match(signup, /Create account/);
   assert.match(signup, /Already have an account\? Log in/);
   assert.match(login, /Welcome back/); assert.match(login, /New to Arbor\? Get started/);
-  assert.match(login, /href="#country"/);
+  assert.match(login, /href="#signup"/);
   for (const html of [signup, login]) {
     assert.match(html, /<form/); assert.match(html, /type="submit"/);
     assert.match(html, /for="auth-email"/); assert.match(html, /for="auth-password"/);

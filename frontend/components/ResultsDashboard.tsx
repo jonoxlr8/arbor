@@ -82,10 +82,7 @@ export default function ResultsDashboard({
         <HoldingsSection
           plan={plan}
           holdingsState={holdingsState}
-          onRetry={() => { void holdingsRecovery.current?.load(); }}
-          onMutate={work => holdingsRecovery.current?.mutate(work) ?? Promise.resolve(false)}
-        />
-        {healthMessage ? (
+          healthSummary={healthMessage ? (
           <section className="arbor-panel mt-6 text-sm text-slate-600" aria-live="polite">
             <h2 className="font-semibold text-slate-900">Actual Portfolio Health</h2>
             <p className="mt-2">{healthMessage}</p>
@@ -95,14 +92,18 @@ export default function ResultsDashboard({
           error={healthState?.status === "error" ? healthState.error : undefined}
           onRetry={() => setHealthRefreshKey(key => key + 1)}
         />}
+          onRetry={() => { void holdingsRecovery.current?.load(); }}
+          onMutate={work => holdingsRecovery.current?.mutate(work) ?? Promise.resolve(false)}
+        />
+
       </div>
 
       <div hidden={active !== "plan"} className="app-destination space-y-6">
         <HeroSection plan={plan} />
         <PortfolioSection plan={plan} />
         <ProjectionSection projection={plan.projection} currency={plan.profile.currency} goalAmount={plan.profile.goal_target} />
-        <WhatIfSection plan={plan} />
         <GoalProgress plan={plan} />
+        <WhatIfSection plan={plan} />
         <InsightsSection plan={plan} />
       </div>
 

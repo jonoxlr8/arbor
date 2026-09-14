@@ -3,6 +3,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { signIn, signUp } from "@/lib/auth";
 import type { AccountSession } from "@/lib/accountRecovery";
+import { authErrorMessage } from "@/lib/authErrorMessage";
 import { entryLinks } from "@/lib/publicEntry";
 
 type AuthFormProps = {
@@ -33,7 +34,7 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
         : await signIn(email, password);
 
       if (result.error) {
-        setError(result.error.message);
+        setError(authErrorMessage(result.error));
         return;
       }
 
@@ -48,7 +49,7 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
       }
       onAuthenticated(result.data.session);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Something went wrong. Please try again.");
+      setError(authErrorMessage(error));
     } finally {
       submitting.current = false;
       setLoading(false);
@@ -117,7 +118,7 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
           </button>
 
           <a
-            href={isSignUp ? entryLinks.login : entryLinks.country}
+            href={isSignUp ? entryLinks.login : entryLinks.signup}
             aria-disabled={loading}
             onClick={event => { if (loading) event.preventDefault(); }}
             className="entry-link flex w-full justify-center text-center"

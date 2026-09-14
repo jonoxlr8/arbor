@@ -36,100 +36,25 @@ export default function WealthJourneyCard({
 
   const formatCurrency = (value: number) => formatPlanningMoney(value, currency);
 
-  return (
-    <div className="arbor-panel text-slate-900">
-      <h2 className="text-xl font-semibold">Goal progress</h2>
 
-      <div className="mt-8">
-        <div className="mb-2 flex justify-between">
-          <span>Planning starting progress</span>
-          <span>{progress.toFixed(1)}%</span>
-        </div>
-
-        <div className="h-4 overflow-hidden rounded-full bg-slate-100">
-          <div
-            className="h-full rounded-full bg-forest"
-            style={{
-              width: `${progress}%`,
-            }}
-          />
-        </div>
-
-        <div className="mt-5 mb-2 flex justify-between">
-          <span>Modeled goal progress</span>
-          <span>{projectedProgress.toFixed(1)}%</span>
-        </div>
-
-        <div className="h-3 overflow-hidden rounded-full bg-slate-100">
-          <div
-            className="h-full rounded-full bg-leaf"
-            style={{
-              width: `${projectedProgress}%`,
-            }}
-          />
-        </div>
-      </div>
-
-      <div className="mt-8 grid gap-6 sm:grid-cols-2">
-        <div>
-          <p className="text-sm text-slate-500">Planning starting value</p>
-          <p className="text-xs text-slate-600">Entered separately for projections; not synchronized with recorded holdings cost basis.</p>
-
-          <p className="mt-2 text-3xl font-bold">
-            {formatCurrency(currentValue)}
-          </p>
-        </div>
-
-        <div>
-          <p className="text-sm text-slate-500">Projected future value</p>
-
-          <p className="mt-2 text-3xl font-bold">
-            {formatCurrency(Math.round(projectedValue))}
-          </p>
-        </div>
-
-        <div>
-          <p className="text-sm text-slate-500">Investment Horizon</p>
-
-          <p className="mt-2 text-3xl font-bold">{years} yrs</p>
-        </div>
-
-        <div>
-          <p className="text-sm text-slate-500">
-            Modeled monthly contribution
-          </p>
-
-          <p className="mt-2 text-3xl font-bold">
-            {formatCurrency(Math.ceil(requiredMonthlyInvestment))}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-8 rounded-2xl bg-background p-4">
-        <p className="mt-3 text-sm font-semibold text-slate-900">
-          {projectedValue >= target
-            ? `You're projected to reach your ${formatCurrency(target)} goal.`
-            : `You're projected to be ${formatCurrency(Math.round(projectedGap))} below your ${formatCurrency(target)} goal.`}
-        </p>
-
-        <p className="mt-3 text-sm text-slate-600">
-          Your planned contribution is{" "}
-          {formatCurrency(Math.round(monthlyInvestment))} per month.
-        </p>
-
-        {monthlyContributionGap > 0 && (
-          <p className="mt-2 text-sm font-semibold text-slate-900">
-            Modeled monthly gap: {" "}
-            {formatCurrency(Math.round(monthlyContributionGap))} per month.
-          </p>
-        )}
-
-        <p className="mt-3 text-xs text-slate-500">
-          Projections are based on an assumed 8% annual return. Actual
-          investment returns will vary.
-        </p>
-      </div>
+  return <section className="arbor-panel">
+    <h2 className="text-xl font-semibold">Goal progress</h2>
+    <div className="mt-4 flex flex-wrap justify-between gap-3">
+      <p className="text-xl font-semibold">{formatCurrency(target)} <span className="text-sm font-normal text-slate-500">goal</span></p>
+      <p className="font-semibold text-forest">{projectedProgress.toFixed(1)}% modeled progress</p>
     </div>
-  );
+    <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-leaf" style={{width: `${projectedProgress}%`}} /></div>
+    <p className="mt-3 text-sm text-slate-700">{projectedValue >= target ? "Projected goal reached." : `Projected shortfall: ${formatCurrency(Math.round(projectedGap))}.`}</p>
+    <p className="mt-3 text-sm text-slate-600">Modeled contribution to reach this goal: <strong>{formatCurrency(Math.ceil(requiredMonthlyInvestment))} / month</strong> over {years} years. Affordability has not been assessed.</p>
+    <details className="mt-3">
+      <summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold text-forest">Planning inputs and assumptions</summary>
+      <dl className="grid gap-3 text-sm sm:grid-cols-2">
+        <div><dt>Planning starting value</dt><dd>{formatCurrency(currentValue)} · {progress.toFixed(1)}% of goal</dd></div>
+        <div><dt>Planned contribution</dt><dd>{formatCurrency(Math.round(monthlyInvestment))} / month</dd></div>
+        {monthlyContributionGap > 0 && <div><dt>Modeled monthly gap</dt><dd>{formatCurrency(Math.round(monthlyContributionGap))}</dd></div>}
+      </dl>
+      <p className="mt-3 text-xs leading-5 text-slate-500">Planning starting value is separate from recorded holdings cost basis. Projections assume 8% annual return; actual returns vary.</p>
+    </details>
+  </section>;
 }
 import { formatPlanningMoney } from "@/lib/format";

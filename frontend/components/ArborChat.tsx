@@ -154,10 +154,10 @@ function ArborMessage({ text }: { text: string }) {
 }
 
 export default function ArborChat({ plan }: ArborChatProps) {
-  return <PlanChat key={chatPlanKey(plan)} plan={plan} />;
+  return <PlanChat key={chatPlanKey(plan)} />;
 }
 
-function PlanChat({ plan }: ArborChatProps) {
+function PlanChat() {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -205,12 +205,12 @@ function PlanChat({ plan }: ArborChatProps) {
       {/* Intro */}
       <div className="text-sm">
         <p className="leading-7 text-slate-700">
-          Hi {plan?.profile?.full_name || "there"}, I&apos;m Arbor. Ask about your target plan—not actual holdings. No live market, tax or trading advice. Each question stands alone.
+          About your target plan—not actual holdings. No live market, tax or trading advice. Each question stands alone.
         </p>
       </div>
 
       {/* Suggested questions */}
-      <div className="mt-6">
+      {messages.length === 0 && <div className="mt-6">
         <p className="mb-3 text-sm font-semibold text-slate-500">Try asking:</p>
 
         <div className="flex flex-wrap gap-2">
@@ -240,8 +240,26 @@ function PlanChat({ plan }: ArborChatProps) {
             </button>
           ))}
         </div>
-      </div>
+      </div>}
 
+        {/* Conversation */}
+        {messages.length > 0 && (
+          <div className="mt-8 space-y-4">
+            {messages.map((message, index) =>
+              message.role === "arbor" ? (
+                <ArborMessage key={index} text={message.text} />
+              ) : (
+                <div key={index} className="ml-3 rounded-2xl bg-sage-soft p-4 sm:ml-8">
+                  <p className="text-sm font-medium text-slate-500">You</p>
+
+                  <p className="mt-1 whitespace-pre-wrap leading-7 text-slate-700">
+                    {message.text}
+                  </p>
+                </div>
+              ),
+            )}
+          </div>
+        )}
       {/* Input */}
       <div className="mt-6">
         {error && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-red-800">{error}</p>}
@@ -283,7 +301,7 @@ function PlanChat({ plan }: ArborChatProps) {
             Press Enter to send · Shift + Enter for a new line
           </p>
 
-          <p className="text-xs text-slate-400">Personalized to your plan</p>
+
         </div>
 
         <button
@@ -304,27 +322,10 @@ function PlanChat({ plan }: ArborChatProps) {
             }
           `}
         >
-          {loading ? "Loading explanation..." : "Explain my Arbor plan"}
+          {loading ? "Loading explanation..." : "Ask Arbor"}
         </button>
 
-        {/* Conversation */}
-        {messages.length > 0 && (
-          <div className="mt-8 space-y-4">
-            {messages.map((message, index) =>
-              message.role === "arbor" ? (
-                <ArborMessage key={index} text={message.text} />
-              ) : (
-                <div key={index} className="ml-3 rounded-2xl bg-sage-soft p-4 sm:ml-8">
-                  <p className="text-sm font-medium text-slate-500">You</p>
 
-                  <p className="mt-1 whitespace-pre-wrap leading-7 text-slate-700">
-                    {message.text}
-                  </p>
-                </div>
-              ),
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

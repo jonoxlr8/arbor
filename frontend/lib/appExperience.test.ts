@@ -10,6 +10,11 @@ import ChatSection from "../components/dashboard/ChatSection";
 import { AppearanceSettings } from "../components/app/Appearance";
 import type { Plan } from "./types/plan";
 import type { ActualPortfolioHealthResponse } from "./api";
+import HoldingsSection from "../components/dashboard/HoldingsSection";
+import HealthSection from "../components/dashboard/HealthSection";
+import AssetCard from "../components/AssetCard";
+import WhatIfSection from "../components/dashboard/WhatIfSection";
+import { readFileSync } from "node:fs";
 
 const plan: Plan = {
   profile: { full_name: "Example Person", country: "Philippines", currency: "PHP", current_portfolio_value: 200, monthly_investment: 10, goal_target: 1000, investment_horizon: 10, risk_tolerance: "Balanced" },
@@ -19,6 +24,51 @@ const plan: Plan = {
   health: { score: 9, breakdown: { diversification: 2, risk_alignment: 2, growth_potential: 2, concentration: 2, crypto_exposure: 1 }, strengths: [], warnings: [] },
 };
 const actual: ActualPortfolioHealthResponse = { basis: "cost_basis", currency: "USD", available: true, health: { ...plan.health!, score: 6 } };
+
+test("Portfolio shows gated Health before holding rows, retains CRUD and uses pp differences", () => {
+  const holding = { id: 1, ticker: "VOO", asset_name: "Vanguard", asset_type: "ETF", currency: "USD", quantity: 2, average_cost: 100, created_at: "2026-01-01" };
+  const props = { plan, onRetry() {}, onMutate: async () => false, healthSummary: createElement(HealthSection, { actualHealth: actual }) };
+  const html = renderToStaticMarkup(createElement(HoldingsSection, { ...props, holdingsState: { status: "loaded", revision: 1, holdings: [holding] } }));
+  assert.ok(html.indexOf("Portfolio Health") < html.indexOf("Holding details"));
+  for (const text of ["Recorded value", "Edit", "Delete", "Units:", "Average cost:", "0.0 pp", "Explore a contribution", "What affected this score"]) assert.ok(html.includes(text), text);
+  assert.equal((html.match(/6 \/ 10/g) ?? []).length, 1);
+  assert.match(html, /<summary[^>]*>Holding details/);
+  for (const holdingsState of [{ status: "loading", revision: 0, operation: "load" }, { status: "error", revision: 1, error: "Reload required" }] as const) {
+    const boundary = renderToStaticMarkup(createElement(HoldingsSection, { ...props, holdingsState }));
+    assert.doesNotMatch(boundary, /6 \/ 10|Recorded value|Explore a contribution|Add Holding/);
+  }
+});
+test("Health unavailable and error boundaries remain explicit without a fabricated score", () => {
+  const html = renderToStaticMarkup(createElement(HealthSection, { actualHealth: { available: false, health: null, currency: null, basis: "cost_basis", reason: "Mixed currencies" } }));
+  assert.match(html, /Mixed currencies/); assert.doesNotMatch(html, /\/ 10/);
+  const error = renderToStaticMarkup(createElement(HealthSection, { actualHealth: null, error: "Please retry", onRetry() {} }));
+  assert.match(error, /role="alert"/); assert.match(error, /Retry/);
+});
+test("targets expose one primary weight with accessible explanation disclosure", () => {
+  const html = renderToStaticMarkup(createElement(AssetCard, { asset: { ticker: "VOO", asset_name: "Vanguard", asset_type: "ETF", allocation: 30 } }));
+  assert.equal((html.match(/30%/g) ?? []).length, 1);
+  assert.match(html, /<summary[^>]*>Why included/);
+  assert.doesNotMatch(html, /Portfolio Weight/);
+});
+test("Plan presents goal before What If; What If keeps labeled control and secondary detail", () => {
+  const html = renderToStaticMarkup(createElement(ResultsDashboard, { plan, onSignOut() {}, signingOut: false, logoutError: "" }));
+  assert.ok(html.indexOf(">Goal progress<") < html.indexOf(">What If<"));
+  const scenario = renderToStaticMarkup(createElement(WhatIfSection, { plan }));
+  assert.match(scenario, /for="scenario-contribution"/);
+  assert.match(scenario, /id="scenario-contribution"/);
+  assert.match(scenario, /Use modeled amount/);
+  assert.doesNotMatch(scenario, /Use recommended amount/);
+  assert.ok(scenario.indexOf("Selected projected value") < scenario.indexOf("How Your Wealth Could Grow"));
+  assert.match(scenario, /<summary[^>]*>Scenario breakdown and comparison/);
+});
+test("chat renders conversation before composer and prompts are empty-state only", () => {
+  const source = readFileSync("components/ArborChat.tsx", "utf8");
+  assert.ok(source.indexOf("messages.map") < source.indexOf("<textarea"));
+  assert.match(source, /messages.length === 0/);
+  const html = renderToStaticMarkup(createElement(ChatSection, { plan }));
+  assert.match(html, />Ask Arbor<\/button>/);
+  assert.doesNotMatch(html, /Personalized to your plan/);
+});
 
 test("four primary destinations and settings have deterministic bookmark identities", () => {
   assert.deepEqual(destinations.map(item => item.id), ["home", "portfolio", "plan", "ask"]);
@@ -105,7 +155,7 @@ test("app initially gates actual analytics while keeping destination owners moun
 
 test("dedicated Ask destination preserves bounded explanation copy and suggested prompts", () => {
   const html = renderToStaticMarkup(createElement(ChatSection, { plan }));
-  assert.match(html, /Understand your plan, allocations and projections/);
+  assert.match(html, /Understand your plan/);
   assert.match(html, /What are my target allocations/);
   assert.doesNotMatch(html, /rule-based|limited set/);
   assert.match(html, /No live market, tax or trading advice/);

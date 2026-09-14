@@ -10,7 +10,7 @@ export default function ChatSection({ plan }: ChatSectionProps) {
   return (
     <section className="arbor-panel mx-auto max-w-3xl">
       <SectionHeader
-        title="Understand your plan, allocations and projections."
+        title="Understand your plan"
       />
 
       <ArborChat plan={plan} />

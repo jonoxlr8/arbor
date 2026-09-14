@@ -1,10 +1,8 @@
-export type EntryScreen = "landing" | "country" | "other-country" | "signup" | "login";
+export type EntryScreen = "landing" | "signup" | "login";
 
-// The country is encoded in the signup destination so refresh/back preserves it.
-// This is an entry preference, never an authentication or server eligibility check.
+// Public navigation survives refresh; country belongs to onboarding.
 export const entryLinks = {
-  landing: "#welcome", country: "#country", "other-country": "#other-country",
-  signup: "#signup-ph", login: "#login",
+  landing: "#welcome", signup: "#signup", login: "#login",
 } as const;
 export function entryFromHash(hash: string): EntryScreen {
   return (Object.keys(entryLinks) as EntryScreen[]).find(screen => entryLinks[screen] === hash) ?? "landing";

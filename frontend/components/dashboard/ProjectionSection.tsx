@@ -71,10 +71,8 @@ export default function ProjectionSection({
         </div>
       </div>
 
-      <div className="mt-8 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-        <h3 className="text-xl font-bold text-slate-900">
-          Your Money Breakdown
-        </h3>
+      <details className="mt-6 border-t border-slate-200 pt-2">
+        <summary className="min-h-11 cursor-pointer py-3 font-semibold">Money breakdown</summary>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <div>
@@ -101,9 +99,9 @@ export default function ProjectionSection({
             </p>
           </div>
         </div>
-      </div>
+      </details>
 
-      <div className="mt-10">
+      <div className="mt-6">
         <GrowthChart
           projection={projection}
           goalAmount={goalAmount}
