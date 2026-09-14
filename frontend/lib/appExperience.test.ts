@@ -68,10 +68,13 @@ test("logout pending/error remains visible and accessible in the shell", () => {
 
 test("Home reads canonical planning values and does not invent ownership or recommended Health", () => {
   const html = renderToStaticMarkup(createElement(HomeOverview, { plan, actualHealth: null }));
-  assert.match(html, /PHP 123\.46K/);
-  assert.match(html, /PHP 10/);
+  assert.match(html, /₱123,456/);
+  assert.match(html, /₱10/);
   assert.match(html, /8% assumed annual return/);
-  assert.match(html, /Planning targets, not a record of what you own/);
+  assert.match(html, /Illustrative, not today’s balance/);
+  assert.match(html, /Monthly contribution/);
+  assert.match(html, /Planning goal/);
+  assert.doesNotMatch(html, /Arbor target portfolio|Vanguard/);
   assert.match(html, /Loading your recorded portfolio check/);
   assert.doesNotMatch(html, /\/ 10/);
   assert.doesNotMatch(html, /Hypothetical contribution allocation|Rebalancing considerations|Add Holding/);
@@ -79,7 +82,7 @@ test("Home reads canonical planning values and does not invent ownership or reco
 
 test("Home uses actual cost-basis Health only when synchronization permits it", () => {
   const html = renderToStaticMarkup(createElement(HomeOverview, { plan, actualHealth: actual }));
-  assert.match(html, />6<span/);
+  assert.match(html, />6 \/ 10/);
   assert.match(html, /USD/);
   assert.match(html, /heuristic/);
   for (const message of ["Loading saved holdings", "Holdings failed; Retry"]) {
@@ -102,11 +105,11 @@ test("app initially gates actual analytics while keeping destination owners moun
 
 test("dedicated Ask destination preserves bounded explanation copy and suggested prompts", () => {
   const html = renderToStaticMarkup(createElement(ChatSection, { plan }));
-  assert.match(html, /Ask Arbor about your plan/);
+  assert.match(html, /Understand your plan, allocations and projections/);
   assert.match(html, /What are my target allocations/);
   assert.doesNotMatch(html, /rule-based|limited set/);
-  assert.match(html, /don’t provide live market, tax or trading advice/);
-  assert.match(html, /analyze your actual holdings/);
+  assert.match(html, /No live market, tax or trading advice/);
+  assert.match(html, /not actual holdings/);
   assert.match(html, /aria-label="Your question about your Arbor plan"/);
 });
 

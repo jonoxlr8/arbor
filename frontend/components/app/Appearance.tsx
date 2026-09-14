@@ -33,3 +33,13 @@ export function AppearanceSettings() {
     </fieldset>
   </section>;
 }
+
+export function AppearanceSelect() {
+  const { preference, set } = useContext(Context);
+  return <label className="inline-flex min-h-11 items-center gap-3 text-xs text-slate-500">
+    Appearance
+    <select aria-label="Appearance" value={preference} onChange={event => set(event.target.value as Appearance)} className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700">
+      <option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option>
+    </select>
+  </label>;
+}

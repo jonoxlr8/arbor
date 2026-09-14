@@ -90,7 +90,28 @@ body {
 /* Hidden tooltips can retain a desktop translation after a mobile resize. */
 .recharts-tooltip-wrapper[style*="visibility: hidden"] { transform: none !important; }
 .recharts-cartesian-grid line { stroke: var(--line); }
-.bg-forest { --logo-cutout: #0F5132; }
+.arbor-logo-color { color: light-dark(#0F5132, #A7D3A0); }
+.planning-amount { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.home-goal-meter { appearance: none; background: #ffffff33; border-radius: 999px; overflow: hidden; }
+.home-goal-meter::-webkit-meter-bar { background: transparent; border: 0; height: 100%; }
+.home-goal-meter::-webkit-meter-optimum-value { background: #A7D3A0; }
+.home-goal-meter::-moz-meter-bar { background: #A7D3A0; }
+.app-destination { overflow-wrap: anywhere; }
+
+@layer components {
+  .public-entry { overflow-wrap: anywhere; }
+  .entry-hero { background-color: var(--feature-surface); border: 1px solid var(--feature-line); }
+  .entry-garden { background-color: light-dark(#deebdf, #19291e); }
+  .entry-orbit { border-color: light-dark(#aec9b3, #43634c); }
+  .entry-primary { @apply inline-flex min-h-12 items-center justify-center gap-6 rounded-2xl bg-forest px-7 py-4 text-base font-semibold text-white transition hover:bg-emerald-800; }
+  .entry-secondary { @apply inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-300 px-7 py-4 text-base font-semibold text-forest; border-color: var(--line); }
+  .entry-link { @apply min-h-11 items-center gap-2 rounded-lg px-2 py-3 text-sm font-semibold text-forest; display: inline-flex; color: light-dark(#0F5132, #afd8b9); }
+  .entry-country { @apply flex min-h-20 items-center gap-4 rounded-2xl border p-4; border-color: var(--line); }
+  .entry-country:hover, .entry-secondary:hover { background-color: var(--muted-surface); }
+  .entry-secondary { color: light-dark(#0F5132, #afd8b9); }
+  .public-entry button, .public-entry input { min-height: 44px; }
+  .public-entry header { padding-top: max(1.25rem, env(safe-area-inset-top)); }
+}
 
 @media (max-width: 639px) {
   .app-shell main > header { margin-bottom: 1.25rem; }

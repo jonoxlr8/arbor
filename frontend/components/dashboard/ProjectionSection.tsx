@@ -1,4 +1,5 @@
 import GrowthChart from "@/components/GrowthChart";
+import { formatPlanningMoney } from "@/lib/format";
 import SectionHeader from "@/components/dashboard/SectionHeader";
 import { getProjectionMessage } from "@/lib/projectionMessages";
 import type { Projection } from "@/lib/types/plan";
@@ -14,13 +15,7 @@ export default function ProjectionSection({
   currency,
   goalAmount,
 }: ProjectionSectionProps) {
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      notation: "compact",
-      maximumFractionDigits: 1,
-    }).format(value);
+  const formatCurrency = (value: number) => formatPlanningMoney(value, currency);
   const totalInvested =
     projection.starting_value +
     projection.monthly_contribution * projection.investment_period_years * 12;
@@ -33,24 +28,22 @@ export default function ProjectionSection({
   );
 
   return (
-    <div className="arbor-feature mt-12">
+    <div className="arbor-feature">
       <SectionHeader
-        eyebrow="Projection"
         title="Your projection"
-        description="Based on your current investment plan and long-term assumptions."
       />
 
-      <div className="mt-6 arbor-panel text-slate-900">
+      <div className="mt-5 text-slate-900">
         <p className="text-sm uppercase tracking-widest opacity-80">
           Projected Portfolio Value
         </p>
 
-        <h3 className="mt-3 break-words text-4xl font-extrabold sm:text-5xl lg:text-6xl">
+        <h3 className="planning-amount mt-3 text-3xl font-semibold sm:text-5xl lg:text-6xl">
           {formatCurrency(projection.projected_value)}
         </h3>
 
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl bg-background p-5 text-center backdrop-blur-sm">
+          <div>
             <p className="text-3xl font-bold">
               {projection.investment_period_years}
             </p>
@@ -58,8 +51,8 @@ export default function ProjectionSection({
             <p className="text-xs uppercase tracking-wide opacity-80">Years</p>
           </div>
 
-          <div className="rounded-2xl bg-background p-5 text-center backdrop-blur-sm">
-            <p className="text-3xl font-bold">
+          <div>
+            <p className="planning-amount text-3xl font-bold">
               {formatCurrency(projection.monthly_contribution)}
             </p>
 
@@ -68,7 +61,7 @@ export default function ProjectionSection({
             </p>
           </div>
 
-          <div className="rounded-2xl bg-background p-5 text-center backdrop-blur-sm">
+          <div>
             <p className="text-3xl font-bold">
               {(projection.assumed_return * 100).toFixed(0)}%
             </p>

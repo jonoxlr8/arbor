@@ -10,7 +10,6 @@ type WealthJourneyCardProps = {
 };
 
 export default function WealthJourneyCard({
-  name,
   currentValue,
   projectedValue,
   years,
@@ -35,22 +34,11 @@ export default function WealthJourneyCard({
     0,
   );
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    }).format(value);
+  const formatCurrency = (value: number) => formatPlanningMoney(value, currency);
 
   return (
     <div className="arbor-panel text-slate-900">
-      <p className="text-sm uppercase tracking-widest text-slate-500">
-        Wealth Journey
-      </p>
-
-      <h2 className="mt-2 text-3xl font-bold">
-        {name}&apos;s long-term plan
-      </h2>
+      <h2 className="text-xl font-semibold">Goal progress</h2>
 
       <div className="mt-8">
         <div className="mb-2 flex justify-between">
@@ -118,12 +106,6 @@ export default function WealthJourneyCard({
       </div>
 
       <div className="mt-8 rounded-2xl bg-background p-4">
-        <p className="text-sm text-slate-600">
-          Based on your current investment plan, Arbor projects your portfolio
-          could reach {formatCurrency(Math.round(projectedValue))} in {years}{" "}
-          years.
-        </p>
-
         <p className="mt-3 text-sm font-semibold text-slate-900">
           {projectedValue >= target
             ? `You're projected to reach your ${formatCurrency(target)} goal.`
@@ -137,8 +119,7 @@ export default function WealthJourneyCard({
 
         {monthlyContributionGap > 0 && (
           <p className="mt-2 text-sm font-semibold text-slate-900">
-            To reach your goal on this timeline, Arbor estimates you would need
-            to invest an additional{" "}
+            Modeled monthly gap: {" "}
             {formatCurrency(Math.round(monthlyContributionGap))} per month.
           </p>
         )}
@@ -151,3 +132,4 @@ export default function WealthJourneyCard({
     </div>
   );
 }
+import { formatPlanningMoney } from "@/lib/format";

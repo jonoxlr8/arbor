@@ -137,7 +137,7 @@ function ArborMessage({ text }: { text: string }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-forest text-white">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sage-soft">
           <ArborMark className="h-8 w-8" />
         </div>
 
@@ -203,10 +203,9 @@ function PlanChat({ plan }: ArborChatProps) {
   return (
     <div className="mt-6 min-w-0">
       {/* Intro */}
-      <div className="rounded-2xl bg-background p-4 text-sm">
+      <div className="text-sm">
         <p className="leading-7 text-slate-700">
-          Hi {plan?.profile?.full_name || "there"}, I&apos;m Arbor. I can
-          help you understand your recommended plan, target allocations, projections and why each investment is included. I don’t provide live market, tax or trading advice, or analyze your actual holdings here. Each question is answered independently.
+          Hi {plan?.profile?.full_name || "there"}, I&apos;m Arbor. Ask about your target plan—not actual holdings. No live market, tax or trading advice. Each question stands alone.
         </p>
       </div>
 

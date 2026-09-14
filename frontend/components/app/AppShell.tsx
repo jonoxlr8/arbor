@@ -40,7 +40,7 @@ export default function AppShell({ active, name, children, onSignOut, signingOut
     <div className="app-shell min-h-screen bg-background text-foreground">
       <a href="#app-content" onClick={event => { event.preventDefault(); document.getElementById("app-content")?.focus(); }} className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:p-4">Skip to content</a>
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-slate-200/70 bg-white p-6 lg:flex">
-        <a href="#home" aria-label="Arbor Home"><Logo horizontal /></a>
+        <a href="#home" aria-label="Arbor Home"><Logo /></a>
         <p className="mt-4 text-xs leading-5 text-slate-500">Build wealth.<br />Grow with Arbor.</p>
         <nav aria-label="Primary navigation" className="mt-12 space-y-2">
           {destinations.map(item => <a key={item.id} href={`#${item.id}`} aria-current={active === item.id ? "page" : undefined} className={`flex min-h-12 items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${active === item.id ? "bg-forest text-white" : "text-slate-600 hover:bg-slate-50 hover:text-forest"}`}><NavIcon name={item.id} />{item.label}</a>)}
@@ -53,15 +53,13 @@ export default function AppShell({ active, name, children, onSignOut, signingOut
       </aside>
       <div className="lg:pl-60">
         <header className="flex min-h-16 items-center justify-between border-b border-slate-200/70 bg-white px-4 sm:px-6 lg:hidden">
-          <a href="#home" aria-label="Arbor Home"><Logo horizontal /></a>
+          <a href="#home" aria-label="Arbor Home"><Logo /></a>
           <a href="#settings" aria-label="Settings" className="flex h-11 w-11 items-center justify-center rounded-full bg-sage-soft text-forest"><NavIcon name="settings" /></a>
         </header>
         <main id="app-content" tabIndex={-1} className="mx-auto w-full min-w-0 max-w-6xl px-4 pt-7 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-8 lg:px-10 lg:py-10">
           <header className="mb-7 flex min-w-0 flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-forest">{active === "home" ? "Your long-term view" : "Grow with Arbor"}</p>
               <h1 ref={heading} tabIndex={-1} className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 outline-none sm:text-4xl">{active === "home" ? `Hello, ${name.trim().split(/\s+/)[0] || "there"}.` : destination?.label ?? "Settings"}</h1>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">{destination?.description ?? "The details behind your plan. You’re in control."}</p>
             </div>
             <span className="hidden rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500 sm:block">Long-term, by design</span>
           </header>

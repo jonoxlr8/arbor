@@ -7,17 +7,16 @@ type HeroSectionProps = {
 };
 
 export default function HeroSection({ plan }: HeroSectionProps) {
+  return <RecommendationCard riskLevel={plan.profile.risk_level ?? plan.profile.risk_tolerance} horizon={plan.profile.investment_horizon} />;
+}
+
+export function GoalProgress({ plan }: HeroSectionProps) {
   const goalTarget = plan.profile?.goal_target ?? 0;
   const currency = plan.profile?.currency ?? "USD";
 
 
   return (
     <>
-      <RecommendationCard
-        riskLevel={plan.profile.risk_level ?? plan.profile.risk_tolerance}
-        horizon={plan.profile.investment_horizon}
-      />
-
       <div className="mt-6">
         <WealthJourneyCard
           name={plan.profile.full_name}

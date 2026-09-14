@@ -1,4 +1,5 @@
 "use client";
+import { formatPlanningMoney } from "@/lib/format";
 
 import { useEffect, useRef, useState } from "react";
 
@@ -50,12 +51,7 @@ function ScenarioView({ plan }: WhatIfSectionProps) {
   const currency = plan.profile.currency;
   const goalAmount = plan.profile.goal_target;
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    }).format(value);
+  const formatCurrency = (value: number) => formatPlanningMoney(value, currency);
 
   const projectedProgress =
     goalAmount > 0 ? Math.min((projectedValue / goalAmount) * 100, 100) : 0;
@@ -95,7 +91,7 @@ function ScenarioView({ plan }: WhatIfSectionProps) {
       <SectionHeader
         eyebrow="What If?"
         title="Explore Your Investment Options"
-        description="See how changing your monthly investment could affect your long-term wealth."
+        description="Explore a different monthly contribution."
       />
 
       <div className="mt-8 rounded-3xl border border-emerald-200 bg-emerald-50 p-6 sm:p-8">

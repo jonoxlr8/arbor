@@ -5,7 +5,7 @@ import AppShell from "@/components/app/AppShell";
 import HomeOverview from "@/components/app/HomeOverview";
 import { AppearanceSettings } from "@/components/app/Appearance";
 import { subscribeNavigation, navigationSnapshot, serverNavigationSnapshot } from "@/lib/appNavigation";
-import HeroSection from "@/components/dashboard/HeroSection";
+import HeroSection, { GoalProgress } from "@/components/dashboard/HeroSection";
 import PortfolioSection from "@/components/dashboard/PortfolioSection";
 import ProjectionSection from "@/components/dashboard/ProjectionSection";
 import InsightsSection from "@/components/dashboard/InsightsSection";
@@ -102,6 +102,7 @@ export default function ResultsDashboard({
         <PortfolioSection plan={plan} />
         <ProjectionSection projection={plan.projection} currency={plan.profile.currency} goalAmount={plan.profile.goal_target} />
         <WhatIfSection plan={plan} />
+        <GoalProgress plan={plan} />
         <InsightsSection plan={plan} />
       </div>
 

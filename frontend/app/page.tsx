@@ -7,7 +7,7 @@ import Card from "@/components/Card";
 import Welcome from "@/components/Welcome";
 import Question from "@/components/Question";
 import ProgressBar from "@/components/ProgressBar";
-import AuthForm from "@/components/AuthForm";
+import PublicEntry from "@/components/entry/PublicEntry";
 import { createProfile, getMyProfile } from "@/lib/api";
 import { getCurrentUser, signOut } from "@/lib/auth";
 import ResultsDashboard from "@/components/ResultsDashboard";
@@ -122,7 +122,7 @@ export default function Home() {
   }
 
   if (account.status === "unauthenticated") {
-    return <AuthForm onAuthenticated={(session) => void recovery.current?.authenticated(session)} />;
+    return <PublicEntry onAuthenticated={(session) => void recovery.current?.authenticated(session)} />;
   }
 
   if (loading) {

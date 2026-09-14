@@ -233,15 +233,14 @@ export default function HoldingsSection({
   };
 
   return (
-    <section className="mt-8 min-w-0 [overflow-wrap:anywhere] [&_input]:min-w-0 [&_input]:max-w-full [&_select]:min-w-0 [&_select]:max-w-full">
+    <section className="min-w-0 [overflow-wrap:anywhere] [&_input]:min-w-0 [&_input]:max-w-full [&_select]:min-w-0 [&_select]:max-w-full">
       <Card compactOnMobile>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 sm:flex-1">
             <h2 className="text-2xl font-bold text-slate-900">My Portfolio</h2>
 
             <p className="mt-2 text-sm text-slate-600">
-              Track the investments you currently own. Arbor will compare these
-              holdings with your recommended portfolio. Recorded cost basis comes from these entries and does not update your separately entered planning starting value.
+              Recorded cost basis—not market value. Entries don’t update your planning starting value.
             </p>
 
             {portfolioSummary.total_cost_basis !== null && (
@@ -266,7 +265,7 @@ export default function HoldingsSection({
               if (!showForm) setCurrency(portfolioSummary.currency ?? "USD");
               setError("");
             }}
-            className="shrink-0 whitespace-nowrap rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
+            className="min-h-11 shrink-0 whitespace-nowrap rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
           >
             {showForm ? "Close" : "Add Holding"}
           </button>
@@ -278,9 +277,6 @@ export default function HoldingsSection({
               Add an Investment
             </h3>
 
-            <p className="mt-1 text-sm text-slate-600">
-              Enter the investment you currently own.
-            </p>
 
             <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
               <div>
@@ -634,8 +630,7 @@ export default function HoldingsSection({
             </p>
 
             <p className="mt-2 text-sm text-slate-600">
-              See how your current portfolio compares with Arbor&apos;s recommended
-              allocation. Based on cost basis, not current market value.
+              Compared with Arbor targets using cost basis, not current market value.
             </p>
 
             <div className="mt-4 space-y-3">
@@ -728,8 +723,7 @@ export default function HoldingsSection({
               Hypothetical contribution allocation
             </h3>
             <p className="mt-2 text-sm text-slate-600">
-              This hypothetical allocation applies new contributions toward your
-              existing Arbor targets without selling holdings.
+              Explore new contributions toward your targets without selling holdings.
             </p>
             <p className="mt-2 text-sm text-slate-600">
               Based on cost basis, not current market value. This educational

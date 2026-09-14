@@ -13,17 +13,13 @@ export default function PortfolioSection({ plan }: PortfolioSectionProps) {
   );
 
   return (
-    <div className="mt-12">
+    <div>
       <SectionHeader
-        eyebrow="Portfolio"
         title="Arbor target portfolio"
-        description={`A model portfolio selected using your ${plan.profile.risk_level?.toLowerCase() ?? "balanced"} risk category. Your goals and timeline inform projections, not separate target allocations.`}
+        description="Risk-based model targets. Goals and timeline shape projections, not allocations."
       />
 
-      <div className="mt-10">
-        <h3 className="text-xl font-semibold text-slate-900">
-          Arbor target allocations
-        </h3>
+      <div className="mt-5">
 
         <PortfolioChart portfolio={plan.portfolio} />
 

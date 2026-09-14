@@ -1,5 +1,8 @@
 export type Appearance = "system" | "light" | "dark";
 export const appearanceKey = "arbor-appearance";
+// Runs in <head> before body paint. System needs no override: CSS color-scheme
+// already follows the OS. No user content is interpolated into this script.
+export const appearanceInitScript = `try{var p=localStorage.getItem(${JSON.stringify(appearanceKey)});if(p==='light'||p==='dark')document.documentElement.dataset.theme=p;}catch{}`;
 export function parseAppearance(value: string | null): Appearance {
   return value === "light" || value === "dark" ? value : "system";
 }

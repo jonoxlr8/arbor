@@ -3,16 +3,17 @@
 import { useRef, useState, type FormEvent } from "react";
 import { signIn, signUp } from "@/lib/auth";
 import type { AccountSession } from "@/lib/accountRecovery";
-import Logo from "@/components/Logo";
+import { entryLinks } from "@/lib/publicEntry";
 
 type AuthFormProps = {
   onAuthenticated: (session: AccountSession) => void;
+  mode: "login" | "signup";
 };
 
-export default function AuthForm({ onAuthenticated }: AuthFormProps) {
+export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false);
+  const isSignUp = mode === "signup";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState("");
@@ -55,21 +56,22 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
-      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-        <Logo />
-        <h1 className="mt-8 text-2xl font-semibold tracking-tight text-slate-900">
-          {isSignUp ? "Start your longer-term story." : "Welcome back."}
+      <section className="arbor-panel mx-auto w-full max-w-md">
+        <p className="text-xs font-semibold uppercase tracking-wider text-forest">{isSignUp ? "Your next chapter" : "Your plan is waiting"}</p>
+        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
+          {isSignUp ? "Create your Arbor account" : "Welcome back"}
         </h1>
 
         <p className="mt-3 text-slate-600">
           {isSignUp
-            ? "Create your account to start building your investment strategy."
-            : "Sign in to continue building your investment strategy."}
+            ? "Save your investment plan and track your progress over time."
+            : "Continue building your long-term wealth plan."}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+          <label htmlFor="auth-email" className="block text-sm font-medium text-slate-700">Email address</label>
           <input
+            id="auth-email"
             aria-label="Email address"
             autoComplete="email"
             type="email"
@@ -79,7 +81,9 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
             className="w-full rounded-xl border border-slate-300 px-5 py-4 text-slate-900 outline-none focus:border-green-600 focus:ring-4 focus:ring-green-100"
           />
 
+          <label htmlFor="auth-password" className="block text-sm font-medium text-slate-700">Password</label>
           <input
+            id="auth-password"
             aria-label="Password"
             autoComplete={isSignUp ? "new-password" : "current-password"}
             type="password"
@@ -91,7 +95,7 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
 
           {confirmation && <p role="status" className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">{confirmation}</p>}
           {error && (
-            <p className="rounded-xl bg-red-50 p-4 text-sm text-red-700">
+            <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">
               {error}
             </p>
           )}
@@ -108,26 +112,21 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
             {loading
               ? "Please wait..."
               : isSignUp
-                ? "Create Account"
-                : "Sign In"}
+                ? "Create account"
+                : "Log in"}
           </button>
 
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => {
-              setIsSignUp(!isSignUp);
-              setError("");
-              setConfirmation("");
-            }}
-            className="w-full py-2 text-sm font-medium text-emerald-700 hover:text-emerald-800"
+          <a
+            href={isSignUp ? entryLinks.login : entryLinks.country}
+            aria-disabled={loading}
+            onClick={event => { if (loading) event.preventDefault(); }}
+            className="entry-link flex w-full justify-center text-center"
           >
             {isSignUp
-              ? "Already have an account? Sign in"
-              : "Don't have an account? Create one"}
-          </button>
+              ? "Already have an account? Log in"
+              : "New to Arbor? Get started"}
+          </a>
         </form>
-      </div>
-    </main>
+      </section>
   );
 }
