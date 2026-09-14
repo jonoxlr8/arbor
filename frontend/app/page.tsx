@@ -11,7 +11,7 @@ import AuthForm from "@/components/AuthForm";
 import { createProfile, getMyProfile } from "@/lib/api";
 import { getCurrentUser, signOut } from "@/lib/auth";
 import ResultsDashboard from "@/components/ResultsDashboard";
-import { createAccountRecovery, withDeadline, type AccountState } from "@/lib/accountRecovery";
+import { createAccountRecovery, type AccountState } from "@/lib/accountRecovery";
 import { supabase } from "@/lib/supabase";
 import { numericError, profileErrors, isRiskCategory } from "@/lib/profileValidation";
 
@@ -31,6 +31,7 @@ export default function Home() {
   const [riskTolerance, setRiskTolerance] = useState("");
   const [profileError, setProfileError] = useState("");
   const profileSaving = useRef(false);
+  const profileRequest = useRef<AbortController | null>(null);
   const [started, setStarted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState(
@@ -43,6 +44,9 @@ export default function Home() {
       getProfile: getMyProfile,
       onState: setAccount,
       onIdentityChange: () => {
+        profileRequest.current?.abort();
+        profileRequest.current = null;
+        profileSaving.current = false;
         setName("");
         setStep(1);
         setCountry("");
@@ -64,6 +68,7 @@ export default function Home() {
     });
     void coordinator.restore();
     return () => {
+      profileRequest.current?.abort();
       subscription.unsubscribe();
       coordinator.dispose();
       recovery.current = null;
@@ -199,6 +204,8 @@ export default function Home() {
     profileSaving.current = true;
     setProfileError("");
     const isCurrent = recovery.current?.guard() ?? (() => false);
+    const controller = new AbortController();
+    profileRequest.current = controller;
 
     try {
       setLoading(true);
@@ -222,7 +229,7 @@ export default function Home() {
         }
       }, 800);
 
-      const result = await withDeadline(createProfile({
+      const result = await createProfile({
         full_name: name,
         country,
         goal_target: Number(goalTarget),
@@ -231,7 +238,7 @@ export default function Home() {
         currency: planningCurrency(country) ?? "",
         monthly_investment: Number(monthlyInvestment),
         current_portfolio_value: Number(currentPortfolioValue),
-      }));
+      }, account.userId, controller.signal);
 
       if (!isCurrent()) return;
       setLoadingMessage("Your Arbor plan is ready 🌳");
@@ -240,7 +247,10 @@ export default function Home() {
       if (!isCurrent()) return;
       setProfileError(error instanceof Error ? error.message : "Unable to create your plan. Please retry.");
     } finally {
-      profileSaving.current = false;
+      if (profileRequest.current === controller) {
+        profileSaving.current = false;
+        profileRequest.current = null;
+      }
       if (interval) {
         clearInterval(interval);
       }

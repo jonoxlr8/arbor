@@ -19,7 +19,6 @@ export default function WealthJourneyCard({
   requiredMonthlyInvestment,
   monthlyInvestment,
 }: WealthJourneyCardProps) {
-  console.log("WealthJourney currency:", currency);
 
   const target = goalAmount;
 

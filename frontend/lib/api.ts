@@ -5,8 +5,9 @@ import { boundedRequest } from "./dashboardConsistency";
 import { HoldingsRequestError, parseHolding, parseHoldingsResponse } from "./holdingsRecovery";
 import { FIELD_LABELS } from "./profileValidation";
 import type { ProjectionInput, ProjectionResult } from "./projectionScenario";
+import { apiBaseUrl } from "./apiConfig";
 
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = apiBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL, process.env.NODE_ENV);
 
 export type CreateProfileRequest = {
   full_name: string;
@@ -92,23 +93,35 @@ async function getAuthHeaders(): Promise<HeadersInit> {
   };
 }
 
-export async function createProfile(
-  data: CreateProfileRequest,
-): Promise<Plan> {
-  const authHeaders = await getAuthHeaders();
-
-  const response = await fetch(`${API_BASE_URL}/profiles`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders,
-    },
-    body: JSON.stringify(data),
-  });
-
-  const body = await checkedJson(response);
-  if (!isPlan(body)) throw new Error("The new plan was incomplete. Please retry.");
-  return body;
+export function createProfileCreator(
+  headers = getAuthHeaders, request: typeof fetch = fetch,
+  recover: (userId: string, signal: AbortSignal) => Promise<Plan | null> = (userId, signal) => getMyProfile(userId, undefined, signal), timeoutMs = 12000,
+) {
+  return async (data: CreateProfileRequest, userId: string, signal?: AbortSignal): Promise<Plan> => {
+    try {
+      return await boundedRequest(async activeSignal => {
+        const authHeaders = await headers();
+        activeSignal.throwIfAborted();
+        const body = await checkedJson(await request(`${API_BASE_URL}/profiles`, {
+          method: "POST", headers: { ...authHeaders, "Content-Type": "application/json" },
+          body: JSON.stringify(data), signal: activeSignal,
+        }));
+        if (!isPlan(body)) throw new Error("The new plan was incomplete. Please retry.");
+        return body;
+      }, signal, timeoutMs);
+    } catch {
+      if (signal?.aborted) throw new Error("Profile creation was cancelled.");
+      // Never repeat the POST automatically: it might already have saved.
+      try {
+        const saved = await boundedRequest(activeSignal => recover(userId, activeSignal), signal, timeoutMs);
+        if (saved && isPlan(saved)) return {
+          ...saved,
+          profile_warning: [saved.profile_warning, "Your saved profile was restored after an interrupted request. Check it before making further changes."].filter(Boolean).join(" "),
+        };
+      } catch { /* An unsuccessful read is not evidence of a saved profile. */ }
+      throw new Error("We couldn’t confirm your saved profile. Please retry; an existing profile will be restored without overwriting it.");
+    }
+  };
 }
 
 export type ArborChatResponse = {
@@ -165,8 +178,11 @@ export function createProfileReader(
   request: typeof fetch = fetch,
   timeoutMs = 12000,
 ) {
-  return async (userId: string, knownAccessToken?: string): Promise<Plan | null> => {
+  return async (userId: string, knownAccessToken?: string, signal?: AbortSignal): Promise<Plan | null> => {
     const controller = new AbortController();
+    const cancel = () => controller.abort(signal?.reason);
+    signal?.addEventListener("abort", cancel, { once: true });
+    if (signal?.aborted) cancel();
     try {
       return await withDeadline((async () => {
         for (let attempt = 0; attempt < 2; attempt++) {
@@ -200,11 +216,13 @@ export function createProfileReader(
       })(), timeoutMs);
     } finally {
       controller.abort();
+      signal?.removeEventListener("abort", cancel);
     }
   };
 }
 
 export const getMyProfile = createProfileReader();
+export const createProfile = createProfileCreator();
 
 export const updateMyProfile = createProfileWriter();
 

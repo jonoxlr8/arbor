@@ -58,7 +58,6 @@ def build_investment_plan(profile):
     )
 
     # Health Score
-    print("HEALTH PORTFOLIO:", portfolio)
 
     health = calculate_health_score(
         {

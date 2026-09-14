@@ -101,7 +101,7 @@ def signed_token(monkeypatch):
                         lambda token: SimpleNamespace(key=key.public_key()))
     now = int(fixed.timestamp())
     def make(**claims):
-        return jwt.encode({"sub": "returning-user", "iat": now, "exp": now + 3600, **claims},
+        return jwt.encode({"sub": "11111111-1111-4111-8111-111111111111", "iss": auth.JWT_ISSUER, "aud": "authenticated", "iat": now, "exp": now + 3600, **claims},
                           key, algorithm="ES256")
     return make, now
 
@@ -112,7 +112,7 @@ def test_new_token_accepts_small_issuer_clock_difference(signed_token):
     with pytest.raises(jwt.ImmatureSignatureError):
         jwt.decode(token, auth.jwks_client.get_signing_key_from_jwt(token).key,
                    algorithms=["ES256"], options={"verify_aud": False})
-    assert auth.get_current_user_id(f"Bearer {token}") == "returning-user"
+    assert auth.get_current_user_id(f"Bearer {token}") == "11111111-1111-4111-8111-111111111111"
 
 
 @pytest.mark.parametrize("claims", [{"iat": 10}, {"nbf": 10}, {"exp": -10}])

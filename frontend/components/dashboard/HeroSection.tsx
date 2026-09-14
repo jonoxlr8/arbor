@@ -11,8 +11,6 @@ export default function HeroSection({ plan }: HeroSectionProps) {
   const goalTarget = plan.profile?.goal_target ?? 0;
   const currency = plan.profile?.currency ?? "USD";
 
-  console.log("Hero goal_target:", goalTarget);
-  console.log("Hero currency:", currency);
 
   return (
     <>

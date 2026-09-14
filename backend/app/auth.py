@@ -1,6 +1,7 @@
 import os
 import ssl
 import logging
+from uuid import UUID
 
 import certifi
 import jwt
@@ -15,7 +16,8 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 if not SUPABASE_URL:
     raise RuntimeError("SUPABASE_URL is not configured")
 
-JWKS_URL = f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json"
+JWKS_URL = f"{SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
+JWT_ISSUER = f"{SUPABASE_URL.rstrip('/')}/auth/v1"
 
 # Issuer and API clocks can differ slightly. Keep this allowance small; signature
 # and timestamp validation remain enabled (including expiration).
@@ -54,19 +56,21 @@ def get_current_user_id(
             token,
             signing_key.key,
             algorithms=["ES256"],
-            options={"verify_aud": False},
+            issuer=JWT_ISSUER,
+            audience="authenticated",
+            options={"require": ["exp", "iat", "iss", "aud", "sub"]},
             leeway=JWT_CLOCK_SKEW_SECONDS,
         )
 
         user_id = payload.get("sub")
 
-        if not user_id:
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid token: missing user ID",
-            )
-
-        return user_id
+        try:
+            parsed_id = UUID(user_id)
+            if str(parsed_id) != user_id.lower():
+                raise ValueError()
+        except (ValueError, TypeError, AttributeError):
+            raise jwt.exceptions.InvalidSubjectError("Invalid subject") from None
+        return str(parsed_id)
 
     except jwt.PyJWTError as error:
         # Log only the exception category, never the token, claims, or error text.

@@ -142,35 +142,43 @@ def create_profile(
     authorization: str | None = Header(default=None),
 ):
     if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=401,
-            detail="Missing authorization token",
-        )
+        raise HTTPException(401, "Missing authorization token")
 
-    access_token = authorization.split(" ", 1)[1]
+    def canonical():
+        try:
+            return get_my_profile(user_id=user_id, authorization=authorization)
+        except HTTPException as error:
+            if error.status_code == 404 and error.detail == "Profile not found":
+                return None
+            raise HTTPException(503, "We couldn’t restore your saved profile. Please retry.") from None
+        except Exception:
+            raise HTTPException(503, "We couldn’t restore your saved profile. Please retry.") from None
+
+    def recovered(saved):
+        # POST never replaces an existing profile, even if retry input differs.
+        # The dashboard displays this notice alongside any legacy-profile warning.
+        notice = "Your existing saved profile was restored. New onboarding inputs were not applied; use Edit Profile to change them."
+        return {**saved, "profile_warning": " ".join(filter(None, [saved.get("profile_warning"), notice]))}
+
+    saved = canonical()
+    if saved is not None:
+        return recovered(saved)
 
     plan = build_investment_plan(profile)
+    data = {**plan.profile_data, "user_id": user_id}
+    uncertain = False
+    try:
+        client = get_authenticated_client(authorization.split(" ", 1)[1])
+        client.table("profiles").insert(data).execute()
+    except Exception:
+        # A unique conflict or lost database response is NOT proof of success.
+        # Only a subsequent owner-scoped canonical read can establish recovery.
+        uncertain = True
 
-    data = {
-        **plan.profile_data,
-        "user_id": user_id,
-    }
-
-    authenticated_supabase = get_authenticated_client(access_token)
-
-    response = authenticated_supabase.table("profiles").insert(data).execute()
-
-    return {
-        "message": "Profile created successfully",
-        "profile": {
-            **response.data[0],
-            "goal_target": plan.profile_data.get("goal_target"),
-        },
-        "portfolio": plan.portfolio,
-        "explanation": plan.explanation,
-        "projection": plan.projection,
-        "health": plan.health,
-    }
+    saved = canonical()
+    if saved is None:
+        raise HTTPException(503, "We couldn’t confirm your saved profile. Please retry.")
+    return recovered(saved) if uncertain else saved
 
 
 @router.post("/projection")
