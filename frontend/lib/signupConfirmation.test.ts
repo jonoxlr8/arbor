@@ -4,40 +4,53 @@ import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import SignupConfirmation from "../app/confirm-signup/SignupConfirmation";
-import { signupConfirmationUrl } from "./signupConfirmation";
+import { parseSignupToken, confirmSignupToken } from "./signupConfirmation";
 
-const project = "https://example.supabase.co";
-const site = "https://arbor.ph/";
-const token = "a".repeat(64);
-const verification = `${project}/auth/v1/verify?token=${token}&type=signup&redirect_to=${encodeURIComponent(site)}`;
-test("original ConfirmationURL keeps token and type, with pinned Arbor return", () => {
-  const result = signupConfirmationUrl(`#confirmation_url=${verification}`, project, site);
-  assert.ok(result);
-  const url = new URL(result);
-  assert.equal(url.searchParams.get("token"), token);
-  assert.equal(url.searchParams.get("redirect_to"), site);
-  assert.equal(url.searchParams.get("type"), "signup");
-  assert.ok(signupConfirmationUrl(`#confirmation_url=${verification.replace("type=signup", "type=email")}`, project, site));
+const token_hash = "a".repeat(64);
+const token = { token_hash, type: "email" as const };
+test("parses the documented email TokenHash fragment only", () => {
+  assert.deepEqual(parseSignupToken(`#token_hash=${token_hash}&type=email`), token);
+  assert.deepEqual(parseSignupToken(`#type=email&token_hash=${token_hash}`), token);
 });
-test("rejects malformed links, alternate hosts/actions, duplicates and open redirects", () => {
-  for (const value of ["", "#confirmation_url=javascript:alert(1)", "#confirmation_url=bad", ...[
-    verification.replace(project, "https://evil.example"),
-    verification.replace("/verify", "/logout"),
-    verification.replace("type=signup", "type=recovery"),
-    verification.replace(token, ""),
-    verification.replace(encodeURIComponent(site), encodeURIComponent("https://evil.example/")),
-    verification + "&token=another", verification + "#extra",
-    verification.replace("https://", "https://user:pass@"),
-  ].map(url => `#confirmation_url=${url}`)]) assert.equal(signupConfirmationUrl(value, project, site), null);
+test("rejects missing, malformed, duplicate and unsupported confirmation data", () => {
+  for (const fragment of ["", "?token_hash=x&type=email", "#confirmation_url=https://example.com",
+    `#token_hash=${token_hash}`, "#token_hash=bad&type=email",
+    `#token_hash=${token_hash}&type=signup`, `#token_hash=${token_hash}&type=recovery`,
+    `#token_hash=${token_hash}&type=email&type=email`,
+    `#token_hash=${token_hash}&token_hash=${token_hash}&type=email`,
+    `#token_hash=${token_hash}&type=email&redirect_to=https://evil.example`]) {
+    assert.equal(parseSignupToken(fragment), null);
+  }
 });
-test("GET/server render has no verification link or token and never auto-redeems", () => {
+test("explicit confirmation calls verifyOtp-compatible operation with email type and requires session", async () => {
+  let calls = 0;
+  const verify = async (input: typeof token) => {
+    calls++; assert.deepEqual(input, token);
+    return {error: null, data: {session: {access_token: "test-session"}}};
+  };
+  parseSignupToken(`#token_hash=${token_hash}&type=email`);
+  assert.equal(calls, 0);
+  assert.equal(await confirmSignupToken(token, verify), true);
+  assert.equal(calls, 1);
+  assert.equal(await confirmSignupToken(token, async () => ({error:null, data:{session:null}})), false);
+});
+test("expired, used, network and never-settling responses fail safely without retries", async () => {
+  let calls = 0;
+  assert.equal(await confirmSignupToken(token, async () => { calls++; return {error:{message:"private provider details"},data:{session:null}}; }), false);
+  assert.equal(calls, 1);
+  assert.equal(await confirmSignupToken(token, async () => {throw Error("private details");}), false);
+  assert.equal(await confirmSignupToken(token, () => new Promise(() => {}), 5), false);
+});
+test("server render is inert; UI clears fragment and only verifies in click handler", () => {
   const html = renderToStaticMarkup(createElement(SignupConfirmation));
   assert.match(html, /Checking your confirmation link/);
   assert.match(html, /href="\/#login"/);
-  assert.doesNotMatch(html, /auth\/v1\/verify|token=|<script/);
+  assert.doesNotMatch(html, /token_hash=|auth\/v1\/verify/);
   const source = readFileSync("app/confirm-signup/SignupConfirmation.tsx", "utf8");
   assert.match(source, /onClick=\{confirm\}/);
-  assert.match(source, /history.replaceState/);
-  assert.doesNotMatch(source, /console\.|localStorage|sessionStorage|fetch\(|verifyOtp|from.*lib\/supabase/);
-  assert.equal((source.match(/location.assign/g) ?? []).length, 1);
+  assert.ok(source.indexOf("history.replaceState") < source.indexOf("token.current = parseSignupToken"));
+  assert.ok(source.indexOf("async function confirm") < source.indexOf("supabase.auth.verifyOtp"));
+  assert.match(source, /if \(!token.current \|\| busy.current\) return/);
+  assert.match(source, /if \(!mounted.current\) return/);
+  assert.doesNotMatch(source, /console\.|localStorage|sessionStorage/);
 });

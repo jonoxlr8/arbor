@@ -94,11 +94,10 @@ confirmation emails through its configured SMTP provider. No Resend SDK, backend
 mail endpoint, or Resend environment secret is needed by Arbor.
 
 `NEXT_PUBLIC_SITE_URL` is an origin only (no path/query/fragment/credentials).
-Both signup and resend return to its root `/`, where the existing browser SDK
-detects the confirmation session and the account coordinator restores the saved
-profile or onboarding. The installed SDK uses implicit URL session detection,
-local session persistence and automatic refresh. Do not switch email templates to
-PKCE/token-hash callback examples without implementing that different callback flow.
+After explicit confirmation, Arbor returns to its root `/`, where the account
+coordinator restores the saved profile or onboarding. The confirmation page uses
+the existing browser SDK to verify the email token hash and save the session.
+Existing local session persistence, URL session detection and refresh remain intact.
 Development/test defaults to `http://localhost:3000/`; production fails for missing,
 local or non-HTTPS configuration. Use the actual deployed frontend origin, not the
 API origin. Changing a public variable requires rebuilding the frontend.
@@ -113,8 +112,8 @@ Jonathan must configure and verify externally (not provable from this repository
 3. Keep Confirm Email enabled. Set Supabase Site URL to the deployed frontend root
    and allowlist that exact confirmation redirect (including `/`). Explicitly list
    localhost only for development; do not use broad production wildcards.
-4. Use the prefetch-safe Confirm signup template below. It wraps the original
-   `{{ .ConfirmationURL }}` rather than opening it directly from the email.
+4. Use the prefetch-safe Confirm signup template below. It carries
+   `{{ .TokenHash }}` to Arbor rather than opening a verification URL from email.
    Check templates for old localhost links and unintended branding.
 5. Review Supabase email/endpoint limits and Resend sending capacity, sender-domain
    status, bounce logs, and delivery to external recipients. The UI's 60-second
@@ -144,26 +143,27 @@ Paste this HTML into the Confirm signup email body (also used by signup resend):
 ```html
 <h2>Welcome to Arbor</h2>
 <p>Confirm your email address to continue building your Arbor plan.</p>
-<p><a href="https://arbor.ph/confirm-signup#confirmation_url={{ .ConfirmationURL }}">Continue to email confirmation</a></p>
+<p><a href="https://arbor.ph/confirm-signup#token_hash={{ .TokenHash }}&amp;type=email">Continue to email confirmation</a></p>
 <p>On the Arbor page, select Confirm email address to finish.</p>
 <p>If you didn’t request an Arbor account, you can ignore this email.</p>
 ```
 
-This follows Supabase's [email-prefetching option 2](https://supabase.com/docs/guides/auth/auth-email-templates#email-prefetching):
-an intermediate page requires a button click before navigating to the original
-verification URL. We carry the complete URL in the fragment (not a query parameter),
-so it is not sent to Arbor HTTP/access logs. Do not URL-encode or append parameters
-to the whole ConfirmationURL in this template; its own redirect_to remains encoded.
-The page immediately clears the fragment from the address bar/history entry and
-keeps the validated destination only in memory. Refreshing then requires reopening
-the email link. It renders no token-bearing anchor and performs no verification on
-load. Only the configured Supabase project's HTTPS `/auth/v1/verify` signup/email
-URL is accepted; return redirects must match the configured Arbor root.
+This uses Supabase's [prefetch-safe intermediate-page pattern](https://supabase.com/docs/guides/auth/auth-email-templates#email-prefetching)
+with its documented [TokenHash verification](https://supabase.com/docs/reference/javascript/auth-verifyotp):
+`auth.verifyOtp({ token_hash, type: "email" })`. The email type is intentional,
+including for signup confirmation. No nested ConfirmationURL or client-controlled
+redirect is accepted. The fragment is not sent to Arbor/Vercel in the HTTP request.
+On load, the page clears it from the address bar/history entry and keeps the parsed
+values only in memory. Refreshing requires reopening the email link.
 
-After the explicit click, Supabase performs normal verification and redirects to
-Arbor's existing implicit-session flow. Invalid/expired/used links can return to
-login/resend. Request a fresh email after deploying/changing the template; old
-emails remain direct links. Disable Resend click tracking/link rewriting and exclude
+There is no verification on load and no token-bearing anchor on the page.
+Only pressing Confirm email address calls the existing Supabase browser client.
+The SDK saves the verified browser session before Arbor returns to its configured
+root and runs normal profile recovery. The UI has a 15-second deadline and no
+automatic retry; a timed-out SDK request can still finish and establish a session.
+Missing/invalid/expired/used links and network failures offer login/resend.
+Request a fresh email after deploying/changing the template; old nested-URL emails
+are no longer accepted. Disable Resend click tracking/link rewriting and exclude
 this route from any future analytics/session replay/URL logging. The route sets
 no-referrer and noindex/nofollow metadata; never log confirmation URLs or tokens.
 Email providers necessarily handle the original email link. This is protection
