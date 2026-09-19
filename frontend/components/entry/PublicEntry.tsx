@@ -7,11 +7,13 @@ import { AppearanceSelect } from "@/components/app/Appearance";
 import type { AccountSession } from "@/lib/accountRecovery";
 import { subscribeNavigation } from "@/lib/appNavigation";
 import { entryLinks, entrySnapshot, serverEntrySnapshot, type EntryScreen } from "@/lib/publicEntry";
+import { confirmationFailureSnapshot } from "@/lib/publicEntry";
 
 type Props = { onAuthenticated: (session: AccountSession) => void };
 export default function PublicEntry(props: Props) {
   const screen = useSyncExternalStore(subscribeNavigation, entrySnapshot, serverEntrySnapshot);
-  return <EntryView screen={screen} {...props} />;
+  const confirmationFailed = useSyncExternalStore(subscribeNavigation, confirmationFailureSnapshot, () => false);
+  return <><div role="status" className="text-center text-sm text-slate-600">{confirmationFailed && "This confirmation link is invalid or has expired. Try logging in if you already confirmed, or request another confirmation email below."}</div><EntryView screen={screen} {...props} /></>;
 }
 
 export function EntryView({ screen, onAuthenticated }: Props & { screen: EntryScreen }) {

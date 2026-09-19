@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAuthHelpers } from "./auth";
 import { InvalidSessionError } from "./accountRecovery";
+import { confirmationRedirect, emailRedirectTo } from "./authConfig";
+import { authErrorMessage } from "./authErrorMessage";
+import { confirmationLinkFailed, entryFromHash } from "./publicEntry";
 
 function helpers(auth: Record<string, unknown>) {
   return createAuthHelpers(async () => ({ auth }) as unknown as SupabaseClient);
@@ -41,4 +44,41 @@ test("successful refresh returns the new access token", async () => {
   assert.equal(await helpers({
     refreshSession: async () => ({ data: { session: { user: { id: "a" }, access_token: "new" } }, error: null }),
   }).getAccessToken("a", true), "new");
+});
+test("signup and resend both use the configured confirmation destination", async () => {
+  const calls: unknown[] = [];
+  const client = helpers({
+    signUp: async (args: unknown) => { calls.push(args); return { data: { session: null }, error: null }; },
+    resend: async (args: unknown) => { calls.push(args); return { data: {}, error: null }; },
+  });
+  await client.signUp("person@example.com", "test-password");
+  await client.resendConfirmation("person@example.com");
+  assert.deepEqual(calls, [
+    { email: "person@example.com", password: "test-password", options: { emailRedirectTo } },
+    { type: "signup", email: "person@example.com", options: { emailRedirectTo } },
+  ]);
+});
+test("resend preserves rate-limit code for friendly copy without retrying", async () => {
+  let calls = 0;
+  try {
+    await helpers({ resend: async () => { calls++; return { error: { code: "over_email_send_rate_limit", message: "Provider message" } }; } }).resendConfirmation("person@example.com");
+    assert.fail("must reject");
+  } catch (error) { assert.match(authErrorMessage(error), /Too many confirmation emails/); }
+  assert.equal(calls, 1);
+});
+test("resend network failure is surfaced", async () => {
+  await assert.rejects(helpers({resend: async () => { throw new Error("offline"); }}).resendConfirmation("a@b.com"), /offline/);
+});
+test("production confirmation URL is explicit HTTPS with no redirect injection", () => {
+  assert.equal(confirmationRedirect(undefined, "development"), "http://localhost:3000/");
+  assert.equal(confirmationRedirect(" https://arbor.example.com/ ", "production"), "https://arbor.example.com/");
+  for (const value of [undefined, "", "http://arbor.example.com", "https://localhost", "https://127.0.0.1", "https://arbor.example.com/callback", "https://arbor.example.com?next=evil", "https://arbor.example.com/#login", "https://user:pass@arbor.example.com", "javascript:alert(1)"]) {
+    assert.throws(() => confirmationRedirect(value, "production"));
+  }
+});
+test("failed confirmation links open login without displaying provider detail", () => {
+  const hash = "#error=access_denied&error_code=otp_expired&error_description=private-detail";
+  assert.equal(confirmationLinkFailed(hash), true);
+  assert.equal(entryFromHash(hash), "login");
+  assert.equal(confirmationLinkFailed("#access_token=example&type=signup"), false);
 });

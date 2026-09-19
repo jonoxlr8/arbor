@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { InvalidSessionError, withDeadline } from "./accountRecovery";
+import { emailRedirectTo } from "./authConfig";
 
 const defaultClient = async () => (await import("./supabase")).supabase;
 
@@ -10,11 +11,16 @@ export function createAuthHelpers(getClient: () => Promise<SupabaseClient> = def
         ["session_not_found", "session_expired", "refresh_token_not_found", "refresh_token_already_used", "bad_jwt", "user_not_found", "user_banned"].includes(error.code ?? "")) {
       throw new InvalidSessionError("Your session has ended. Please sign in again.");
     }
-    throw new Error(error.message);
+    throw Object.assign(new Error(error.message), { code: error.code });
   }
   return {
     signUp: (email: string, password: string) => withDeadline((async () => {
-      const result = await (await getClient()).auth.signUp({ email, password });
+      const result = await (await getClient()).auth.signUp({ email, password, options: { emailRedirectTo } });
+      check(result.error);
+      return result;
+    })()),
+    resendConfirmation: (email: string) => withDeadline((async () => {
+      const result = await (await getClient()).auth.resend({ type: "signup", email, options: { emailRedirectTo } });
       check(result.error);
       return result;
     })()),
@@ -48,4 +54,4 @@ export function createAuthHelpers(getClient: () => Promise<SupabaseClient> = def
   };
 }
 
-export const { signUp, signIn, signOut, getCurrentUser, getAccessToken } = createAuthHelpers();
+export const { signUp, resendConfirmation, signIn, signOut, getCurrentUser, getAccessToken } = createAuthHelpers();

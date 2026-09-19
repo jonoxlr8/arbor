@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
-import { signIn, signUp } from "@/lib/auth";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { signIn, signUp, resendConfirmation } from "@/lib/auth";
 import type { AccountSession } from "@/lib/accountRecovery";
 import { authErrorMessage } from "@/lib/authErrorMessage";
 import { entryLinks } from "@/lib/publicEntry";
@@ -19,6 +19,32 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const submitting = useRef(false);
+  const [cooldown, setCooldown] = useState(0);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+  useEffect(() => {
+    if (!cooldown) return;
+    const timer = setTimeout(() => setCooldown(value => Math.max(0, value - 1)), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
+  const handleResend = async () => {
+    if (submitting.current || cooldown || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return;
+    submitting.current = true;
+    setLoading(true); setError(""); setConfirmation(""); setCooldown(60);
+    try {
+      await resendConfirmation(email.trim());
+      if (mounted.current) setConfirmation("If this address has an account awaiting confirmation, a new email has been requested. Check your inbox and spam folder.");
+    } catch (error) {
+      if (mounted.current) setError(authErrorMessage(error));
+    } finally {
+      submitting.current = false;
+      if (mounted.current) setLoading(false);
+    }
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -39,7 +65,8 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
       }
 
       if (isSignUp && !result.data.session) {
-        setConfirmation("Account created. Please check your email to confirm your account.");
+        setConfirmation("Check your email to confirm your account. If you already have an account, you can log in.");
+        setCooldown(60);
         return;
       }
 
@@ -73,6 +100,7 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
           <label htmlFor="auth-email" className="block text-sm font-medium text-slate-700">Email address</label>
           <input
             id="auth-email"
+            disabled={loading}
             aria-label="Email address"
             autoComplete="email"
             type="email"
@@ -115,6 +143,12 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
               : isSignUp
                 ? "Create account"
                 : "Log in"}
+          </button>
+
+          <button type="button" onClick={() => void handleResend()}
+            disabled={loading || cooldown > 0 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())}
+            className="min-h-11 w-full rounded-xl px-3 py-3 text-sm font-medium text-forest disabled:opacity-50">
+            {cooldown ? `Resend confirmation in ${cooldown}s` : "Resend confirmation email"}
           </button>
 
           <a
