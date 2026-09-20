@@ -45,6 +45,19 @@ def _check_minimum(product: ImplementationProduct, request: ContributionRequest)
         amount_needed_to_minimum=needed, reason="below_minimum" if needed else "minimum_met")
 
 
+def contribution_precision(request: ContributionRequest) -> int:
+    """Shared local precision for the single-purchase and monthly planners."""
+    amounts = [request.contribution_amount] + [request.current_portfolio.value(role) for role in TIE_PRIORITY]
+    return max(28, max(value.adjusted() for value in amounts)
+               - min(value.as_tuple().exponent for value in amounts) + 10)
+
+
+def check_allocation_minimum(product: ImplementationProduct, request: ContributionRequest,
+                             amount: Decimal) -> MinimumCheck:
+    """Apply unchanged 3Q-A minimum rules to one proposed product amount."""
+    return _check_minimum(product, request.model_copy(update={"contribution_amount": amount}))
+
+
 def recommend_next_contribution(request: ContributionRequest) -> ContributionRecommendation:
     """Validate, map using 3P, then select without changing upstream allocations.
 
@@ -53,11 +66,8 @@ def recommend_next_contribution(request: ContributionRequest) -> ContributionRec
     are informational only and never enter selection.
     """
     request = ContributionRequest.model_validate(request)
-    amounts = [request.contribution_amount] + [request.current_portfolio.value(role) for role in TIE_PRIORITY]
-    precision = max(28, max(value.adjusted() for value in amounts)
-                    - min(value.as_tuple().exponent for value in amounts) + 10)
     with localcontext() as arithmetic:
-        arithmetic.prec = precision
+        arithmetic.prec = contribution_precision(request)
         return _recommend(request)
 
 

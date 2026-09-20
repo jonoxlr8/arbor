@@ -126,3 +126,90 @@ loaded, value non-catalog holdings, or verify provider terms. Invalid/incomplete
 inputs raise validation errors rather than producing guessed advice. No reserve
 balance integration exists upstream, so none is invented here. Existing engines,
 catalog, APIs, frontend and database remain unchanged.
+
+## Monthly contribution plans — 3Q-B
+
+`planner.plan_monthly_contribution(ContributionRequest)` adds a separate full-plan
+entry point. 3Q-A continues recommending one next purchase with unchanged behavior.
+The monthly planner reuses its calculations, readiness/path gates, tie priority,
+local Decimal precision and minimum evaluator. No endpoint or persistence is added.
+
+### Allocation order
+
+1. Compute the same post-contribution deficits as 3Q-A.
+2. Keep actionable, positive-target products and positive deficits only.
+3. Sort descending by monetary deficit, with the existing core-to-satellite
+   priority for exact ties.
+4. Process confirmed-executable candidates first, then unverifiable-minimum
+   candidates. Within each pass retain deficit order. This explicit preference
+   for executable purchases may move a lower-deficit product earlier, but never
+   gives it more than its positive deficit.
+5. For each product, check `min(remaining, deficit)` against **that amount's**
+   minimum. An executable or verify-minimum allocation consumes that candidate.
+   A below-minimum candidate consumes nothing; continue to other positive deficits.
+
+Unverifiable allocations remain planned only, not executable. First/additional
+ownership and original catalog units are unchanged. No prices, FX, fees or new
+product mappings enter the calculation. No overweight or zero-target sleeve is
+funded while positive deficits remain. There are no sales.
+
+### Blocked cash versus true residual
+
+An unfilled deficit blocked by minimums is **not** a true residual. It leaves
+waiting cash rather than funding an already-filled/overweight target. For GCash
+with PHP 1,200 and deficits global 700 / defensive 500: global fails its initial
+PHP 1,000 minimum, defensive receives 500, and 700 remains unallocated. The blocked
+record shows candidate 700 and 300 needed to reach its minimum. No product is
+invented for the waiting cash.
+
+Only after every eligible positive deficit is filled may the residual fallback
+run. It tries the highest-target-weight executable product, with the same tie
+order, then the highest-weight verify-minimum product. Known below-minimum
+products are skipped. If none can accept the remainder, cash stays unallocated.
+The residual stage uses the same minimum checks and original explicit ownership;
+it does not pretend a planned purchase has already established ownership.
+
+For internally consistent 100% targets, signed deficits sum exactly to the
+contribution; positive deficits sum to at least that amount. Consequently a true
+residual cannot normally arise from complete valid inputs. The fallback is a
+defensive branch, unit-tested directly with synthetic candidates; it is not used
+to disguise blocked deficits or normalize invalid target totals.
+
+### Output and accounting
+
+`ContributionPlan` retains route, readiness/path, totals and calculations. Its
+`allocations` rows contain the canonical mapped product, calculation, candidate
+and allocated amounts, original purchase type/minimum result, stage and reason.
+`blocked_allocations` separately records unsuccessful candidates with zero allocated
+amount; these diagnostic candidates are not additional money buckets.
+
+Exact validation enforces:
+
+```
+contribution_amount = invested_amount + verify_minimum_amount
+                    + unallocated_amount + reserve_amount
+```
+
+Allocation totals are also checked against their execution buckets.
+`invested_amount` means **planned executable amount**, never a completed trade.
+Status is `invest` when all money is executable; `partial` when some is executable
+and some is waiting/unverified; `wait` when none is executable. An all-unverified
+plan therefore has status `wait`, with its full amount explicitly planned in the
+verify bucket rather than lost or represented as ready.
+
+Foundation First returns full `reserve`, no products. Getting Ready preserves
+upstream exclusions and caution. Short-term returns `no_action / not_applicable`
+with the full amount unallocated, not a long-term portfolio. Zero returns no action.
+
+### Examples
+
+- Target 65/20/10/5, holdings 55,000/25,000/15,000/5,000, contribution 20,000:
+  global deficit 23,000 absorbs all 20,000. No static target split.
+- Holdings 58,000/19,000/8,000/3,000 and contribution 12,000 yield deficits
+  global 7,000, technology 2,000, Bitcoin 2,000, defensive 1,000. With DragonFi's
+  known first-purchase minima, the allocations follow exactly that order.
+- For the same example through Gotrade in PHP, Coins.ph Bitcoin's known PHP
+  minimum is checked first: 2,000 executable. The remaining 10,000 follows the
+  ETF deficits with `verify_minimum` because USD minima cannot be compared to PHP.
+
+All existing 3Q-A, 3P and Portfolio Engine behavior remains separate and unchanged.
