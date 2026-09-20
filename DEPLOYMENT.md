@@ -138,14 +138,24 @@ References: [Supabase SMTP](https://supabase.com/docs/guides/auth/auth-smtp),
 Deploy `/confirm-signup` before updating the Supabase **Confirm signup** template.
 Set `NEXT_PUBLIC_SITE_URL=https://arbor.ph` and Supabase Site URL to `https://arbor.ph`;
 allow the exact post-verification return `https://arbor.ph/`. Keep Confirm Email on.
-Both email templates below use the existing Arbor Leaf-A mark and ARBOR text
-wordmark. `frontend/public/arbor-email-logo.png` is a 242 × 172 PNG export of the
-unchanged paths/viewBox in `frontend/lib/arborBrand.ts`, in the existing light-theme
-forest green (`#0F5132`) on white. It displays at 56 × 40 pixels; the adjacent text
-keeps the brand readable when email images are blocked. No new logo is introduced.
+Both email templates below use one transparent forest-green (`#0F5132`) Arbor
+Leaf-A PNG and matching live ARBOR text. `frontend/public/arbor-email-logo.png`
+is a 112 × 80 pixel, 2,432-byte PNG, displayed at 56 × 40 CSS pixels (2x).
+It is rasterized from the unchanged paths/viewBox in `frontend/lib/arborBrand.ts`,
+with transparent padding to preserve the mark's proportions. No new logo is introduced.
+The existing `arbor-email-logo-light.png` and `arbor-email-logo-dark.png` paths
+are compatibility aliases with identical PNG contents; use the default URL below
+for both templates. Do not select an image based on system or client dark mode.
+
+The templates use inline colors on a white content panel, with no dark-mode media
+queries, image swapping, filters, or forced color-scheme rules. Email clients may
+transform backgrounds and live text independently of PNGs, so exact brand colors
+cannot be guaranteed in forced dark mode. The live wordmark, readable body text,
+and underlined action links keep the message usable when images are hidden or
+client colors change. Check both light and dark inbox rendering before rollout.
 
 Before applying either template, deploy the asset and verify that
-`https://arbor.ph/arbor-email-logo.png` is publicly accessible over HTTPS without
+`https://arbor.ph/arbor-email-logo-v2.png` is publicly accessible over HTTPS without
 authentication and returns `image/png`. Keep that path stable. Deploying the asset
 alone does not update Supabase templates; paste them separately after verification.
 Check fresh signup/resend and reset emails in actual inboxes, including with images
@@ -157,7 +167,7 @@ Paste this HTML into the Confirm signup email body (also used by signup resend):
 <div style="max-width:560px;margin:0 auto;padding:32px 24px;background-color:#ffffff;color:#24352c;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;">
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
     <tr>
-      <td style="vertical-align:middle;"><img src="https://arbor.ph/arbor-email-logo.png" alt="" width="56" height="40" style="display:block;border:0;width:56px;height:40px;"></td>
+      <td style="vertical-align:middle;"><img src="https://arbor.ph/arbor-email-logo-v2.png" alt="" width="56" height="40" style="display:block;border:0;"></td>
       <td style="padding-left:12px;vertical-align:middle;color:#0F5132;font-size:24px;font-weight:bold;letter-spacing:2px;">ARBOR</td>
     </tr>
   </table>
@@ -165,7 +175,7 @@ Paste this HTML into the Confirm signup email body (also used by signup resend):
   <p style="margin:0 0 20px;">Confirm your email address to continue building your Arbor plan.</p>
   <p style="margin:0 0 20px;"><a href="https://arbor.ph/confirm-signup#token_hash={{ .TokenHash }}&amp;type=email" style="color:#0F5132;font-weight:bold;text-decoration:underline;">Continue to email confirmation</a></p>
   <p style="margin:0 0 24px;">On the Arbor page, select Confirm email address to finish.</p>
-  <p style="margin:0;color:#59665e;font-size:13px;">If you didn’t request an Arbor account, you can ignore this email.</p>
+  <p style="margin:0;font-size:14px;">If you didn’t request an Arbor account, you can ignore this email.</p>
 </div>
 ```
 
@@ -205,7 +215,7 @@ In Supabase Authentication → Email templates → **Reset password**, use:
 <div style="max-width:560px;margin:0 auto;padding:32px 24px;background-color:#ffffff;color:#24352c;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;">
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
     <tr>
-      <td style="vertical-align:middle;"><img src="https://arbor.ph/arbor-email-logo.png" alt="" width="56" height="40" style="display:block;border:0;width:56px;height:40px;"></td>
+      <td style="vertical-align:middle;"><img src="https://arbor.ph/arbor-email-logo-v2.png" alt="" width="56" height="40" style="display:block;border:0;"></td>
       <td style="padding-left:12px;vertical-align:middle;color:#0F5132;font-size:24px;font-weight:bold;letter-spacing:2px;">ARBOR</td>
     </tr>
   </table>
@@ -213,7 +223,7 @@ In Supabase Authentication → Email templates → **Reset password**, use:
   <p style="margin:0 0 20px;">Use the link below to choose a new password.</p>
   <p style="margin:0 0 20px;"><a href="https://arbor.ph/reset-password#token_hash={{ .TokenHash }}&amp;type=recovery" style="color:#0F5132;font-weight:bold;text-decoration:underline;">Continue to password reset</a></p>
   <p style="margin:0 0 24px;">On the Arbor page, select Verify reset link to choose a new password.</p>
-  <p style="margin:0;color:#59665e;font-size:13px;">If you didn’t request this, you can ignore this email. Your password has not changed.</p>
+  <p style="margin:0;font-size:14px;">If you didn’t request this, you can ignore this email. Your password has not changed.</p>
 </div>
 ```
 
