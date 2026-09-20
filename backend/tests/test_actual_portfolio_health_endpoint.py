@@ -1,4 +1,6 @@
 from app.routes import holdings
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 import pytest
 
 
@@ -98,6 +100,51 @@ def get_health_response():
         "breakdown": {},
         "strengths": [],
         "warnings": [],
+    }
+
+
+@pytest.mark.parametrize("version", [None, "1.0"])
+def test_legacy_versions_still_calculate_health(monkeypatch, version):
+    profile = make_profile()
+    profile[0]["strategy_engine_version"] = version
+    configure_authenticated_client(monkeypatch, profile, [make_holding("VOO", 1, 100)])
+    calls = []
+
+    def score(plan):
+        calls.append(plan)
+        return get_health_response()
+
+    monkeypatch.setattr(holdings, "calculate_health_score", score)
+    result = holdings.get_actual_portfolio_health(user_id="owner", authorization="Bearer test")
+    assert result == {
+        "basis": "cost_basis", "currency": "USD",
+        "available": True, "health": get_health_response(),
+    }
+    assert len(calls) == 1
+    assert calls[0]["profile"]["risk_level"] == "Balanced"
+
+
+@pytest.mark.parametrize("version", ["2.0", "3.0", "unknown", "", " 1.0 "])
+def test_nonlegacy_versions_fail_closed_before_health_calculations(monkeypatch, version):
+    profile = make_profile()
+    profile[0]["strategy_engine_version"] = version
+    configure_authenticated_client(monkeypatch, profile, [make_holding("VOO", 1, 100)])
+
+    def unexpected(_plan):
+        pytest.fail("Nonlegacy profiles must not enter legacy Health calculations")
+
+    monkeypatch.setattr(holdings, "build_actual_portfolio", unexpected)
+    monkeypatch.setattr(holdings, "calculate_health_score", unexpected)
+    app = FastAPI()
+    app.include_router(holdings.router)
+    app.dependency_overrides[holdings.get_current_user_id] = lambda: "owner"
+    with TestClient(app) as client:
+        response = client.get("/holdings/health", headers={"Authorization": "Bearer test"})
+    assert response.status_code == 200
+    assert response.json() == {
+        "basis": "cost_basis", "currency": None, "available": False,
+        "reason": "Portfolio Health is not available for this plan version yet.",
+        "health": None,
     }
 
 

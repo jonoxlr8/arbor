@@ -95,6 +95,10 @@ def get_actual_portfolio_health(
             detail="Profile not found",
         )
 
+    if profile_response.data[0].get("strategy_engine_version") not in (None, "1.0"):
+        return {"basis": "cost_basis", "currency": None, "available": False,
+                "reason": "Portfolio Health is not available for this plan version yet.", "health": None}
+
     holdings_response = (
         authenticated_supabase.table("holdings")
         .select("*")

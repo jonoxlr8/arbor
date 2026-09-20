@@ -3,6 +3,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from app.auth import get_current_user_id
 from app.database import get_authenticated_client
 from app.schemas.profile import ProfileCreate
+from app.schemas.profile_v2 import ProfileV2Create
+from app.services.profile_v2 import profile_v2_row, restore_profile_v2
 from app.schemas.validation import RISK_CATEGORIES
 from app.schemas.projection import ProjectionRequest
 from app.services.arbor.insights import PortfolioInsights
@@ -42,6 +44,14 @@ def get_my_profile(
         )
 
     saved_profile = response.data[0]
+
+    if saved_profile.get("strategy_engine_version") == "2.0":
+        try:
+            return restore_profile_v2(saved_profile)
+        except Exception:
+            raise HTTPException(503, "Your saved Arbor plan is temporarily unavailable. Please retry.") from None
+    if saved_profile.get("strategy_engine_version") not in (None, "1.0"):
+        raise HTTPException(503, "This saved plan version is not supported yet.")
 
     # Read-only compatibility: preserve the old preference and explicitly show
     # its saved classification. No database write or silent risk migration.
@@ -99,6 +109,12 @@ def update_my_profile(
         )
 
     access_token = authorization.split(" ", 1)[1]
+
+    # Legacy edits must never turn a v2 row into a v1 calculation/persistence path.
+    client = get_authenticated_client(access_token)
+    saved = client.table("profiles").select("strategy_engine_version").eq("user_id", user_id).limit(1).execute()
+    if saved.data and saved.data[0].get("strategy_engine_version") not in (None, "1.0"):
+        raise HTTPException(409, "This plan cannot be edited through the legacy profile form.")
 
     plan = build_investment_plan(profile)
 
@@ -190,3 +206,43 @@ def create_projection(request: ProjectionRequest):
         request.annual_return,
     )
     return projection
+
+
+@router.post("/v2/profiles")
+def create_profile_v2(
+    profile: ProfileV2Create,
+    user_id: str = Depends(get_current_user_id),
+    authorization: str | None = Header(default=None),
+):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(401, "Missing authorization token")
+
+    def canonical():
+        try:
+            return get_my_profile(user_id=user_id, authorization=authorization)
+        except HTTPException as error:
+            if error.status_code == 404 and error.detail == "Profile not found":
+                return None
+            raise HTTPException(503, "We couldn’t restore your saved profile. Please retry.") from None
+        except Exception:
+            raise HTTPException(503, "We couldn’t restore your saved profile. Please retry.") from None
+
+    existing = canonical()
+    if existing is not None:
+        # Includes legacy profiles: never overwrite or silently migrate on retry.
+        return {**existing, "profile_warning": "Your existing saved profile was restored. New onboarding answers were not applied."}
+    row = profile_v2_row(profile, user_id)
+    try:
+        restore_profile_v2(row)  # Establish a valid canonical plan before persistence.
+    except Exception:
+        raise HTTPException(503, "Your Arbor plan is temporarily unavailable. Please retry.") from None
+    try:
+        client = get_authenticated_client(authorization.split(" ", 1)[1])
+        client.table("profiles").insert(row).execute()
+    except Exception:
+        # Unique conflict or lost response: success requires a canonical read.
+        pass
+    saved = canonical()
+    if saved is None:
+        raise HTTPException(503, "We couldn’t confirm your saved profile. Please retry.")
+    return saved

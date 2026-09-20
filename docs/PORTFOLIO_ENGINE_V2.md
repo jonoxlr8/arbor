@@ -1,8 +1,8 @@
 # Portfolio Engine 2.0 foundations (3O-A)
 
-Canonical backend domain: `app.services.strategy_v2`. Nothing in the current
-production request path imports it. No profile migration, endpoint, schema change,
-frontend constants, products or ticker portfolios are introduced.
+Canonical backend domain: `app.services.strategy_v2`. The dedicated v2 profile
+boundary now composes it for new onboarding (3O-E). Legacy profiles still use the
+existing v1 engine. No products or ticker portfolios are introduced by v2.
 
 Use `get_base_strategy(StrategyType.BALANCED)` to retrieve the immutable canonical
 definition. Allocations use integer percentage points summing to exactly 100;
@@ -65,7 +65,7 @@ are semantic codes, not UI prose. The evaluator accepts no strategy, horizon,
 target or saved preferences and cannot overwrite any of them. An Aggressive
 strategy can therefore coexist with Foundation First readiness.
 
-This engine is not connected to legacy profiles, production onboarding or guidance.
+This engine is not connected to legacy profiles or legacy guidance.
 No persistence or schema migration was added. Risk/horizon selection remains
 separate, preserving these readiness permissions without reclassifying strategy.
 
@@ -104,8 +104,8 @@ and supplies no portfolio, product or projection assumption. Numeric years are n
 classified here; the caller supplies an explicit horizon bucket.
 
 Readiness remains independent: Aggressive + Foundation First is valid. Selection
-does not overwrite readiness permissions or saved preferences. Neither evaluator
-is wired into production onboarding, profiles, recommendations or API contracts.
+does not overwrite readiness permissions or saved preferences. Both evaluators
+are composed only for the dedicated v2 profile flow, never for legacy profiles.
 Base strategy composition is described below; no UI is added by these milestones.
 
 ## Base strategy plan model (3O-D)
@@ -113,7 +113,7 @@ Base strategy composition is described below; no UI is added by these milestones
 `portfolio_plan_v2.build_portfolio_plan(risk_response, horizon, emergency_savings,
 high_interest_debt)` takes the existing enum inputs and calls `select_strategy`
 and `evaluate_readiness`. It does not reimplement either policy or accept caller-
-supplied allocations/returns. No existing module or production API imports it.
+supplied allocations/returns. The dedicated v2 profile service now consumes it.
 
 `PortfolioPlan` is a discriminated union of frozen `LongTermPortfolioPlan` and
 `ShortTermPortfolioPlan`, with an explicit `path` and engine version. Both contain:
@@ -139,6 +139,77 @@ serialize as exact strings. For model round-tripping use Pydantic's
 `model_dump_json(round_trip=True)` to exclude derived fields. This is an output
 domain contract, not a new profile persistence or public API contract.
 
-3O-E owns onboarding v2 UI integration. Preference allocation (3O-F), projection
+Preference allocation (3O-F), projection
 migration (3O-G), products/providers (3P), contribution allocation (3Q), Health
-migration and legacy migration remain deferred. No schema migration is needed.
+migration and legacy migration remain deferred. 3O-D itself required no migration.
+
+## Onboarding/profile boundary (3O-E)
+
+New authenticated users with no profile receive nine in-memory questions: Name,
+Country, Emergency savings, High-interest debt, Goal amount, Starting amount,
+Monthly contribution, Horizon bucket, Market-drop reaction. Goal amount is optional
+and expressed in today's PHP. Starting/monthly amounts accept zero. Country is
+Philippines-only; no country-specific investment products are implied.
+
+`POST /v2/profiles` accepts `ProfileV2Create`, explicitly tagged with
+`strategy_engine_version: "2.0"`. It validates existing domain enum values and
+shared financial bounds. No caller-supplied user ID, strategy, allocation or
+readiness result is accepted. The bearer token determines the owner and the
+Supabase client uses that token under existing RLS. No service-role access added.
+
+`GET /profiles/me` remains the single recovery endpoint. A null/1.0 version uses
+the unchanged v1 response builder; 2.0 returns `{strategy_engine_version, profile,
+plan, profile_warning}`. Unknown versions and invalid saved v2 data fail explicitly,
+never as a missing profile. POST restores an existing row of either version rather
+than overwriting it. Lost responses reconcile through one canonical read; uniqueness
+must be enforced in the database. Legacy PUT rejects v2 rows. Legacy chat/Health
+return unavailable for v2 instead of interpreting it through ticker-based rules.
+
+The v2 `plan` DTO retains selection/readiness results. Rates are JSON numbers in
+percentage units (`planning_return_pct`, `inflation_pct`), not Decimal strings.
+Allocation rows use numeric `percentage_points`. Short-term allocation/strategy/
+return remain null. Frontend validation checks the contract before rendering.
+
+The v2 result screen is a strategic-plan entry, NOT the legacy dashboard. It shows
+readiness, the canonical base allocation/return, and a cap explanation when returned
+by the backend. Foundation First is a preview without actionable contribution
+controls; short-term paths show no long-term allocation/return/guidance. No legacy
+8% projections, ticker portfolio, chat or Health widgets are mounted for v2.
+
+### Persistence and manual migration prerequisite
+
+**Unapplied SQL:** `backend/migrations/3o_e_profiles_v2.sql`. Review and test on a
+Supabase staging copy before applying manually. No application auto-migration.
+Live schema/RLS constraints are not provable from this repository.
+
+- Adds nullable `strategy_engine_version text` and `v2_inputs jsonb` to `profiles`.
+- Shared existing columns retain name, country, PHP currency, optional goal,
+  starting amount and monthly contribution. `v2_inputs` contains only emergency
+  savings, debt, horizon bucket and market response; no duplicated derived plan.
+- V2 writes explicit nulls for legacy risk/horizon fields. For existing NOT NULL
+  rules on goal/risk/horizon columns, SQL replaces them with conditional checks
+  preserving the same requirement on v1 rows. Other CHECK constraints are not
+  removed: inspect them for compatibility first.
+- Makes user_id NOT NULL and adds a unique index. Existing null/duplicate owners
+  abort the transaction; no records are repaired/deleted automatically.
+- Adds a version/payload check and an update trigger preventing implicit engine
+  version changes. Existing v1 rows remain untagged; no backfilled v2 answers.
+- Existing RLS/grants remain unchanged. Verify owner-only SELECT/INSERT/UPDATE/
+  DELETE and rejection of cross-user inserts for two test accounts before release.
+
+Release order: backup/inspect schema and policies → apply SQL manually in staging
+and verify v1/v2 writes → apply approved migration → backend → frontend. New v2
+creation cannot work without it. Keep the schema if rolling back application code;
+do not roll back to an old reader that would reinterpret already-created v2 rows.
+
+Inputs plus engine version are stored, not a snapshot: restore rebuilds via the
+canonical 2.0 rules. Keep those rules version-stable; future semantic changes need
+an explicit version/review path rather than silently changing saved plans. No
+historical reinterpretation, legacy migration, or v2 profile-edit API is introduced.
+The v2 DTO is a dedicated contract; it does not masquerade as a v1 investment plan.
+
+Before release manually verify: v1 login/edit still restores the old dashboard;
+new account completes all nine steps; retry/double submit produces one row; logout/
+login restores v2; Foundation First preserves strategy; short term has no allocation/
+return; unsupported country blocks; network/session failures offer recovery; and
+mobile Light/Dark forms remain usable. Do not log onboarding answers or tokens.
