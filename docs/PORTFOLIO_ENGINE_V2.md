@@ -27,15 +27,15 @@ assume it implements the v2 convention. Projection migration belongs to 3O-G.
 - Readiness: independent enum with an isolated evaluator in `readiness_v2`, not a
   strategy modifier.
 - Strategy path: short term without a long-term strategy, or long term with one.
-  No automatic default strategy and no horizon selection are implemented.
+  Selection is isolated in `strategy_selection_v2`; no automatic default strategy.
 
 Future flow: readiness → risk/horizon → base strategy → preferences → contribution
 practicality → implementation route. Only a resolved, permitted effective target
 should eventually feed Health, comparison, rebalancing and contribution guidance.
 Do not feed saved preferences or a raw base definition directly to those consumers.
 
-3O-C owns short-term/horizon selection. 3O-F owns preference allocation, including
-satellite limits. These policies are not inferred here. Implementation catalog versioning is separate
+3O-F owns preference allocation, including satellite limits; these policies are
+not inferred here. Implementation catalog versioning is separate
 and deferred to 3P; strategy engine records explicitly use version `2.0`.
 
 Legacy risk categories, historical Growth read handling, Supabase model rows,
@@ -66,5 +66,44 @@ target or saved preferences and cannot overwrite any of them. An Aggressive
 strategy can therefore coexist with Foundation First readiness.
 
 This engine is not connected to legacy profiles, production onboarding or guidance.
-No persistence or schema migration was added. 3O-C must add risk/horizon selection
-separately, preserving these readiness permissions without reclassifying strategy.
+No persistence or schema migration was added. Risk/horizon selection remains
+separate, preserving these readiness permissions without reclassifying strategy.
+
+## Risk and horizon selection (3O-C)
+
+`strategy_selection_v2.select_strategy(risk_response, horizon)` validates the two
+enum inputs and returns an immutable result. No readiness evaluation is called.
+
+| Response to an approximately 30% decline | Requested strategy |
+|---|---|
+| `sell_all` | Conservative |
+| `sell_some` | Balanced |
+| `hold` | Growth |
+| `continue_investing` | Aggressive |
+| `invest_more` | Aggressive |
+
+| Horizon bucket | Maximum long-term strategy |
+|---|---|
+| `less_than_3_years` | None: distinct short-term path |
+| `three_to_five_years` | Balanced |
+| `five_to_ten_years` | Growth |
+| `ten_plus_years` | Aggressive |
+
+The selected long-term strategy is the lower-risk of the requested strategy and
+the horizon maximum, comparing global-equity weights from canonical base definitions.
+Horizon can only reduce risk, never increase it. No fifth strategy exists.
+For example, Aggressive + 3–5 years becomes Balanced; Aggressive + 5–10 years becomes
+Growth; Conservative + 10+ years stays Conservative; Balanced + 5–10 stays Balanced.
+
+The result retains `requested_strategy`, `horizon_maximum_strategy`, and the existing
+`StrategyPath`. Derived output fields expose `selected_strategy`, `is_short_term`,
+`cap_applied`, and a semantic `reason`. Short-term results retain the risk response's
+requested tier for explanation only: the horizon maximum and selected strategy are
+null, `cap_applied` is false, and reason is `short_term_path`. This is not Conservative
+and supplies no portfolio, product or projection assumption. Numeric years are not
+classified here; the caller supplies an explicit horizon bucket.
+
+Readiness remains independent: Aggressive + Foundation First is valid. Selection
+does not overwrite readiness permissions or saved preferences. Neither evaluator
+is wired into production onboarding, profiles, recommendations or API contracts.
+Base strategy presentation belongs to 3O-D; no UI is added by this milestone.
