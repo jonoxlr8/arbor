@@ -6,9 +6,39 @@ const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v ===
 const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 const money = (v: unknown): v is number => finite(v) && v >= 0 && v <= MAX_MONEY;
 const strategy = (v: unknown) => ["Conservative", "Balanced", "Growth", "Aggressive"].includes(v as string);
+const points = (v: unknown): v is number => finite(v) && Number.isInteger(v) && v >= 0 && v <= 100;
+
+function validPreferences(profile: Record<string, unknown>, plan: Record<string, unknown>): boolean {
+  const saved = profile.saved_preferences;
+  if (saved !== undefined && (!object(saved) || !points(saved.technology_tilt) || !points(saved.bitcoin))) return false;
+  const result = plan.preference_result;
+  // Pre-3O-F responses remain readable, but no effective target is fabricated.
+  if (result === undefined) return saved === undefined || (object(saved) && saved.technology_tilt === 0 && saved.bitcoin === 0);
+  if (!object(result)) return false;
+  for (const key of ["technology_tilt", "bitcoin"] as const) {
+    const item = result[key];
+    if (!object(item) || !points(item.requested_percentage_points) || !points(item.effective_percentage_points) ||
+        item.requested_percentage_points !== (object(saved) ? saved[key] : 0) ||
+        item.effective_percentage_points > item.requested_percentage_points ||
+        !(item.strategy_cap_percentage_points === null || points(item.strategy_cap_percentage_points)) ||
+        !Array.isArray(item.reasons) || !item.reasons.every(reason => ["strategy_cap", "readiness_restricted", "short_term_path"].includes(reason)) ||
+        new Set(item.reasons).size !== item.reasons.length) return false;
+  }
+  const tech = result.technology_tilt as Record<string, unknown>, btc = result.bitcoin as Record<string, unknown>;
+  if (plan.path === "short_term") return result.effective_target === null && tech.effective_percentage_points === 0 && btc.effective_percentage_points === 0;
+  const target = result.effective_target;
+  if (!object(target) || target.strategy_engine_version !== "2.0" || target.base_strategy !== plan.selected_strategy || !object(target.allocation)) return false;
+  const weights = target.allocation.weights;
+  if (!Array.isArray(weights) || weights.length !== 4 || !weights.every(w => object(w) && ["global_equity", "defensive", "technology_tilt", "crypto"].includes(w.role as string) && points(w.percentage_points)) ||
+      new Set(weights.map(w => w.role)).size !== 4 || weights.reduce((total, w) => total + w.percentage_points, 0) !== 100) return false;
+  // Response consistency only; no frontend strategy caps or allocation generation.
+  return weights.find(w => w.role === "technology_tilt").percentage_points === tech.effective_percentage_points &&
+    weights.find(w => w.role === "crypto").percentage_points === btc.effective_percentage_points;
+}
 export function isPlanV2(value: unknown): value is PlanV2 {
   if (!object(value) || value.strategy_engine_version !== "2.0" || !object(value.profile) || !object(value.plan)) return false;
   const p = value.profile, plan = value.plan;
+  if (!validPreferences(p, plan)) return false;
   if (p.strategy_engine_version !== "2.0" || typeof p.full_name !== "string" || !p.full_name.trim() || p.full_name.length > 120 || p.country !== "Philippines" || p.currency !== "PHP" ||
       !money(p.current_portfolio_value) || !money(p.monthly_investment) ||
       !(p.goal_target === null || (money(p.goal_target) && p.goal_target > 0)) ||

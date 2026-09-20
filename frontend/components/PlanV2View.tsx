@@ -5,6 +5,7 @@ import { AppearanceSettings } from "./app/Appearance";
 import { subscribeNavigation, navigationSnapshot, serverNavigationSnapshot, type Destination } from "@/lib/appNavigation";
 import type { PlanV2 } from "@/lib/types/planV2";
 import { HORIZON_OPTIONS } from "@/lib/onboardingV2";
+import PreferencesV2 from "./PreferencesV2";
 
 export default function PlanV2View({ value, onSignOut, signingOut, logoutError }: {
   value: PlanV2; onSignOut: () => void; signingOut: boolean; logoutError: string;
@@ -63,6 +64,7 @@ function V2PlanContent({ value }: { value: PlanV2 }) {
           <p className="mt-2 text-sm text-slate-600">An annual effective modeling assumption, not a forecast or guarantee. Inflation assumption: {plan.inflation_pct.toFixed(1)}%.</p>
           {plan.selection.cap_applied && <p className="mt-4 text-sm leading-6 text-slate-600">Your market response suggests {plan.selection.requested_strategy}, but your {horizon} horizon limits the plan to {plan.selected_strategy}.</p>}
         </section>}
+      <PreferencesV2 value={value} />
       <p className="text-sm leading-6 text-slate-500">Planning currency: PHP. This is a strategic plan, not a product recommendation or an investment order. Arbor does not purchase or hold investments for you.</p>
     </div>;
 }

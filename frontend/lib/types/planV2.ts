@@ -5,15 +5,28 @@ export type EmergencySavings = "less_than_1_month" | "one_to_two_months" | "thre
 export type HighInterestDebt = "none" | "paying_down" | "difficult_to_manage" | "not_sure";
 export type Horizon = "less_than_3_years" | "three_to_five_years" | "five_to_ten_years" | "ten_plus_years";
 export type RiskResponse = "sell_all" | "sell_some" | "hold" | "continue_investing" | "invest_more";
+export type SavedPreferences = { technology_tilt: number; bitcoin: number };
+export type PreferenceApplication = {
+  requested_percentage_points: number; effective_percentage_points: number;
+  strategy_cap_percentage_points: number | null;
+  reasons: ("strategy_cap" | "readiness_restricted" | "short_term_path")[];
+};
+export type PreferenceResult = {
+  technology_tilt: PreferenceApplication; bitcoin: PreferenceApplication;
+  effective_target: null | { strategy_engine_version: "2.0"; base_strategy: Strategy;
+    allocation: { weights: { role: "global_equity" | "defensive" | "technology_tilt" | "crypto"; percentage_points: number }[] } };
+};
 export type ProfileV2Input = {
   strategy_engine_version: "2.0"; full_name: string; country: "Philippines"; currency: "PHP";
   emergency_savings: EmergencySavings; high_interest_debt: HighInterestDebt;
   goal_target: number | null; current_portfolio_value: number; monthly_investment: number;
   horizon: Horizon; risk_response: RiskResponse;
+  saved_preferences?: SavedPreferences;
 };
 type PlanCommon = {
   strategy_engine_version: "2.0";
   inflation_pct: number;
+  preference_result?: PreferenceResult;
   selection: {
     risk_response: RiskResponse; horizon: Horizon; requested_strategy: Strategy;
     horizon_maximum_strategy: Strategy | null; selected_strategy: Strategy | null;

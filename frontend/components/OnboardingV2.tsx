@@ -19,6 +19,8 @@ const QUESTIONS: Record<keyof Answers, string> = {
   monthly_investment: "How much would you plan to invest monthly?",
   horizon: "When might you need this money?",
   risk_response: "If your investments fell about 30%, what would you most likely do?",
+  technology_tilt: "Do you want extra exposure to technology?",
+  bitcoin: "Do you want Bitcoin in your plan?",
 };
 const HELP: Partial<Record<keyof Answers, string>> = {
   emergency_savings: "Think about how many months of essential expenses your savings could cover.",
@@ -27,6 +29,8 @@ const HELP: Partial<Record<keyof Answers, string>> = {
   current_portfolio_value: "A separate planning amount, not your recorded holdings. Starting from zero is fine.",
   monthly_investment: "A planning amount, not an order. Zero is fine.",
   country: "Your country sets your planning currency. This beta supports the Philippines.",
+  technology_tilt: "Choose a percentage to request, or leave 0% for none. Arbor may limit or pause it based on your strategy and readiness. It won’t increase your planning return.",
+  bitcoin: "Choose a percentage to request, or leave 0% for none. Arbor may limit or pause it based on your strategy and readiness. It won’t increase your planning return.",
 };
 const OPTIONS: Partial<Record<keyof Answers, readonly (readonly [string, string])[]>> = {
   country: [["Philippines", "Philippines · PHP"], ["Other", "Other country"]],
@@ -36,6 +40,7 @@ const OPTIONS: Partial<Record<keyof Answers, readonly (readonly [string, string]
 
 export function OnboardingQuestionV2({ field, value, onChange }: {field: keyof Answers; value: string; onChange: (value: string) => void}) {
   const options = OPTIONS[field];
+  const preference = field === "technology_tilt" || field === "bitcoin";
   const error = value ? answerError(field, value) : null;
   return <section aria-labelledby="onboarding-question">
     <h1 id="onboarding-question" className="text-2xl font-semibold text-slate-900">{QUESTIONS[field]}</h1>
@@ -48,10 +53,10 @@ export function OnboardingQuestionV2({ field, value, onChange }: {field: keyof A
       <input id={field} value={value} onChange={e => onChange(e.target.value)}
         type={field === "full_name" ? "text" : "number"} inputMode={field === "full_name" ? "text" : "decimal"}
         autoComplete={field === "full_name" ? "given-name" : "off"} maxLength={field === "full_name" ? 120 : undefined}
-        min={field === "full_name" ? undefined : 0} step="any"
+        min={field === "full_name" ? undefined : 0} max={preference ? 100 : undefined} step={preference ? "1" : "any"}
         aria-invalid={!!error} aria-describedby={error ? "answer-error" : undefined}
         className="min-h-14 w-full min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-3 text-xl text-slate-900" />
-      {field !== "full_name" && <p className="mt-2 text-sm text-slate-500">Planning currency: PHP</p>}
+      {field !== "full_name" && <p className="mt-2 text-sm text-slate-500">{preference ? "Requested allocation (%) · 0 means none" : "Planning currency: PHP"}</p>}
     </div>}
     {error && <p id="answer-error" role="status" className="mt-3 text-sm text-slate-600">{error}</p>}
   </section>;
@@ -100,6 +105,7 @@ export default function OnboardingV2({ userId, onComplete, onSignOut, signingOut
         <fieldset disabled={saving || signingOut} className="min-w-0">
           <div className="my-3 min-h-11">{step > 0 && <button type="button" className="min-h-11 text-sm font-medium text-slate-600" onClick={() => setStep(step - 1)}>← Back</button>}</div>
           <OnboardingQuestionV2 field={field} value={answers[field]} onChange={value => setAnswers(previous => ({ ...previous, [field]: value }))} />
+          {(field === "technology_tilt" || field === "bitcoin") && answers.horizon === "less_than_3_years" && <p className="mt-3 text-sm text-slate-600">These preferences can be saved, but long-term allocation does not apply to your short-term plan.</p>}
           {field === "goal_target" && <button type="button" onClick={() => { setAnswers(a => ({ ...a, goal_target: "" })); setStep(step + 1); }} className="mt-3 min-h-11 text-sm font-medium text-emerald-700">Not yet</button>}
           <button type="submit" disabled={!valid || sessionFailed} className="mt-6 min-h-12 w-full rounded-2xl bg-emerald-700 px-4 py-3 font-semibold text-white disabled:opacity-50">
             {saving ? "Saving your plan…" : step === ONBOARDING_STEPS.length - 1 ? (error ? "Retry saving my plan" : "Show my Arbor plan") : "Continue →"}

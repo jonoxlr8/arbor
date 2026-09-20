@@ -7,13 +7,13 @@ import ProgressBar from "../components/ProgressBar";
 import { ONBOARDING_STEPS, EMPTY_ANSWERS, onboardingRequest, answerError, SAVINGS_OPTIONS, DEBT_OPTIONS, HORIZON_OPTIONS, RISK_OPTIONS } from "./onboardingV2";
 import { authErrorMessage } from "./authErrorMessage";
 
-test("v2 asks Name then Country exactly once and has nine truthful progress steps", () => {
-  assert.deepEqual(ONBOARDING_STEPS, ["full_name", "country", "emergency_savings", "high_interest_debt", "goal_target", "current_portfolio_value", "monthly_investment", "horizon", "risk_response"]);
+test("v2 asks Name then Country exactly once and adds two preference steps", () => {
+  assert.deepEqual(ONBOARDING_STEPS, ["full_name", "country", "emergency_savings", "high_interest_debt", "goal_target", "current_portfolio_value", "monthly_investment", "horizon", "risk_response", "technology_tilt", "bitcoin"]);
   const screens = ONBOARDING_STEPS.map(field => renderToStaticMarkup(createElement(OnboardingQuestionV2, {field, value:"", onChange:() => {}})));
   assert.match(screens[0], /your name/);
   assert.match(screens[1], /Where do you live/);
   assert.equal(screens.filter(html => html.includes("Where do you live")).length, 1);
-  for (let step = 1; step <= 9; step++) assert.match(renderToStaticMarkup(createElement(ProgressBar, {step, totalSteps:9})), new RegExp(`Step ${step} of 9`));
+  for (let step = 1; step <= 11; step++) assert.match(renderToStaticMarkup(createElement(ProgressBar, {step, totalSteps:11})), new RegExp(`Step ${step} of 11`));
 });
 test("Philippines establishes PHP; Other stays blocked", () => {
   const answers = {...EMPTY_ANSWERS, full_name:" A ", country:"Philippines", current_portfolio_value:"0", monthly_investment:"0", emergency_savings:"less_than_1_month", high_interest_debt:"not_sure", horizon:"less_than_3_years", risk_response:"sell_all"};

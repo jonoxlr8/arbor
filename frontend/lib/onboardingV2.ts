@@ -18,15 +18,20 @@ export const RISK_OPTIONS = [
   ["sell_all", "Sell all"], ["sell_some", "Sell some"], ["hold", "Hold"],
   ["continue_investing", "Keep investing"], ["invest_more", "Invest more"],
 ] as const;
-export const ONBOARDING_STEPS = ["full_name", "country", "emergency_savings", "high_interest_debt", "goal_target", "current_portfolio_value", "monthly_investment", "horizon", "risk_response"] as const;
+export const ONBOARDING_STEPS = ["full_name", "country", "emergency_savings", "high_interest_debt", "goal_target", "current_portfolio_value", "monthly_investment", "horizon", "risk_response", "technology_tilt", "bitcoin"] as const;
 export type Answers = Record<typeof ONBOARDING_STEPS[number], string>;
 export const EMPTY_ANSWERS: Answers = {
   full_name: "", country: "", emergency_savings: "", high_interest_debt: "", goal_target: "",
   current_portfolio_value: "", monthly_investment: "", horizon: "", risk_response: "",
+  technology_tilt: "0", bitcoin: "0",
 };
 export const includesOption = (options: readonly (readonly [string, string])[], value: unknown) => options.some(([code]) => code === value);
 export function answerError(field: keyof Answers, value: string): string | null {
   switch (field) {
+    case "technology_tilt": case "bitcoin": {
+      const amount = Number(value);
+      return value.trim() && Number.isInteger(amount) && amount >= 0 && amount <= 100 ? null : "Enter a whole percentage from 0 to 100. Choose 0 for none.";
+    }
     case "full_name": return value.trim().length > 0 && value.trim().length <= 120 ? null : "Enter your name (up to 120 characters).";
     case "country": return value === "Philippines" ? null : "Arbor is launching in the Philippines first. More countries are coming.";
     case "goal_target": return value.trim() === "" ? null : numericError(field, value);
@@ -42,8 +47,10 @@ export function onboardingRequest(answers: Answers): ProfileV2Input {
     const error = answerError(field, answers[field]);
     if (error) throw new Error(error);
   }
+  const { technology_tilt, bitcoin, ...profile } = answers;
   return {
-    ...answers, strategy_engine_version: "2.0", full_name: answers.full_name.trim(), country: "Philippines", currency: "PHP",
+    ...profile, saved_preferences: { technology_tilt: Number(technology_tilt), bitcoin: Number(bitcoin) },
+    strategy_engine_version: "2.0", full_name: answers.full_name.trim(), country: "Philippines", currency: "PHP",
     goal_target: answers.goal_target.trim() === "" ? null : Number(answers.goal_target),
     current_portfolio_value: Number(answers.current_portfolio_value), monthly_investment: Number(answers.monthly_investment),
   } as ProfileV2Input;
