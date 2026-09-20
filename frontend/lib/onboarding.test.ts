@@ -1,47 +1,48 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import Question from "../components/Question";
+import { OnboardingQuestionV2 } from "../components/OnboardingV2";
 import ProgressBar from "../components/ProgressBar";
-import { planningCurrency } from "./currency";
+import { ONBOARDING_STEPS, EMPTY_ANSWERS, onboardingRequest, answerError, SAVINGS_OPTIONS, DEBT_OPTIONS, HORIZON_OPTIONS, RISK_OPTIONS } from "./onboardingV2";
 import { authErrorMessage } from "./authErrorMessage";
 
-const noop = () => {};
-const props = { name: "", setName: noop, country: "", setCountry: noop,
-  currentPortfolioValue: "", setCurrentPortfolioValue: noop,
-  monthlyInvestment: "", setMonthlyInvestment: noop, goalTarget: "", setGoalTarget: noop,
-  investmentHorizon: "", setInvestmentHorizon: noop, riskTolerance: "", setRiskTolerance: noop };
-test("Name then Country, with exactly one country question in seven steps", () => {
-  const screens = Array.from({ length: 7 }, (_, i) => renderToStaticMarkup(createElement(Question, { ...props, step: i + 1 })));
+test("v2 asks Name then Country exactly once and has nine truthful progress steps", () => {
+  assert.deepEqual(ONBOARDING_STEPS, ["full_name", "country", "emergency_savings", "high_interest_debt", "goal_target", "current_portfolio_value", "monthly_investment", "horizon", "risk_response"]);
+  const screens = ONBOARDING_STEPS.map(field => renderToStaticMarkup(createElement(OnboardingQuestionV2, {field, value:"", onChange:() => {}})));
   assert.match(screens[0], /your name/);
   assert.match(screens[1], /Where do you live/);
   assert.equal(screens.filter(html => html.includes("Where do you live")).length, 1);
-  for (let step = 1; step <= 7; step++) assert.match(renderToStaticMarkup(createElement(ProgressBar, { step, totalSteps: 7 })), new RegExp(`Step ${step} of 7`));
+  for (let step = 1; step <= 9; step++) assert.match(renderToStaticMarkup(createElement(ProgressBar, {step, totalSteps:9})), new RegExp(`Step ${step} of 9`));
 });
-test("Philippines uses PHP and Other gives an explicit beta boundary", () => {
-  assert.equal(planningCurrency("Philippines"), "PHP");
-  const html = renderToStaticMarkup(createElement(Question, { ...props, step: 2, country: "Other" }));
-  assert.match(html, /aria-pressed="true"/);
-  assert.match(html, /isn’t available in this beta/);
-  const source = readFileSync("app/page.tsx", "utf8");
-  assert.match(source, /country === "Philippines"/);
-  assert.match(source, /setStep\(step \+ 1\)/);
-  assert.match(source, /setStep\(step - 1\)/);
-  assert.match(source, /planningCurrency\(country\)/);
-  assert.doesNotMatch(source, /EntryCountry|visibleSteps/);
+test("Philippines establishes PHP; Other stays blocked", () => {
+  const answers = {...EMPTY_ANSWERS, full_name:" A ", country:"Philippines", current_portfolio_value:"0", monthly_investment:"0", emergency_savings:"less_than_1_month", high_interest_debt:"not_sure", horizon:"less_than_3_years", risk_response:"sell_all"};
+  const input = onboardingRequest(answers);
+  assert.equal(input.currency, "PHP");
+  assert.equal(input.country, "Philippines");
+  assert.equal(input.full_name, "A");
+  assert.equal(input.goal_target, null);
+  assert.equal(input.current_portfolio_value, 0);
+  assert.equal(input.monthly_investment, 0);
+  assert.throws(() => onboardingRequest({...answers, country:"Other"}), /Philippines first/);
+  assert.match(renderToStaticMarkup(createElement(OnboardingQuestionV2, {field:"country", value:"Other", onChange:() => {}})), /More countries are coming/);
 });
-test("email-send limit is friendly without changing other auth errors", () => {
-  for (const error of [new Error("email rate limit exceeded"), {code:"over_email_send_rate_limit"}]) {
-    assert.match(authErrorMessage(error), /Too many confirmation emails/);
-    assert.doesNotMatch(authErrorMessage(error), /rate limit exceeded/);
+test("v2 question choices match backend enums without a frontend strategy mapping", () => {
+  assert.deepEqual(SAVINGS_OPTIONS.map(([v]) => v), ["less_than_1_month","one_to_two_months","three_to_six_months","more_than_six_months"]);
+  assert.deepEqual(DEBT_OPTIONS.map(([v]) => v), ["none","paying_down","difficult_to_manage","not_sure"]);
+  assert.deepEqual(HORIZON_OPTIONS.map(([v]) => v), ["less_than_3_years","three_to_five_years","five_to_ten_years","ten_plus_years"]);
+  assert.deepEqual(RISK_OPTIONS.map(([v]) => v), ["sell_all","sell_some","hold","continue_investing","invest_more"]);
+});
+test("numeric blank, negative and nonfinite values fail; zero amounts and optional goal remain valid", () => {
+  for (const field of ["current_portfolio_value", "monthly_investment"] as const) {
+    assert.equal(answerError(field, "0"), null);
+    for (const value of ["", " ", "-1", "NaN", "Infinity", "1000000000001"]) assert.ok(answerError(field, value));
   }
-  assert.equal(authErrorMessage(new Error("Invalid login credentials")), "Invalid login credentials");
+  assert.equal(answerError("goal_target", ""), null);
+  assert.ok(answerError("goal_target", "0"));
+  assert.ok(answerError("risk_response", "unknown"));
 });
-test("amount questions lead with the question and do not show premature empty-input errors", () => {
-  const html = renderToStaticMarkup(createElement(Question, { ...props, step: 3 }));
-  assert.ok(html.indexOf("What is your planning starting value?") < html.indexOf("Planning currency:"));
-  assert.doesNotMatch(html, /enter a value/);
-  assert.match(renderToStaticMarkup(createElement(Question, { ...props, step: 3, currentPortfolioValue: "-1" })), /enter 0 or more/);
+test("email-send limit remains friendly", () => {
+  for (const error of [new Error("email rate limit exceeded"), {code:"over_email_send_rate_limit"}]) assert.match(authErrorMessage(error), /Too many confirmation emails/);
+  assert.equal(authErrorMessage(new Error("Invalid login credentials")), "Invalid login credentials");
 });

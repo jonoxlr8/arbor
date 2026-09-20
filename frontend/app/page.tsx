@@ -2,59 +2,30 @@
 
 import { useEffect, useRef, useState } from "react";
 import Logo from "@/components/Logo";
-import { planningCurrency } from "@/lib/currency";
 import Card from "@/components/Card";
-import Question from "@/components/Question";
-import ProgressBar from "@/components/ProgressBar";
 import PublicEntry from "@/components/entry/PublicEntry";
-import { createProfile, getMyProfile } from "@/lib/api";
+import { getAccountProfile } from "@/lib/profileV2Api";
+import type { AccountPlan } from "@/lib/types/planV2";
+import { isPlanV2 } from "@/lib/planV2";
+import OnboardingV2 from "@/components/OnboardingV2";
+import PlanV2View from "@/components/PlanV2View";
 import { getCurrentUser, signOut } from "@/lib/auth";
 import ResultsDashboard from "@/components/ResultsDashboard";
 import { createAccountRecovery, type AccountState } from "@/lib/accountRecovery";
 import { supabase } from "@/lib/supabase";
-import { numericError, profileErrors, isRiskCategory } from "@/lib/profileValidation";
 
 export default function Home() {
-  const [account, setAccount] = useState<AccountState>({ status: "checking" });
-  const recovery = useRef<ReturnType<typeof createAccountRecovery> | null>(null);
+  const [account, setAccount] = useState<AccountState<AccountPlan>>({ status: "checking" });
+  const recovery = useRef<ReturnType<typeof createAccountRecovery<AccountPlan>> | null>(null);
   const [logoutError, setLogoutError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
 
-  const [name, setName] = useState("");
-  const [step, setStep] = useState(1);
-  const [country, setCountry] = useState("");
-  const [currentPortfolioValue, setCurrentPortfolioValue] = useState("");
-  const [monthlyInvestment, setMonthlyInvestment] = useState("");
-  const [goalTarget, setGoalTarget] = useState("");
-  const [investmentHorizon, setInvestmentHorizon] = useState("");
-  const [riskTolerance, setRiskTolerance] = useState("");
-  const [profileError, setProfileError] = useState("");
-  const profileSaving = useRef(false);
-  const profileRequest = useRef<AbortController | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState(
-    "Understanding your goals...",
-  );
-
   useEffect(() => {
-    const coordinator = createAccountRecovery({
+    const coordinator = createAccountRecovery<AccountPlan>({
       getUser: getCurrentUser,
-      getProfile: getMyProfile,
+      getProfile: getAccountProfile,
       onState: setAccount,
       onIdentityChange: () => {
-        profileRequest.current?.abort();
-        profileRequest.current = null;
-        profileSaving.current = false;
-        setName("");
-        setStep(1);
-        setCountry("");
-        setCurrentPortfolioValue("");
-        setMonthlyInvestment("");
-        setGoalTarget("");
-        setInvestmentHorizon("");
-        setRiskTolerance("");
-        setProfileError("");
-        setLoading(false);
         setLogoutError("");
       },
     });
@@ -65,7 +36,6 @@ export default function Home() {
     });
     void coordinator.restore();
     return () => {
-      profileRequest.current?.abort();
       subscription.unsubscribe();
       coordinator.dispose();
       recovery.current = null;
@@ -122,173 +92,12 @@ export default function Home() {
     return <PublicEntry onAuthenticated={(session) => void recovery.current?.authenticated(session)} />;
   }
 
-  if (loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-background px-6">
-        <Card>
-          <Logo />
-
-          <div className="mt-12 text-center">
-            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-green-200 border-t-green-600" />
-
-            <h2 className="mt-8 text-2xl font-bold text-slate-900">
-              Arbor is building your plan
-            </h2>
-
-            <p className="mt-4 text-slate-600">{loadingMessage}</p>
-
-            <p className="mt-3 text-sm text-slate-500">
-              Creating your personalized global investment strategy...
-            </p>
-          </div>
-        </Card>
-      </main>
-    );
-  }
-
   if (account.status === "ready") {
+    if (isPlanV2(account.plan)) return <PlanV2View value={account.plan} onSignOut={handleSignOut} signingOut={signingOut} logoutError={logoutError} />;
     return <ResultsDashboard key={account.userId} plan={account.plan} onSignOut={handleSignOut} signingOut={signingOut} logoutError={logoutError} />;
   }
 
-  const canContinue =
-    step === 1
-      ? name.trim()
-      : step === 2
-        ? country === "Philippines"
-        : step === 3
-          ? currentPortfolioValue !== ""
-            && !numericError("current_portfolio_value", currentPortfolioValue)
-          : step === 4
-            ? monthlyInvestment !== ""
-              && !numericError("monthly_investment", monthlyInvestment)
-            : step === 5
-              ? goalTarget !== ""
-                && !numericError("goal_target", goalTarget)
-              : step === 6
-                ? investmentHorizon !== ""
-                  && !numericError("investment_horizon", investmentHorizon)
-                : isRiskCategory(riskTolerance);
-
-  const handleNext = async () => {
-    if (!canContinue || profileSaving.current) return;
-    if (step < 7) {
-      setStep(step + 1);
-      return;
-    }
-
-    let interval: ReturnType<typeof setInterval> | undefined;
-    const errors = profileErrors({
-      current_portfolio_value: currentPortfolioValue, monthly_investment: monthlyInvestment,
-      goal_target: goalTarget, investment_horizon: investmentHorizon, risk_tolerance: riskTolerance,
-    });
-    if (errors.length) { setProfileError(errors.join("\n")); return; }
-    profileSaving.current = true;
-    setProfileError("");
-    const isCurrent = recovery.current?.guard() ?? (() => false);
-    const controller = new AbortController();
-    profileRequest.current = controller;
-
-    try {
-      setLoading(true);
-
-      const messages = [
-        "Understanding your goals...",
-        "Evaluating your risk profile...",
-        "Selecting global investments...",
-        "Building your personalized portfolio...",
-        "Preparing your wealth roadmap...",
-      ];
-
-      let index = 0;
-
-      interval = setInterval(() => {
-        if (!isCurrent()) return;
-        index++;
-
-        if (index < messages.length) {
-          setLoadingMessage(messages[index]);
-        }
-      }, 800);
-
-      const result = await createProfile({
-        full_name: name,
-        country: country,
-        goal_target: Number(goalTarget),
-        investment_horizon: Number(investmentHorizon),
-        risk_tolerance: riskTolerance,
-        currency: planningCurrency(country) ?? "",
-        monthly_investment: Number(monthlyInvestment),
-        current_portfolio_value: Number(currentPortfolioValue),
-      }, account.userId, controller.signal);
-
-      if (!isCurrent()) return;
-      setLoadingMessage("Your Arbor plan is ready");
-      recovery.current?.completeProfile(account.userId, result);
-    } catch (error) {
-      if (!isCurrent()) return;
-      setProfileError(error instanceof Error ? error.message : "Unable to create your plan. Please retry.");
-    } finally {
-      if (profileRequest.current === controller) {
-        profileSaving.current = false;
-        profileRequest.current = null;
-      }
-      if (interval) {
-        clearInterval(interval);
-      }
-
-      if (isCurrent()) setLoading(false);
-    }
-  };
-
-  return (
-    <main className="flex min-h-dvh items-start justify-center bg-background px-4 py-6 sm:py-12">
-        <div className="w-full min-w-0 max-w-xl"
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && event.target instanceof HTMLInputElement && canContinue) {
-              event.preventDefault();
-              handleNext();
-            }
-          }}
-        >
-          <Card>
-            <Logo />
-
-            <ProgressBar step={step} totalSteps={7} />
-
-            <div className="mt-3 min-h-11">{step > 1 && <button type="button" className="min-h-11 text-sm font-medium text-slate-600" onClick={() => setStep(step - 1)}>← Back</button>}</div>
-
-            <Question
-              step={step}
-              name={name}
-              setName={setName}
-              country={country}
-              setCountry={setCountry}
-              currentPortfolioValue={currentPortfolioValue}
-              setCurrentPortfolioValue={setCurrentPortfolioValue}
-              monthlyInvestment={monthlyInvestment}
-              setMonthlyInvestment={setMonthlyInvestment}
-              goalTarget={goalTarget}
-              setGoalTarget={setGoalTarget}
-              investmentHorizon={investmentHorizon}
-              setInvestmentHorizon={setInvestmentHorizon}
-              riskTolerance={riskTolerance}
-              setRiskTolerance={setRiskTolerance}
-            />
-
-            <button
-              onClick={handleNext}
-              disabled={!canContinue}
-              className={`mt-6 min-h-12 w-full rounded-2xl py-3 text-base font-semibold transition ${
-                canContinue
-                  ? "bg-emerald-700 text-white hover:-translate-y-1 hover:bg-emerald-800 hover:shadow-xl"
-                  : "cursor-not-allowed bg-slate-200 text-slate-400 shadow-none"
-              }`}
-            >
-              {step === 7 ? "Create my plan →" : "Continue →"}
-            </button>
-            {profileError && <p role="alert" className="mt-4 whitespace-pre-line text-red-700">{profileError}</p>}
-          </Card>
-        </div>
-    </main>
-  );
+  return <OnboardingV2 key={account.userId} userId={account.userId}
+    onComplete={plan => recovery.current?.completeProfile(account.userId, plan)}
+    onSignOut={handleSignOut} signingOut={signingOut} logoutError={logoutError} />;
 }

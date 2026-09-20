@@ -15,28 +15,28 @@ export function withDeadline<T>(operation: Promise<T>, milliseconds = 15000): Pr
   });
 }
 
-export type AccountState =
+export type AccountState<T = Plan> =
   | { status: "checking" }
   | { status: "unauthenticated" }
-  | { status: "ready"; userId: string; plan: Plan }
+  | { status: "ready"; userId: string; plan: T }
   | { status: "no-profile"; userId: string }
   | { status: "error"; message: string };
 
-type Dependencies = {
+type Dependencies<T> = {
   getUser: () => Promise<{ id: string } | null>;
-  getProfile: (userId: string, accessToken?: string) => Promise<Plan | null>;
-  onState: (state: AccountState) => void;
+  getProfile: (userId: string, accessToken?: string) => Promise<T | null>;
+  onState: (state: AccountState<T>) => void;
   onIdentityChange: () => void;
   timeoutMs?: number;
 };
 
-export function createAccountRecovery(deps: Dependencies) {
+export function createAccountRecovery<T = Plan>(deps: Dependencies<T>) {
   // Every new attempt/account invalidates results still arriving from older work.
   let generation = 0;
   let identity: string | null | undefined;
   let restoringUserId: string | undefined;
-  let state: AccountState = { status: "checking" };
-  function publish(next: AccountState) {
+  let state: AccountState<T> = { status: "checking" };
+  function publish(next: AccountState<T>) {
     state = next;
     deps.onState(next);
   }
@@ -51,7 +51,7 @@ export function createAccountRecovery(deps: Dependencies) {
     restoringUserId = knownSession?.user.id;
     publish({ status: "checking" });
     try {
-      const result = await withDeadline((async (): Promise<AccountState> => {
+      const result = await withDeadline((async (): Promise<AccountState<T>> => {
         // A successful auth event already supplies the user. Do not replace that
         // newer evidence with another potentially stale initial session lookup.
         // Awaiting here also keeps profile/SDK work outside the auth callback.
@@ -115,7 +115,7 @@ export function createAccountRecovery(deps: Dependencies) {
       publish(userId ? { status: "checking" } : { status: "unauthenticated" });
       return true;
     },
-    completeProfile(userId: string, plan: Plan) {
+    completeProfile(userId: string, plan: T) {
       if (identity === userId && state.status === "no-profile") publish({ status: "ready", userId, plan });
     },
     dispose() { generation++; },

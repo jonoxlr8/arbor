@@ -173,12 +173,13 @@ export function isPlan(value: unknown): value is Plan {
   return true;
 }
 
-export function createProfileReader(
+export function createProfileReader<T = Plan>(
   token = getAccessToken,
   request: typeof fetch = fetch,
   timeoutMs = 12000,
+  validate: (body: unknown) => body is T = isPlan as unknown as (body: unknown) => body is T,
 ) {
-  return async (userId: string, knownAccessToken?: string, signal?: AbortSignal): Promise<Plan | null> => {
+  return async (userId: string, knownAccessToken?: string, signal?: AbortSignal): Promise<T | null> => {
     const controller = new AbortController();
     const cancel = () => controller.abort(signal?.reason);
     signal?.addEventListener("abort", cancel, { once: true });
@@ -209,7 +210,7 @@ export function createProfileReader(
           if (response.status === 404 && typeof body === "object" && body !== null &&
               "detail" in body && body.detail === "Profile not found") return null;
           if (!response.ok) throw new ProfileApiError(response.status, `Profile request failed (${response.status}).`);
-          if (!isPlan(body)) throw new Error("The profile response was incomplete. Please retry.");
+          if (!validate(body)) throw new Error("The profile response was incomplete. Please retry.");
           return body;
         }
         throw new InvalidSessionError();
