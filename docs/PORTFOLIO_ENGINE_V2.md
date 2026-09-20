@@ -24,7 +24,8 @@ assume it implements the v2 convention. Projection migration belongs to 3O-G.
   Satellites can only replace equity; defensive weight cannot change. Its planning
   return is derived from its base strategy, never a preference or satellite weight.
   This structural contract does not mean a target has been approved for guidance.
-- Readiness: independent enum, not a strategy modifier or a decision engine yet.
+- Readiness: independent enum with an isolated evaluator in `readiness_v2`, not a
+  strategy modifier.
 - Strategy path: short term without a long-term strategy, or long term with one.
   No automatic default strategy and no horizon selection are implemented.
 
@@ -33,14 +34,37 @@ practicality → implementation route. Only a resolved, permitted effective targ
 should eventually feed Health, comparison, rebalancing and contribution guidance.
 Do not feed saved preferences or a raw base definition directly to those consumers.
 
-3O-B must define readiness inputs/decisions and guidance permissions (Foundation
-First can block actionable contributions; Getting Ready may restrict satellites)
-without silently changing the underlying strategy. 3O-C owns short-term/horizon
-selection. 3O-F owns preference allocation, including satellite limits. None of
-these policies are inferred here. Implementation catalog versioning is separate
+3O-C owns short-term/horizon selection. 3O-F owns preference allocation, including
+satellite limits. These policies are not inferred here. Implementation catalog versioning is separate
 and deferred to 3P; strategy engine records explicitly use version `2.0`.
 
 Legacy risk categories, historical Growth read handling, Supabase model rows,
 ticker-based Health and 8% projections remain unchanged. Legacy Growth is not
 automatically the new v2 Growth strategy. An explicit review/migration and API
 integration will be needed before any existing user uses v2.
+
+## Readiness engine (3O-B)
+
+`readiness_v2.evaluate_readiness(emergency_savings, high_interest_debt)` accepts
+the typed savings/debt options and returns a frozen `ReadinessResult`. Missing or
+unknown answers fail validation; they are never treated as ready.
+
+Precedence: difficult-to-manage debt always means Foundation First. Otherwise,
+at least three months of savings AND no high-interest debt means Ready. Every
+other valid combination means Getting Ready.
+
+| Readiness | Show core strategy | Actionable contributions | Technology eligible | Bitcoin eligible | Required message |
+|---|---|---|---|---|---|
+| Ready | Yes | Yes | Yes | Yes | None |
+| Getting Ready | Yes | Core, with caution | Potentially | No | Readiness caution |
+| Foundation First | Preview only | No | No | No | Foundation First |
+
+Satellite readiness eligibility is only a permission gate, not final approval or
+an allocation. Later strategy-specific rules must also permit it. Message values
+are semantic codes, not UI prose. The evaluator accepts no strategy, horizon,
+target or saved preferences and cannot overwrite any of them. An Aggressive
+strategy can therefore coexist with Foundation First readiness.
+
+This engine is not connected to legacy profiles, production onboarding or guidance.
+No persistence or schema migration was added. 3O-C must add risk/horizon selection
+separately, preserving these readiness permissions without reclassifying strategy.
