@@ -5,6 +5,7 @@ import { signIn, signUp, resendConfirmation } from "@/lib/auth";
 import type { AccountSession } from "@/lib/accountRecovery";
 import { authErrorMessage } from "@/lib/authErrorMessage";
 import { entryLinks } from "@/lib/publicEntry";
+import SignupPending from "./SignupPending";
 import { confirmationContext, showConfirmationResend, canResendConfirmation, neutralResendMessage, type PendingConfirmation } from "@/lib/authConfirmation";
 
 type AuthFormProps = {
@@ -70,7 +71,7 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
 
       if (isSignUp && !result.data.session) {
         setPendingConfirmation(confirmationContext(mode, email, { awaitingConfirmation: true }));
-        setConfirmation("Check your email to confirm your account. If you already have an account, you can log in.");
+        setPassword("");
         setCooldown(60);
         return;
       }
@@ -88,6 +89,20 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
       setLoading(false);
     }
   };
+
+  function useDifferentEmail() {
+    if (submitting.current) return;
+    setPendingConfirmation(null);
+    setEmail(""); setPassword(""); setConfirmation(""); setError("");
+    // Keep the resend cooldown; changing the form must not bypass it.
+  }
+
+  if (isSignUp && pendingConfirmation?.mode === "signup") return <SignupPending
+    email={pendingConfirmation.email} loading={loading} cooldown={cooldown}
+    resendDisabled={!canResendConfirmation(pendingConfirmation, mode, email, loading, cooldown)}
+    confirmation={confirmation} error={error}
+    onResend={() => void handleResend()} onDifferentEmail={useDifferentEmail}
+  />;
 
   return (
       <section className="arbor-panel mx-auto w-full max-w-md">
