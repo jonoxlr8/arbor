@@ -106,4 +106,39 @@ classified here; the caller supplies an explicit horizon bucket.
 Readiness remains independent: Aggressive + Foundation First is valid. Selection
 does not overwrite readiness permissions or saved preferences. Neither evaluator
 is wired into production onboarding, profiles, recommendations or API contracts.
-Base strategy presentation belongs to 3O-D; no UI is added by this milestone.
+Base strategy composition is described below; no UI is added by these milestones.
+
+## Base strategy plan model (3O-D)
+
+`portfolio_plan_v2.build_portfolio_plan(risk_response, horizon, emergency_savings,
+high_interest_debt)` takes the existing enum inputs and calls `select_strategy`
+and `evaluate_readiness`. It does not reimplement either policy or accept caller-
+supplied allocations/returns. No existing module or production API imports it.
+
+`PortfolioPlan` is a discriminated union of frozen `LongTermPortfolioPlan` and
+`ShortTermPortfolioPlan`, with an explicit `path` and engine version. Both contain:
+
+- `selection`: the complete canonical selection result (requested strategy,
+  horizon, maximum, cap flag and semantic reason).
+- `readiness`: the complete canonical state/message/permission result.
+- `inflation_annual_rate`: derived from the central v2 inflation assumption.
+
+Long-term output adds `selected_strategy`, `base_allocation`, and
+`planning_annual_rate`, derived directly from `get_base_strategy`. These are
+read-only presentation fields, not independently stored financial assumptions.
+Short-term output constrains all three to null, and rejects long-term selection
+data. It provides neither a short-term portfolio nor a return (including 0%).
+
+Readiness never changes the selected strategy: Aggressive + Foundation First is
+still Aggressive, with actionable contributions blocked. Short-term readiness
+permissions remain readiness-only gates, not permission to use the long-term
+engine; consumers must inspect `path`. No effective target is published here.
+
+`model_dump(mode="json")` includes derived presentation fields; Decimal rates
+serialize as exact strings. For model round-tripping use Pydantic's
+`model_dump_json(round_trip=True)` to exclude derived fields. This is an output
+domain contract, not a new profile persistence or public API contract.
+
+3O-E owns onboarding v2 UI integration. Preference allocation (3O-F), projection
+migration (3O-G), products/providers (3P), contribution allocation (3Q), Health
+migration and legacy migration remain deferred. No schema migration is needed.
