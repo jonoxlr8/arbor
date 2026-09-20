@@ -12,3 +12,8 @@ export function confirmationRedirect(value: string | undefined, environment = "d
 
 // Public build-time configuration, never an arbitrary redirect supplied by a visitor.
 export const emailRedirectTo = confirmationRedirect(process.env.NEXT_PUBLIC_SITE_URL, process.env.NODE_ENV);
+
+export function passwordRecoveryRedirect(value: string | undefined, environment = "development") {
+  return `${confirmationRedirect(value, environment)}reset-password`;
+}
+export const passwordResetRedirectTo = passwordRecoveryRedirect(process.env.NEXT_PUBLIC_SITE_URL, process.env.NODE_ENV);

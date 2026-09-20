@@ -126,7 +126,7 @@ Jonathan must configure and verify externally (not provable from this repository
 
 Resend does not create accounts. Signup/resend have bounded UI waits and no automatic
 email retries; a timed-out SDK request may still send an email. Success copy does
-not disclose whether an address exists. Password recovery remains outside this slice.
+not disclose whether an address exists.
 
 References: [Supabase SMTP](https://supabase.com/docs/guides/auth/auth-smtp),
 [redirects](https://supabase.com/docs/guides/auth/redirect-urls),
@@ -168,6 +168,65 @@ this route from any future analytics/session replay/URL logging. The route sets
 no-referrer and noindex/nofollow metadata; never log confirmation URLs or tokens.
 Email providers necessarily handle the original email link. This is protection
 against automatic fetches, not a guarantee against scanners that simulate clicks.
+
+## Password recovery
+
+Deploy `/forgot-password` and `/reset-password` before enabling the login link.
+Keep `NEXT_PUBLIC_SITE_URL=https://arbor.ph` (build-time setting) and Supabase
+Site URL `https://arbor.ph`. Add this exact Supabase Auth Redirect URL:
+`https://arbor.ph/reset-password`. Local testing may separately allow
+`http://localhost:3000/reset-password`; do not add broad production wildcards.
+No new environment variable or Resend API key is required.
+
+In Supabase Authentication → Email templates → **Reset password**, use:
+
+```html
+<h2>Reset your Arbor password</h2>
+<p>Use the link below to choose a new password.</p>
+<p><a href="https://arbor.ph/reset-password#token_hash={{ .TokenHash }}&amp;type=recovery">Continue to password reset</a></p>
+<p>On the Arbor page, select Verify reset link to choose a new password.</p>
+<p>If you didn’t request this, you can ignore this email. Your password has not changed.</p>
+```
+
+Deploy the updated reset page before changing the template. Keep the exact allowed
+redirect above: Arbor still calls `resetPasswordForEmail` with that validated URL.
+The new email opens Arbor without consuming the token. Its fragment is not sent
+to Arbor/Vercel in the initial HTTP request. On load Arbor validates and immediately
+clears the fragment, keeping the hash only in component memory. It does not load
+the SDK or verify on page load. Only **Verify reset link** calls
+`auth.verifyOtp({ token_hash, type: "recovery" })`; the SDK then stores its normal
+browser session and emits `PASSWORD_RECOVERY`. Both successful explicit verification
+and the matching recovery identity are required to open the password form. An
+ordinary session or a previous recovery event alone is insufficient.
+Refreshing requires reopening an unconsumed email link or requesting a new email.
+Old ConfirmationURL emails are no longer supported by this page; request a fresh
+email after deploying/changing the template. Missing/invalid/expired/used links
+offer login and another reset request. The route uses no-referrer/noindex metadata.
+Exclude it from URL analytics, session replay and request-body logging. Never copy
+token-bearing links into logs or support tickets.
+
+The client minimum is 8 characters; Supabase's configured password policy remains
+authoritative and can be stronger. Check the project's policy before release.
+After `updateUser({ password })`, Arbor signs out the **local** recovery session
+and offers normal login. If sign-out fails, retry sign-out; do not repeat the
+password update. This does not promise revocation of other devices' sessions.
+Requests have bounded UI waits; SDK requests may still complete after a timeout.
+
+Keep existing Resend SMTP and email verification settings. Disable email click
+tracking/link rewriting. The intermediate page prevents a simple email-link fetch
+from consuming the one-time token; it cannot protect against scanners that simulate
+the explicit button interaction. Email providers necessarily handle the original
+link. Do not use `ConfirmationURL` in the reset template or change its type to
+the signup flow's `email` type.
+Test delivery with actual inbox providers; neutral request success is not proof
+of delivery. Email quota/capacity and SMTP delivery remain dashboard concerns.
+
+Release check: existing account → Forgot password → neutral response → inbox link
+→ Verify reset link → matching new password → local sign-out → login with new password → saved v1/v2
+profile restoration. Also test nonexistent email, expired/reused/missing link,
+mismatched passwords, network failure and signup/confirmation/resend regression.
+See [Supabase recovery API](https://supabase.com/docs/reference/javascript/auth-resetpasswordforemail)
+and [password update](https://supabase.com/docs/reference/javascript/auth-updateuser).
 
 Release test: opening/prefetching the Arbor link must leave the user unverified;
 clicking Confirm email address must verify and restore onboarding/dashboard. Test

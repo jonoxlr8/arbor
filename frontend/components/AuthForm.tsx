@@ -5,6 +5,7 @@ import { signIn, signUp, resendConfirmation } from "@/lib/auth";
 import type { AccountSession } from "@/lib/accountRecovery";
 import { authErrorMessage } from "@/lib/authErrorMessage";
 import { entryLinks } from "@/lib/publicEntry";
+import { confirmationContext, showConfirmationResend, canResendConfirmation, neutralResendMessage, type PendingConfirmation } from "@/lib/authConfirmation";
 
 type AuthFormProps = {
   onAuthenticated: (session: AccountSession) => void;
@@ -18,6 +19,7 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState("");
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const submitting = useRef(false);
   const [cooldown, setCooldown] = useState(0);
   const mounted = useRef(true);
@@ -32,12 +34,12 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
   }, [cooldown]);
 
   const handleResend = async () => {
-    if (submitting.current || cooldown || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return;
+    if (!canResendConfirmation(pendingConfirmation, mode, email, submitting.current, cooldown)) return;
     submitting.current = true;
     setLoading(true); setError(""); setConfirmation(""); setCooldown(60);
     try {
       await resendConfirmation(email.trim());
-      if (mounted.current) setConfirmation("If this address has an account awaiting confirmation, a new email has been requested. Check your inbox and spam folder.");
+      if (mounted.current) setConfirmation(neutralResendMessage);
     } catch (error) {
       if (mounted.current) setError(authErrorMessage(error));
     } finally {
@@ -52,6 +54,7 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
     submitting.current = true;
     setError("");
     setConfirmation("");
+    setPendingConfirmation(null);
     setLoading(true);
 
     try {
@@ -60,11 +63,13 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
         : await signIn(email, password);
 
       if (result.error) {
+        setPendingConfirmation(confirmationContext(mode, email, { error: result.error }));
         setError(authErrorMessage(result.error));
         return;
       }
 
       if (isSignUp && !result.data.session) {
+        setPendingConfirmation(confirmationContext(mode, email, { awaitingConfirmation: true }));
         setConfirmation("Check your email to confirm your account. If you already have an account, you can log in.");
         setCooldown(60);
         return;
@@ -76,6 +81,7 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
       }
       onAuthenticated(result.data.session);
     } catch (error) {
+      setPendingConfirmation(confirmationContext(mode, email, { error }));
       setError(authErrorMessage(error));
     } finally {
       submitting.current = false;
@@ -106,7 +112,7 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
             type="email"
             placeholder="Email address"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => { setEmail(e.target.value); setPendingConfirmation(null); setConfirmation(""); setError(""); }}
             className="w-full rounded-xl border border-slate-300 px-5 py-4 text-slate-900 outline-none focus:border-green-600 focus:ring-4 focus:ring-green-100"
           />
 
@@ -145,11 +151,13 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
                 : "Log in"}
           </button>
 
-          <button type="button" onClick={() => void handleResend()}
-            disabled={loading || cooldown > 0 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())}
+          {!isSignUp && <a href="/forgot-password" className="entry-link flex min-h-11 items-center justify-center">Forgot password?</a>}
+
+          {showConfirmationResend(pendingConfirmation, mode, email) && <button type="button" onClick={() => void handleResend()}
+            disabled={!canResendConfirmation(pendingConfirmation, mode, email, loading, cooldown)}
             className="min-h-11 w-full rounded-xl px-3 py-3 text-sm font-medium text-forest disabled:opacity-50">
             {cooldown ? `Resend confirmation in ${cooldown}s` : "Resend confirmation email"}
-          </button>
+          </button>}
 
           <a
             href={isSignUp ? entryLinks.login : entryLinks.signup}
