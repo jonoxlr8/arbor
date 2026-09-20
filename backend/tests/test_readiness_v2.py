@@ -78,7 +78,7 @@ def test_missing_input_fields_and_extra_strategy_rejected():
 def test_evaluation_never_changes_strategy_or_saved_preferences(strategy):
     base = get_base_strategy(strategy)
     before = base.model_dump()
-    preferences = SavedPreferences(technology_tilt=True, bitcoin=True)
+    preferences = SavedPreferences(technology_tilt=10, bitcoin=10)
     saved = preferences.model_dump()
     for savings, debt, _ in CASES:
         result = evaluate_readiness(savings, debt)

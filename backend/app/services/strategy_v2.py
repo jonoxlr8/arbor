@@ -1,4 +1,4 @@
-"""Isolated Engine 2.0 domain. Not used by legacy profiles or production routes.
+"""Canonical Engine 2.0 domain. Not used by legacy profiles.
 
 Allocation weights are whole percentage points; annual assumptions are basis
 points (400 = 4%). These are nominal annual effective planning returns, not
@@ -44,10 +44,10 @@ class DomainModel(BaseModel):
 
 
 class SavedPreferences(DomainModel):
-    # Intent only, not permission or a computed allocation. Readiness may later
-    # restrict application without erasing the user's saved choices.
-    technology_tilt: bool = Field(default=False, strict=True)
-    bitcoin: bool = Field(default=False, strict=True)
+    # Requested whole percentage points, not permissions or effective weights.
+    # Individual requests may exceed eligibility; never silently rewrite intent.
+    technology_tilt: PercentagePoints = 0
+    bitcoin: PercentagePoints = 0
 
 
 class RoleWeight(DomainModel):
@@ -118,9 +118,9 @@ def get_base_strategy(strategy: StrategyType) -> BaseStrategyDefinition:
 
 
 class EffectiveTargetAllocation(DomainModel):
-    """Output contract for a future allocator, NOT evidence of readiness/approval.
+    """Output contract for the satellite allocator, NOT evidence of actionability.
 
-    Preferences are deliberately not accepted here. A future policy layer must
+    Preferences are deliberately not accepted here. The preference policy layer must
     resolve readiness, horizon and preferences before publishing this target.
     """
     strategy_engine_version: StrategyEngineVersion = STRATEGY_ENGINE_VERSION

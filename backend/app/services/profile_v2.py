@@ -11,16 +11,22 @@ SHARED_FIELDS = ("full_name", "country", "currency", "goal_target",
 
 def profile_v2_row(profile: ProfileV2Create, user_id: str) -> dict:
     data = profile.model_dump(mode="json")
+    inputs = {key: data[key] for key in V2_ANSWER_FIELDS}
+    if "saved_preferences" in profile.model_fields_set:
+        inputs["saved_preferences"] = data["saved_preferences"]
     return {"user_id": user_id, "strategy_engine_version": "2.0",
             **{key: data[key] for key in SHARED_FIELDS},
-            "v2_inputs": {key: data[key] for key in V2_ANSWER_FIELDS},
+            "v2_inputs": inputs,
             # Do not store fake legacy classifications or numeric horizon years.
             "risk_tolerance": None, "risk_score": None, "risk_level": None,
             "investment_horizon": None}
 
 
 def restore_profile_v2(row: dict) -> dict:
-    if not isinstance(row.get("v2_inputs"), dict) or set(row["v2_inputs"]) != set(V2_ANSWER_FIELDS):
+    inputs = row.get("v2_inputs")
+    if not isinstance(inputs, dict) or set(inputs) not in (
+        set(V2_ANSWER_FIELDS), set(V2_ANSWER_FIELDS) | {"saved_preferences"}
+    ):
         raise ValueError("Invalid saved v2 input shape")
     profile = ProfileV2Create.model_validate({
         "strategy_engine_version": row["strategy_engine_version"],
@@ -28,9 +34,10 @@ def restore_profile_v2(row: dict) -> dict:
         **row["v2_inputs"],
     })
     domain = build_portfolio_plan(profile.risk_response, profile.horizon,
-                                  profile.emergency_savings, profile.high_interest_debt)
+                                  profile.emergency_savings, profile.high_interest_debt, profile.saved_preferences)
     common = dict(selection=domain.selection, readiness=domain.readiness,
-                  inflation_pct=float(domain.inflation_annual_rate * 100))
+                  inflation_pct=float(domain.inflation_annual_rate * 100),
+                  preference_result=domain.preference_result)
     if domain.path == "short_term":
         plan = ShortTermPlanDTO(**common)
     else:

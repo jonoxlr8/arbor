@@ -17,6 +17,56 @@ LEGACY = dict(full_name="Existing user", country="Philippines", currency="PHP", 
 HEADERS = {"Authorization": "Bearer test"}
 
 
+def test_preferences_persist_requests_and_restore_effective_target(harness):
+    client, state = harness
+    payload = {**BASE, "horizon": "three_to_five_years", "risk_response": "invest_more",
+               "saved_preferences": {"technology_tilt": 10, "bitcoin": 10}}
+    response = client.post("/v2/profiles", json=payload, headers=HEADERS)
+    assert response.status_code == 200
+    result = response.json()
+    assert result == client.get("/profiles/me", headers=HEADERS).json()
+    assert state["rows"]["A"]["v2_inputs"]["saved_preferences"] == payload["saved_preferences"]
+    assert result["profile"]["saved_preferences"] == payload["saved_preferences"]
+    target = result["plan"]["preference_result"]["effective_target"]
+    assert target["base_strategy"] == "Balanced"
+    assert {w["role"]: w["percentage_points"] for w in target["allocation"]["weights"]} == {
+        "global_equity": 50, "defensive": 40, "technology_tilt": 5, "crypto": 5,
+    }
+    assert isinstance(result["plan"]["planning_return_pct"], float)
+    assert all(type(w["percentage_points"]) is int for w in target["allocation"]["weights"])
+    retry = client.post("/v2/profiles", json={**payload, "saved_preferences": {"technology_tilt": 0, "bitcoin": 0}}, headers=HEADERS)
+    assert retry.json()["profile"]["saved_preferences"] == payload["saved_preferences"]
+
+
+def test_existing_3oe_json_without_preferences_still_restores(harness):
+    client, state = harness
+    client.post("/v2/profiles", json=BASE, headers=HEADERS)
+    assert "saved_preferences" not in state["rows"]["A"]["v2_inputs"]
+    response = client.get("/profiles/me", headers=HEADERS)
+    assert response.status_code == 200
+    assert response.json()["profile"]["saved_preferences"] == {"technology_tilt": 0, "bitcoin": 0}
+    assert "saved_preferences" not in state["rows"]["A"]["v2_inputs"]  # Read does not migrate.
+
+
+@pytest.mark.parametrize("preferences", [None, {"bitcoin": True}, {"bitcoin": 101}, {"technology_tilt": -1}, {"unknown": 5}])
+def test_bad_preferences_rejected_on_write_and_restore(harness, preferences):
+    client, state = harness
+    assert client.post("/v2/profiles", json={**BASE, "saved_preferences": preferences}, headers=HEADERS).status_code == 422
+    client.post("/v2/profiles", json=BASE, headers=HEADERS)
+    state["rows"]["A"]["v2_inputs"]["saved_preferences"] = preferences
+    assert client.get("/profiles/me", headers=HEADERS).status_code == 503
+
+
+def test_short_term_preferences_persist_without_a_long_term_target(harness):
+    client, _ = harness
+    payload = {**BASE, "horizon": "less_than_3_years", "saved_preferences": {"technology_tilt": 10, "bitcoin": 10}}
+    created = client.post("/v2/profiles", json=payload, headers=HEADERS).json()
+    assert created == client.get("/profiles/me", headers=HEADERS).json()
+    assert created["plan"]["preference_result"]["effective_target"] is None
+    assert created["plan"]["planning_return_pct"] is None
+    assert created["profile"]["saved_preferences"] == payload["saved_preferences"]
+
+
 @pytest.fixture
 def harness(monkeypatch):
     state = {"rows": {}, "user": "A", "inserts": 0, "failure": None, "tables": []}
@@ -91,7 +141,7 @@ def test_create_and_restore_paths_and_readiness(harness, horizon, risk, strategy
     assert response.status_code == 200, response.text
     result = response.json()
     assert result == client.get("/profiles/me", headers=HEADERS).json()
-    assert result["profile"] == payload
+    assert result["profile"] == {**payload, "saved_preferences": {"technology_tilt": 0, "bitcoin": 0}}
     assert result["strategy_engine_version"] == state["rows"]["A"]["strategy_engine_version"] == "2.0"
     assert result["plan"]["selected_strategy"] == strategy
     assert result["plan"]["readiness"]["readiness"] == state_name

@@ -98,9 +98,9 @@ def test_canonical_values_cannot_be_supplied_as_overrides_and_plan_is_frozen():
         plan.readiness.bitcoin_satellite_readiness_eligible = True
 
 
-def test_no_implementation_or_effective_target_fields():
+def test_no_implementation_fields():
     plan = build_portfolio_plan("hold", "ten_plus_years", "one_to_two_months", "none")
-    forbidden = {"ticker", "provider", "product", "broker", "implementation_route", "effective_target"}
+    forbidden = {"ticker", "provider", "product", "broker", "implementation_route"}
 
     def check(value):
         if isinstance(value, dict):

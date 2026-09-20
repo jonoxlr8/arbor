@@ -73,7 +73,7 @@ def test_duplicate_roles_rejected():
         ))
 
 
-@pytest.mark.parametrize("technology,bitcoin", list(product([False, True], repeat=2)))
+@pytest.mark.parametrize("technology,bitcoin", list(product([0, 10], repeat=2)))
 @pytest.mark.parametrize("strategy", list(StrategyType))
 def test_saved_preferences_cannot_change_strategy_or_planning_return(strategy, technology, bitcoin):
     base = get_base_strategy(strategy)
@@ -88,7 +88,7 @@ def test_saved_preferences_cannot_change_strategy_or_planning_return(strategy, t
 
 
 def test_preferences_are_strict_and_immutable():
-    assert SavedPreferences().model_dump() == {"technology_tilt": False, "bitcoin": False}
+    assert SavedPreferences().model_dump() == {"technology_tilt": 0, "bitcoin": 0}
     with pytest.raises(ValidationError):
         SavedPreferences(bitcoin="yes")
     with pytest.raises(ValidationError):

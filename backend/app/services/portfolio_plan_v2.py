@@ -1,4 +1,4 @@
-"""Base strategy presentation only; no legacy integration or effective target.
+"""Canonical base strategy, readiness and preference composition; no legacy logic.
 
 Nested selection and readiness results retain their canonical semantic fields.
 Readiness permissions are gates, not an implementation/contribution instruction.
@@ -7,6 +7,7 @@ from decimal import Decimal
 from typing import Annotated, Literal
 
 from pydantic import Field, computed_field, model_validator
+from app.services.preferences_v2 import PreferenceResult, apply_preferences
 
 from app.services.readiness_v2 import (
     EmergencySavings, HighInterestDebt, ReadinessResult, evaluate_readiness,
@@ -16,7 +17,7 @@ from app.services.strategy_selection_v2 import (
 )
 from app.services.strategy_v2 import (
     Allocation, DomainModel, INFLATION_ANNUAL_RATE, STRATEGY_ENGINE_VERSION,
-    StrategyEngineVersion, StrategyType, get_base_strategy,
+    StrategyEngineVersion, StrategyType, SavedPreferences, get_base_strategy,
 )
 
 
@@ -24,6 +25,12 @@ class BasePortfolioPlan(DomainModel):
     strategy_engine_version: StrategyEngineVersion = STRATEGY_ENGINE_VERSION
     selection: StrategySelectionResult
     readiness: ReadinessResult
+    saved_preferences: SavedPreferences = Field(default_factory=SavedPreferences)
+
+    @computed_field
+    @property
+    def preference_result(self) -> PreferenceResult:
+        return apply_preferences(self.selection.selected_strategy, self.readiness, self.saved_preferences)
 
     @computed_field
     @property
@@ -81,6 +88,7 @@ def build_portfolio_plan(
     horizon: HorizonBucket,
     emergency_savings: EmergencySavings,
     high_interest_debt: HighInterestDebt,
+    saved_preferences: SavedPreferences | None = None,
 ) -> PortfolioPlan:
     """Compose canonical services, without duplicating their decision rules.
 
@@ -90,4 +98,5 @@ def build_portfolio_plan(
     selection = select_strategy(risk_response, horizon)
     readiness = evaluate_readiness(emergency_savings, high_interest_debt)
     plan_type = ShortTermPortfolioPlan if selection.is_short_term else LongTermPortfolioPlan
-    return plan_type(selection=selection, readiness=readiness)
+    return plan_type(selection=selection, readiness=readiness,
+                     saved_preferences=saved_preferences if saved_preferences is not None else SavedPreferences())

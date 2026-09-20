@@ -3,7 +3,8 @@ from typing import Annotated, Literal
 from pydantic import Field, StringConstraints
 
 from app.schemas.validation import Money, Goal
-from app.services.strategy_v2 import DomainModel, StrategyType, RoleWeight
+from app.services.strategy_v2 import DomainModel, StrategyType, RoleWeight, SavedPreferences
+from app.services.preferences_v2 import PreferenceResult
 from app.services.readiness_v2 import EmergencySavings, HighInterestDebt, ReadinessResult
 from app.services.strategy_selection_v2 import HorizonBucket, RiskResponse, StrategySelectionResult
 
@@ -20,6 +21,7 @@ class ProfileV2Create(DomainModel):
     monthly_investment: Money
     horizon: HorizonBucket
     risk_response: RiskResponse
+    saved_preferences: SavedPreferences = Field(default_factory=SavedPreferences)
 
 
 class PlanDTO(DomainModel):
@@ -27,6 +29,7 @@ class PlanDTO(DomainModel):
     selection: StrategySelectionResult
     readiness: ReadinessResult
     inflation_pct: float
+    preference_result: PreferenceResult
 
 
 class LongTermPlanDTO(PlanDTO):

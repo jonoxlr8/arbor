@@ -213,3 +213,45 @@ new account completes all nine steps; retry/double submit produces one row; logo
 login restores v2; Foundation First preserves strategy; short term has no allocation/
 return; unsupported country blocks; network/session failures offer recovery; and
 mobile Light/Dark forms remain usable. Do not log onboarding answers or tokens.
+
+## 3O-F: requested preferences and effective target
+
+`preferences_v2.py` owns the satellite caps and deterministic application. It
+consumes the final horizon-capped strategy and canonical readiness permissions;
+it does not select a strategy or reimplement readiness. Technology caps are
+0/5/10/10 and Bitcoin caps 0/5/5/10 for Conservative/Balanced/Growth/Aggressive.
+Satellites replace global equity only. Defensive allocation and the base-strategy
+planning return never change. Locked combined caps always fit available equity;
+an inconsistent future policy fails rather than inventing allocation priority.
+
+`SavedPreferences` now stores requested **integer percentage points** (0–100 per
+preference, strict, no booleans/fractions), defaulting to zero. The old boolean
+placeholder was not wired to persistence or onboarding. Over-cap requests remain
+saved as requested. Both requests can be 100; effective weights still respect
+caps and total 100. `preference_result` exposes per-preference requested/effective
+weights, strategy cap, and semantic `strategy_cap` / `readiness_restricted` reasons.
+Multiple reasons may apply. Zero requests need no restriction explanation.
+
+The composed plan keeps canonical `base_allocation` separate from
+`preference_result.effective_target`. The latter uses existing `EffectiveTargetAllocation`
+and four explicit role weights, including zeros; Bitcoin maps to `crypto`.
+Short-term plans retain saved requests but have a null effective target, no
+long-term return, and `short_term_path` reasons for nonzero requests.
+
+The existing `/v2/profiles` request accepts optional `saved_preferences`:
+`{"technology_tilt":10,"bitcoin":5}`. They are stored only under that key in
+`v2_inputs`; no derived allocations are persisted. Reads accept the original four
+answer keys with or without this optional key. Missing preferences mean zero;
+requests omitting preferences keep the original four-key storage shape.
+malformed preferences fail closed. Create retries do not overwrite existing requests.
+The response adds `profile.saved_preferences` and `plan.preference_result` with
+integer percentage-point weights; existing numeric planning-return/inflation DTOs
+remain unchanged. No schema migration, backfill, v1 change, or live DB action.
+
+The current frontend accepts additive response fields and continues showing the
+base strategy. Preference controls/editing and effective-target presentation are
+not added here. Health/comparison/rebalancing/contribution must eventually consume
+the effective target, not base weights; their v2 integration remains deferred.
+Rollback caution: once a row includes `saved_preferences`, pre-3O-F readers that
+require exactly four v2 input keys will reject it. Keep a compatible reader when
+rolling back; do not drop saved user preferences to accommodate old code.
