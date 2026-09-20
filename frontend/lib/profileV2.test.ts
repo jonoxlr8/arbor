@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import PlanV2View from "../components/PlanV2View";
+import PlanV2View, { V2Destination } from "../components/PlanV2View";
 import { isPlanV2 } from "./planV2";
 import { createV2ProfileCreator, isAccountPlan } from "./profileV2Api";
 import { createProfileReader } from "./api";
@@ -19,6 +19,31 @@ function fixture(): PlanV2 {
 }
 const legacy: Plan = {profile:{full_name:"Legacy",country:"Philippines",currency:"PHP",risk_tolerance:"Balanced",goal_target:100,investment_horizon:10,monthly_investment:0,current_portfolio_value:0},portfolio:[],explanation:{summary:"Plan",reasons:[]},projection:{starting_value:0,projected_value:0,investment_period_years:10,assumed_return:.08,monthly_contribution:0,required_monthly_investment:1,yearly_projection:[]}};
 const html = (value: PlanV2) => renderToStaticMarkup(createElement(PlanV2View,{value,onSignOut:()=>{},signingOut:false,logoutError:""}));
+
+test("v2 restored plan uses the shared desktop/mobile shell and destinations", () => {
+  const markup = html(fixture());
+  assert.match(markup, /aria-label="Primary navigation"/);
+  assert.match(markup, /aria-label="Mobile navigation"/);
+  for (const destination of ["home", "portfolio", "plan", "ask", "settings"]) assert.ok(markup.includes(`href="#${destination}"`));
+  assert.match(markup, /Sign out/);
+  const page = readFileSync("app/page.tsx", "utf8");
+  assert.match(page, /if \(isPlanV2\(account.plan\)\) return <PlanV2View/);
+  assert.match(page, /return <ResultsDashboard key=\{account.userId\}/);
+});
+test("v2 unsupported destinations remain safe; settings preserves appearance and profile", () => {
+  for (const active of ["portfolio", "ask"] as const) {
+    const markup = renderToStaticMarkup(createElement(V2Destination, { value: fixture(), active }));
+    assert.match(markup, /not available for this plan yet/);
+    assert.match(markup, /href="#plan"/);
+    assert.doesNotMatch(markup, /Planning return:|Add Holding|Send message/);
+  }
+  const settings = renderToStaticMarkup(createElement(V2Destination, { value: fixture(), active: "settings" }));
+  assert.match(settings, /Appearance/);
+  assert.match(settings, /Philippines/);
+  const source = readFileSync("components/PlanV2View.tsx", "utf8");
+  assert.doesNotMatch(source, /ResultsDashboard|HoldingsSection|ChatSection|EditProfileForm|getMyPortfolioHealth|calculate/);
+  assert.match(source, /useSyncExternalStore\(subscribeNavigation, navigationSnapshot, serverNavigationSnapshot\)/);
+});
 
 test("numeric v2 contract is recognized; malformed or unknown tagged plans cannot fall back to v1", () => {
   assert.ok(isPlanV2(fixture()));

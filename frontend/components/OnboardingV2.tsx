@@ -8,6 +8,7 @@ import { createV2Profile } from "@/lib/profileV2Api";
 import { InvalidSessionError } from "@/lib/accountRecovery";
 import { answerError, EMPTY_ANSWERS, ONBOARDING_STEPS, onboardingRequest, SAVINGS_OPTIONS, DEBT_OPTIONS, HORIZON_OPTIONS, RISK_OPTIONS, type Answers } from "@/lib/onboardingV2";
 import type { AccountPlan } from "@/lib/types/planV2";
+import { onboardingEnter } from "@/lib/onboardingKeyboard";
 
 const QUESTIONS: Record<keyof Answers, string> = {
   full_name: "What’s your name?", country: "Where do you live?",
@@ -40,7 +41,7 @@ export function OnboardingQuestionV2({ field, value, onChange }: {field: keyof A
     <h1 id="onboarding-question" className="text-2xl font-semibold text-slate-900">{QUESTIONS[field]}</h1>
     {HELP[field] && <p className="mt-3 text-sm leading-6 text-slate-600">{HELP[field]}</p>}
     {options ? <div role="group" aria-labelledby="onboarding-question" className="mt-6 space-y-3">
-      {options.map(([code, label]) => <button key={code} type="button" aria-pressed={value === code} onClick={() => onChange(code)}
+      {options.map(([code, label]) => <button key={code} type="button" data-onboarding-choice aria-pressed={value === code} onClick={() => onChange(code)}
         className={`min-h-12 w-full rounded-xl border p-4 text-left font-medium text-slate-900 focus-visible:outline-2 focus-visible:outline-emerald-600 ${value === code ? "border-green-600 bg-green-50" : "border-slate-300 hover:border-green-400"}`}>{label}</button>)}
     </div> : <div className="mt-6">
       <label className="sr-only" htmlFor={field}>{QUESTIONS[field]}</label>
@@ -89,7 +90,13 @@ export default function OnboardingV2({ userId, onComplete, onSignOut, signingOut
     <div className="w-full min-w-0 max-w-xl"><Card>
       <Logo />
       <ProgressBar step={step + 1} totalSteps={ONBOARDING_STEPS.length} />
-      <form onSubmit={e => { e.preventDefault(); void next(); }}>
+      <form onSubmit={e => { e.preventDefault(); void next(); }} onKeyDown={e => {
+        const target = e.target as HTMLElement;
+        onboardingEnter({ key: e.key, repeat: e.repeat, isComposing: e.nativeEvent.isComposing,
+          tagName: target.tagName, choice: target.hasAttribute("data-onboarding-choice"),
+          contentEditable: target.isContentEditable, preventDefault: () => e.preventDefault(),
+        }, () => { if (valid && !saving && !signingOut && !sessionFailed) e.currentTarget.requestSubmit(); });
+      }}>
         <fieldset disabled={saving || signingOut} className="min-w-0">
           <div className="my-3 min-h-11">{step > 0 && <button type="button" className="min-h-11 text-sm font-medium text-slate-600" onClick={() => setStep(step - 1)}>← Back</button>}</div>
           <OnboardingQuestionV2 field={field} value={answers[field]} onChange={value => setAnswers(previous => ({ ...previous, [field]: value }))} />
