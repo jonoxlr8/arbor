@@ -7,6 +7,16 @@ import SignupPending from "../components/SignupPending";
 import { confirmationContext, neutralResendMessage } from "./authConfirmation";
 
 const props = { email: "alex@example.com", loading: false, cooldown: 0, resendDisabled: false, confirmation: "", error: "", onResend: () => {}, onDifferentEmail: () => {} };
+test("pending screen reuses web logo and confirmation-page card hierarchy", () => {
+  const html = renderToStaticMarkup(createElement(SignupPending, props));
+  assert.match(html, /arbor-logo-color/);
+  assert.match(html, /ARBOR/);
+  assert.ok(html.indexOf("ARBOR") < html.indexOf("<h1"));
+  assert.match(html, /max-w-md/);
+  assert.match(html, /mt-7 text-2xl/);
+  assert.match(html, /break-all/);
+  assert.doesNotMatch(html, /<img/);
+});
 test("pending signup has dedicated email instructions and no auth inputs", () => {
   const html = renderToStaticMarkup(createElement(SignupPending, props));
   assert.match(html, /Check your email/);
