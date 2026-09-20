@@ -7,11 +7,9 @@ import SignupPending from "../components/SignupPending";
 import { confirmationContext, neutralResendMessage } from "./authConfirmation";
 
 const props = { email: "alex@example.com", loading: false, cooldown: 0, resendDisabled: false, confirmation: "", error: "", onResend: () => {}, onDifferentEmail: () => {} };
-test("pending screen reuses web logo and confirmation-page card hierarchy", () => {
+test("pending screen preserves auth card styling without duplicating the shell logo", () => {
   const html = renderToStaticMarkup(createElement(SignupPending, props));
-  assert.match(html, /arbor-logo-color/);
-  assert.match(html, /ARBOR/);
-  assert.ok(html.indexOf("ARBOR") < html.indexOf("<h1"));
+  assert.doesNotMatch(html, /arbor-logo-color|ARBOR|<svg/);
   assert.match(html, /max-w-md/);
   assert.match(html, /mt-7 text-2xl/);
   assert.match(html, /break-all/);

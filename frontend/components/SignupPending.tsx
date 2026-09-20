@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import Logo from "./Logo";
 
 export default function SignupPending({ email, loading, cooldown, resendDisabled, confirmation, error, onResend, onDifferentEmail }: {
   email: string; loading: boolean; cooldown: number; resendDisabled: boolean;
@@ -10,7 +9,6 @@ export default function SignupPending({ email, loading, cooldown, resendDisabled
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { heading.current?.focus(); }, []);
   return <section className="arbor-panel mx-auto h-fit w-full min-w-0 max-w-md" aria-labelledby="signup-pending-title">
-    <Logo />
     <h1 ref={heading} id="signup-pending-title" tabIndex={-1} className="mt-7 text-2xl font-semibold text-slate-900 outline-none">Check your email</h1>
     <p className="mt-4 text-sm leading-6 text-slate-600">We sent a confirmation link to:</p>
     <p className="mt-2 break-all font-semibold text-slate-900">{email}</p>
