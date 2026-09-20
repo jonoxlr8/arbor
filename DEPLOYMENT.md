@@ -138,14 +138,35 @@ References: [Supabase SMTP](https://supabase.com/docs/guides/auth/auth-smtp),
 Deploy `/confirm-signup` before updating the Supabase **Confirm signup** template.
 Set `NEXT_PUBLIC_SITE_URL=https://arbor.ph` and Supabase Site URL to `https://arbor.ph`;
 allow the exact post-verification return `https://arbor.ph/`. Keep Confirm Email on.
+Both email templates below use the existing Arbor Leaf-A mark and ARBOR text
+wordmark. `frontend/public/arbor-email-logo.png` is a 242 × 172 PNG export of the
+unchanged paths/viewBox in `frontend/lib/arborBrand.ts`, in the existing light-theme
+forest green (`#0F5132`) on white. It displays at 56 × 40 pixels; the adjacent text
+keeps the brand readable when email images are blocked. No new logo is introduced.
+
+Before applying either template, deploy the asset and verify that
+`https://arbor.ph/arbor-email-logo.png` is publicly accessible over HTTPS without
+authentication and returns `image/png`. Keep that path stable. Deploying the asset
+alone does not update Supabase templates; paste them separately after verification.
+Check fresh signup/resend and reset emails in actual inboxes, including with images
+blocked. Retain the exact TokenHash fragment links and explicit verification steps.
+
 Paste this HTML into the Confirm signup email body (also used by signup resend):
 
 ```html
-<h2>Welcome to Arbor</h2>
-<p>Confirm your email address to continue building your Arbor plan.</p>
-<p><a href="https://arbor.ph/confirm-signup#token_hash={{ .TokenHash }}&amp;type=email">Continue to email confirmation</a></p>
-<p>On the Arbor page, select Confirm email address to finish.</p>
-<p>If you didn’t request an Arbor account, you can ignore this email.</p>
+<div style="max-width:560px;margin:0 auto;padding:32px 24px;background-color:#ffffff;color:#24352c;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
+    <tr>
+      <td style="vertical-align:middle;"><img src="https://arbor.ph/arbor-email-logo.png" alt="" width="56" height="40" style="display:block;border:0;width:56px;height:40px;"></td>
+      <td style="padding-left:12px;vertical-align:middle;color:#0F5132;font-size:24px;font-weight:bold;letter-spacing:2px;">ARBOR</td>
+    </tr>
+  </table>
+  <h2 style="margin:0 0 12px;color:#0F5132;font-size:24px;line-height:1.3;">Welcome to Arbor</h2>
+  <p style="margin:0 0 20px;">Confirm your email address to continue building your Arbor plan.</p>
+  <p style="margin:0 0 20px;"><a href="https://arbor.ph/confirm-signup#token_hash={{ .TokenHash }}&amp;type=email" style="color:#0F5132;font-weight:bold;text-decoration:underline;">Continue to email confirmation</a></p>
+  <p style="margin:0 0 24px;">On the Arbor page, select Confirm email address to finish.</p>
+  <p style="margin:0;color:#59665e;font-size:13px;">If you didn’t request an Arbor account, you can ignore this email.</p>
+</div>
 ```
 
 This uses Supabase's [prefetch-safe intermediate-page pattern](https://supabase.com/docs/guides/auth/auth-email-templates#email-prefetching)
@@ -181,11 +202,19 @@ No new environment variable or Resend API key is required.
 In Supabase Authentication → Email templates → **Reset password**, use:
 
 ```html
-<h2>Reset your Arbor password</h2>
-<p>Use the link below to choose a new password.</p>
-<p><a href="https://arbor.ph/reset-password#token_hash={{ .TokenHash }}&amp;type=recovery">Continue to password reset</a></p>
-<p>On the Arbor page, select Verify reset link to choose a new password.</p>
-<p>If you didn’t request this, you can ignore this email. Your password has not changed.</p>
+<div style="max-width:560px;margin:0 auto;padding:32px 24px;background-color:#ffffff;color:#24352c;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
+    <tr>
+      <td style="vertical-align:middle;"><img src="https://arbor.ph/arbor-email-logo.png" alt="" width="56" height="40" style="display:block;border:0;width:56px;height:40px;"></td>
+      <td style="padding-left:12px;vertical-align:middle;color:#0F5132;font-size:24px;font-weight:bold;letter-spacing:2px;">ARBOR</td>
+    </tr>
+  </table>
+  <h2 style="margin:0 0 12px;color:#0F5132;font-size:24px;line-height:1.3;">Reset your Arbor password</h2>
+  <p style="margin:0 0 20px;">Use the link below to choose a new password.</p>
+  <p style="margin:0 0 20px;"><a href="https://arbor.ph/reset-password#token_hash={{ .TokenHash }}&amp;type=recovery" style="color:#0F5132;font-weight:bold;text-decoration:underline;">Continue to password reset</a></p>
+  <p style="margin:0 0 24px;">On the Arbor page, select Verify reset link to choose a new password.</p>
+  <p style="margin:0;color:#59665e;font-size:13px;">If you didn’t request this, you can ignore this email. Your password has not changed.</p>
+</div>
 ```
 
 Deploy the updated reset page before changing the template. Keep the exact allowed
