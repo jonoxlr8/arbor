@@ -8,6 +8,7 @@ from app.config import configured_cors_origins
 from app.routes.profiles import router as profiles_router
 from app.routes import chat
 from app.routes.holdings import router as holdings_router
+from app.routes.contributions import router as contributions_router
 
 app = FastAPI()
 
@@ -22,6 +23,7 @@ app.add_middleware(
 app.include_router(profiles_router)
 app.include_router(chat.router)
 app.include_router(holdings_router)
+app.include_router(contributions_router)
 
 
 @app.get("/")
