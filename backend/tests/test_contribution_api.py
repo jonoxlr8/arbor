@@ -116,14 +116,33 @@ def test_partial_minimum_and_exact_decimals(client):
 
 
 @pytest.mark.parametrize("path", PATHS)
-def test_uncertainty_never_becomes_ready(client, path):
-    for route in ["gotrade", "ibkr"]:
-        result = client.post(path, json=payload(route=route, risk="continue_investing",
-            tech=0, btc=0, values=(0, 0, 0, 0), amount=5000)).json()
-        if path.endswith("recommendation"):
-            assert result["execution_status"] == "verify_minimum"
-        else:
-            assert result["invested_amount"] == "0" and result["verify_minimum_amount"] == "5000"
+@pytest.mark.parametrize("route,amount,status", [
+    ("gotrade", "99.99", "below_minimum"),
+    ("gotrade", "100", "ready"),
+    ("gotrade", "100.01", "ready"),
+    ("gotrade", "5000", "ready"),
+    ("ibkr", "5000", "verify_minimum"),
+])
+def test_gotrade_practical_minimum_and_ibkr_uncertainty(client, path, route, amount, status):
+    response = client.post(path, json=payload(route=route, risk="continue_investing",
+        tech=0, btc=0, values=(0, 0, 0, 0), amount=amount))
+    assert response.status_code == 200
+    result = response.json()
+    if path.endswith("recommendation"):
+        assert result["execution_status"] == status
+        assert result["action"] == ("invest" if status == "ready" else "wait")
+        assert result["recommended_amount"] == (amount if status == "ready" else "0")
+        minimum = result["minimum"]
+    else:
+        assert result["invested_amount"] == (amount if status == "ready" else "0")
+        assert result["verify_minimum_amount"] == (amount if status == "verify_minimum" else "0")
+        assert Decimal(result["unallocated_amount"]) == (Decimal(amount) if status == "below_minimum" else 0)
+        assert result["status"] == ("invest" if status == "ready" else "wait")
+        minimum = (result["allocations"] or result["blocked_allocations"])[0]["minimum"]
+    assert minimum["status"] == status
+    if route == "gotrade":
+        assert minimum["applicable_minimum"] == "100" and minimum["minimum_currency"] == "PHP"
+        assert Decimal(minimum["amount_needed_to_minimum"]) == max(0, 100 - Decimal(amount))
 
 
 @pytest.mark.parametrize("path", PATHS)

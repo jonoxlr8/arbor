@@ -65,7 +65,7 @@ def test_standard_example_and_not_percentage_gap():
     assert result.selected_calculation.target_value_after_contribution == 68250
     assert result.selected_calculation.deficit == 13250
     assert result.selected_calculation.current_percentage == 55
-    assert result.execution_status == "verify_minimum"
+    assert result.execution_status == "ready"
     # A large contribution changes ranking: defensive has the larger pre-money
     # percentage gap, but global equity has the larger post-money value deficit.
     result = recommend_next_contribution(request(values=(600, 100, 200, 100), amount=10000))
@@ -215,13 +215,25 @@ def test_dragonfi_initial_vs_unknown_additional(role, product):
 
 
 @pytest.mark.parametrize("role", ["global_equity", "technology_tilt", "defensive"])
-@pytest.mark.parametrize("currency,status", [("PHP", "verify_minimum"), ("USD", "ready")])
-def test_gotrade_order_currency(role, currency, status):
-    result = select_role(role, route="gotrade", amount=1, currency=currency)
-    assert result.minimum.applicable_minimum == 1 and result.minimum.minimum_currency == "USD"
+@pytest.mark.parametrize("currency,amount,minimum,status", [
+    ("PHP", 1, 100, "below_minimum"),
+    ("PHP", Decimal("99.99"), 100, "below_minimum"),
+    ("PHP", 100, 100, "ready"),
+    ("PHP", Decimal("100.01"), 100, "ready"),
+    ("USD", Decimal("0.99"), 1, "below_minimum"),
+    ("USD", 1, 1, "ready"),
+])
+def test_gotrade_order_currency(role, currency, amount, minimum, status):
+    result = select_role(role, route="gotrade", amount=amount, currency=currency)
+    assert result.minimum.kind == "order"
+    assert result.minimum.applicable_minimum == minimum and result.minimum.minimum_currency == currency
     assert result.execution_status == status
-    if currency == "PHP":
-        assert result.minimum.amount_needed_to_minimum is None
+    assert result.minimum.amount_needed_to_minimum == max(0, minimum - amount)
+    assert result.minimum.reason == ("minimum_met" if status == "ready" else "below_minimum")
+    assert result.action == ("invest" if status == "ready" else "wait")
+    assert result.recommended_amount == (amount if status == "ready" else 0)
+    assert result.selected.product.minimum_order == 1
+    assert result.selected.product.minimum_order_currency == "USD"
 
 
 def test_coins_below_minimum_and_ibkr_dynamic():

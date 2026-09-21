@@ -138,7 +138,7 @@ def test_product_ownership_minimums(owned, invested):
     assert row.minimum.applicable_minimum == (500 if invested else 1000)
 
 
-@pytest.mark.parametrize("route,owned", [("gotrade", ()), ("ibkr", ()), ("dragonfi", ("dragonfi_global_equity",))])
+@pytest.mark.parametrize("route,owned", [("ibkr", ()), ("dragonfi", ("dragonfi_global_equity",))])
 def test_unknown_minimum_allocations_remain_planned_only(route, owned):
     result = checked(make_request(route=route, risk="continue_investing", tech=0, btc=0,
                                   amount=5000, values=(0, 0, 0, 0), owned=owned))
@@ -147,13 +147,35 @@ def test_unknown_minimum_allocations_remain_planned_only(route, owned):
     assert result.allocations[0].minimum.status == "verify_minimum"
 
 
-def test_confirmed_deficits_precede_uncertain_not_overweight_sleeves():
-    result = checked(make_request(route="gotrade"))
-    assert result.allocations[0].implementation.sleeve == "crypto"
-    assert result.allocations[0].allocated_amount == 2000
-    assert result.invested_amount == 2000 and result.verify_minimum_amount == 10000
-    assert result.status == "partial"
-    result = checked(make_request(route="gotrade", amount=15000, values=(50000, 20000, 10000, 5000)))
+@pytest.mark.parametrize("amount", [Decimal("99.99"), Decimal("100"), Decimal("100.01"), Decimal("5000")])
+def test_gotrade_practical_minimum(amount):
+    result = checked(make_request(route="gotrade", risk="continue_investing", tech=0, btc=0,
+                                  amount=amount, values=(0, 0, 0, 0)))
+    ready = amount >= 100
+    assert result.invested_amount == (amount if ready else 0)
+    assert result.unallocated_amount == (0 if ready else amount)
+    assert result.verify_minimum_amount == 0
+    assert result.status == ("invest" if ready else "wait")
+    row = (result.allocations or result.blocked_allocations)[0]
+    assert row.minimum.applicable_minimum == 100 and row.minimum.minimum_currency == "PHP"
+    assert row.minimum.status == ("ready" if ready else "below_minimum")
+    assert row.minimum.amount_needed_to_minimum == max(0, 100 - amount)
+
+
+@pytest.mark.parametrize("route", ["gotrade", "ibkr"])
+def test_confirmed_deficits_precede_uncertain_not_overweight_sleeves(route):
+    result = checked(make_request(route=route))
+    if route == "gotrade":
+        assert [(row.implementation.sleeve, row.allocated_amount) for row in result.allocations] == [
+            ("global_equity", 7000), ("technology_tilt", 2000), ("crypto", 2000), ("defensive", 1000)]
+        assert result.invested_amount == 12000 and result.verify_minimum_amount == 0
+        assert result.status == "invest"
+    else:
+        assert result.allocations[0].implementation.sleeve == "crypto"
+        assert result.allocations[0].allocated_amount == 2000
+        assert result.invested_amount == 2000 and result.verify_minimum_amount == 10000
+        assert result.status == "partial"
+    result = checked(make_request(route=route, amount=15000, values=(50000, 20000, 10000, 5000)))
     assert [row.implementation.sleeve for row in result.allocations] == ["global_equity"]
 
 
@@ -226,12 +248,15 @@ def test_residual_target_weight_tie(first, second):
     assert row.implementation.sleeve == first
 
 
-def test_residual_confirmed_preferred_then_uncertain():
-    req, candidates = residual_candidates("gotrade")
+@pytest.mark.parametrize("route", ["gotrade", "ibkr"])
+def test_residual_confirmed_preferred_then_uncertain(route):
+    req, candidates = residual_candidates(route)
     row, _ = _residual_allocation(req, candidates, Decimal(3000))
-    assert row.implementation.sleeve == "crypto" and row.minimum.status == "ready"
+    assert row.implementation.sleeve == ("global_equity" if route == "gotrade" else "crypto")
+    assert row.minimum.status == "ready"
     row, _ = _residual_allocation(req, [(item, calc) for item, calc in candidates if item.sleeve != "crypto"], Decimal(3000))
-    assert row.implementation.sleeve == "global_equity" and row.minimum.status == "verify_minimum"
+    assert row.implementation.sleeve == "global_equity"
+    assert row.minimum.status == ("ready" if route == "gotrade" else "verify_minimum")
 
 
 def test_arbitrary_target_and_precise_accounting():
