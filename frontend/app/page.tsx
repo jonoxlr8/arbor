@@ -93,7 +93,7 @@ export default function Home() {
   }
 
   if (account.status === "ready") {
-    if (isPlanV2(account.plan)) return <PlanV2View value={account.plan} onSignOut={handleSignOut} signingOut={signingOut} logoutError={logoutError} />;
+    if (isPlanV2(account.plan)) return <PlanV2View key={account.userId} userId={account.userId} value={account.plan} onSignOut={handleSignOut} signingOut={signingOut} logoutError={logoutError} />;
     return <ResultsDashboard key={account.userId} plan={account.plan} onSignOut={handleSignOut} signingOut={signingOut} logoutError={logoutError} />;
   }
 

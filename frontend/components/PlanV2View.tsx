@@ -6,17 +6,22 @@ import { subscribeNavigation, navigationSnapshot, serverNavigationSnapshot, type
 import type { PlanV2 } from "@/lib/types/planV2";
 import { HORIZON_OPTIONS } from "@/lib/onboardingV2";
 import PreferencesV2 from "./PreferencesV2";
+import ContributionCard from "./contributions/ContributionCard";
 
-export default function PlanV2View({ value, onSignOut, signingOut, logoutError }: {
-  value: PlanV2; onSignOut: () => void; signingOut: boolean; logoutError: string;
+export default function PlanV2View({ value, userId, onSignOut, signingOut, logoutError }: {
+  value: PlanV2; userId?: string; onSignOut: () => void; signingOut: boolean; logoutError: string;
 }) {
   const active = useSyncExternalStore(subscribeNavigation, navigationSnapshot, serverNavigationSnapshot);
   return <AppShell active={active} name={value.profile.full_name} onSignOut={onSignOut} signingOut={signingOut} logoutError={logoutError}>
-    <V2Destination value={value} active={active} />
+    <V2Destination value={value} active={active} userId={userId} />
   </AppShell>;
 }
 
-export function V2Destination({ value, active }: { value: PlanV2; active: Destination }) {
+export function V2Destination({ value, active, userId }: { value: PlanV2; active: Destination; userId?: string }) {
+  if (active === "portfolio" && userId) return <div className="space-y-6">
+    <ContributionCard key={`${userId}:${JSON.stringify(value)}`} value={value} userId={userId} />
+    <section className="arbor-panel"><h2 className="text-lg font-semibold text-slate-900">Recorded portfolio</h2><p className="mt-2 text-sm text-slate-600">Saved holdings, alignment and Portfolio Health are not yet connected to this strategy. The contribution tool uses only the market values you enter above.</p></section>
+  </div>;
   if (active === "portfolio" || active === "ask") return <section className="arbor-panel">
     <h2 className="text-xl font-semibold text-slate-900">{active === "portfolio" ? "Portfolio tools" : "Plan conversations"} are not available for this plan yet</h2>
     <p className="mt-3 text-sm text-slate-600">{active === "portfolio" ? "Holdings, alignment and Portfolio Health are not yet connected to your new strategy plan." : "Ask Arbor does not yet support your new strategy plan."}</p>

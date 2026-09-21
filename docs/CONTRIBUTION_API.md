@@ -129,3 +129,21 @@ See [Contribution Engine](CONTRIBUTION_ENGINE.md) for the unchanged algorithms.
 
 Unexpected failures are not reclassified as invalid user input. No custom auth,
 profile orchestration, database/schema changes or financial logging is added.
+
+## Frontend contribution tool (3R-B)
+
+V2 Portfolio exposes **Monthly plan** (default, `/contributions/plan`) and
+**Next purchase** (`/contributions/recommendation`). Requests use the saved
+effective target, readiness and planning currency. Users explicitly choose a
+route and enter current sleeve market values; legacy cost basis and onboarding
+starting amounts are not substituted for market values.
+
+Because no implementation-product ownership source or public catalog endpoint
+exists, users either explicitly declare no owned products on the route or review
+API-returned product names before a final calculation. Provisional results are
+hidden until ownership is confirmed; recalculation may reveal another product
+that needs confirmation. No product mapping is duplicated in the frontend.
+
+Inputs and results remain in component memory only. Editing inputs clears stale
+results. Decimal strings are formatted without monetary floating-point math.
+Results are guidance only: no persistence, transactions or trade execution.
