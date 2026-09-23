@@ -4,8 +4,9 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ContributionCard, { ContributionFeedback } from "../components/contributions/ContributionCard";
 import ContributionResultView from "../components/contributions/ContributionResult";
+import ImplementationChoices from "../components/contributions/ImplementationChoices";
 import { V2Destination } from "../components/PlanV2View";
-import { contributionRequest, createContributionController, decimalText, formatContributionMoney, needsOwnershipReview, needsImplementationChoice, validInput } from "./contributions";
+import { BEGINNER_ROUTES, BITCOIN_PROVIDERS, contributionRequest, createContributionController, decimalText, formatContributionMoney, needsOwnershipReview, needsImplementationChoice, validInput } from "./contributions";
 import { createContributionApi, parseContributionResponse } from "./contributionApi";
 import type { PlanV2 } from "./types/planV2";
 import type { ContributionAllocation, ContributionPlan, ContributionProduct, ContributionRecommendation, ContributionResult, MappedContribution, MinimumCheck } from "./types/contributions";
@@ -118,7 +119,7 @@ test("empty results and null product are safe", () => {
 test("card labels, default monthly mode, feedback and placement", () => {
   const html = renderToStaticMarkup(createElement(ContributionCard, { value: contributionFixture, userId: "A" }));
   assert.match(html, /aria-pressed="true"[^>]*>Monthly scenario/);
-  for (const label of ["Contribution amount", "Current portfolio", "Global Equity", "Technology", "Bitcoin", "Defensive", "Product ownership", "Choose a route"]) assert.ok(html.includes(label));
+  for (const label of ["Contribution amount", "Current portfolio", "Global Equity", "Technology", "Bitcoin", "Defensive", "Product ownership", "Choose an option"]) assert.ok(html.includes(label));
   assert.doesNotMatch(html, /999999|Buy now/);
   const selected: PlanV2 = {...contributionFixture, plan:{...contributionFixture.plan, plan_basis:"user_selected"}};
   const destination = renderToStaticMarkup(createElement(V2Destination, { value: selected, active: "portfolio", userId: "A" }));
@@ -164,4 +165,39 @@ test("duplicate submit, changed inputs, mode switch and unmount ignore stale res
   const late = controller.run(() => new Promise(r => { resolve = r; }));
   await Promise.resolve(); controller.dispose(); const count = seen.length;
   resolve(plan()); await late; assert.equal(seen.length, count);
+});
+
+test("beginner implementation choices are neutral, independent and unselected", () => {
+  const html = renderToStaticMarkup(createElement(ImplementationChoices, {route:"", bitcoinProvider:null, hasBitcoinTarget:false, onRoute:()=>{}, onBitcoin:()=>{}}));
+  for (const label of ["GCash / GFunds", "DragonFi", "Gotrade", "GCrypto", "Coins.ph", "PDAX"]) assert.ok(html.includes(label));
+  assert.equal((html.match(/aria-pressed="false"/g) ?? []).length, 6);
+  assert.doesNotMatch(html, /Interactive Brokers|IBKR|recommended|best for you|aria-pressed="true"/);
+  assert.match(html, /does not add Bitcoin/);
+  assert.match(html, /stay in this view only/);
+  assert.match(html, /min-h-12/);
+});
+
+test("selected cards reflect only explicit choices", () => {
+  const html = renderToStaticMarkup(createElement(ImplementationChoices, {route:"gotrade", bitcoinProvider:"gcrypto", hasBitcoinTarget:true, onRoute:()=>{}, onBitcoin:()=>{}}));
+  assert.equal((html.match(/aria-pressed="true"/g) ?? []).length, 2);
+  assert.match(html, /bg-forest text-white/);
+});
+
+test("every provider combination preserves selected plan and canonical target including Bitcoin", () => {
+  const value = structuredClone(contributionFixture);
+  value.plan.plan_basis = "user_selected";
+  // Future/historical target contract; this test does not create a new model.
+  value.plan.preference_result!.effective_target!.allocation.weights = [
+    {role:"global_equity", percentage_points:70}, {role:"defensive", percentage_points:20}, {role:"crypto", percentage_points:10}];
+  const before = structuredClone(value);
+  for (const route of BEGINNER_ROUTES) for (const provider of Object.keys(BITCOIN_PROVIDERS) as (keyof typeof BITCOIN_PROVIDERS)[]) {
+    const req = contributionRequest(value, "1000", values, route, [], false, provider);
+    assert.equal(req.context.bitcoin_provider, provider);
+    assert.equal(req.context.selection_mode, "explicit");
+    assert.deepEqual(req.context.effective_target_allocation, before.plan.preference_result!.effective_target);
+    assert.deepEqual(req.context.readiness, before.plan.readiness);
+    assert.deepEqual(value, before);
+  }
+  assert.throws(()=>contributionRequest(value, "1000", values, "gcash", [], false), /Choose a Bitcoin provider/);
+  assert.equal(input().context.bitcoin_provider, null);
 });

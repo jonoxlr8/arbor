@@ -1,9 +1,11 @@
 import type { PlanV2 } from "./types/planV2";
-import type { ContributionRequest, ContributionResult, ContributionProduct, RouteId, Sleeve } from "./types/contributions";
+import type { BitcoinProvider, ContributionRequest, ContributionResult, ContributionProduct, RouteId, Sleeve } from "./types/contributions";
 import { createLatestRequest, type RequestState } from "./dashboardConsistency";
 
 export const SLEEVE_LABELS: Record<Sleeve, string> = { global_equity: "Global Equity", defensive: "Defensive", technology_tilt: "Technology", crypto: "Bitcoin" };
-export const ROUTES: Record<RouteId, string> = { gcash: "GCash", dragonfi: "DragonFi", gotrade: "Gotrade", ibkr: "Interactive Brokers" };
+export const ROUTES: Record<RouteId, string> = { gcash: "GCash / GFunds", dragonfi: "DragonFi", gotrade: "Gotrade", ibkr: "Interactive Brokers" };
+export const BEGINNER_ROUTES = ["gcash", "dragonfi", "gotrade"] as const;
+export const BITCOIN_PROVIDERS: Record<BitcoinProvider, string> = { gcrypto: "GCrypto", coins_ph: "Coins.ph", pdax: "PDAX" };
 export const EMPTY_VALUES: Record<Sleeve, string> = { global_equity: "", defensive: "", technology_tilt: "", crypto: "" };
 
 // String operations only: no financial arithmetic or binary-float money conversion.
@@ -28,15 +30,18 @@ export function validInput(value: string, positive = false) {
   return value.length <= 80 && /^\d+(?:\.\d+)?$/.test(value) && (!positive || /[1-9]/.test(value));
 }
 export function contributionRequest(value: PlanV2, amount: string, holdings: Record<Sleeve, string>, route: RouteId,
-  owned: string[], ibkrEligible: boolean): ContributionRequest {
+  owned: string[], ibkrEligible: boolean, bitcoinProvider: BitcoinProvider | null = null): ContributionRequest {
   if (!validInput(amount, true) || !Object.values(holdings).every(v => validInput(v))) throw new Error("Check the contribution amount and all four portfolio values.");
   if (!Object.hasOwn(ROUTES, route)) throw new Error("Choose an implementation route.");
   const target = value.plan.preference_result?.effective_target;
   if (value.plan.path === "long_term" && !target) throw new Error("Your effective target is unavailable. Reload your saved plan before continuing.");
+  if (bitcoinProvider !== null && !Object.hasOwn(BITCOIN_PROVIDERS, bitcoinProvider)) throw new Error("Choose a Bitcoin provider.");
+  if (target?.allocation.weights.some(weight => weight.role === "crypto" && weight.percentage_points > 0) && bitcoinProvider === null) throw new Error("Choose a Bitcoin provider for your Bitcoin target.");
   return { contribution_amount: amount, contribution_currency: value.profile.currency,
     current_portfolio: { ...holdings, currency: value.profile.currency, owned_product_ids: [...owned] },
     context: { route_id: route, path: value.plan.path, effective_target_allocation: value.plan.path === "short_term" ? null : target!,
-      readiness: value.plan.readiness, ibkr_crypto_eligible: route === "ibkr" ? ibkrEligible : null },
+      readiness: value.plan.readiness, ibkr_crypto_eligible: route === "ibkr" ? ibkrEligible : null,
+      selection_mode: "explicit", bitcoin_provider: bitcoinProvider },
     readiness_inputs: { emergency_savings: value.profile.emergency_savings, high_interest_debt: value.profile.high_interest_debt } };
 }
 export function resultProducts(result: ContributionResult): ContributionProduct[] {

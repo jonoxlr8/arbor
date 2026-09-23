@@ -1,6 +1,6 @@
-# Philippine implementation catalog — 3P-A
+# Philippine implementation catalog — 3P-A / 3P-B
 
-This isolated backend catalog maps **what** Portfolio Engine V2 already selected
+This isolated backend catalog maps **what** the user's canonical V2 plan contains
 to **how** a user-selected route can implement it. It is not an API, route
 recommendation, contribution allocator, or execution system.
 
@@ -19,7 +19,7 @@ Products use the canonical sleeve field rather than a duplicate role field.
 Money/minimum/fee values use Decimal; percentages use existing integer percentage
 points. No new HTTP serialization contract is introduced.
 
-## Explicit routes and products
+## Legacy route defaults and products
 
 | Route | Global equity | Technology | Defensive | Bitcoin |
 | --- | --- | --- | --- | --- |
@@ -28,12 +28,14 @@ points. No new HTTP serialization contract is introduced.
 | Gotrade | VT | VGT | BND | Coins.ph BTC |
 | IBKR | VWRA | IUIT | AGGU | IBKR BTC only with explicit eligibility; otherwise Coins.ph BTC |
 
-Exactly four primary routes exist. Coins.ph is a shared product, not a route;
-PDAX is secondary fallback metadata only and can never be selected by this mapper.
+Exactly four internal routes exist. Coins.ph and PDAX are shared products, not routes.
+The table's Bitcoin column describes legacy callers only; new explicit selections
+use the independent Bitcoin choice below.
 There are 16 product records including these shared/fallback records.
 GCash global equity has `broad` match quality: it is not a pure broad-market index
-equivalent. Other selected products have `direct` match quality. PDAX is marked
-`unavailable` for selection in this version. There are no numerical match scores.
+equivalent. Other selected products have `direct` match quality. PDAX is an explicit
+BTC option with unknown minimum/currency/eligibility metadata, not verified account
+availability. There are no numerical match scores.
 
 ## Minimums and uncertainty
 
@@ -76,5 +78,42 @@ total because no long-term target exists. They are never converted to Conservati
 IBKR crypto defaults to Coins.ph unless the strict eligibility input is `true`;
 the output explains fallback selection and includes PDAX only as secondary metadata.
 
-No persistence, schema migration, frontend changes, legacy behavior changes, or
-3Q contribution/practical-minimum calculations are part of this milestone.
+The original 3P-A milestone added no persistence, schema migration, frontend changes,
+or contribution/practical-minimum calculations. The 3P-B additions follow below.
+
+## 3P-B explicit implementation choices
+
+New V2 contribution requests set `context.selection_mode="explicit"` and
+`context.bitcoin_provider` to `gcrypto`, `coins_ph`, `pdax`, or null.
+There is no default Bitcoin choice. A positive crypto target requires an explicit
+provider (422 otherwise); a zero target or short-term path may retain a temporary
+choice but never creates a crypto allocation. `bitcoin.py` owns provider-to-product
+IDs; all existing non-Bitcoin mappings are unchanged.
+
+Beginner-visible non-Bitcoin routes are GCash / GFunds, DragonFi and Gotrade.
+IBKR has `beginner_visible=false` but remains readable and callable internally.
+Omitted selection mode retains `legacy_route` behavior, including existing IBKR
+eligibility/fallback handling. An explicit Bitcoin provider takes precedence over
+legacy route coupling, including IBKR eligibility. No choice changes any plan input,
+assessment, readiness, target percentage or deficit calculation.
+
+Provider minimum conditions can still change checked/uncertain/waiting scenario
+amounts under the unchanged contribution algorithm. Gotrade VT/VGT/BND retain
+their USD 1 catalog order minimum and existing PHP 100 practical check, with no
+FX conversion or deposit-minimum claim. PDAX has no invented minimum: its check
+is `verify_minimum`; GCrypto retains its BTC-quantity uncertainty.
+
+The UI keeps route and Bitcoin choices in component memory only. Navigating away,
+refreshing, signing out or changing the plan resets them. Changing either provider
+clears results and product acceptance/ownership confirmations, but retains the other
+provider choice. Product acceptance remains distinct from declaring ownership.
+Ask Arbor cannot see these temporary choices and must not claim they are saved.
+
+New standardized plans currently have no Bitcoin satellite. The optional Bitcoin
+choice does not add one; historical non-zero targets remain supported by the API.
+Per-sleeve non-Bitcoin choices and account persistence remain future work, not
+3P-B. No profile JSON keys, database columns or migrations are added.
+
+Deploy the additive backend before the frontend: older backends reject these new
+request fields. No saved-data migration is involved; roll back the frontend first
+if reverting the backend.

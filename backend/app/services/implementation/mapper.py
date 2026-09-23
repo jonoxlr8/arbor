@@ -9,6 +9,7 @@ from .models import (
     MatchQuality, RouteId,
 )
 from .products import get_product
+from .bitcoin import BITCOIN_PRODUCTS
 from .routes import get_route
 
 _MAPPINGS = MappingProxyType({
@@ -24,9 +25,11 @@ def map_effective_target(
     effective_target_allocation: EffectiveTargetAllocation | None,
     readiness: ReadinessResult,
     *, path: str = "long_term", ibkr_crypto_eligible: bool | None = None,
+    selection_mode: str = "legacy_route", bitcoin_provider: str | None = None,
 ) -> ImplementationMapping:
     inputs = MappingInput(route_id=route_id, effective_target_allocation=effective_target_allocation,
-                          readiness=readiness, path=path, ibkr_crypto_eligible=ibkr_crypto_eligible)
+                          readiness=readiness, path=path, ibkr_crypto_eligible=ibkr_crypto_eligible,
+                          selection_mode=selection_mode, bitcoin_provider=bitcoin_provider)
     route = get_route(inputs.route_id)
     if inputs.path == "short_term":
         return ImplementationMapping(route=route, state=MappingState.NOT_APPLICABLE,
@@ -44,7 +47,9 @@ def map_effective_target(
         product_id = _MAPPINGS[inputs.route_id][weight.role]
         fallback = None
         notes = []
-        if weight.role == AssetRole.CRYPTO and inputs.route_id != RouteId.GCASH:
+        if weight.role == AssetRole.CRYPTO and inputs.bitcoin_provider is not None:
+            product_id = BITCOIN_PRODUCTS[inputs.bitcoin_provider]
+        elif weight.role == AssetRole.CRYPTO and inputs.route_id != RouteId.GCASH:
             if inputs.route_id == RouteId.IBKR:
                 if inputs.ibkr_crypto_eligible is True:
                     product_id = "ibkr_btc"
@@ -66,7 +71,9 @@ def map_effective_target(
         warnings=() if actionable else ("Future preview only; this mapping is not actionable investment guidance.",))
 
 
-def map_plan(route_id: RouteId, plan: PortfolioPlan, *, ibkr_crypto_eligible: bool | None = None) -> ImplementationMapping:
+def map_plan(route_id: RouteId, plan: PortfolioPlan, *, ibkr_crypto_eligible: bool | None = None,
+             selection_mode: str = "legacy_route", bitcoin_provider: str | None = None) -> ImplementationMapping:
     """Use an existing canonical plan; never reconstruct strategy or readiness here."""
     return map_effective_target(route_id, plan.preference_result.effective_target,
-        plan.readiness, path=plan.path, ibkr_crypto_eligible=ibkr_crypto_eligible)
+        plan.readiness, path=plan.path, ibkr_crypto_eligible=ibkr_crypto_eligible,
+        selection_mode=selection_mode, bitcoin_provider=bitcoin_provider)

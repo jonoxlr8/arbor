@@ -5,14 +5,14 @@ from .models import Fees, ImplementationRoute, Partnership, RouteId
 
 ROUTES = MappingProxyType({
     RouteId.GCASH: ImplementationRoute(
-        route_id="gcash", label="GCash — easiest local",
-        description="Beginner-friendly Philippine route using GFunds + GCrypto.",
+        route_id="gcash", label="GCash / GFunds",
+        description="Access to supported funds through GFunds. Bitcoin provider choice is separate.",
         route_type="local_funds", beginner_level="beginner",
         partnership=Partnership(partner_status="potential_business_partner", affiliate_available=False),
     ),
     RouteId.DRAGONFI: ImplementationRoute(
         route_id="dragonfi", label="DragonFi — Philippine investing app",
-        description="Local investing-app route using BPI funds for the main portfolio sleeves and Coins.ph for BTC.",
+        description="Access to supported BPI funds through DragonFi. Bitcoin provider choice is separate.",
         route_type="local_funds", beginner_level="beginner",
         partnership=Partnership(partner_status="potential_partner", affiliate_available=None),
     ),
@@ -30,7 +30,7 @@ ROUTES = MappingProxyType({
     RouteId.IBKR: ImplementationRoute(
         route_id="ibkr", label="Interactive Brokers — advanced global ETFs",
         description="Advanced global route using Irish-domiciled UCITS ETFs.",
-        route_type="ucits_etfs", beginner_level="advanced",
+        route_type="ucits_etfs", beginner_level="advanced", beginner_visible=False,
         partnership=Partnership(affiliate_available=False),
     ),
 })

@@ -39,7 +39,7 @@ def classify_v2_question(question: str) -> tuple[str, str]:
     # Out-of-scope tasks win even when mixed with investment keywords.
     if has(r"\b(python|javascript|code|coding|recipe|cook|vacation|travel|basketball|football|trivia|poem|joke)\b|ignore.*instructions|system prompt"):
         return "out_of_scope", "out_of_scope"
-    if has(r"\b(buy|sell|hold|switch|recommend|best|suitable|undervalued|overvalued)\b|should i invest|which.*(choose|pick)"):
+    if has(r"\b(buy|sell|hold|switch|recommend|best|suitable|undervalued|overvalued)\b|should i (invest|use)|which.*(choose|pick|should i use)|better for (me|my)"):
         if has(r"(buy|invest).*(month|contribut)|what should i buy"):
             return "investment", "contribution"
         return "investment", "decision_boundary"
@@ -125,7 +125,7 @@ def explain(c: V2ChatContext, question: str, intent: str) -> str:
         # Only named catalog products; never invoke a mapper or infer selections.
         matches = [p for p in PRODUCTS.values() if re.search(r"(?<!\w)" + re.escape(p.display_name) + r"(?!\w)", question, re.I)]
         facts = "\n".join(f"- {p.display_name}: {ROLES[p.sleeve][0]} catalog sleeve; provider {p.provider}; platform {p.platform}; currency {p.currency or 'not specified'}. " + " ".join(p.eligibility_notes) for p in matches)
-        return IMPLEMENTATION + ("\n\nCatalog facts, not personalized selections:\n" + facts if facts else " Available primary routes are GCash, DragonFi, Gotrade and Interactive Brokers. These are implementation choices, not different strategies.") + "\n\nCatalog information is static; confirm current terms in the provider app. This chat does not verify fees, live availability or order minimums."
+        return IMPLEMENTATION + ("\n\nCatalog facts, not personalized selections:\n" + facts if facts else " Beginner non-Bitcoin options are GCash/GFunds, DragonFi and Gotrade. Bitcoin choices are independently GCrypto, Coins.ph or PDAX; none is selected automatically. These choices do not change your plan targets. Interactive Brokers remains an advanced/internal catalog option, not part of the beginner selection flow.") + "\n\nCatalog information is static; confirm current terms in the provider app. This chat does not verify fees, live availability or order minimums."
     assumptions = f"Saved horizon: {HORIZONS[c.horizon]}. Starting balance assumption: {c.currency} {c.starting_assumption:,.2f}. Monthly contribution assumption: {c.currency} {c.monthly_assumption:,.2f}. " + (f"Goal in today’s {c.currency}: {c.goal:,.2f}." if c.goal is not None else "No goal amount is saved.")
     if intent == "assumptions": return assumptions + " These are planning inputs, not current portfolio values or transactions."
     if intent == "projection":

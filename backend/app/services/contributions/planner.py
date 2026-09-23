@@ -61,7 +61,8 @@ def _plan(request):
 
     context = request.context
     mapping = map_effective_target(context.route_id, context.effective_target_allocation,
-        context.readiness, path=context.path, ibkr_crypto_eligible=context.ibkr_crypto_eligible)
+        context.readiness, path=context.path, ibkr_crypto_eligible=context.ibkr_crypto_eligible,
+        selection_mode=context.selection_mode, bitcoin_provider=context.bitcoin_provider)
     mapped = {item.sleeve: item for item in mapping.implementations}
     eligible = [(mapped[calc.sleeve], calc) for calc in single.calculations
                 if mapped[calc.sleeve].actionable and mapped[calc.sleeve].product.available_in_ph is not False]

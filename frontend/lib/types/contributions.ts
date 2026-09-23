@@ -2,12 +2,14 @@ import type { PlanV2, PreferenceResult } from "./planV2";
 
 export type Sleeve = "global_equity" | "defensive" | "technology_tilt" | "crypto";
 export type RouteId = "gcash" | "dragonfi" | "gotrade" | "ibkr";
+export type BitcoinProvider = "gcrypto" | "coins_ph" | "pdax";
 export type ContributionMode = "plan" | "recommendation";
 export type ContributionRequest = {
   contribution_amount: string; contribution_currency: string;
   current_portfolio: Record<Sleeve, string> & { currency: string; owned_product_ids: string[] };
   context: { route_id: RouteId; path: "long_term" | "short_term";
     effective_target_allocation: PreferenceResult["effective_target"];
+    selection_mode?: "legacy_route" | "explicit"; bitcoin_provider?: BitcoinProvider | null;
     readiness: PlanV2["plan"]["readiness"]; ibkr_crypto_eligible: boolean | null };
   readiness_inputs: Pick<PlanV2["profile"], "emergency_savings" | "high_interest_debt">;
 };

@@ -136,6 +136,8 @@ def _recommend(request: ContributionRequest) -> ContributionRecommendation:
         context.readiness,
         path=context.path,
         ibkr_crypto_eligible=context.ibkr_crypto_eligible,
+        selection_mode=context.selection_mode,
+        bitcoin_provider=context.bitcoin_provider,
     )
     portfolio = request.current_portfolio
     total = sum((portfolio.value(role) for role in TIE_PRIORITY), Decimal(0))

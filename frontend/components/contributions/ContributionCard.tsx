@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import type { PlanV2 } from "@/lib/types/planV2";
-import type { ContributionMode, ContributionResult as Result, RouteId, Sleeve } from "@/lib/types/contributions";
+import type { BitcoinProvider, ContributionMode, ContributionResult as Result, RouteId, Sleeve } from "@/lib/types/contributions";
 import type { RequestState } from "@/lib/dashboardConsistency";
-import { contributionRequest, createContributionController, EMPTY_VALUES, needsOwnershipReview, needsImplementationChoice, resultProducts, ROUTES, SLEEVE_LABELS } from "@/lib/contributions";
+import { contributionRequest, createContributionController, EMPTY_VALUES, needsOwnershipReview, needsImplementationChoice, resultProducts, SLEEVE_LABELS } from "@/lib/contributions";
 import { getContributionPlan, getContributionRecommendation } from "@/lib/contributionApi";
 import ContributionResult from "./ContributionResult";
+import ImplementationChoices from "./ImplementationChoices";
 
 const inputClass = "mt-1 min-h-12 w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-slate-900";
 
@@ -14,7 +15,7 @@ export default function ContributionCard({ value, userId }: { value: PlanV2; use
   const [amount, setAmount] = useState("");
   const [holdings, setHoldings] = useState({ ...EMPTY_VALUES });
   const [route, setRoute] = useState<RouteId | "">("");
-  const [eligible, setEligible] = useState(false);
+  const [bitcoinProvider, setBitcoinProvider] = useState<BitcoinProvider | null>(null);
   const [ownershipMode, setOwnershipMode] = useState("review");
   const [confirmed, setConfirmed] = useState<Record<string, boolean>>({});
   const [draftOwned, setDraftOwned] = useState<Record<string, boolean>>({});
@@ -28,11 +29,14 @@ export default function ContributionCard({ value, userId }: { value: PlanV2; use
   const result = state?.status === "ready" ? state.data : null;
   const review = result && (needsImplementationChoice(result, acceptedProducts) || (ownershipMode === "review" && needsOwnershipReview(result, confirmed)));
   function invalidate() { controller.invalidate(); setInputError(""); }
+  function resetImplementation() {
+    invalidate(); setConfirmed({}); setDraftOwned({}); setSelectedProducts({}); setAcceptedProducts({}); setOwnershipMode("review");
+  }
   async function submit(ownership = confirmed) {
     setInputError("");
     try {
       const request = contributionRequest(value, amount, holdings, route as RouteId,
-        ownershipMode === "none" ? [] : Object.keys(ownership).filter(id => ownership[id]), eligible);
+        ownershipMode === "none" ? [] : Object.keys(ownership).filter(id => ownership[id]), false, bitcoinProvider);
       await controller.run(signal => mode === "plan"
         ? getContributionPlan(request, userId, signal) : getContributionRecommendation(request, userId, signal));
     } catch (error) { setInputError(error instanceof Error ? error.message : "Check your inputs."); }
@@ -46,11 +50,10 @@ export default function ContributionCard({ value, userId }: { value: PlanV2; use
     <form className="mt-5 space-y-5" onSubmit={event => { event.preventDefault(); void submit(); }}>
       <label className="block text-sm font-medium text-slate-700">Contribution amount ({value.profile.currency})<input className={inputClass} inputMode="decimal" type="text" required value={amount} placeholder="10000"
         onChange={event => { invalidate(); setAmount(event.target.value); }} /></label>
-      <label className="block text-sm font-medium text-slate-700">Your implementation route<select className={inputClass} required value={route}
-        onChange={event => { invalidate(); setRoute(event.target.value as RouteId); setConfirmed({}); setDraftOwned({}); setSelectedProducts({}); setAcceptedProducts({}); setOwnershipMode("review"); setEligible(false); }}>
-        <option value="">Choose a route</option>{Object.entries(ROUTES).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-      </select></label>
-      {route === "ibkr" && <label className="flex min-h-11 items-center gap-3 text-sm text-slate-700"><input type="checkbox" checked={eligible} onChange={e => { invalidate(); setEligible(e.target.checked); setConfirmed({}); setSelectedProducts({}); setAcceptedProducts({}); }} />My IBKR account is confirmed eligible for crypto</label>}
+      <ImplementationChoices route={route} bitcoinProvider={bitcoinProvider}
+        hasBitcoinTarget={!!value.plan.preference_result?.effective_target?.allocation.weights.some(weight => weight.role === "crypto" && weight.percentage_points > 0)}
+        onRoute={next => { resetImplementation(); setRoute(next); }}
+        onBitcoin={next => { resetImplementation(); setBitcoinProvider(next); }} />
       <fieldset><legend className="font-semibold text-slate-900">Current portfolio · {value.profile.currency}</legend>
         <p className="mt-1 text-sm text-slate-600">Enter current market values, not purchase costs or your planning starting amount. Use one currency; Arbor does not convert currencies.</p>
         <button type="button" className="entry-link my-2 min-h-11 text-sm" onClick={() => { invalidate(); setHoldings({ global_equity: "0", defensive: "0", technology_tilt: "0", crypto: "0" }); }}>I have no investments yet — use zero</button>
@@ -59,7 +62,7 @@ export default function ContributionCard({ value, userId }: { value: PlanV2; use
       </fieldset>
       <fieldset><legend className="text-sm font-semibold text-slate-900">Product ownership</legend>
         <label className="flex min-h-11 items-center gap-3 text-sm text-slate-700"><input type="radio" name="contribution-ownership" checked={ownershipMode === "review"} onChange={() => { invalidate(); setOwnershipMode("review"); setConfirmed({}); }} />Confirm ownership for each implementation option</label>
-        <label className="flex min-h-11 items-center gap-3 text-sm text-slate-700"><input type="radio" name="contribution-ownership" checked={ownershipMode === "none"} onChange={() => { invalidate(); setOwnershipMode("none"); setConfirmed({}); }} />I do not own any products on this route</label>
+        <label className="flex min-h-11 items-center gap-3 text-sm text-slate-700"><input type="radio" name="contribution-ownership" checked={ownershipMode === "none"} onChange={() => { invalidate(); setOwnershipMode("none"); setConfirmed({}); }} />I do not own any products through these options</label>
         <p className="text-xs text-slate-500">This determines first-purchase versus additional-purchase minimums. Your choices stay in this view only.</p>
       </fieldset>
       <button type="submit" disabled={busy} className="entry-primary w-full disabled:opacity-50">{busy ? "Calculating your scenario…" : "Calculate scenario"}</button>

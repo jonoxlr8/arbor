@@ -69,9 +69,9 @@ _PRODUCTS = (
         minimum_order=5, minimum_order_currency="PHP", available_in_ph=True, minimum_source=LOCKED_SOURCE,
         partnership=Partnership(affiliate_available=True, affiliate_type="business_affiliate",
             compensation_model="revenue_share_on_trading_fees", disclosure_required=True)),
-    ImplementationProduct(product_id="pdax_btc", catalog_scope="secondary_fallback", display_name="PDAX BTC",
-        provider="PDAX", platform="PDAX", sleeve="crypto", match_quality="unavailable", currency=None,
-        eligibility_notes=("Secondary fallback metadata only; not a selectable/default implementation in V1.",)),
+    ImplementationProduct(product_id="pdax_btc", catalog_scope="shared", display_name="PDAX BTC",
+        provider="PDAX", platform="PDAX", sleeve="crypto", match_quality="direct", currency=None,
+        eligibility_notes=("User-selected Bitcoin option. Minimum, currency and account eligibility must be verified in app.",)),
 )
 if len({product.product_id for product in _PRODUCTS}) != len(_PRODUCTS):
     raise ValueError("Duplicate implementation product IDs")

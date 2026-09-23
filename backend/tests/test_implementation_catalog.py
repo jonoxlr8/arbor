@@ -26,7 +26,7 @@ def test_exact_primary_routes_and_valid_unique_product_scopes():
         else:
             assert product.catalog_scope in {"shared", "secondary_fallback"}
     assert PRODUCTS["coins_btc"].catalog_scope == "shared"
-    assert PRODUCTS["pdax_btc"].catalog_scope == "secondary_fallback"
+    assert PRODUCTS["pdax_btc"].catalog_scope == "shared"
     assert set(MatchQuality) == {"direct", "broad", "unavailable"}
     assert not any("deposit" in field for field in ImplementationProduct.model_fields)
 

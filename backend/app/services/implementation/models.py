@@ -22,6 +22,12 @@ class RouteId(str, Enum):
     IBKR = "ibkr"
 
 
+class BitcoinProvider(str, Enum):
+    GCRYPTO = "gcrypto"
+    COINS = "coins_ph"
+    PDAX = "pdax"
+
+
 class MatchQuality(str, Enum):
     DIRECT = "direct"
     BROAD = "broad"
@@ -70,6 +76,7 @@ class ImplementationRoute(DomainModel):
     country: Literal["Philippines"] = "Philippines"
     route_type: Literal["local_funds", "us_etfs", "ucits_etfs"]
     beginner_level: Literal["beginner", "advanced"]
+    beginner_visible: bool = True
     active: bool = True
     partnership: Partnership = Field(default_factory=Partnership)
     fees: Fees | None = None
@@ -122,11 +129,18 @@ class MappingInput(DomainModel):
     readiness: ReadinessResult
     path: Literal["long_term", "short_term"]
     ibkr_crypto_eligible: Annotated[bool, Field(strict=True)] | None = None
+    # Omitted selection mode preserves historical API/mapper callers, not new UI defaults.
+    selection_mode: Literal["legacy_route", "explicit"] = "legacy_route"
+    bitcoin_provider: BitcoinProvider | None = None
 
     @model_validator(mode="after")
     def target_matches_path(self):
         if (self.path == "long_term") != (self.effective_target_allocation is not None):
             raise ValueError("Long-term mapping requires a target; short-term mapping must not have one")
+        if (self.selection_mode == "explicit" and self.effective_target_allocation is not None
+                and self.effective_target_allocation.allocation.weight(AssetRole.CRYPTO) > 0
+                and self.bitcoin_provider is None):
+            raise ValueError("Choose a Bitcoin provider for the Bitcoin target")
         return self
 
 
