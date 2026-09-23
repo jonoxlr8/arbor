@@ -148,7 +148,7 @@ test("shared recovery restores either version and keeps genuinely missing profil
   }
 });
 test("v2 profile read preserves single auth refresh and rejects malformed success",async()=>{
-  let calls=0;const refresh:boolean[]=[];
+  let calls=0;const refresh:(boolean | undefined)[]=[];
   const read=createProfileReader<AccountPlan>(async(_user,force)=>{refresh.push(force);return "token";},async()=>++calls===1?Response.json({}, {status:401}):Response.json(fixture()),12000,isAccountPlan);
   assert.deepEqual(await read("A","known-token"),fixture());
   assert.deepEqual(refresh,[true]);assert.equal(calls,2);
