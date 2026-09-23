@@ -255,3 +255,42 @@ the effective target, not base weights; their v2 integration remains deferred.
 Rollback caution: once a row includes `saved_preferences`, pre-3O-F readers that
 require exactly four v2 input keys will reject it. Keep a compatible reader when
 rolling back; do not drop saved user preferences to accommodate old code.
+
+## 3T-B: investment profile preview and confirmed edits
+
+`POST /v2/profiles/preview` and `PUT /v2/profiles/me` accept `inputs` (the existing
+profile answers), `proposed_approach` (null means keep), and `expected_revision`
+from the last canonical profile response. Both authenticate and read only the
+owner's row. Preview returns `{current, proposed}` without writing. Save rebuilds
+the same canonical proposal, checks the revision, and atomically compares the
+original `v2_inputs` JSONB before updating. A stale edit returns 409; an uncertain
+write returns a recoverable error requiring a canonical reload.
+
+The existing JSONB gains server-only `plan_state`: a revision nonce and, when
+editing a historical plan, a historical plan snapshot. No SQL migration or
+backfill is needed. Targets, owner IDs, preferences and internal metadata cannot
+be edited through this request. The old approach-only endpoint uses the same
+save path while continuing to ignore client financial answers.
+
+Assessment and readiness recalculate from edited answers; selection never follows
+assessment automatically. A selected long-term approach becomes dormant below
+three years and returns when the horizon becomes long-term again. An explicitly
+selected short-term path stays selected until the user chooses another approach.
+Historical Keep freezes the original allocation and planning assumptions, while
+updating readiness separately. Historical long-term allocations likewise pause
+on a short horizon and resume from the snapshot, not recalculated preferences.
+Explicit model selection uses the canonical standard model without satellites;
+historical requests and snapshot remain available as historical reference.
+
+The editor reuses onboarding questions and approach comparison. It presents
+server-calculated before/after information, never an invented exact horizon or
+projected balance. Only the final explicit Save writes. Cancel discards drafts.
+Successful saves replace the canonical frontend plan. Existing plan-keyed chat
+and contribution components clear conversations, scenarios and temporary product
+acceptances; navigating away already resets these component-local selections.
+This conservative session reset also occurs for metadata-only saved edits.
+
+Release/rollback: deploy this compatible backend before the new frontend. Older
+readers reject `plan_state`, and older frontend validators may reject dormant or
+historical snapshot semantics. Once edits exist, retain this reader during a UI
+rollback; do not remove saved metadata or roll back to an incompatible backend.

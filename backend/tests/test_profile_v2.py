@@ -1,5 +1,6 @@
 from copy import deepcopy
 from types import SimpleNamespace
+import json
 
 import pytest
 from fastapi import FastAPI
@@ -79,12 +80,16 @@ def harness(monkeypatch):
             self.owner = None
             self.payload = None
             self.operation = "read"
+            self.expected_inputs = None
         def table(self, name):
             state["tables"].append(name)
             assert name == "profiles"
             return self
         def select(self, _columns): return self
         def eq(self, column, value):
+            if column == "v2_inputs":
+                self.expected_inputs = json.loads(value)
+                return self
             assert column == "user_id"
             assert value == state["user"]
             self.owner = value
@@ -111,7 +116,11 @@ def harness(monkeypatch):
                 state["rows"][self.owner] = deepcopy(self.payload)
                 if state["failure"] == "lost": raise RuntimeError("lost reply")
             elif self.operation == "update":
+                if state["failure"] == "before": raise RuntimeError("secret database details")
+                if state["failure"] == "stale" or (self.expected_inputs is not None and self.expected_inputs != state["rows"][self.owner]["v2_inputs"]):
+                    return SimpleNamespace(data=[])
                 state["rows"][self.owner].update(self.payload)
+                if state["failure"] == "lost": raise RuntimeError("lost reply")
             row = state["rows"].get(self.owner)
             return SimpleNamespace(data=[deepcopy(row)] if row else [])
     def client(_token): return Query()

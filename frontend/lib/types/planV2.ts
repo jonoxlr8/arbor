@@ -25,6 +25,8 @@ export type ProfileV2Input = {
   selected_approach?: Strategy | "short_term" | null;
 };
 type PlanCommon = {
+  dormant_selected_approach?: Strategy | null;
+  historical_allocation_preserved?: boolean;
   plan_basis?: "historical_assessment" | "user_selected";
   strategy_engine_version: "2.0";
   inflation_pct: number;
@@ -43,6 +45,8 @@ type PlanCommon = {
   };
 };
 export type PlanV2 = {
+  revision?: string | null;
+  historical_plan?: PlanV2["plan"] | null;
   strategy_engine_version: "2.0"; profile: ProfileV2Input; profile_warning?: string | null;
   plan: PlanCommon & (
     { path: "long_term"; selected_strategy: Strategy; base_allocation: {role: "global_equity" | "defensive"; percentage_points: number}[]; planning_return_pct: number }

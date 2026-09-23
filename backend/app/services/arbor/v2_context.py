@@ -29,6 +29,8 @@ class V2ChatContext:
     monthly_assumption: Decimal
     historical_requests: tuple[int, int]
     historical_effective: tuple[int, int] | None
+    dormant_approach: StrategyType | None = None
+    historical_preserved: bool = False
 
 
 def build_v2_context(saved: dict) -> V2ChatContext:
@@ -40,7 +42,8 @@ def build_v2_context(saved: dict) -> V2ChatContext:
     if basis not in {"user_selected", "historical_assessment"} or path not in {"long_term", "short_term"}:
         raise ValueError("Invalid plan context")
     approach = StrategyType(plan["selected_strategy"]) if path == "long_term" else None
-    if basis == "user_selected" and profile.get("selected_approach") != (approach or "short_term"):
+    dormant = StrategyType(plan["dormant_selected_approach"]) if plan.get("dormant_selected_approach") else None
+    if basis == "user_selected" and profile.get("selected_approach") != (approach or dormant or "short_term"):
         raise ValueError("Inconsistent selected plan")
     target = None
     preferences = plan["preference_result"]
@@ -67,4 +70,5 @@ def build_v2_context(saved: dict) -> V2ChatContext:
         historical_requests=(requests.get("technology_tilt", 0), requests.get("bitcoin", 0)),
         historical_effective=(target.weight(AssetRole.TECHNOLOGY_TILT), target.weight(AssetRole.CRYPTO))
         if basis == "historical_assessment" and target else None,
+        dormant_approach=dormant, historical_preserved=plan.get("historical_allocation_preserved", False),
     )

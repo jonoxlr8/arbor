@@ -9,7 +9,7 @@ from app.services.readiness_v2 import EmergencySavings, HighInterestDebt, Readin
 from app.services.strategy_selection_v2 import HorizonBucket, RiskResponse, StrategySelectionResult
 
 
-class ProfileV2Create(DomainModel):
+class ProfileV2Answers(DomainModel):
     strategy_engine_version: Literal["2.0"]
     full_name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
     country: Literal["Philippines"]
@@ -21,9 +21,14 @@ class ProfileV2Create(DomainModel):
     monthly_investment: Money
     horizon: HorizonBucket
     risk_response: RiskResponse
+
+
+class ProfileV2Data(ProfileV2Answers):
     saved_preferences: SavedPreferences = Field(default_factory=SavedPreferences)
     selected_approach: StrategyType | Literal["short_term"] | None = None
 
+
+class ProfileV2Create(ProfileV2Data):
     @model_validator(mode="after")
     def selected_path(self):
         if self.selected_approach is not None:
@@ -39,6 +44,8 @@ class PlanDTO(DomainModel):
     readiness: ReadinessResult
     inflation_pct: float
     preference_result: PreferenceResult
+    dormant_selected_approach: StrategyType | None = None
+    historical_allocation_preserved: bool = False
 
 
 class LongTermPlanDTO(PlanDTO):
@@ -55,8 +62,26 @@ class ShortTermPlanDTO(PlanDTO):
     planning_return_pct: None = None
 
 
+PlanResponse = Annotated[LongTermPlanDTO | ShortTermPlanDTO, Field(discriminator="path")]
+
+
+class ProfilePlanState(DomainModel):
+    """Server-only saved metadata. Never accepted as editable request fields."""
+    historical_plan: PlanResponse | None = None
+    revision_nonce: str
+
+
+class ProfileV2Edit(DomainModel):
+    inputs: ProfileV2Answers
+    # Null means retain the saved choice/snapshot, not choose from assessment.
+    proposed_approach: StrategyType | Literal["short_term"] | None = None
+    expected_revision: Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{64}$")]
+
+
 class ProfileV2Response(DomainModel):
     strategy_engine_version: Literal["2.0"] = "2.0"
-    profile: ProfileV2Create
-    plan: Annotated[LongTermPlanDTO | ShortTermPlanDTO, Field(discriminator="path")]
+    profile: ProfileV2Data
+    plan: PlanResponse
+    historical_plan: PlanResponse | None = None
+    revision: str | None = None
     profile_warning: str | None = None

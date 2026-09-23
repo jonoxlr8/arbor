@@ -75,7 +75,8 @@ def test_historical_row_remains_readable_until_explicit_owner_selection(harness)
     assert response.json()["profile"]["monthly_investment"] == old["monthly_investment"]
     assert response.json()["profile"]["saved_preferences"] == old["saved_preferences"]
     assert response.json()["plan"]["selected_strategy"] == "Conservative"
-    assert state["rows"]["A"] == {**before["A"], "v2_inputs": {**before["A"]["v2_inputs"], "selected_approach":"Conservative"}}
+    assert {k:v for k,v in state["rows"]["A"]["v2_inputs"].items() if k != "plan_state"} == {**before["A"]["v2_inputs"], "selected_approach":"Conservative"}
+    assert restore_profile_v2(state["rows"]["A"])["historical_plan"] == restored["plan"]
     assert client.put("/v2/profiles/approach", json={**BASE,"user_id":"B"}, headers=HEADERS).status_code == 422
 
 

@@ -40,7 +40,9 @@ export function isPlanV2(value: unknown): value is PlanV2 {
   if (!object(value) || value.strategy_engine_version !== "2.0" || !object(value.profile) || !object(value.plan)) return false;
   const p = value.profile, plan = value.plan;
   if (plan.plan_basis !== undefined && !["historical_assessment", "user_selected"].includes(plan.plan_basis as string)) return false;
-  if (plan.plan_basis === "user_selected" && p.selected_approach !== (plan.path === "short_term" ? "short_term" : plan.selected_strategy)) return false;
+  if (plan.dormant_selected_approach != null && (plan.path !== "short_term" || !strategy(plan.dormant_selected_approach) || p.selected_approach !== plan.dormant_selected_approach || p.horizon !== "less_than_3_years")) return false;
+  if (plan.historical_allocation_preserved !== undefined && typeof plan.historical_allocation_preserved !== "boolean") return false;
+  if (plan.plan_basis === "user_selected" && p.selected_approach !== (plan.path === "short_term" ? plan.dormant_selected_approach ?? "short_term" : plan.selected_strategy)) return false;
   if (plan.plan_basis !== "user_selected" && p.selected_approach != null) return false;
   if (!validPreferences(p, plan)) return false;
   if (p.strategy_engine_version !== "2.0" || typeof p.full_name !== "string" || !p.full_name.trim() || p.full_name.length > 120 || p.country !== "Philippines" || p.currency !== "PHP" ||
@@ -57,9 +59,18 @@ export function isPlanV2(value: unknown): value is PlanV2 {
       !["none", "readiness_caution", "foundation_first"].includes(r.message_requirement as string) ||
       !["core_strategy_can_be_shown", "actionable_contribution_guidance_allowed", "technology_satellite_readiness_eligible", "bitcoin_satellite_readiness_eligible"].every(k => typeof r[k] === "boolean")) return false;
   if (value.profile_warning != null && typeof value.profile_warning !== "string") return false;
+  if (value.revision != null && (typeof value.revision !== "string" || !/^[a-f0-9]{64}$/.test(value.revision))) return false;
+  if (value.historical_plan != null) {
+    const historical = value.historical_plan;
+    if (!object(historical) || !object(historical.selection) || historical.plan_basis !== "historical_assessment" || historical.historical_allocation_preserved === true ||
+        !isPlanV2({strategy_engine_version:"2.0", profile:{...p, selected_approach:null,
+          horizon:historical.selection.horizon, risk_response:historical.selection.risk_response}, plan:historical})) return false;
+  }
+  if (plan.historical_allocation_preserved && (!object(value.historical_plan) || plan.plan_basis === "user_selected")) return false;
   if (plan.path === "short_term") return plan.selected_strategy === null && plan.base_allocation === null && plan.planning_return_pct === null &&
-    s.is_short_term && !s.cap_applied && s.selected_strategy === null && s.horizon_maximum_strategy === null && s.reason === "short_term_path";
-  return plan.path === "long_term" && !s.is_short_term && strategy(plan.selected_strategy) && (plan.plan_basis === "user_selected" || s.selected_strategy === plan.selected_strategy) &&
+    ((s.is_short_term && !s.cap_applied && s.selected_strategy === null && s.horizon_maximum_strategy === null && s.reason === "short_term_path") ||
+      (!s.is_short_term && (p.selected_approach === "short_term" || plan.historical_allocation_preserved === true)));
+  return plan.path === "long_term" && !s.is_short_term && strategy(plan.selected_strategy) && (plan.plan_basis === "user_selected" || plan.historical_allocation_preserved === true || s.selected_strategy === plan.selected_strategy) &&
     strategy(s.horizon_maximum_strategy) && ["horizon_capped", "requested_strategy_retained"].includes(s.reason as string) &&
     finite(plan.planning_return_pct) && plan.planning_return_pct >= 0 && plan.planning_return_pct <= 100 &&
     Array.isArray(plan.base_allocation) && plan.base_allocation.length === 2 &&

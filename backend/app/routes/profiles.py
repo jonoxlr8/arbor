@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, Header, HTTPException
-from pydantic import ValidationError
+import json
 
 from app.auth import get_current_user_id
 from app.database import get_authenticated_client
 from app.schemas.profile import ProfileCreate
-from app.schemas.profile_v2 import ProfileV2Create
+from app.schemas.profile_v2 import ProfileV2Create, ProfileV2Edit, ProfileV2Answers
+from app.services.profile_edit_v2 import prepare_profile_edit
 from app.services.profile_v2 import profile_v2_row, restore_profile_v2
 from app.schemas.validation import RISK_CATEGORIES
 from app.schemas.projection import ProjectionRequest
@@ -273,19 +274,54 @@ def choose_approach(profile: ProfileV2Create, user_id: str = Depends(get_current
         raise HTTPException(409, "This action is only available for an existing V2 plan.")
     if profile.selected_approach is None:
         raise HTTPException(422, "Choose an approach before saving.")
-    original = ProfileV2Create.model_validate(saved["profile"])
-    # Ignore submitted financial answers on this endpoint; use the canonical saved profile.
+    # Compatibility endpoint ignores client financial answers and shares the
+    # owner-scoped, stale-write-safe path without dropping historical state.
+    return _edit_profile_v2(ProfileV2Edit(
+        inputs={key:saved["profile"][key] for key in ProfileV2Answers.model_fields},
+        proposed_approach=profile.selected_approach, expected_revision=saved["revision"]),
+        user_id, authorization, save=True)
+
+
+def _edit_profile_v2(edit: ProfileV2Edit, user_id: str, authorization: str | None, *, save: bool):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(401, "Missing authorization token")
+    client = get_authenticated_client(authorization.split(" ", 1)[1])
     try:
-        selected = ProfileV2Create.model_validate({**original.model_dump(),
-                                                  "selected_approach": profile.selected_approach})
-    except ValidationError:
-        raise HTTPException(422, "Choose an approach for your saved planning horizon.") from None
-    try:
-        row = profile_v2_row(selected, user_id)
-        client = get_authenticated_client(authorization.split(" ", 1)[1])
-        result = client.table("profiles").update({"v2_inputs": row["v2_inputs"]}).eq("user_id", user_id).execute()
+        found = client.table("profiles").select("*").eq("user_id", user_id).limit(1).execute()
+        if not found.data:
+            raise HTTPException(404, "Profile not found")
+        original = found.data[0]
+        if original.get("strategy_engine_version") != "2.0":
+            raise HTTPException(409, "This action requires a V2 investment profile.")
+        row, preview = prepare_profile_edit(original, edit, user_id)
+        if not save:
+            return preview
+        # Atomic compare-and-swap on existing JSONB, with owner scoping and normal RLS.
+        # Every edit changes the server nonce even if only a shared scalar changed.
+        result = client.table("profiles").update({k:v for k,v in row.items() if k != "user_id"}).eq(
+            "user_id", user_id).eq("v2_inputs", json.dumps(original["v2_inputs"])).execute()
         if not result.data:
-            raise ValueError()
+            raise HTTPException(409, "Your profile changed. Reload it and review your edits again.")
+        return restore_profile_v2(result.data[0])
+    except HTTPException:
+        raise
+    except RuntimeError as error:
+        if str(error) == "stale_profile":
+            raise HTTPException(409, "Your profile changed. Reload it and review your edits again.") from None
+        raise HTTPException(503, "We couldn’t confirm your changes. Reload your saved plan before retrying.") from None
+    except ValueError:
+        raise HTTPException(422, "Check your profile answers and selected approach.") from None
     except Exception:
-        raise HTTPException(503, "We couldn’t confirm your selection. Reload your plan before retrying.") from None
-    return get_my_profile(user_id=user_id, authorization=authorization)
+        raise HTTPException(503, "We couldn’t confirm your changes. Reload your saved plan before retrying.") from None
+
+
+@router.post("/v2/profiles/preview", summary="Preview investment profile changes without saving")
+def preview_profile_v2(edit: ProfileV2Edit, user_id: str = Depends(get_current_user_id),
+                       authorization: str | None = Header(default=None)):
+    return _edit_profile_v2(edit, user_id, authorization, save=False)
+
+
+@router.put("/v2/profiles/me", summary="Confirm owner-scoped investment profile changes")
+def save_profile_v2(edit: ProfileV2Edit, user_id: str = Depends(get_current_user_id),
+                    authorization: str | None = Header(default=None)):
+    return _edit_profile_v2(edit, user_id, authorization, save=True)

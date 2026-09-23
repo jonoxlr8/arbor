@@ -79,10 +79,12 @@ def classify_v2_question(question: str) -> tuple[str, str]:
 
 
 def identity(c: V2ChatContext) -> str:
+    if c.dormant_approach:
+        return f"Your {c.dormant_approach.value} selection remains saved but dormant. Your current horizon activates the short-term path, with no active long-term allocation. A long-term horizon restores that saved selection."
     name = f"{c.approach.value} approach" if c.approach else "short-term path"
     if c.plan_basis == "user_selected":
         return f"You selected the {name}. Your assessment is informational and does not override this choice."
-    return f"Your existing Arbor plan is a historical {name} from the earlier assessment flow. It was not recorded as your explicit model choice. Explore approaches in Plan to choose a standardized plan."
+    return f"Your existing Arbor plan is a historical {name} from the earlier assessment flow. It was not recorded as your explicit model choice. " + ("Its allocation is preserved separately from your updated assessment and readiness. " if c.historical_preserved else "") + "Explore approaches in Plan to choose a standardized plan."
 
 
 def readiness(c: V2ChatContext) -> str:
@@ -97,13 +99,13 @@ def explain(c: V2ChatContext, question: str, intent: str) -> str:
     if intent == "out_of_scope": return SCOPE
     if intent == "decision_boundary": return DECISION
     if intent == "plus": return "I don’t have a confirmed Arbor Plus feature or pricing contract to explain. I can help with the plan and planning tools currently available in Arbor."
-    if intent == "change_plan": return "Open Plan, then Explore approaches to compare standardized models. Your saved plan changes only when you explicitly use an approach. Your assessment does not select it for you."
+    if intent == "change_plan": return "Open Plan or Settings, then Edit investment profile. Preview your changes, keep your current plan or compare standardized approaches, and explicitly save. Your assessment does not choose or replace your plan."
     if intent == "holdings_help": return ACTUAL
     if intent == "help": return "Ask me about your saved plan, targets, assessment or planning assumptions. Portfolio contains the Monthly Contribution Planner; Plan lets you explore approaches. Each question stands alone."
     if intent == "actual_holdings": return ACTUAL
     if intent == "overlap": return "I can’t measure overlap in your actual portfolio. No implementation products or current holdings are saved for this V2 chat; asset-class targets alone do not identify fund constituents. I can describe catalog products factually if you name them, without treating them as holdings."
     if intent == "contribution":
-        if c.path == "short_term": return "Your short-term path has no long-term allocation. The contribution tool treats the amount as reserve rather than a long-term purchase scenario; this chat does not choose a product."
+        if c.path == "short_term": return "Your short-term path has no active long-term allocation. Long-term contribution scenarios are paused. You can review your investment profile in Plan; this chat does not choose a product."
         if not c.contributions_allowed: return readiness(c) + " No product purchase is proposed."
         if c.plan_basis != "user_selected": return identity(c) + " New contribution scenarios require an explicit plan choice."
         return "In Portfolio, open the Monthly Contribution Planner. Enter current sleeve values and a contribution amount, choose a route, confirm the implementation options and declare product ownership. The deterministic engine calculates a target-alignment scenario and minimum conditions—not an instruction to trade. I cannot calculate a current gap from targets alone, and I cannot see temporary scenario results. Nothing is invested or saved as a transaction."
