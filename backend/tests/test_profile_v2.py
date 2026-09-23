@@ -229,7 +229,7 @@ def test_legacy_writes_and_analytics_do_not_reinterpret_v2(harness):
     saved = deepcopy(state["rows"])
     assert client.put("/profiles/me", json=LEGACY, headers=HEADERS).status_code == 409
     assert client.post("/profiles", json=LEGACY, headers=HEADERS).json()["strategy_engine_version"] == "2.0"
-    assert client.post("/chat", json={"message": "Explain my plan"}, headers=HEADERS).status_code == 409
+    assert client.post("/chat", json={"message": "Explain my plan"}, headers=HEADERS).status_code == 200
     health = client.get("/holdings/health", headers=HEADERS).json()
     assert health["available"] is False and health["health"] is None
     assert state["rows"] == saved

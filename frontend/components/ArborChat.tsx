@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { chatPlanKey, createChatSession } from "@/lib/chatSession";
+import { chatPlanKey, chatPrompts, chatErrorMessage, createChatSession } from "@/lib/chatSession";
 import { askArbor } from "@/lib/api";
-import type { Plan } from "@/lib/types/plan";
+import type { AccountPlan } from "@/lib/types/planV2";
 import { ArborMark } from "@/components/Logo";
 
 type ArborChatProps = {
-  plan: Plan;
+  plan: AccountPlan;
 };
 
 type Message = {
@@ -154,10 +154,10 @@ function ArborMessage({ text }: { text: string }) {
 }
 
 export default function ArborChat({ plan }: ArborChatProps) {
-  return <PlanChat key={chatPlanKey(plan)} />;
+  return <PlanChat key={chatPlanKey(plan)} v2={"strategy_engine_version" in plan && plan.strategy_engine_version === "2.0"} />;
 }
 
-function PlanChat() {
+function PlanChat({ v2 }: { v2: boolean }) {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -168,7 +168,7 @@ function PlanChat() {
     const current = createChatSession(askArbor, state => {
       busy.current = state.status === "loading";
       setLoading(busy.current);
-      setError(state.status === "error" ? "We couldn’t explain your plan right now. Please try again." : "");
+      setError(state.status === "error" ? chatErrorMessage(state.error) : "");
       if (state.status === "ready") {
         setMessages(previous => [...previous, { role: "user", text: state.data.question }, { role: "arbor", text: state.data.reply }]);
         setQuestion("");
@@ -193,12 +193,7 @@ function PlanChat() {
     await sendMessage(prompt);
   };
 
-  const prompts = [
-    "Explain my Arbor plan",
-    "What are my target allocations?",
-    "What are my projection assumptions?",
-    "Does my projection reach my goal?",
-  ];
+  const prompts = chatPrompts(v2);
 
   return (
     <div className="mt-6 min-w-0">
@@ -221,6 +216,7 @@ function PlanChat() {
               disabled={loading}
               className="
                 rounded-full
+                min-h-11
                 border
                 border-slate-300
                 bg-white
@@ -244,7 +240,7 @@ function PlanChat() {
 
         {/* Conversation */}
         {messages.length > 0 && (
-          <div className="mt-8 space-y-4">
+          <div aria-live="polite" className="mt-8 space-y-4 break-words">
             {messages.map((message, index) =>
               message.role === "arbor" ? (
                 <ArborMessage key={index} text={message.text} />
@@ -269,7 +265,7 @@ function PlanChat() {
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
               handleAsk();
             }
@@ -324,8 +320,7 @@ function PlanChat() {
         >
           {loading ? "Loading explanation..." : "Ask Arbor"}
         </button>
-
-
+        {loading && <p role="status" className="mt-2 text-sm text-slate-500">Explaining your saved plan…</p>}
       </div>
     </div>
   );

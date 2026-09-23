@@ -8,6 +8,7 @@ import { HORIZON_OPTIONS } from "@/lib/onboardingV2";
 import PreferencesV2 from "./PreferencesV2";
 import ContributionCard from "./contributions/ContributionCard";
 import ApproachSelection from "./ApproachSelection";
+import ChatSection from "./dashboard/ChatSection";
 
 export default function PlanV2View({ value, userId, onSignOut, signingOut, logoutError, onPlanChange }: {
   value: PlanV2; userId?: string; onSignOut: () => void; signingOut: boolean; logoutError: string; onPlanChange?: (plan: AccountPlan) => void;
@@ -28,14 +29,15 @@ export default function PlanV2View({ value, userId, onSignOut, signingOut, logou
 }
 
 export function V2Destination({ value, active, userId }: { value: PlanV2; active: Destination; userId?: string }) {
+  if (active === "ask") return <ChatSection key={userId} plan={value} />;
   if (active === "portfolio" && value.plan.plan_basis !== "user_selected") return <section className="arbor-panel"><h2 className="text-xl font-semibold text-slate-900">Choose a plan for your scenarios</h2><p className="mt-3 text-sm text-slate-600">Your existing plan is preserved. Review the standard approaches and explicitly choose one before exploring new contribution scenarios.</p><a className="entry-link mt-4 inline-flex min-h-11 items-center" href="#plan">Explore approaches in Plan</a></section>;
   if (active === "portfolio" && userId) return <div className="space-y-6">
     <ContributionCard key={`${userId}:${JSON.stringify(value)}`} value={value} userId={userId} />
     <section className="arbor-panel"><h2 className="text-lg font-semibold text-slate-900">Recorded portfolio</h2><p className="mt-2 text-sm text-slate-600">Saved holdings and Plan Alignment are not yet connected to this plan. Scenarios use only the market values you enter above.</p></section>
   </div>;
-  if (active === "portfolio" || active === "ask") return <section className="arbor-panel">
-    <h2 className="text-xl font-semibold text-slate-900">{active === "portfolio" ? "Portfolio tools" : "Plan conversations"} are not available for this plan yet</h2>
-    <p className="mt-3 text-sm text-slate-600">{active === "portfolio" ? "Holdings and Plan Alignment are not yet connected to this plan." : "Ask Arbor does not yet support this plan."}</p>
+  if (active === "portfolio") return <section className="arbor-panel">
+    <h2 className="text-xl font-semibold text-slate-900">Portfolio tools are not available for this plan yet</h2>
+    <p className="mt-3 text-sm text-slate-600">Holdings and Plan Alignment are not yet connected to this plan.</p>
     <a href="#plan" className="entry-link mt-4 inline-flex min-h-11 items-center">View your plan</a>
   </section>;
   if (active === "settings") return <div className="space-y-6">

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from app.services.ask_arbor import ask_arbor
+from app.services.arbor.v2_explanations import explain_v2
 from app.auth import get_current_user_id
 from app.routes.profiles import get_my_profile
 
@@ -23,9 +24,19 @@ class ChatRequest(BaseModel):
 def chat(request: ChatRequest, user_id: str = Depends(get_current_user_id), authorization: str | None = Header(default=None)):
 
     # Reuse the authenticated canonical plan path. Client-supplied plans are rejected.
-    plan = get_my_profile(user_id=user_id, authorization=authorization)
+    try:
+        plan = get_my_profile(user_id=user_id, authorization=authorization)
+    except HTTPException as exc:
+        if exc.status_code == 404:
+            raise HTTPException(404, "Create your Arbor plan first, then return to Ask Arbor.") from None
+        raise
     if plan.get("strategy_engine_version") == "2.0":
-        raise HTTPException(409, "Plan explanations for Engine 2.0 are not available yet.")
+        try:
+            return explain_v2(request.message, plan)
+        except (KeyError, ValueError, TypeError):
+            raise HTTPException(503, "Your saved plan could not be loaded for this explanation. Please retry.") from None
+    if plan.get("strategy_engine_version") not in (None, "1.0"):
+        raise HTTPException(409, "This plan version is not supported by Ask Arbor yet.")
     reply = ask_arbor(request.message, plan)
 
     return {"reply": reply}

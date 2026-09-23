@@ -31,9 +31,9 @@ test("v2 restored plan uses the shared desktop/mobile shell and destinations", (
   assert.match(page, /return <ResultsDashboard key=\{account.userId\}/);
 });
 test("v2 unsupported destinations remain safe; settings preserves appearance and profile", () => {
-  for (const active of ["portfolio", "ask"] as const) {
+  for (const active of ["portfolio"] as const) {
     const markup = renderToStaticMarkup(createElement(V2Destination, { value: fixture(), active }));
-    assert.match(markup, active === "portfolio" ? /Choose a plan for your scenarios/ : /not available for this plan yet/);
+    assert.match(markup, /Choose a plan for your scenarios/);
     assert.match(markup, /href="#plan"/);
     assert.doesNotMatch(markup, /Planning return:|Add Holding|Send message/);
   }
@@ -41,7 +41,7 @@ test("v2 unsupported destinations remain safe; settings preserves appearance and
   assert.match(settings, /Appearance/);
   assert.match(settings, /Philippines/);
   const source = readFileSync("components/PlanV2View.tsx", "utf8");
-  assert.doesNotMatch(source, /ResultsDashboard|HoldingsSection|ChatSection|EditProfileForm|getMyPortfolioHealth|calculate/);
+  assert.doesNotMatch(source, /ResultsDashboard|HoldingsSection|EditProfileForm|getMyPortfolioHealth|calculate/);
   assert.match(source, /useSyncExternalStore\(subscribeNavigation, navigationSnapshot, serverNavigationSnapshot\)/);
 });
 

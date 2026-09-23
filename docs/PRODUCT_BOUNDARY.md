@@ -69,9 +69,21 @@ plan, adding/updating holdings and reviewing scenarios.
 
 Prohibited: independent portfolio/product selection; personalized security ranking
 or suitability; buy/sell/hold instructions; market-timing calls; circumventing
-deterministic constraints; custody or execution. A future chat handler must enforce
+deterministic constraints; custody or execution. Chat handlers must enforce
 these through supported intents and response contracts, not only prompt prose.
-V2 Ask Arbor remains unavailable in this milestone.
+V2 Ask Arbor uses the existing authenticated `/chat` endpoint. Its allowlisted
+context is rebuilt from the owner's canonical saved plan on every request.
+Explicit choices and historical assessment plans remain distinct. Answers are
+bounded deterministic explanations, not free-form model output or engine calls.
+The V2 response adds `category` (investment, product_support, out_of_scope) and
+`intent`; the existing `reply` field and V1 response remain compatible.
+
+Current holdings, temporary implementation choices and contribution results are
+not persisted V2 context. Chat explains that limitation rather than inferring
+ownership, selecting products, calculating scenarios or inventing projections.
+Named catalog products can be described factually; no provider ranking or live
+terms are asserted. History is component memory only and resets with account or
+plan changes. No chat persistence, external model calls or analytics are added.
 
 ## Deliberately retained legacy terminology
 
@@ -79,4 +91,6 @@ V1 dashboard, Portfolio Health, rebalancing, legacy chat/advisor modules and int
 financial service names retain old recommendation/health terminology. V2 does not
 invoke those guarded features. Its unavailable alignment surface says Plan Alignment;
 no score or algorithm has been relabeled as a new measurement. V1 product-boundary
-changes need separate scope. Full route redesign remains 3P-B; V2 chat remains 3T-A.
+changes need separate scope. Full route redesign remains 3P-B; canonical current
+holding context awaits Live Portfolio. Richer support knowledge and entitlements
+remain separate milestones.

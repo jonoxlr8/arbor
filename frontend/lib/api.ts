@@ -137,6 +137,8 @@ export function createChatReader(headers = getAuthHeaders, request: typeof fetch
       method: "POST", headers: { ...authHeaders, "Content-Type": "application/json" },
       body: JSON.stringify({ message }), signal: activeSignal,
     });
+    if (response.status === 401) throw new Error("Your session has expired. Sign in again to continue.");
+    if (response.status === 404) throw new Error("Create your Arbor plan first, then return to Ask Arbor.");
     if (!response.ok) throw new Error("We couldn’t explain your plan right now. Please retry.");
     const body: unknown = await response.json();
     if (!body || typeof body !== "object" || !("reply" in body) || typeof body.reply !== "string" || !body.reply.trim() || body.reply.length > 12000) {
