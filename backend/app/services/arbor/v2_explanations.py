@@ -43,6 +43,8 @@ def classify_v2_question(question: str) -> tuple[str, str]:
         if has(r"(buy|invest).*(month|contribut)|what should i buy"):
             return "investment", "contribution"
         return "investment", "decision_boundary"
+    if has(r"what should i do next|what.*next step|next action"):
+        return "product_support", "next_action"
     if has(r"arbor plus|subscription|billing|paid plan"):
         return "product_support", "plus"
     if has(r"(how|where).*(change|edit|select|choose).*(plan|approach)"):
@@ -153,4 +155,11 @@ def explain(c: V2ChatContext, question: str, intent: str) -> str:
 def explain_v2(question: str, saved: dict) -> V2ChatReply:
     context = build_v2_context(saved)
     category, intent = classify_v2_question(question)
+    if intent == "next_action":
+        from app.services.next_action import get_next_action
+        action = get_next_action(saved)
+        locations = {"investment_profile": "Plan → Edit investment profile", "plan": "Plan",
+                     "portfolio": "Portfolio → Monthly Contribution Planner", "onboarding": "onboarding"}
+        return V2ChatReply(reply=f"{action.title}. {action.explanation} Open {locations[action.destination]}.",
+                          category=category, intent=intent)
     return V2ChatReply(reply=explain(context, question, intent), category=category, intent=intent)

@@ -9,6 +9,7 @@ import PreferencesV2 from "./PreferencesV2";
 import ContributionCard from "./contributions/ContributionCard";
 import InvestmentProfileEditor from "./InvestmentProfileEditor";
 import ChatSection from "./dashboard/ChatSection";
+import NextActionCard from "./NextActionCard";
 
 export default function PlanV2View({ value, userId, onSignOut, signingOut, logoutError, onPlanChange }: {
   value: PlanV2; userId?: string; onSignOut: () => void; signingOut: boolean; logoutError: string; onPlanChange?: (plan: AccountPlan) => void;
@@ -22,7 +23,12 @@ export default function PlanV2View({ value, userId, onSignOut, signingOut, logou
   }
   return <AppShell active={active} name={value.profile.full_name} onSignOut={onSignOut} signingOut={signingOut} logoutError={logoutError}>
     {choosing && userId && onPlanChange ? <InvestmentProfileEditor value={value} userId={userId} onCancel={() => setChoosing(false)} onSaved={plan => { onPlanChange(plan); setChoosing(false); }} /> : <>
-      {(active === "home" || active === "plan") && userId && onPlanChange && <button className="entry-secondary mb-5" onClick={() => setChoosing(true)}>Explore approaches</button>}
+      {active === "home" && userId && <NextActionCard key={`${userId}:${JSON.stringify(value)}`} userId={userId} onAction={destination=>{
+        if(destination === "investment_profile")setChoosing(true);
+        else if(destination === "onboarding")window.location.reload();
+        else window.location.hash=destination;
+      }}/>}
+      {active === "plan" && userId && onPlanChange && <button className="entry-secondary mb-5" onClick={() => setChoosing(true)}>Explore approaches</button>}
       {(active === "settings" || active === "plan") && userId && onPlanChange && <button className="entry-secondary mb-5 sm:ml-3" onClick={() => setChoosing(true)}>Edit investment profile</button>}
       <V2Destination value={value} active={active} userId={userId} />
     </>}

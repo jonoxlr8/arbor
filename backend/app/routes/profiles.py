@@ -7,6 +7,7 @@ from app.schemas.profile import ProfileCreate
 from app.schemas.profile_v2 import ProfileV2Create, ProfileV2Edit, ProfileV2Answers
 from app.services.profile_edit_v2 import prepare_profile_edit
 from app.services.profile_v2 import profile_v2_row, restore_profile_v2
+from app.services.next_action import NextAction, get_next_action
 from app.schemas.validation import RISK_CATEGORIES
 from app.schemas.projection import ProjectionRequest
 from app.services.arbor.insights import PortfolioInsights
@@ -263,6 +264,24 @@ def explore_approaches(profile: ProfileV2Create, user_id: str = Depends(get_curr
                 "allocation": get_base_strategy(strategy).allocation.model_dump(mode="json")["weights"],
                 "planning_return_pct": float(get_base_strategy(strategy).planning_annual_rate * 100)}
                 for strategy in StrategyType]}
+
+
+@router.get("/v2/next-action", response_model=NextAction)
+def next_action(user_id: str = Depends(get_current_user_id), authorization: str | None = Header(default=None)):
+    """One product action from the authenticated owner's saved plan."""
+    try:
+        saved = get_my_profile(user_id=user_id, authorization=authorization)
+    except HTTPException as error:
+        if error.status_code == 404 and error.detail == "Profile not found":
+            saved = None
+        else:
+            raise
+    if saved and saved.get("strategy_engine_version") != "2.0":
+        raise HTTPException(409, "Next actions are available for V2 plans.")
+    try:
+        return get_next_action(saved)
+    except (KeyError, ValueError, TypeError):
+        raise HTTPException(503, "Your saved profile could not be checked. Please retry.") from None
 
 
 @router.put("/v2/profiles/approach")
