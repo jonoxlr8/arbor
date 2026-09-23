@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from app.services.implementation.products import PRODUCTS
 from app.services.strategy_v2 import AssetRole
+from app.services.entitlements import Entitlements, subscription_explanation
 from .v2_context import V2ChatContext, build_v2_context
 
 
@@ -45,7 +46,7 @@ def classify_v2_question(question: str) -> tuple[str, str]:
         return "investment", "decision_boundary"
     if has(r"what should i do next|what.*next step|next action"):
         return "product_support", "next_action"
-    if has(r"arbor plus|subscription|billing|paid plan"):
+    if has(r"arbor plus|subscription|billing|paid plan|what (?:account )?plan am i on"):
         return "product_support", "plus"
     if has(r"(how|where).*(change|edit|select|choose).*(plan|approach)"):
         return "product_support", "change_plan"
@@ -152,14 +153,19 @@ def explain(c: V2ChatContext, question: str, intent: str) -> str:
     return identity(c) + "\n\n" + "\n".join(lines) + "\n\nThese are plan targets, not investments you necessarily own. " + readiness(c)
 
 
-def explain_v2(question: str, saved: dict) -> V2ChatReply:
+def explain_v2(question: str, saved: dict, entitlements: Entitlements | None = None) -> V2ChatReply:
     context = build_v2_context(saved)
     category, intent = classify_v2_question(question)
+    if intent == "plus" and entitlements is not None:
+        return V2ChatReply(reply=subscription_explanation(entitlements), category=category, intent=intent)
     if intent == "next_action":
         from app.services.next_action import get_next_action
-        action = get_next_action(saved)
+        action = get_next_action(saved, entitlements)
         locations = {"investment_profile": "Plan → Edit investment profile", "plan": "Plan",
-                     "portfolio": "Portfolio → Monthly Contribution Planner", "onboarding": "onboarding"}
+                     "portfolio": "Portfolio → Monthly Contribution Planner", "onboarding": "onboarding", "settings": "Settings → Arbor Plus"}
         return V2ChatReply(reply=f"{action.title}. {action.explanation} Open {locations[action.destination]}.",
                           category=category, intent=intent)
-    return V2ChatReply(reply=explain(context, question, intent), category=category, intent=intent)
+    reply = explain(context, question, intent)
+    if entitlements is not None and entitlements.effective_tier == "free" and intent in ("contribution", "change_plan", "help"):
+        reply += " Monthly Contribution Planner and profile editing are Plus capabilities. You can explore Arbor Plus in Settings; your basic saved plan remains available on Free."
+    return V2ChatReply(reply=reply, category=category, intent=intent)

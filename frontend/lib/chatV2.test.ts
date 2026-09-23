@@ -70,5 +70,5 @@ test("unknown errors remain generic and shared UI keeps duplicate, composition a
   assert.match(source, /!e.nativeEvent.isComposing/);
   assert.match(source, /role="status"/);
   assert.match(source, /aria-live="polite"/);
-  assert.match(source, /disabled=\{loading \|\| !question.trim\(\)\}/);
+  assert.match(source, /disabled=\{loading \|\| limited \|\| !question.trim\(\)\}/);
 });

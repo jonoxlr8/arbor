@@ -8,6 +8,7 @@ from app.schemas.profile_v2 import ProfileV2Create, ProfileV2Edit, ProfileV2Answ
 from app.services.profile_edit_v2 import prepare_profile_edit
 from app.services.profile_v2 import profile_v2_row, restore_profile_v2
 from app.services.next_action import NextAction, get_next_action
+from app.services.entitlements import get_entitlements, require_feature
 from app.schemas.validation import RISK_CATEGORIES
 from app.schemas.projection import ProjectionRequest
 from app.services.arbor.insights import PortfolioInsights
@@ -114,6 +115,7 @@ def update_my_profile(
     access_token = authorization.split(" ", 1)[1]
 
     # Legacy edits must never turn a v2 row into a v1 calculation/persistence path.
+    require_feature(user_id, "profile_rebuild")
     client = get_authenticated_client(access_token)
     saved = client.table("profiles").select("strategy_engine_version").eq("user_id", user_id).limit(1).execute()
     if saved.data and saved.data[0].get("strategy_engine_version") not in (None, "1.0"):
@@ -279,7 +281,7 @@ def next_action(user_id: str = Depends(get_current_user_id), authorization: str 
     if saved and saved.get("strategy_engine_version") != "2.0":
         raise HTTPException(409, "Next actions are available for V2 plans.")
     try:
-        return get_next_action(saved)
+        return get_next_action(saved, get_entitlements(user_id))
     except (KeyError, ValueError, TypeError):
         raise HTTPException(503, "Your saved profile could not be checked. Please retry.") from None
 
@@ -304,6 +306,7 @@ def choose_approach(profile: ProfileV2Create, user_id: str = Depends(get_current
 def _edit_profile_v2(edit: ProfileV2Edit, user_id: str, authorization: str | None, *, save: bool):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(401, "Missing authorization token")
+    require_feature(user_id, "profile_rebuild")
     client = get_authenticated_client(authorization.split(" ", 1)[1])
     try:
         found = client.table("profiles").select("*").eq("user_id", user_id).limit(1).execute()

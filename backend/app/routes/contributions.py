@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.auth import get_current_user_id
+from app.services.entitlements import require_contributions
 from app.schemas.contributions import (
     ContributionAPIRequest, ContributionPlanResponse, ContributionRecommendationResponse,
     plan_response, recommendation_response,
@@ -10,7 +11,7 @@ from app.services.contributions.engine import recommend_next_contribution
 from app.services.contributions.planner import plan_monthly_contribution
 
 router = APIRouter(prefix="/contributions", tags=["Contributions"],
-                   dependencies=[Depends(get_current_user_id)])
+                   dependencies=[Depends(get_current_user_id), Depends(require_contributions)])
 
 
 @router.post("/recommendation", response_model=ContributionRecommendationResponse,

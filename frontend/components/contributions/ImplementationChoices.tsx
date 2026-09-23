@@ -8,6 +8,13 @@ const descriptions = {
 };
 const choiceClass = (selected: boolean) => `min-h-12 w-full rounded-xl border p-3 text-left text-sm focus-visible:outline-2 focus-visible:outline-emerald-600 ${selected ? "border-forest bg-forest text-white" : "border-slate-300 text-slate-700"}`;
 
+export function ImplementationEducation() {
+  return <details className="arbor-panel"><summary className="min-h-11 cursor-pointer font-semibold text-slate-900">Explore implementation options</summary>
+    <p className="mt-2 text-sm text-slate-600">These are ways to implement a plan, not changes to its targets. No option is chosen for you.</p>
+    <dl className="mt-4 space-y-4">{BEGINNER_ROUTES.map(id => <div key={id}><dt className="font-medium text-slate-900">{ROUTES[id]}</dt><dd className="text-sm text-slate-600">{descriptions[id]}</dd></div>)}</dl>
+  </details>;
+}
+
 export default function ImplementationChoices({ route, bitcoinProvider, hasBitcoinTarget, onRoute, onBitcoin }: {
   route: RouteId | ""; bitcoinProvider: BitcoinProvider | null; hasBitcoinTarget: boolean;
   onRoute: (route: RouteId) => void; onBitcoin: (provider: BitcoinProvider) => void;

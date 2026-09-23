@@ -13,6 +13,7 @@ import ChatSection from "@/components/dashboard/ChatSection";
 import HealthSection from "@/components/dashboard/HealthSection";
 import WhatIfSection from "@/components/dashboard/WhatIfSection";
 import EditProfileForm from "@/components/EditProfileForm";
+import { AccountAccessProvider, AccountPlans, PlusFeature } from "./AccountAccess";
 import type { Plan } from "@/lib/types/plan";
 import { createLatestRequest, healthDependency, scenarioKey, type RequestState } from "@/lib/dashboardConsistency";
 import HoldingsSection from "@/components/dashboard/HoldingsSection";
@@ -24,13 +25,18 @@ import {
 } from "@/lib/api";
 
 type ResultsDashboardProps = {
+  userId?: string;
   plan: Plan;
   onSignOut: () => void;
   signingOut: boolean;
   logoutError: string;
 };
 
-export default function ResultsDashboard({
+export default function ResultsDashboard(props: ResultsDashboardProps) {
+  return <AccountAccessProvider key={props.userId} userId={props.userId}><LegacyDashboard {...props} /></AccountAccessProvider>;
+}
+
+function LegacyDashboard({
   plan: initialPlan,
   onSignOut, signingOut, logoutError,
 }: ResultsDashboardProps) {
@@ -112,6 +118,7 @@ export default function ResultsDashboard({
       </div>
 
       <div hidden={active !== "settings"} className="app-destination space-y-6">
+        <AccountPlans />
         <AppearanceSettings />
         <section className="arbor-panel">
           <h2 className="text-xl font-semibold text-slate-900">Your investment profile</h2>
@@ -125,13 +132,13 @@ export default function ResultsDashboard({
           <button type="button" disabled={saving} onClick={() => { setEditing(!editing); setSaveNotice(""); }} className="mt-5 rounded-xl bg-forest px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{editing ? "Close editor" : "Edit Profile"}</button>
           {saveNotice && <p role="status" className="mt-4 text-sm text-forest">{saveNotice}</p>}
         </section>
-        {editing && <EditProfileForm
+        {editing && <PlusFeature feature="profile_rebuild" title="Review and rebuild your investment profile"><EditProfileForm
           key={scenarioKey(plan) + plan.profile.risk_tolerance}
           plan={plan}
           onSavingChange={setSaving}
           onUpdated={updatedPlan => { setPlan(updatedPlan); setEditing(false); setSaveNotice("Profile saved. Your plan and projections are up to date."); }}
           onCancel={() => setEditing(false)}
-        />}
+        /></PlusFeature>}
       </div>
     </AppShell>
   );

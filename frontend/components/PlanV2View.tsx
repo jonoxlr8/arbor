@@ -10,10 +10,16 @@ import ContributionCard from "./contributions/ContributionCard";
 import InvestmentProfileEditor from "./InvestmentProfileEditor";
 import ChatSection from "./dashboard/ChatSection";
 import NextActionCard from "./NextActionCard";
+import { AccountAccessProvider, AccountPlans, PlusFeature } from "./AccountAccess";
+import { ImplementationEducation } from "./contributions/ImplementationChoices";
 
-export default function PlanV2View({ value, userId, onSignOut, signingOut, logoutError, onPlanChange }: {
+type Props = {
   value: PlanV2; userId?: string; onSignOut: () => void; signingOut: boolean; logoutError: string; onPlanChange?: (plan: AccountPlan) => void;
-}) {
+};
+export default function PlanV2View(props: Props) {
+  return <AccountAccessProvider key={props.userId} userId={props.userId}><PlanV2Shell {...props} /></AccountAccessProvider>;
+}
+function PlanV2Shell({ value, userId, onSignOut, signingOut, logoutError, onPlanChange }: Props) {
   const active = useSyncExternalStore(subscribeNavigation, navigationSnapshot, serverNavigationSnapshot);
   const [choosing, setChoosing] = useState(false);
   const [previousDestination, setPreviousDestination] = useState(active);
@@ -22,7 +28,7 @@ export default function PlanV2View({ value, userId, onSignOut, signingOut, logou
     setChoosing(false);
   }
   return <AppShell active={active} name={value.profile.full_name} onSignOut={onSignOut} signingOut={signingOut} logoutError={logoutError}>
-    {choosing && userId && onPlanChange ? <InvestmentProfileEditor value={value} userId={userId} onCancel={() => setChoosing(false)} onSaved={plan => { onPlanChange(plan); setChoosing(false); }} /> : <>
+    {choosing && userId && onPlanChange ? <PlusFeature feature="profile_rebuild" title="Review and rebuild your investment profile" onBack={() => setChoosing(false)}><InvestmentProfileEditor value={value} userId={userId} onCancel={() => setChoosing(false)} onSaved={plan => { onPlanChange(plan); setChoosing(false); }} /></PlusFeature> : <>
       {active === "home" && userId && <NextActionCard key={`${userId}:${JSON.stringify(value)}`} userId={userId} onAction={destination=>{
         if(destination === "investment_profile")setChoosing(true);
         else if(destination === "onboarding")window.location.reload();
@@ -40,7 +46,8 @@ export function V2Destination({ value, active, userId }: { value: PlanV2; active
   if (active === "portfolio" && value.plan.path === "short_term") return <section className="arbor-panel"><h2 className="text-xl font-semibold text-slate-900">Long-term scenarios are paused</h2><p className="mt-3 text-sm text-slate-600">Your short-term path has no active long-term allocation or contribution scenario. Any dormant or historical plan remains saved.</p><a className="entry-link mt-4 inline-flex min-h-11" href="#plan">Review your investment profile in Plan</a></section>;
   if (active === "portfolio" && value.plan.plan_basis !== "user_selected") return <section className="arbor-panel"><h2 className="text-xl font-semibold text-slate-900">Choose a plan for your scenarios</h2><p className="mt-3 text-sm text-slate-600">Your existing plan is preserved. Review the standard approaches and explicitly choose one before exploring new contribution scenarios.</p><a className="entry-link mt-4 inline-flex min-h-11 items-center" href="#plan">Explore approaches in Plan</a></section>;
   if (active === "portfolio" && userId) return <div className="space-y-6">
-    <ContributionCard key={`${userId}:${JSON.stringify(value)}`} value={value} userId={userId} />
+    <ImplementationEducation />
+    <PlusFeature feature="monthly_contribution_planner" title="Monthly Contribution Planner"><ContributionCard key={`${userId}:${JSON.stringify(value)}`} value={value} userId={userId} /></PlusFeature>
     <section className="arbor-panel"><h2 className="text-lg font-semibold text-slate-900">Recorded portfolio</h2><p className="mt-2 text-sm text-slate-600">Saved holdings and Plan Alignment are not yet connected to this plan. Scenarios use only the market values you enter above.</p></section>
   </div>;
   if (active === "portfolio") return <section className="arbor-panel">
@@ -49,6 +56,7 @@ export function V2Destination({ value, active, userId }: { value: PlanV2; active
     <a href="#plan" className="entry-link mt-4 inline-flex min-h-11 items-center">View your plan</a>
   </section>;
   if (active === "settings") return <div className="space-y-6">
+    <AccountPlans />
     <AppearanceSettings />
     <section className="arbor-panel">
       <h2 className="text-xl font-semibold text-slate-900">Your profile</h2>
@@ -94,6 +102,7 @@ function V2PlanContent({ value }: { value: PlanV2 }) {
         </section>}
       {plan.plan_basis !== "user_selected" ? <details className="space-y-4"><summary className="min-h-11 cursor-pointer py-3 font-medium text-slate-700">Earlier assessment and preference data</summary><PreferencesV2 value={value} historical /></details> : plan.path === "long_term" && <p className="text-sm text-slate-600">Your selected target is the standard model above. Any historical Technology or Bitcoin requests remain saved, but are not applied to this model.</p>}
       {value.historical_plan && plan.plan_basis === "user_selected" && <details><summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-slate-700">Preserved historical allocation</summary><PreferencesV2 value={{...value,plan:value.historical_plan}} historical /></details>}
+      <ImplementationEducation />
       <p className="text-sm leading-6 text-slate-500">Planning currency: PHP. This is a strategic plan, not a product recommendation or an investment order. Arbor does not purchase or hold investments for you.</p>
     </div>;
 }

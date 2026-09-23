@@ -6,6 +6,7 @@ import { HoldingsRequestError, parseHolding, parseHoldingsResponse } from "./hol
 import { FIELD_LABELS } from "./profileValidation";
 import type { ProjectionInput, ProjectionResult } from "./projectionScenario";
 import { apiBaseUrl } from "./apiConfig";
+import { FREE_LIMIT_MESSAGE, isAskUsage } from "./entitlements";
 
 const API_BASE_URL = apiBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL, process.env.NODE_ENV);
 
@@ -126,6 +127,7 @@ export function createProfileCreator(
 
 export type ArborChatResponse = {
   reply: string;
+  ask_usage?: import("./entitlements").AskUsage;
 };
 
 export function createChatReader(headers = getAuthHeaders, request: typeof fetch = fetch, timeoutMs = 12000) {
@@ -139,12 +141,16 @@ export function createChatReader(headers = getAuthHeaders, request: typeof fetch
     });
     if (response.status === 401) throw new Error("Your session has expired. Sign in again to continue.");
     if (response.status === 404) throw new Error("Create your Arbor plan first, then return to Ask Arbor.");
+    if (response.status === 429) {
+      const error: unknown = await response.json().catch(() => null);
+      if (error && typeof error === "object" && "detail" in error && error.detail && typeof error.detail === "object" && "code" in error.detail && error.detail.code === "ask_arbor_limit") throw new Error(FREE_LIMIT_MESSAGE);
+    }
     if (!response.ok) throw new Error("We couldn’t explain your plan right now. Please retry.");
     const body: unknown = await response.json();
     if (!body || typeof body !== "object" || !("reply" in body) || typeof body.reply !== "string" || !body.reply.trim() || body.reply.length > 12000) {
       throw new Error("The explanation was incomplete. Please retry.");
     }
-    return { reply: body.reply };
+    return { reply: body.reply, ...("ask_usage" in body && isAskUsage(body.ask_usage) ? { ask_usage: body.ask_usage } : {}) };
   }, signal, timeoutMs);
 }
 export const askArbor = createChatReader();

@@ -5,6 +5,8 @@ import { chatPlanKey, chatPrompts, chatErrorMessage, createChatSession } from "@
 import { askArbor } from "@/lib/api";
 import type { AccountPlan } from "@/lib/types/planV2";
 import { ArborMark } from "@/components/Logo";
+import { useAccountAccess } from "./AccountAccess";
+import { FREE_LIMIT_MESSAGE, type AskUsage } from "@/lib/entitlements";
 
 type ArborChatProps = {
   plan: AccountPlan;
@@ -158,6 +160,9 @@ export default function ArborChat({ plan }: ArborChatProps) {
 }
 
 function PlanChat({ v2 }: { v2: boolean }) {
+  const access = useAccountAccess();
+  const updateUsage = access?.updateUsage;
+  const [usage, setUsage] = useState<AskUsage | null>(null);
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -170,18 +175,19 @@ function PlanChat({ v2 }: { v2: boolean }) {
       setLoading(busy.current);
       setError(state.status === "error" ? chatErrorMessage(state.error) : "");
       if (state.status === "ready") {
+        if (state.data.ask_usage) { setUsage(state.data.ask_usage); updateUsage?.(state.data.ask_usage); }
         setMessages(previous => [...previous, { role: "user", text: state.data.question }, { role: "arbor", text: state.data.reply }]);
         setQuestion("");
       }
     });
     session.current = current;
     return () => { current.dispose(); session.current = null; };
-  }, []);
+  }, [updateUsage]);
 
   const sendMessage = async (prompt: string) => {
     const trimmedPrompt = prompt.trim();
 
-    if (!trimmedPrompt || busy.current) return;
+    if (!trimmedPrompt || busy.current || limited) return;
     await session.current?.send(trimmedPrompt);
   };
 
@@ -194,11 +200,17 @@ function PlanChat({ v2 }: { v2: boolean }) {
   };
 
   const prompts = chatPrompts(v2);
+  const currentUsage = usage ?? access?.value?.ask_usage;
+  const limited = error === FREE_LIMIT_MESSAGE || currentUsage?.remaining === 0;
 
   return (
     <div className="mt-6 min-w-0">
       {/* Intro */}
       <div className="text-sm">
+        {access?.value?.effective_tier === "plus" && <p className="mb-2 text-xs font-medium text-slate-500">Arbor Plus · Full Ask Arbor access</p>}
+        {currentUsage && !limited && <p role="status" className="mb-2 text-sm text-slate-600">{currentUsage.remaining} Free questions remaining this month.</p>}
+        {limited && <div role="status" className="mb-4 rounded-xl border border-slate-200 p-4"><p className="text-slate-700">{FREE_LIMIT_MESSAGE}</p><a className="entry-link mt-2 inline-flex min-h-11 items-center" href="#settings">Explore Arbor Plus</a></div>}
+        {access?.value?.ask_usage_available === false && <p role="status" className="mb-3 text-sm text-slate-600">Ask Arbor usage is temporarily unavailable. Your saved plan remains accessible.</p>}
         <p className="leading-7 text-slate-700">
           About your target plan—not actual holdings. No live market, tax or trading advice. Each question stands alone.
         </p>
@@ -213,7 +225,7 @@ function PlanChat({ v2 }: { v2: boolean }) {
             <button
               key={prompt}
               onClick={() => handlePromptClick(prompt)}
-              disabled={loading}
+              disabled={loading || limited}
               className="
                 rounded-full
                 min-h-11
@@ -258,7 +270,7 @@ function PlanChat({ v2 }: { v2: boolean }) {
         )}
       {/* Input */}
       <div className="mt-6">
-        {error && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-red-800">{error}</p>}
+        {error && error !== FREE_LIMIT_MESSAGE && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-red-800">{error}</p>}
         <textarea
           aria-label="Your question about your Arbor plan"
           maxLength={1000}
@@ -271,7 +283,7 @@ function PlanChat({ v2 }: { v2: boolean }) {
             }
           }}
           rows={3}
-          disabled={loading}
+          disabled={loading || limited}
           placeholder="Ask about Arbor targets, asset roles or projection assumptions..."
           className="
             w-full
@@ -302,7 +314,7 @@ function PlanChat({ v2 }: { v2: boolean }) {
 
         <button
           onClick={handleAsk}
-          disabled={loading || !question.trim()}
+          disabled={loading || limited || !question.trim()}
           className={`
             mt-4
             w-full
@@ -312,7 +324,7 @@ function PlanChat({ v2 }: { v2: boolean }) {
             shadow-sm
             transition
             ${
-              loading || !question.trim()
+              loading || limited || !question.trim()
                 ? "cursor-not-allowed bg-slate-300 text-slate-500"
                 : "bg-emerald-600 text-white hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-md"
             }

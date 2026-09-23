@@ -6,6 +6,8 @@ import ContributionCard, { ContributionFeedback } from "../components/contributi
 import ContributionResultView from "../components/contributions/ContributionResult";
 import ImplementationChoices from "../components/contributions/ImplementationChoices";
 import { V2Destination } from "../components/PlanV2View";
+import { AccountAccessContext } from "../components/AccountAccess";
+import type { Entitlements } from "./entitlements";
 import { BEGINNER_ROUTES, BITCOIN_PROVIDERS, contributionRequest, createContributionController, decimalText, formatContributionMoney, needsOwnershipReview, needsImplementationChoice, validInput } from "./contributions";
 import { createContributionApi, parseContributionResponse } from "./contributionApi";
 import type { PlanV2 } from "./types/planV2";
@@ -122,7 +124,8 @@ test("card labels, default monthly mode, feedback and placement", () => {
   for (const label of ["Contribution amount", "Current portfolio", "Global Equity", "Technology", "Bitcoin", "Defensive", "Product ownership", "Choose an option"]) assert.ok(html.includes(label));
   assert.doesNotMatch(html, /999999|Buy now/);
   const selected: PlanV2 = {...contributionFixture, plan:{...contributionFixture.plan, plan_basis:"user_selected"}};
-  const destination = renderToStaticMarkup(createElement(V2Destination, { value: selected, active: "portfolio", userId: "A" }));
+  const access = { features: ["monthly_contribution_planner"] } as Entitlements;
+  const destination = renderToStaticMarkup(createElement(AccountAccessContext.Provider, { value: { value: access, error: "", retry: () => {} } }, createElement(V2Destination, { value: selected, active: "portfolio", userId: "A" })));
   assert.match(destination, /Contribution scenarios/); assert.match(destination, /not yet connected/);
   const feedback = renderToStaticMarkup(createElement(ContributionFeedback, { loading: true, error: "Please try again" }));
   assert.match(feedback, /role="status"/); assert.match(feedback, /role="alert"/);

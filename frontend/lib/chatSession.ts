@@ -1,4 +1,5 @@
 import type { AccountPlan } from "./types/planV2";
+import { FREE_LIMIT_MESSAGE, type AskUsage } from "./entitlements";
 import { createLatestRequest, type RequestState } from "./dashboardConsistency";
 
 export function chatPlanKey(plan: AccountPlan) {
@@ -13,14 +14,14 @@ export function chatPrompts(v2: boolean) {
 }
 
 export function chatErrorMessage(error: unknown) {
-  return typeof error === "string" && ["Your session has expired. Sign in again to continue.", "Create your Arbor plan first, then return to Ask Arbor."].includes(error)
+  return typeof error === "string" && [FREE_LIMIT_MESSAGE, "Your session has expired. Sign in again to continue.", "Create your Arbor plan first, then return to Ask Arbor."].includes(error)
     ? error : "We couldn’t explain your plan right now. Please try again.";
 }
 
 /** One context per mounted chat. Disposing prevents late replies and errors. */
 export function createChatSession(
-  request: (message: string, signal: AbortSignal) => Promise<{ reply: string }>,
-  onState: (state: RequestState<{ question: string; reply: string }>) => void,
+  request: (message: string, signal: AbortSignal) => Promise<{ reply: string; ask_usage?: AskUsage }>,
+  onState: (state: RequestState<{ question: string; reply: string; ask_usage?: AskUsage }>) => void,
   timeoutMs = 12000,
 ) {
   const latest = createLatestRequest(onState, timeoutMs);

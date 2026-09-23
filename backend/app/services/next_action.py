@@ -3,6 +3,7 @@ from typing import Literal
 
 from app.services.strategy_v2 import DomainModel
 from app.services.arbor.v2_context import build_v2_context
+from app.services.entitlements import Entitlements
 
 
 class NextAction(DomainModel):
@@ -10,12 +11,22 @@ class NextAction(DomainModel):
                  "review_historical_plan", "review_monthly_contribution"]
     title: str
     explanation: str
-    destination: Literal["investment_profile", "onboarding", "plan", "portfolio"]
+    destination: Literal["investment_profile", "onboarding", "plan", "portfolio", "settings"]
     button_label: str
     blocking: bool = False
 
 
-def get_next_action(saved: dict | None) -> NextAction:
+def get_next_action(saved: dict | None, entitlements: Entitlements | None = None) -> NextAction:
+    action = _plan_action(saved)
+    if entitlements is not None:
+        if action.destination == "portfolio" and "monthly_contribution_planner" not in entitlements.features:
+            return action.model_copy(update={"title": "Explore contribution planning", "explanation": "Contribution scenarios are part of Arbor Plus. Your selected plan and basic planning tools remain available on Free.", "destination": "settings", "button_label": "Explore Arbor Plus"})
+        if action.destination == "investment_profile" and "profile_rebuild" not in entitlements.features:
+            return action.model_copy(update={"destination": "plan", "button_label": "Review saved plan"})
+    return action
+
+
+def _plan_action(saved: dict | None) -> NextAction:
     """Consume an owner-restored canonical response. None means verified absence.
 
     Corrupt records raise; they are not interpreted as new/incomplete profiles.

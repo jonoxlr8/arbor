@@ -94,7 +94,7 @@ export default function Home() {
 
   if (account.status === "ready") {
     if (isPlanV2(account.plan)) return <PlanV2View key={account.userId} userId={account.userId} value={account.plan} onPlanChange={plan => setAccount(current => current.status === "ready" && current.userId === account.userId ? { ...current, plan } : current)} onSignOut={handleSignOut} signingOut={signingOut} logoutError={logoutError} />;
-    return <ResultsDashboard key={account.userId} plan={account.plan} onSignOut={handleSignOut} signingOut={signingOut} logoutError={logoutError} />;
+    return <ResultsDashboard key={account.userId} userId={account.userId} plan={account.plan} onSignOut={handleSignOut} signingOut={signingOut} logoutError={logoutError} />;
   }
 
   return <OnboardingV2 key={account.userId} userId={account.userId}

@@ -6,13 +6,13 @@ import { InvalidSessionError } from "./accountRecovery";
 export type NextAction = {
   key: "financial_foundation" | "complete_profile" | "review_short_term_path" | "review_historical_plan" | "review_monthly_contribution";
   title: string; explanation: string; button_label: string; blocking: boolean;
-  destination: "investment_profile" | "onboarding" | "plan" | "portfolio";
+  destination: "investment_profile" | "onboarding" | "plan" | "portfolio" | "settings";
 };
 export function isNextAction(value: unknown): value is NextAction {
   if (!value || typeof value !== "object") return false;
   const v = value as NextAction;
   return ["financial_foundation","complete_profile","review_short_term_path","review_historical_plan","review_monthly_contribution"].includes(v.key) &&
-    ["investment_profile","onboarding","plan","portfolio"].includes(v.destination) &&
+    ["investment_profile","onboarding","plan","portfolio","settings"].includes(v.destination) &&
     [v.title,v.explanation,v.button_label].every(s=>typeof s === "string" && s.length>0) && typeof v.blocking === "boolean";
 }
 export function createNextActionReader(token=getAccessToken, request:typeof fetch=fetch) {
