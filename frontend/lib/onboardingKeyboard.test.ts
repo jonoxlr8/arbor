@@ -34,9 +34,11 @@ test("multiline, secondary buttons and IME keep native behavior", () => {
 test("click and keyboard share form submit, validation and synchronous request lock", () => {
   const source = readFileSync("components/OnboardingV2.tsx", "utf8");
   assert.match(source, /onSubmit=\{e => \{ e.preventDefault\(\); void next\(\); \}\}/);
-  assert.match(source, /type="submit" disabled=\{!valid \|\| sessionFailed\}/);
+  assert.match(source, /type="submit" disabled=\{!valid\}/);
   assert.match(source, /e.currentTarget.requestSubmit\(\)/);
-  assert.match(source, /if \(!valid \|\| request.current \|\| sessionFailed \|\| signingOut\) return/);
-  assert.ok(source.indexOf("request.current = controller") < source.indexOf("await createV2Profile"));
+  assert.match(source, /if \(!valid \|\| signingOut \|\| review\) return/);
+  assert.doesNotMatch(source, /await createV2Profile/);
+  const selection = readFileSync("components/ApproachSelection.tsx", "utf8");
+  assert.ok(selection.indexOf("saving.current=true") < selection.indexOf("await createV2Profile"));
   assert.doesNotMatch(source, /document.addEventListener/);
 });

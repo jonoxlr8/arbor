@@ -8,10 +8,12 @@ from fastapi.testclient import TestClient
 from app.auth import get_current_user_id
 from app.routes import profiles, chat, holdings
 from app.services import investment_plan_service
+from app.schemas.profile_v2 import ProfileV2Create
+from app.services.profile_v2 import profile_v2_row
 
 BASE = dict(strategy_engine_version="2.0", full_name="New user", country="Philippines", currency="PHP",
             emergency_savings="three_to_six_months", high_interest_debt="none", goal_target=None,
-            current_portfolio_value=0, monthly_investment=0, horizon="ten_plus_years", risk_response="hold")
+            current_portfolio_value=0, monthly_investment=0, horizon="ten_plus_years", risk_response="hold", selected_approach="Growth")
 LEGACY = dict(full_name="Existing user", country="Philippines", currency="PHP", goal_target=100000,
               current_portfolio_value=100, monthly_investment=20, investment_horizon=10, risk_tolerance="Balanced")
 HEADERS = {"Authorization": "Bearer test"}
@@ -21,7 +23,9 @@ def test_preferences_persist_requests_and_restore_effective_target(harness):
     client, state = harness
     payload = {**BASE, "horizon": "three_to_five_years", "risk_response": "invest_more",
                "saved_preferences": {"technology_tilt": 10, "bitcoin": 10}}
-    response = client.post("/v2/profiles", json=payload, headers=HEADERS)
+    payload.pop("selected_approach")
+    state["rows"]["A"] = profile_v2_row(ProfileV2Create(**payload), "A")
+    response = client.get("/profiles/me", headers=HEADERS)
     assert response.status_code == 200
     result = response.json()
     assert result == client.get("/profiles/me", headers=HEADERS).json()
@@ -40,7 +44,7 @@ def test_preferences_persist_requests_and_restore_effective_target(harness):
 
 def test_existing_3oe_json_without_preferences_still_restores(harness):
     client, state = harness
-    client.post("/v2/profiles", json=BASE, headers=HEADERS)
+    state["rows"]["A"] = profile_v2_row(ProfileV2Create(**{k:v for k,v in BASE.items() if k != "selected_approach"}), "A")
     assert "saved_preferences" not in state["rows"]["A"]["v2_inputs"]
     response = client.get("/profiles/me", headers=HEADERS)
     assert response.status_code == 200
@@ -59,7 +63,7 @@ def test_bad_preferences_rejected_on_write_and_restore(harness, preferences):
 
 def test_short_term_preferences_persist_without_a_long_term_target(harness):
     client, _ = harness
-    payload = {**BASE, "horizon": "less_than_3_years", "saved_preferences": {"technology_tilt": 10, "bitcoin": 10}}
+    payload = {**BASE, "horizon": "less_than_3_years", "selected_approach": "short_term", "saved_preferences": {"technology_tilt": 10, "bitcoin": 10}}
     created = client.post("/v2/profiles", json=payload, headers=HEADERS).json()
     assert created == client.get("/profiles/me", headers=HEADERS).json()
     assert created["plan"]["preference_result"]["effective_target"] is None
@@ -136,7 +140,7 @@ def harness(monkeypatch):
 ])
 def test_create_and_restore_paths_and_readiness(harness, horizon, risk, strategy, savings, debt, state_name):
     client, state = harness
-    payload = {**BASE, "horizon": horizon, "risk_response": risk, "emergency_savings": savings, "high_interest_debt": debt}
+    payload = {**BASE, "horizon": horizon, "risk_response": risk, "emergency_savings": savings, "high_interest_debt": debt, "selected_approach": strategy or "short_term"}
     response = client.post("/v2/profiles", json=payload, headers=HEADERS)
     assert response.status_code == 200, response.text
     result = response.json()

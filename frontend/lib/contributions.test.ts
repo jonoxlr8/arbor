@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ContributionCard, { ContributionFeedback } from "../components/contributions/ContributionCard";
 import ContributionResultView from "../components/contributions/ContributionResult";
 import { V2Destination } from "../components/PlanV2View";
-import { contributionRequest, createContributionController, decimalText, formatContributionMoney, needsOwnershipReview, validInput } from "./contributions";
+import { contributionRequest, createContributionController, decimalText, formatContributionMoney, needsOwnershipReview, needsImplementationChoice, validInput } from "./contributions";
 import { createContributionApi, parseContributionResponse } from "./contributionApi";
 import type { PlanV2 } from "./types/planV2";
 import type { ContributionAllocation, ContributionPlan, ContributionProduct, ContributionRecommendation, ContributionResult, MappedContribution, MinimumCheck } from "./types/contributions";
@@ -85,14 +85,14 @@ test("invalid response and mismatched request identity rejected", () => {
 test("monthly plan multiple allocations, summary, warnings and product names", () => {
   const second = { ...row, allocated_amount: "2000", implementation: { ...mapped, product: { ...product, product_id: "other", display_name: "Another public fund" } } };
   const html = render(plan({ allocations: [{ ...row, allocated_amount: "10000" }, second] }));
-  assert.match(html, /Your ₱12,000 plan/); assert.match(html, /Another public fund/);
-  assert.match(html, /Ready to invest/); assert.match(html, /Check provider eligibility/);
+  assert.match(html, /Your ₱12,000 scenario/); assert.match(html, /Another public fund/);
+  assert.match(html, /Minimum check met/); assert.match(html, /Check provider eligibility/);
   assert.match(html, /Broad match/); assert.doesNotMatch(html, /Buy now|Execute|affiliate|compensation|partnership/);
 });
 for (const mode of ["plan", "recommendation"] as const) {
   test(`${mode} reserve hides products even if server sends preview metadata`, () => {
     const html = render(mode === "plan" ? plan({ status: "reserve", reserve_amount: "12000" }) : recommendation({ action: "reserve" }));
-    assert.match(html, /financial reserve/); assert.doesNotMatch(html, /ATRAM/);
+    assert.match(html, /accounts for the full contribution as reserve/); assert.doesNotMatch(html, /ATRAM/);
   });
   test(`${mode} short term is informational`, () => {
     const html = render(mode === "plan" ? plan({ path: "short_term", state: "not_applicable" }) : recommendation({ path: "short_term", state: "not_applicable" }));
@@ -107,21 +107,22 @@ for (const mode of ["plan", "recommendation"] as const) {
 test("below minimum and partial waiting retain available amounts", () => {
   const below = { ...minimum, status: "below_minimum" as const, amount_needed_to_minimum: "500" };
   const html = render(recommendation({ action: "wait", execution_status: "below_minimum", minimum: below }));
-  assert.match(html, /₱500 more/); assert.match(html, /Available: ₱12,000/);
+  assert.match(html, /Difference to minimum: ₱500/); assert.match(html, /Available: ₱12,000/);
   const partial = render(plan({ status: "partial", invested_amount: "11300", unallocated_amount: "700", blocked_allocations: [{ ...row, allocated_amount: "0", minimum: below }] }));
-  assert.match(partial, /₱700 is waiting/); assert.match(partial, /Minimums to check/);
+  assert.match(partial, /₱700 remains unallocated/); assert.match(partial, /Minimums to check/);
 });
 test("empty results and null product are safe", () => {
-  assert.match(render(plan({ allocations: [], invested_amount: "0", unallocated_amount: "12000", status: "wait" })), /₱12,000 is waiting/);
-  assert.match(render(recommendation({ selected: null, minimum: null, action: "no_action" })), /No purchase is suggested/);
+  assert.match(render(plan({ allocations: [], invested_amount: "0", unallocated_amount: "12000", status: "wait" })), /₱12,000 remains unallocated/);
+  assert.match(render(recommendation({ selected: null, minimum: null, action: "no_action" })), /No eligible target gap/);
 });
 test("card labels, default monthly mode, feedback and placement", () => {
   const html = renderToStaticMarkup(createElement(ContributionCard, { value: contributionFixture, userId: "A" }));
-  assert.match(html, /aria-pressed="true"[^>]*>Monthly plan/);
+  assert.match(html, /aria-pressed="true"[^>]*>Monthly scenario/);
   for (const label of ["Contribution amount", "Current portfolio", "Global Equity", "Technology", "Bitcoin", "Defensive", "Product ownership", "Choose a route"]) assert.ok(html.includes(label));
   assert.doesNotMatch(html, /999999|Buy now/);
-  const destination = renderToStaticMarkup(createElement(V2Destination, { value: contributionFixture, active: "portfolio", userId: "A" }));
-  assert.match(destination, /Invest this month/); assert.match(destination, /not yet connected/);
+  const selected: PlanV2 = {...contributionFixture, plan:{...contributionFixture.plan, plan_basis:"user_selected"}};
+  const destination = renderToStaticMarkup(createElement(V2Destination, { value: selected, active: "portfolio", userId: "A" }));
+  assert.match(destination, /Contribution scenarios/); assert.match(destination, /not yet connected/);
   const feedback = renderToStaticMarkup(createElement(ContributionFeedback, { loading: true, error: "Please try again" }));
   assert.match(feedback, /role="status"/); assert.match(feedback, /role="alert"/);
 });
@@ -131,6 +132,21 @@ test("explicit ownership review required for newly returned products", () => {
   assert.equal(needsOwnershipReview(plan(), { gotrade_vt: true }), true);
   const req = contributionRequest(contributionFixture, "12000", values, "gcash", ["gotrade_vt"], false);
   assert.deepEqual(req.current_portfolio.owned_product_ids, ["gotrade_vt"]);
+});
+test("ownership never implies product selection, and newly mapped options require a fresh choice", () => {
+  assert.equal(needsImplementationChoice(plan(), {}), true);
+  assert.equal(needsImplementationChoice(plan(), { gcash_global_equity: false }), true);
+  assert.equal(needsImplementationChoice(plan(), { gotrade_vt: true }), true);
+  assert.equal(needsImplementationChoice(plan(), { gcash_global_equity: true }), false);
+  assert.equal(needsImplementationChoice(recommendation({selected:null}), {}), false);
+});
+test("scenario result describes mathematics and minimums, not security-level instructions", () => {
+  for (const result of [plan(), recommendation(), plan({status:"reserve", reserve_amount:"12000"})]) {
+    const html = render(result);
+    assert.match(html, /mathematical target-alignment scenario/);
+    assert.match(html, /You make your own investment decisions/);
+    assert.doesNotMatch(html, /Ready to invest|You should buy|Arbor recommends|Buy now|Keep this contribution/);
+  }
 });
 test("duplicate submit, changed inputs, mode switch and unmount ignore stale results", async () => {
   const seen: unknown[] = [];

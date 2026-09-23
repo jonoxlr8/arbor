@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import Card from "./Card";
 import Logo from "./Logo";
 import ProgressBar from "./ProgressBar";
-import { createV2Profile } from "@/lib/profileV2Api";
-import { InvalidSessionError } from "@/lib/accountRecovery";
+import ApproachSelection from "./ApproachSelection";
 import { answerError, EMPTY_ANSWERS, ONBOARDING_STEPS, onboardingRequest, SAVINGS_OPTIONS, DEBT_OPTIONS, HORIZON_OPTIONS, RISK_OPTIONS, type Answers } from "@/lib/onboardingV2";
-import type { AccountPlan } from "@/lib/types/planV2";
+import type { AccountPlan, ProfileV2Input } from "@/lib/types/planV2";
 import { onboardingEnter } from "@/lib/onboardingKeyboard";
 
 const QUESTIONS: Record<keyof Answers, string> = {
@@ -67,52 +66,36 @@ export default function OnboardingV2({ userId, onComplete, onSignOut, signingOut
 }) {
   const [answers, setAnswers] = useState<Answers>({ ...EMPTY_ANSWERS });
   const [step, setStep] = useState(0);
-  const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [sessionFailed, setSessionFailed] = useState(false);
-  const request = useRef<AbortController | null>(null);
-  useEffect(() => () => { request.current?.abort(); request.current = null; }, []);
-  const field = ONBOARDING_STEPS[step];
+  const [review, setReview] = useState<ProfileV2Input | null>(null);
+  const steps = ONBOARDING_STEPS;
+  const field = steps[step];
   const valid = !answerError(field, answers[field]);
-  async function next() {
-    if (!valid || request.current || sessionFailed || signingOut) return;
-    if (step < ONBOARDING_STEPS.length - 1) { setStep(step + 1); return; }
-    const controller = new AbortController();
-    request.current = controller;
-    setSaving(true); setError("");
-    try {
-      const result = await createV2Profile(onboardingRequest(answers), userId, controller.signal);
-      if (request.current === controller && !controller.signal.aborted) onComplete(result);
-    } catch (failure) {
-      if (request.current !== controller || controller.signal.aborted) return;
-      setError(failure instanceof Error ? failure.message : "We couldn’t save your plan. Please retry.");
-      if (failure instanceof InvalidSessionError) setSessionFailed(true);
-    } finally {
-      if (request.current === controller) { request.current = null; setSaving(false); }
-    }
+  function next() {
+    if (!valid || signingOut || review) return;
+    if (step < steps.length - 1) { setStep(step + 1); return; }
+    setReview(onboardingRequest(answers));
   }
+  if (review) return <main className="min-h-dvh bg-background px-4 py-6 sm:py-12"><ApproachSelection input={review} userId={userId} onComplete={onComplete} onBack={() => setReview(null)} /></main>;
   return <main className="flex min-h-dvh justify-center bg-background px-4 py-6 sm:py-12">
     <div className="w-full min-w-0 max-w-xl"><Card>
       <Logo />
-      <ProgressBar step={step + 1} totalSteps={ONBOARDING_STEPS.length} />
+      <ProgressBar step={step + 1} totalSteps={steps.length + 1} />
       <form onSubmit={e => { e.preventDefault(); void next(); }} onKeyDown={e => {
         const target = e.target as HTMLElement;
         onboardingEnter({ key: e.key, repeat: e.repeat, isComposing: e.nativeEvent.isComposing,
           tagName: target.tagName, choice: target.hasAttribute("data-onboarding-choice"),
           contentEditable: target.isContentEditable, preventDefault: () => e.preventDefault(),
-        }, () => { if (valid && !saving && !signingOut && !sessionFailed) e.currentTarget.requestSubmit(); });
+        }, () => { if (valid && !signingOut) e.currentTarget.requestSubmit(); });
       }}>
-        <fieldset disabled={saving || signingOut} className="min-w-0">
+        <fieldset disabled={signingOut} className="min-w-0">
           <div className="my-3 min-h-11">{step > 0 && <button type="button" className="min-h-11 text-sm font-medium text-slate-600" onClick={() => setStep(step - 1)}>← Back</button>}</div>
           <OnboardingQuestionV2 field={field} value={answers[field]} onChange={value => setAnswers(previous => ({ ...previous, [field]: value }))} />
-          {(field === "technology_tilt" || field === "bitcoin") && answers.horizon === "less_than_3_years" && <p className="mt-3 text-sm text-slate-600">These preferences can be saved, but long-term allocation does not apply to your short-term plan.</p>}
           {field === "goal_target" && <button type="button" onClick={() => { setAnswers(a => ({ ...a, goal_target: "" })); setStep(step + 1); }} className="mt-3 min-h-11 text-sm font-medium text-emerald-700">Not yet</button>}
-          <button type="submit" disabled={!valid || sessionFailed} className="mt-6 min-h-12 w-full rounded-2xl bg-emerald-700 px-4 py-3 font-semibold text-white disabled:opacity-50">
-            {saving ? "Saving your plan…" : step === ONBOARDING_STEPS.length - 1 ? (error ? "Retry saving my plan" : "Show my Arbor plan") : "Continue →"}
+          <button type="submit" disabled={!valid} className="mt-6 min-h-12 w-full rounded-2xl bg-emerald-700 px-4 py-3 font-semibold text-white disabled:opacity-50">
+            {step === steps.length - 1 ? "Review approaches" : "Continue →"}
           </button>
         </fieldset>
       </form>
-      {error && <p role="alert" className="mt-4 text-sm text-red-700">{error}</p>}
       <button type="button" disabled={signingOut} onClick={onSignOut} className="mt-4 min-h-11 text-sm font-medium text-slate-600">{signingOut ? "Signing out…" : "Sign out"}</button>
       {logoutError && <p role="alert" className="text-sm text-red-700">{logoutError}</p>}
     </Card></div>

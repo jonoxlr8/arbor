@@ -14,8 +14,8 @@ router = APIRouter(prefix="/contributions", tags=["Contributions"],
 
 
 @router.post("/recommendation", response_model=ContributionRecommendationResponse,
-             summary="What should I buy next?",
-             description="Calculate one next contribution from explicit inputs. Does not execute or save a trade.")
+             summary="Explore the largest eligible target gap",
+             description="Calculate a target-alignment scenario from user-selected inputs. Products are catalog options, not instructions. Nothing is traded or saved.")
 def contribution_recommendation(request: ContributionAPIRequest):
     try:
         result = recommend_next_contribution(request.to_domain())
@@ -25,8 +25,8 @@ def contribution_recommendation(request: ContributionAPIRequest):
 
 
 @router.post("/plan", response_model=ContributionPlanResponse,
-             summary="How should I allocate this contribution?",
-             description="Calculate a full contribution plan with executable, unverified, waiting and reserve amounts. Nothing is persisted.")
+             summary="Explore a monthly contribution scenario",
+             description="Calculate target alignment with minimum-checked, unverified, waiting and reserve amounts. Nothing is invested or persisted.")
 def contribution_plan(request: ContributionAPIRequest):
     try:
         result = plan_monthly_contribution(request.to_domain())

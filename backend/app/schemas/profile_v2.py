@@ -1,6 +1,6 @@
 """Explicit v2 onboarding boundary; no legacy request reinterpretation."""
 from typing import Annotated, Literal
-from pydantic import Field, StringConstraints
+from pydantic import Field, StringConstraints, model_validator
 
 from app.schemas.validation import Money, Goal
 from app.services.strategy_v2 import DomainModel, StrategyType, RoleWeight, SavedPreferences
@@ -22,9 +22,18 @@ class ProfileV2Create(DomainModel):
     horizon: HorizonBucket
     risk_response: RiskResponse
     saved_preferences: SavedPreferences = Field(default_factory=SavedPreferences)
+    selected_approach: StrategyType | Literal["short_term"] | None = None
+
+    @model_validator(mode="after")
+    def selected_path(self):
+        if self.selected_approach is not None:
+            if (self.horizon == HorizonBucket.LESS_THAN_3_YEARS) != (self.selected_approach == "short_term"):
+                raise ValueError("The selected approach must match the planning path")
+        return self
 
 
 class PlanDTO(DomainModel):
+    plan_basis: Literal["historical_assessment", "user_selected"] = "historical_assessment"
     strategy_engine_version: Literal["2.0"] = "2.0"
     selection: StrategySelectionResult
     readiness: ReadinessResult

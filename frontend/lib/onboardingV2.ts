@@ -18,8 +18,9 @@ export const RISK_OPTIONS = [
   ["sell_all", "Sell all"], ["sell_some", "Sell some"], ["hold", "Hold"],
   ["continue_investing", "Keep investing"], ["invest_more", "Invest more"],
 ] as const;
-export const ONBOARDING_STEPS = ["full_name", "country", "emergency_savings", "high_interest_debt", "goal_target", "current_portfolio_value", "monthly_investment", "horizon", "risk_response", "technology_tilt", "bitcoin"] as const;
-export type Answers = Record<typeof ONBOARDING_STEPS[number], string>;
+export const ONBOARDING_STEPS = ["full_name", "country", "emergency_savings", "high_interest_debt", "goal_target", "current_portfolio_value", "monthly_investment", "horizon", "risk_response"] as const;
+// Preference inputs remain readable for historical compatibility, not new model selection.
+export type Answers = Record<typeof ONBOARDING_STEPS[number] | "technology_tilt" | "bitcoin", string>;
 export const EMPTY_ANSWERS: Answers = {
   full_name: "", country: "", emergency_savings: "", high_interest_debt: "", goal_target: "",
   current_portfolio_value: "", monthly_investment: "", horizon: "", risk_response: "",

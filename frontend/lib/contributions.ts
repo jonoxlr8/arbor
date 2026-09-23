@@ -48,6 +48,9 @@ export function resultProducts(result: ContributionResult): ContributionProduct[
 export function needsOwnershipReview(result: ContributionResult, confirmed: Record<string, boolean>) {
   return resultProducts(result).some(product => !Object.hasOwn(confirmed, product.product_id));
 }
+export function needsImplementationChoice(result: ContributionResult, accepted: Record<string, boolean>) {
+  return resultProducts(result).some(product => accepted[product.product_id] !== true);
+}
 export function createContributionController(onState: (state: RequestState<ContributionResult> | null) => void) {
   const latest = createLatestRequest<ContributionResult>(onState);
   let pending = false, revision = 0;

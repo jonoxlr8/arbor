@@ -22,8 +22,10 @@ export type ProfileV2Input = {
   goal_target: number | null; current_portfolio_value: number; monthly_investment: number;
   horizon: Horizon; risk_response: RiskResponse;
   saved_preferences?: SavedPreferences;
+  selected_approach?: Strategy | "short_term" | null;
 };
 type PlanCommon = {
+  plan_basis?: "historical_assessment" | "user_selected";
   strategy_engine_version: "2.0";
   inflation_pct: number;
   preference_result?: PreferenceResult;

@@ -3,6 +3,8 @@ from app.schemas.profile_v2 import (
     ProfileV2Create, ProfileV2Response, LongTermPlanDTO, ShortTermPlanDTO,
 )
 from app.services.portfolio_plan_v2 import build_portfolio_plan
+from app.services.strategy_v2 import StrategyType, SavedPreferences, get_base_strategy
+from app.services.preferences_v2 import apply_preferences
 
 V2_ANSWER_FIELDS = ("emergency_savings", "high_interest_debt", "horizon", "risk_response")
 SHARED_FIELDS = ("full_name", "country", "currency", "goal_target",
@@ -14,6 +16,8 @@ def profile_v2_row(profile: ProfileV2Create, user_id: str) -> dict:
     inputs = {key: data[key] for key in V2_ANSWER_FIELDS}
     if "saved_preferences" in profile.model_fields_set:
         inputs["saved_preferences"] = data["saved_preferences"]
+    if profile.selected_approach is not None:
+        inputs["selected_approach"] = data["selected_approach"]
     return {"user_id": user_id, "strategy_engine_version": "2.0",
             **{key: data[key] for key in SHARED_FIELDS},
             "v2_inputs": inputs,
@@ -24,9 +28,9 @@ def profile_v2_row(profile: ProfileV2Create, user_id: str) -> dict:
 
 def restore_profile_v2(row: dict) -> dict:
     inputs = row.get("v2_inputs")
-    if not isinstance(inputs, dict) or set(inputs) not in (
-        set(V2_ANSWER_FIELDS), set(V2_ANSWER_FIELDS) | {"saved_preferences"}
-    ):
+    if (not isinstance(inputs, dict) or not set(V2_ANSWER_FIELDS).issubset(inputs)
+            or set(inputs) - set(V2_ANSWER_FIELDS) - {"saved_preferences", "selected_approach"}
+            or ("selected_approach" in inputs and inputs["selected_approach"] is None)):
         raise ValueError("Invalid saved v2 input shape")
     profile = ProfileV2Create.model_validate({
         "strategy_engine_version": row["strategy_engine_version"],
@@ -38,6 +42,19 @@ def restore_profile_v2(row: dict) -> dict:
     common = dict(selection=domain.selection, readiness=domain.readiness,
                   inflation_pct=float(domain.inflation_annual_rate * 100),
                   preference_result=domain.preference_result)
+    if profile.selected_approach is not None:
+        common["plan_basis"] = "user_selected"
+        chosen = None if profile.selected_approach == "short_term" else StrategyType(profile.selected_approach)
+        # Assessment remains informational. Standard models never apply historical satellites.
+        common["preference_result"] = apply_preferences(chosen, domain.readiness, SavedPreferences())
+        if chosen is None:
+            plan = ShortTermPlanDTO(**common)
+        else:
+            definition = get_base_strategy(chosen)
+            plan = LongTermPlanDTO(**common, selected_strategy=chosen,
+                planning_return_pct=float(definition.planning_annual_rate * 100),
+                base_allocation=list(definition.allocation.weights))
+        return ProfileV2Response(profile=profile, plan=plan).model_dump(mode="json")
     if domain.path == "short_term":
         plan = ShortTermPlanDTO(**common)
     else:

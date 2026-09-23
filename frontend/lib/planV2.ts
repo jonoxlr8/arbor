@@ -13,12 +13,12 @@ function validPreferences(profile: Record<string, unknown>, plan: Record<string,
   if (saved !== undefined && (!object(saved) || !points(saved.technology_tilt) || !points(saved.bitcoin))) return false;
   const result = plan.preference_result;
   // Pre-3O-F responses remain readable, but no effective target is fabricated.
-  if (result === undefined) return saved === undefined || (object(saved) && saved.technology_tilt === 0 && saved.bitcoin === 0);
+  if (result === undefined) return plan.plan_basis !== "user_selected" && (saved === undefined || (object(saved) && saved.technology_tilt === 0 && saved.bitcoin === 0));
   if (!object(result)) return false;
   for (const key of ["technology_tilt", "bitcoin"] as const) {
     const item = result[key];
     if (!object(item) || !points(item.requested_percentage_points) || !points(item.effective_percentage_points) ||
-        item.requested_percentage_points !== (object(saved) ? saved[key] : 0) ||
+        item.requested_percentage_points !== (plan.plan_basis === "user_selected" ? 0 : object(saved) ? saved[key] : 0) ||
         item.effective_percentage_points > item.requested_percentage_points ||
         !(item.strategy_cap_percentage_points === null || points(item.strategy_cap_percentage_points)) ||
         !Array.isArray(item.reasons) || !item.reasons.every(reason => ["strategy_cap", "readiness_restricted", "short_term_path"].includes(reason)) ||
@@ -32,12 +32,16 @@ function validPreferences(profile: Record<string, unknown>, plan: Record<string,
   if (!Array.isArray(weights) || weights.length !== 4 || !weights.every(w => object(w) && ["global_equity", "defensive", "technology_tilt", "crypto"].includes(w.role as string) && points(w.percentage_points)) ||
       new Set(weights.map(w => w.role)).size !== 4 || weights.reduce((total, w) => total + w.percentage_points, 0) !== 100) return false;
   // Response consistency only; no frontend strategy caps or allocation generation.
+  if (plan.plan_basis === "user_selected" && (!Array.isArray(plan.base_allocation) || !plan.base_allocation.every(w => object(w) && weights.find(item => item.role === w.role)?.percentage_points === w.percentage_points))) return false;
   return weights.find(w => w.role === "technology_tilt").percentage_points === tech.effective_percentage_points &&
     weights.find(w => w.role === "crypto").percentage_points === btc.effective_percentage_points;
 }
 export function isPlanV2(value: unknown): value is PlanV2 {
   if (!object(value) || value.strategy_engine_version !== "2.0" || !object(value.profile) || !object(value.plan)) return false;
   const p = value.profile, plan = value.plan;
+  if (plan.plan_basis !== undefined && !["historical_assessment", "user_selected"].includes(plan.plan_basis as string)) return false;
+  if (plan.plan_basis === "user_selected" && p.selected_approach !== (plan.path === "short_term" ? "short_term" : plan.selected_strategy)) return false;
+  if (plan.plan_basis !== "user_selected" && p.selected_approach != null) return false;
   if (!validPreferences(p, plan)) return false;
   if (p.strategy_engine_version !== "2.0" || typeof p.full_name !== "string" || !p.full_name.trim() || p.full_name.length > 120 || p.country !== "Philippines" || p.currency !== "PHP" ||
       !money(p.current_portfolio_value) || !money(p.monthly_investment) ||
@@ -55,7 +59,7 @@ export function isPlanV2(value: unknown): value is PlanV2 {
   if (value.profile_warning != null && typeof value.profile_warning !== "string") return false;
   if (plan.path === "short_term") return plan.selected_strategy === null && plan.base_allocation === null && plan.planning_return_pct === null &&
     s.is_short_term && !s.cap_applied && s.selected_strategy === null && s.horizon_maximum_strategy === null && s.reason === "short_term_path";
-  return plan.path === "long_term" && !s.is_short_term && strategy(plan.selected_strategy) && s.selected_strategy === plan.selected_strategy &&
+  return plan.path === "long_term" && !s.is_short_term && strategy(plan.selected_strategy) && (plan.plan_basis === "user_selected" || s.selected_strategy === plan.selected_strategy) &&
     strategy(s.horizon_maximum_strategy) && ["horizon_capped", "requested_strategy_retained"].includes(s.reason as string) &&
     finite(plan.planning_return_pct) && plan.planning_return_pct >= 0 && plan.planning_return_pct <= 100 &&
     Array.isArray(plan.base_allocation) && plan.base_allocation.length === 2 &&

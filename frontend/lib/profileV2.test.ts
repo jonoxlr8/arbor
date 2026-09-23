@@ -33,7 +33,7 @@ test("v2 restored plan uses the shared desktop/mobile shell and destinations", (
 test("v2 unsupported destinations remain safe; settings preserves appearance and profile", () => {
   for (const active of ["portfolio", "ask"] as const) {
     const markup = renderToStaticMarkup(createElement(V2Destination, { value: fixture(), active }));
-    assert.match(markup, /not available for this plan yet/);
+    assert.match(markup, active === "portfolio" ? /Choose a plan for your scenarios/ : /not available for this plan yet/);
     assert.match(markup, /href="#plan"/);
     assert.doesNotMatch(markup, /Planning return:|Add Holding|Send message/);
   }
@@ -70,14 +70,14 @@ test("Foundation First preserves Aggressive preview without contribution action"
   const markup = html(value);
   assert.match(markup,/Aggressive strategy preview/);
   assert.match(markup,/Foundation First/);
-  assert.match(markup,/contributions are paused/);
+  assert.match(markup,/contribution allocations are paused/);
   assert.doesNotMatch(markup, /Create contribution|Invest now/);
 });
 test("Getting Ready notes core continuation and the beta boundary", () => {
   const value = fixture();
   value.plan.readiness = {...value.plan.readiness,readiness:"getting_ready",bitcoin_satellite_readiness_eligible:false,message_requirement:"readiness_caution"};
-  assert.match(html(value),/Core investing can continue/);
-  assert.match(html(value),/Bitcoin preferences are unavailable/);
+  assert.match(html(value),/financial-foundation consideration/);
+  assert.match(html(value),/do not assess whether an investment is right for you/);
 });
 test("short-term contract and view contain no long-term allocation or return", () => {
   const value = fixture();
@@ -92,7 +92,7 @@ test("short-term contract and view contain no long-term allocation or return", (
 test("cap explanation uses returned requested/selected strategy and horizon", () => {
   const value = fixture();
   value.plan.selection = {...value.plan.selection,requested_strategy:"Aggressive",horizon:"five_to_ten_years",cap_applied:true,reason:"horizon_capped"};
-  assert.match(html(value),/suggests Aggressive, but your 5–10 years horizon limits the plan to Growth/);
+  assert.match(html(value),/Aggressive volatility comfort; the horizon check for 5–10 years returned Growth/);
 });
 test("v2 POST sends only answers to dedicated endpoint with authenticated token", async () => {
   const create = createV2ProfileCreator(async user => {assert.equal(user,"A");return "test-token";},async(url, options) => {
@@ -156,9 +156,10 @@ test("v2 profile read preserves single auth refresh and rejects malformed succes
 });
 test("onboarding keeps pending/cancellation guards and no browser persistence",()=>{
   const source=readFileSync("components/OnboardingV2.tsx","utf8");
-  assert.ok(source.includes("request.current || sessionFailed"));
-  assert.ok(source.includes("request.current === controller"));
-  assert.ok(source.includes("request.current?.abort()"));
+  const selection=readFileSync("components/ApproachSelection.tsx","utf8");
+  assert.ok(selection.includes("saving.current"));
+  assert.ok(selection.includes("!controller.signal.aborted"));
+  assert.ok(selection.includes("owner.current?.abort()"));
   assert.ok(source.includes("setStep(step - 1)"));
   assert.doesNotMatch(source,/localStorage|sessionStorage|console\.log/);
 });
