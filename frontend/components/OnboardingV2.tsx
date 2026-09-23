@@ -18,8 +18,6 @@ const QUESTIONS: Record<keyof Answers, string> = {
   monthly_investment: "How much would you plan to invest monthly?",
   horizon: "When might you need this money?",
   risk_response: "If your investments fell about 30%, what would you most likely do?",
-  technology_tilt: "Do you want extra exposure to technology?",
-  bitcoin: "Do you want Bitcoin in your plan?",
 };
 const HELP: Partial<Record<keyof Answers, string>> = {
   emergency_savings: "Think about how many months of essential expenses your savings could cover.",
@@ -28,8 +26,7 @@ const HELP: Partial<Record<keyof Answers, string>> = {
   current_portfolio_value: "A separate planning amount, not your recorded holdings. Starting from zero is fine.",
   monthly_investment: "A planning amount, not an order. Zero is fine.",
   country: "Your country sets your planning currency. This beta supports the Philippines.",
-  technology_tilt: "Choose a percentage to request, or leave 0% for none. Arbor may limit or pause it based on your strategy and readiness. It won’t increase your planning return.",
-  bitcoin: "Choose a percentage to request, or leave 0% for none. Arbor may limit or pause it based on your strategy and readiness. It won’t increase your planning return.",
+  risk_response: "This helps describe your comfort with market swings. It does not choose your plan.",
 };
 const OPTIONS: Partial<Record<keyof Answers, readonly (readonly [string, string])[]>> = {
   country: [["Philippines", "Philippines · PHP"], ["Other", "Other country"]],
@@ -39,7 +36,6 @@ const OPTIONS: Partial<Record<keyof Answers, readonly (readonly [string, string]
 
 export function OnboardingQuestionV2({ field, value, onChange }: {field: keyof Answers; value: string; onChange: (value: string) => void}) {
   const options = OPTIONS[field];
-  const preference = field === "technology_tilt" || field === "bitcoin";
   const error = value ? answerError(field, value) : null;
   return <section aria-labelledby="onboarding-question">
     <h1 id="onboarding-question" className="text-2xl font-semibold text-slate-900">{QUESTIONS[field]}</h1>
@@ -52,10 +48,10 @@ export function OnboardingQuestionV2({ field, value, onChange }: {field: keyof A
       <input id={field} value={value} onChange={e => onChange(e.target.value)}
         type={field === "full_name" ? "text" : "number"} inputMode={field === "full_name" ? "text" : "decimal"}
         autoComplete={field === "full_name" ? "given-name" : "off"} maxLength={field === "full_name" ? 120 : undefined}
-        min={field === "full_name" ? undefined : 0} max={preference ? 100 : undefined} step={preference ? "1" : "any"}
+        min={field === "full_name" ? undefined : 0} step="any"
         aria-invalid={!!error} aria-describedby={error ? "answer-error" : undefined}
         className="min-h-14 w-full min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-3 text-xl text-slate-900" />
-      {field !== "full_name" && <p className="mt-2 text-sm text-slate-500">{preference ? "Requested allocation (%) · 0 means none" : "Planning currency: PHP"}</p>}
+      {field !== "full_name" && <p className="mt-2 text-sm text-slate-500">Planning currency: PHP</p>}
     </div>}
     {error && <p id="answer-error" role="status" className="mt-3 text-sm text-slate-600">{error}</p>}
   </section>;

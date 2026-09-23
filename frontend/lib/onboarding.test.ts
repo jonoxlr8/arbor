@@ -8,11 +8,12 @@ import { ONBOARDING_STEPS, EMPTY_ANSWERS, onboardingRequest, answerError, SAVING
 import { authErrorMessage } from "./authErrorMessage";
 
 test("v2 asks nine assessment questions before explicit model selection", () => {
-  assert.deepEqual(ONBOARDING_STEPS, ["full_name", "country", "emergency_savings", "high_interest_debt", "goal_target", "current_portfolio_value", "monthly_investment", "horizon", "risk_response"]);
+  assert.deepEqual(ONBOARDING_STEPS, ["full_name", "country", "goal_target", "horizon", "emergency_savings", "high_interest_debt", "current_portfolio_value", "monthly_investment", "risk_response"]);
   const screens = ONBOARDING_STEPS.map(field => renderToStaticMarkup(createElement(OnboardingQuestionV2, {field, value:"", onChange:() => {}})));
   assert.match(screens[0], /your name/);
   assert.match(screens[1], /Where do you live/);
   assert.equal(screens.filter(html => html.includes("Where do you live")).length, 1);
+  for (const html of screens) assert.doesNotMatch(html, /satellite|cap engine|requested allocation|technology percentage|bitcoin percentage|risk score|recommended|suitable/i);
   for (let step = 1; step <= 10; step++) assert.match(renderToStaticMarkup(createElement(ProgressBar, {step, totalSteps:10})), new RegExp(`Step ${step} of 10`));
 });
 test("Philippines establishes PHP; Other stays blocked", () => {

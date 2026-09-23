@@ -91,6 +91,18 @@ def test_zero_sleeve_and_ownership_distinction():
     assert "not investments you necessarily own" in result.reply
 
 
+def test_standard_model_education_does_not_invent_historical_requests():
+    result = answer("Explain my preferences").reply
+    assert "No non-zero historical preference requests" in result
+    assert "saved earlier preference requests are" not in result
+    technology = answer("What about technology?").reply
+    assert "Broad equity investments can already include technology companies" in technology
+    assert "extra concentration" in technology
+    bitcoin = answer("Why isn't Bitcoin in my plan?").reply
+    assert "not automatically added" in bitcoin
+    assert "separate user decision" in bitcoin
+
+
 def test_historical_preferences_and_selected_requests():
     kwargs = dict(risk_response="invest_more", saved_preferences={"technology_tilt":20,"bitcoin":20})
     historical = answer("Explain my historical preferences", selected_approach=None, **kwargs).reply

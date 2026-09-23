@@ -9,6 +9,27 @@ from app.services.profile_v2 import profile_v2_row, restore_profile_v2
 from app.services.strategy_v2 import StrategyType, get_base_strategy
 
 
+@pytest.mark.parametrize("strategy", list(StrategyType))
+def test_new_onboarding_without_preferences_saves_only_selected_model(harness, strategy):
+    client, state = harness
+    payload = {k:v for k,v in BASE.items() if k != "saved_preferences"}
+    payload.update(selected_approach=strategy.value, risk_response="sell_all")
+    response = client.post("/v2/profiles", json=payload, headers=HEADERS)
+    assert response.status_code == 200
+    assert "saved_preferences" not in state["rows"]["A"]["v2_inputs"]
+    plan = response.json()["plan"]
+    assert plan["selected_strategy"] == strategy.value
+    assert plan["selection"]["requested_strategy"] == "Conservative"
+    target = plan["preference_result"]["effective_target"]["allocation"]["weights"]
+    canonical = get_base_strategy(strategy).allocation
+    assert {w["role"]:w["percentage_points"] for w in target} == {
+        "global_equity": canonical.weights[0].percentage_points,
+        "defensive": canonical.weights[1].percentage_points,
+        "technology_tilt": 0, "crypto": 0,
+    }
+    assert client.get("/profiles/me", headers=HEADERS).json() == response.json()
+
+
 def test_new_profile_requires_explicit_choice(harness):
     client, state = harness
     for choice in [None, "invalid"]:

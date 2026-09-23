@@ -115,6 +115,8 @@ def explain(c: V2ChatContext, question: str, intent: str) -> str:
         return f"Your recorded reaction corresponds to {c.assessment.value} volatility comfort. The informational horizon check returned {check} for {HORIZONS[c.horizon]}. " + identity(c)
     if intent == "preferences":
         tech, btc = c.historical_requests
+        if c.plan_basis == "user_selected" and not (tech or btc):
+            return "Your selected standardized approach defines your targets. Technology and Bitcoin are not added automatically. No non-zero historical preference requests are recorded."
         result = f"Your saved earlier preference requests are Technology {tech}% and Bitcoin {btc}%. These are requests, not actual holdings. "
         if c.plan_basis == "user_selected": return result + "They do not apply to your selected standardized model, which has no Technology or Bitcoin satellites. Your saved requests have not been overwritten."
         if c.historical_effective:
@@ -139,7 +141,12 @@ def explain(c: V2ChatContext, question: str, intent: str) -> str:
     for role in roles or ROLES:
         label, _, purpose = ROLES[role]
         weight = c.target.weight(role)
-        lines.append(f"- {label}: {weight}% target. " + (purpose if weight else "This plan does not allocate to this sleeve."))
+        explanation = purpose if weight else "This plan does not allocate to this sleeve."
+        if role == AssetRole.TECHNOLOGY_TILT:
+            explanation += " Broad equity investments can already include technology companies. A dedicated Technology sleeve adds extra concentration."
+        if role == AssetRole.CRYPTO and not weight:
+            explanation += " Bitcoin is not automatically added to a standardized plan. Its price can be highly volatile; owning it is a separate user decision."
+        lines.append(f"- {label}: {weight}% target. " + explanation)
     return identity(c) + "\n\n" + "\n".join(lines) + "\n\nThese are plan targets, not investments you necessarily own. " + readiness(c)
 
 

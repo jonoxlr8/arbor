@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import ApproachSelection, { ApproachOptions, validApproaches } from "../components/ApproachSelection";
+import ApproachSelection, { ApproachOptions, InvestingProfileSummary, validApproaches } from "../components/ApproachSelection";
 import { V2Destination } from "../components/PlanV2View";
 import PreferencesV2 from "../components/PreferencesV2";
 import { createApproachRequester } from "./profileV2Api";
@@ -17,6 +17,15 @@ const options = {assessment:{requested_strategy:"Conservative" as const,is_short
   {strategy:"Growth" as const,allocation:[{role:"global_equity",percentage_points:80},{role:"defensive",percentage_points:20}],planning_return_pct:5},
   {strategy:"Aggressive" as const,allocation:[{role:"global_equity",percentage_points:100},{role:"defensive",percentage_points:0}],planning_return_pct:5.5},
 ]};
+test("investing profile summarizes answers without assigning a model or inventing a goal",()=>{
+  const html=renderToStaticMarkup(createElement(InvestingProfileSummary,{input,assessment:options.assessment}));
+  assert.match(html,/Your investing profile/);
+  assert.match(html,/10\+ years/);
+  assert.match(html,/lower comfort with market swings/);
+  assert.match(html,/Not set yet/);
+  assert.match(html,/no plan has been selected for you/);
+  assert.doesNotMatch(html,/Conservative|Risk Score|recommended|satellite/i);
+});
 function selected(): PlanV2 {
   return {strategy_engine_version:"2.0",profile:{...input},plan:{strategy_engine_version:"2.0",plan_basis:"user_selected",path:"long_term",selected_strategy:"Growth",base_allocation:[{role:"global_equity",percentage_points:80},{role:"defensive",percentage_points:20}],planning_return_pct:5,inflation_pct:3,
     selection:{risk_response:"sell_all",horizon:"ten_plus_years",requested_strategy:"Conservative",selected_strategy:"Conservative",horizon_maximum_strategy:"Aggressive",is_short_term:false,cap_applied:false,reason:"requested_strategy_retained"},

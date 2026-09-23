@@ -3,8 +3,7 @@ import assert from "node:assert/strict";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import PreferencesV2 from "../components/PreferencesV2";
-import { OnboardingQuestionV2 } from "../components/OnboardingV2";
-import { EMPTY_ANSWERS, onboardingRequest, answerError } from "./onboardingV2";
+import { EMPTY_ANSWERS, onboardingRequest } from "./onboardingV2";
 import { isPlanV2 } from "./planV2";
 import type { PlanV2, PreferenceApplication, Strategy } from "./types/planV2";
 
@@ -23,21 +22,13 @@ function fixture(strategy: Strategy = "Growth", equity = 65, defensive = 20, tec
 const render = (value: PlanV2) => renderToStaticMarkup(createElement(PreferencesV2, { value }));
 const answers = { ...EMPTY_ANSWERS, full_name: "Alex", country: "Philippines", emergency_savings: "three_to_six_months", high_interest_debt: "none", horizon: "ten_plus_years", risk_response: "hold", current_portfolio_value: "0", monthly_investment: "0" };
 
-test("zero defaults and over-cap requests use nested backend payload without clamping", () => {
-  assert.deepEqual(onboardingRequest(answers).saved_preferences, { technology_tilt: 0, bitcoin: 0 });
-  const payload = onboardingRequest({ ...answers, technology_tilt: "100", bitcoin: "100" });
-  assert.deepEqual(payload.saved_preferences, { technology_tilt: 100, bitcoin: 100 });
+test("new onboarding omits preferences, including stale extra state", () => {
+  assert.equal("saved_preferences" in onboardingRequest(answers), false);
+  const stale = { ...answers, technology_tilt: "100", bitcoin: "100", saved_preferences: {technology_tilt:100,bitcoin:100} };
+  const payload = onboardingRequest(stale);
+  assert.equal("saved_preferences" in payload, false);
   assert.equal("technology_tilt" in payload, false);
-});
-test("preference inputs accept only whole 0–100 values, with percent rather than PHP labels", () => {
-  for (const field of ["technology_tilt", "bitcoin"] as const) {
-    for (const value of ["0", "10", "100"]) assert.equal(answerError(field, value), null);
-    for (const value of ["", " ", "-1", "101", "1.5", "Infinity", "NaN"]) assert.ok(answerError(field, value));
-    const html = renderToStaticMarkup(createElement(OnboardingQuestionV2, { field, value: "0", onChange: () => {} }));
-    assert.match(html, /max="100" step="1"/);
-    assert.match(html, /Requested allocation/);
-    assert.doesNotMatch(html, /Planning currency: PHP/);
-  }
+  assert.equal("bitcoin" in payload, false);
 });
 test("Growth saved 10/10 displays backend effective 10/5 and cap explanation", () => {
   const value = fixture();
