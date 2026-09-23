@@ -21,6 +21,7 @@ Arbor is an AI-powered investment companion designed to help people build long-t
 - Run relevant tests and builds after changes, proportionate to the scope of the work.
 - Do not unnecessarily upgrade dependencies or change package versions.
 - Never expose, log, commit, or share secrets, API keys, passwords, tokens, or `.env` values.
+- For authenticated browser QA, follow `docs/E2E_AUTH.md` and use the isolated `withAuthenticatedBrowser` Playwright helper / `npm run e2e:auth` from `frontend/`. Do not reuse the owner's personal Chrome session or copy test auth state into it. If dedicated test configuration is missing, ask for local configuration, not credentials in chat.
 - Keep investment calculations and business logic separate from UI code where practical.
 - Prefer readable, beginner-friendly code and clear names: the project owner is not a professional programmer.
 

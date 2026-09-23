@@ -7,7 +7,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "e2e:auth": "node scripts/e2e/auth.mjs",
+    "e2e:browser": "node scripts/e2e/auth.mjs --headed",
+    "e2e:test": "node --test scripts/e2e/auth.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
@@ -24,6 +27,7 @@
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
+    "playwright": "^1.63.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
