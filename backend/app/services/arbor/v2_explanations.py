@@ -46,6 +46,8 @@ def classify_v2_question(question: str) -> tuple[str, str]:
         return "investment", "decision_boundary"
     if has(r"what should i do next|what.*next step|next action"):
         return "product_support", "next_action"
+    if has(r"check[ -]?in|how much did i record|recorded.*this month|did i.*(?:complete|invest)"):
+        return "product_support", "monthly_checkin"
     if has(r"arbor plus|subscription|billing|paid plan|what (?:account )?plan am i on"):
         return "product_support", "plus"
     if has(r"(how|where).*(change|edit|select|choose).*(plan|approach)"):
@@ -101,6 +103,7 @@ def readiness(c: V2ChatContext) -> str:
 
 
 def explain(c: V2ChatContext, question: str, intent: str) -> str:
+    if intent == "monthly_checkin": return "Monthly activity is separate from your holdings. I need your saved check-in record to explain completion."
     if intent == "out_of_scope": return SCOPE
     if intent == "decision_boundary": return DECISION
     if intent == "plus": return "I don’t have a confirmed Arbor Plus feature or pricing contract to explain. I can help with the plan and planning tools currently available in Arbor."

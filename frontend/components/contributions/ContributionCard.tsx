@@ -7,6 +7,7 @@ import { contributionRequest, createContributionController, EMPTY_VALUES, needsO
 import { getContributionPlan, getContributionRecommendation } from "@/lib/contributionApi";
 import ContributionResult from "./ContributionResult";
 import ImplementationChoices from "./ImplementationChoices";
+import { MonthlyCheckin } from "../MonthlyCheckin";
 import { portfolioApi, portfolioValues, type LivePortfolioData } from "@/lib/livePortfolio";
 
 const inputClass = "mt-1 min-h-12 w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-slate-900";
@@ -83,6 +84,7 @@ export default function ContributionCard({ value, userId, portfolio }: { value: 
       }}>Use these options in my scenario</button>
     </section>}
     {result && !review && <ContributionResult result={result} />}
+    <MonthlyCheckin value={value} userId={userId} scenarioAmount={result && !review && result.data.state === "active" ? result.data.contribution_amount : undefined}/>
   </section>;
 }
 

@@ -4,14 +4,14 @@ import { boundedRequest } from "./dashboardConsistency";
 import { InvalidSessionError } from "./accountRecovery";
 
 export type NextAction = {
-  key: "financial_foundation" | "complete_profile" | "review_short_term_path" | "review_historical_plan" | "review_monthly_contribution" | "add_first_holding" | "update_portfolio";
+  key: "financial_foundation" | "complete_profile" | "review_short_term_path" | "review_historical_plan" | "review_monthly_contribution" | "add_first_holding" | "update_portfolio" | "monthly_complete";
   title: string; explanation: string; button_label: string; blocking: boolean;
   destination: "investment_profile" | "onboarding" | "plan" | "portfolio" | "settings";
 };
 export function isNextAction(value: unknown): value is NextAction {
   if (!value || typeof value !== "object") return false;
   const v = value as NextAction;
-  return ["financial_foundation","complete_profile","review_short_term_path","review_historical_plan","review_monthly_contribution","add_first_holding","update_portfolio"].includes(v.key) &&
+  return ["financial_foundation","complete_profile","review_short_term_path","review_historical_plan","review_monthly_contribution","add_first_holding","update_portfolio","monthly_complete"].includes(v.key) &&
     ["investment_profile","onboarding","plan","portfolio","settings"].includes(v.destination) &&
     [v.title,v.explanation,v.button_label].every(s=>typeof s === "string" && s.length>0) && typeof v.blocking === "boolean";
 }

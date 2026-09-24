@@ -5,6 +5,8 @@ import Card from "./Card";
 import Logo from "./Logo";
 import ProgressBar from "./ProgressBar";
 import ApproachSelection from "./ApproachSelection";
+import PlanCreated from "./PlanCreated";
+import { isPlanV2 } from "@/lib/planV2";
 import { answerError, EMPTY_ANSWERS, ONBOARDING_STEPS, onboardingRequest, SAVINGS_OPTIONS, DEBT_OPTIONS, HORIZON_OPTIONS, RISK_OPTIONS, type Answers } from "@/lib/onboardingV2";
 import type { AccountPlan, ProfileV2Input } from "@/lib/types/planV2";
 import { onboardingEnter } from "@/lib/onboardingKeyboard";
@@ -63,6 +65,7 @@ export default function OnboardingV2({ userId, onComplete, onSignOut, signingOut
   const [answers, setAnswers] = useState<Answers>({ ...EMPTY_ANSWERS });
   const [step, setStep] = useState(0);
   const [review, setReview] = useState<ProfileV2Input | null>(null);
+  const [created, setCreated] = useState<AccountPlan | null>(null);
   const steps = ONBOARDING_STEPS;
   const field = steps[step];
   const valid = !answerError(field, answers[field]);
@@ -71,7 +74,8 @@ export default function OnboardingV2({ userId, onComplete, onSignOut, signingOut
     if (step < steps.length - 1) { setStep(step + 1); return; }
     setReview(onboardingRequest(answers));
   }
-  if (review) return <main className="min-h-dvh bg-background px-4 py-6 sm:py-12"><ApproachSelection input={review} userId={userId} onComplete={onComplete} onBack={() => setReview(null)} /></main>;
+  if (isPlanV2(created)) return <PlanCreated value={created} onContinue={destination=>{window.location.hash=destination;onComplete(created);}}/>;
+  if (review) return <main className="min-h-dvh bg-background px-4 py-6 sm:py-12"><ApproachSelection input={review} userId={userId} onComplete={plan=>{if(isPlanV2(plan))setCreated(plan);else onComplete(plan);}} onBack={() => setReview(null)} /></main>;
   return <main className="flex min-h-dvh justify-center bg-background px-4 py-6 sm:py-12">
     <div className="w-full min-w-0 max-w-xl"><Card>
       <Logo />

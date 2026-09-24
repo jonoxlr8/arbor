@@ -287,7 +287,9 @@ def next_action(user_id: str = Depends(get_current_user_id), authorization: str 
         if live_portfolio_enabled() and saved and "live_portfolio" in access.features and get_next_action(saved, access).key == "review_monthly_contribution":
             from app.routes.live_portfolio import optional_portfolio
             portfolio = optional_portfolio(user_id, authorization, saved)
-        return get_next_action(saved, access, portfolio)
+        from app.services.monthly_checkin import read_monthly
+        monthly = read_monthly(user_id, authorization, saved, access)
+        return get_next_action(saved, access, portfolio, monthly)
     except (KeyError, ValueError, TypeError):
         raise HTTPException(503, "Your saved profile could not be checked. Please retry.") from None
 

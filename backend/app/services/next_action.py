@@ -9,7 +9,7 @@ from app.services.live_portfolio import Portfolio
 
 class NextAction(DomainModel):
     key: Literal["financial_foundation", "complete_profile", "review_short_term_path",
-                 "review_historical_plan", "review_monthly_contribution", "add_first_holding", "update_portfolio"]
+                 "review_historical_plan", "review_monthly_contribution", "add_first_holding", "update_portfolio", "monthly_complete"]
     title: str
     explanation: str
     destination: Literal["investment_profile", "onboarding", "plan", "portfolio", "settings"]
@@ -17,7 +17,7 @@ class NextAction(DomainModel):
     blocking: bool = False
 
 
-def get_next_action(saved: dict | None, entitlements: Entitlements | None = None, portfolio: Portfolio | None = None) -> NextAction:
+def get_next_action(saved: dict | None, entitlements: Entitlements | None = None, portfolio: Portfolio | None = None, monthly: dict | None = None) -> NextAction:
     action = _plan_action(saved)
     if action.key == "review_monthly_contribution" and portfolio is not None:
         if not portfolio.holdings:
@@ -33,6 +33,16 @@ def get_next_action(saved: dict | None, entitlements: Entitlements | None = None
             return action.model_copy(update={"title": "Explore contribution planning", "explanation": "Contribution scenarios are part of Arbor Plus. Your selected plan and basic planning tools remain available on Free.", "destination": "settings", "button_label": "Explore Arbor Plus"})
         if action.destination == "investment_profile" and "profile_rebuild" not in entitlements.features:
             return action.model_copy(update={"destination": "plan", "button_label": "Review saved plan"})
+    if action.key == "review_monthly_contribution" and action.destination == "portfolio" and monthly:
+        from datetime import datetime
+        label = datetime.strptime(monthly["month"], "%Y-%m").strftime("%B")
+        if monthly.get("current"):
+            from decimal import Decimal
+            amount = Decimal(monthly["current"]["amount_php"])
+            return NextAction(key="monthly_complete", title=f"You’re set for {label}",
+                explanation=f"You recorded ₱{amount:,.2f} as invested outside Arbor. Your holdings remain tracked separately. The next calendar month starts a new check-in (UTC).",
+                destination="portfolio", button_label="View your portfolio")
+        return action.model_copy(update={"title": f"{label} check-in", "explanation": "Review your plan and contribution scenario. If you invested outside Arbor, you can record it afterward. This check-in uses the UTC calendar month."})
     return action
 
 

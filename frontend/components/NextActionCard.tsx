@@ -13,6 +13,14 @@ export function NextActionContent({action,onAction}:{action:NextAction;onAction:
 export default function NextActionCard({userId,onAction}:{userId:string;onAction:(destination:NextAction["destination"], action:NextAction)=>void}) {
   const [action,setAction]=useState<NextAction|null>(null),[error,setError]=useState(""),[retry,setRetry]=useState(0);
   useEffect(()=>{
+    let month=new Date().toISOString().slice(0,7);
+    const refresh=()=>{setAction(null);setError("");setRetry(n=>n+1);};
+    const visible=()=>{if(document.visibilityState==="visible")refresh();};
+    const timer=setInterval(()=>{const next=new Date().toISOString().slice(0,7);if(next!==month){month=next;refresh();}},60000);
+    window.addEventListener("arbor-monthly-changed",refresh);document.addEventListener("visibilitychange",visible);
+    return()=>{clearInterval(timer);window.removeEventListener("arbor-monthly-changed",refresh);document.removeEventListener("visibilitychange",visible);};
+  },[]);
+  useEffect(()=>{
     const controller=new AbortController();
     readNextAction(userId,controller.signal).then(value=>{if(!controller.signal.aborted)setAction(value);}).catch(error=>{
       if(!controller.signal.aborted)setError(error instanceof Error ? error.message : "Please retry.");

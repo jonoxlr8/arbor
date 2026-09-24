@@ -61,7 +61,7 @@ def test_beta_entitlement_is_separate_and_no_quota_table(disabled):
     body = response.json()
     assert (body["tier"], body["status"]) == ("plus", "trial")
     assert "live_portfolio" in body["features"]
-    assert body["availability"] == {"live_portfolio": False}
+    assert body["availability"] == {"live_portfolio": False, "monthly_checkin": False}
     assert body["ask_usage"] is None
 
 
@@ -94,7 +94,7 @@ def test_enabled_availability_does_not_query_storage_or_grant_free_access(disabl
     monkeypatch.setenv("MARKETSTACK_API_KEY", "synthetic")
     monkeypatch.setenv("COINRANKING_API_KEY", "synthetic")
     monkeypatch.setenv("MARKETSTACK_DISPLAY_RIGHTS_CONFIRMED", "true")
-    assert disabled.get("/account/entitlements").json()["availability"] == {"live_portfolio": True}
+    assert disabled.get("/account/entitlements").json()["availability"] == {"live_portfolio": True, "monthly_checkin": False}
     from app.services import entitlements
     monkeypatch.setattr(entitlements, "get_entitlements", lambda _: resolve_entitlements("free", "active"))
     assert disabled.get("/v2/portfolio").status_code == 403

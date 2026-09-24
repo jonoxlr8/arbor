@@ -10,7 +10,8 @@ router = APIRouter()
 @router.get("/account/entitlements")
 def account_entitlements(response: Response, user_id: str = Depends(get_current_user_id), authorization: str | None = Header(default=None)):
     value = get_entitlements(user_id)
-    availability = {"live_portfolio": live_portfolio_enabled()}
+    from app.services.monthly_checkin import enabled
+    availability = {"live_portfolio": live_portfolio_enabled(), "monthly_checkin": enabled()}
     response.headers["Cache-Control"] = "private, no-store"
     try:
         usage = ask_usage(value, authorization)
