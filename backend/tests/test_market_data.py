@@ -194,7 +194,7 @@ def test_writer_only_targets_cache_and_lease():
     def capture(r):
         calls.append(r)
         return httpx.Response(200,json=True) if "/rpc/" in r.url.path else httpx.Response(201)
-    cache=SharedCache(httpx.Client(transport=httpx.MockTransport(capture)),"https://synthetic.supabase.co","synthetic-server-key")
+    cache=SharedCache(httpx.Client(transport=httpx.MockTransport(capture)),"https://synthetic.supabase.co","sb_secret_synthetic_test_only")
     record=manual_nav("dragonfi_defensive","1","2026-09-24","https://www.bpi.com.ph/fund","PHP",NOW)
     cache.write([record]);assert cache.claim("coinranking",600)
     assert [r.url.path for r in calls]==["/rest/v1/arbor_market_prices","/rest/v1/rpc/arbor_claim_market_refresh"]

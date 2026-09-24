@@ -253,9 +253,22 @@ provenance URLs are rejected. Older NAV dates cannot replace newer ones through 
 Server-only ignored environment variables:
 
 - `SUPABASE_URL`: existing project URL.
-- `SUPABASE_MARKET_DATA_KEY`: separately configured privileged cache-writer credential
-  (service-role/secret capability); **only the operator CLI** consumes it. Prefer a
-  dedicated restricted writer deployment/secret store; never frontend or user routes.
+- `SUPABASE_MARKET_DATA_KEY`: prefer a dedicated modern Supabase server secret key
+  (`sb_secret_...`) for Arbor's market-data operator. Create/configure it only when
+  production setup is explicitly authorized, and store it only in Render/backend
+  secrets for the trusted operator environment. **Only the operator CLI** consumes
+  it; never put it in frontend config, `NEXT_PUBLIC_*`, source control, or chat.
+  Secret keys bypass RLS and are not restricted to market-data tables merely by
+  giving them a dedicated name. Restrict access to the operator environment.
+  Modern keys are sent only in `apikey`, with no `Authorization` header and no JWT
+  decoding. JWT-shaped legacy `service_role` keys remain compatibility-only:
+  they use `apikey` plus `Authorization: Bearer <legacy JWT>`. Supabase validates
+  their signature and role; local shape detection does not grant privileges.
+  Do not provision new setups with legacy keys. Missing/malformed credentials
+  fail before network access with static, credential-free errors.
+  The destination comes only from server-configured `SUPABASE_URL` (HTTPS project
+  root); no user-request URL/key input exists. Cache operations are allowlisted
+  and redirects are disabled.
 - `MARKETSTACK_API_KEY`, `COINRANKING_API_KEY`.
 - `MARKETSTACK_DISPLAY_RIGHTS_CONFIRMED`: explicit activation sign-off, not credentials.
 - `LIVE_PORTFOLIO_ENABLED`: remains false until activation is approved.
