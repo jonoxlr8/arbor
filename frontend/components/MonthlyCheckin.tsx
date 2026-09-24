@@ -12,8 +12,8 @@ export function MonthlyCheckin({value,userId,scenarioAmount}:{value:PlanV2;userI
 }
 
 export function MonthlySummary({state}:{state:MonthlyState}) {
-  return <div role="status"><h3 className="text-lg font-semibold">{monthLabel(state.month)} {state.current?"check-in complete":"check-in"}</h3>
-    {state.current ? <><p className="mt-2">You recorded a {formatContributionMoney(state.current.amount_php,"PHP")} contribution as invested {checkinDate(state.current.completed_at)}.</p><p className="mt-2 text-sm text-slate-600">Your portfolio is tracked separately. No holdings or trades were created by this check-in.</p></> : <p className="mt-2 text-sm text-slate-600">Review your contribution scenario. Record completion only if you invested outside Arbor. Calendar months use UTC.</p>}
+  return <div role="status"><h3 className="text-lg font-semibold">{state.current ? `You’re set for ${monthLabel(state.month)}` : `${monthLabel(state.month)} check-in`}</h3>
+    {state.current ? <><p className="mt-2">You recorded a {formatContributionMoney(state.current.amount_php,"PHP")} contribution as invested {checkinDate(state.current.completed_at)}.</p><p className="mt-2 text-sm text-slate-600">Your portfolio is tracked separately. No holdings or trades were created by this check-in.</p></> : <p className="mt-2 text-sm text-slate-600">Review your monthly contribution. Record completion only if you invested outside Arbor. Calendar months use UTC.</p>}
   </div>;
 }
 
@@ -45,11 +45,11 @@ function MonthlyActivity({userId,scenarioAmount}:{userId:string;scenarioAmount?:
     catch(e){if(!controller.signal.aborted)setError(e instanceof Error?e.message:"Please retry.");}
     finally{pending.current=false;if(!controller.signal.aborted)setBusy(false);}
   }
-  return <section className="mt-6 border-t border-slate-200 pt-5" aria-label="Monthly check-in">
+  return <section className="monthly-activity" aria-label="Monthly check-in">
     {state?<><MonthlySummary state={state}/>
       {!confirm && (state.current?<button className="entry-link mt-3 min-h-11" onClick={()=>{setError("");setConfirm("undo");}}>Undo completion</button>:scenarioAmount&&<button className="entry-secondary mt-4 min-h-11" onClick={()=>{setError("");setAmount(scenarioAmount);setConfirm("complete");}}>Mark as invested</button>)}
       {confirm && <form ref={confirmation} className="mt-4 space-y-3" onSubmit={e=>{e.preventDefault();void save();}}>
-        <p>{confirm==="complete"?"Arbor does not place trades. Confirm only after you invest through your provider.":"Undo this month’s completion? The record will be labeled undone; your holdings will not change."}</p>
+        <p>{confirm==="complete"?"Arbor does not place trades or move money. Confirm only after you invest through your provider.":"Undo this month’s completion? The record will be labeled undone; your holdings will not change."}</p>
         {confirm==="complete"&&<label className="block text-sm font-medium">Amount you invested outside Arbor (PHP)<input required inputMode="decimal" value={amount} onChange={e=>setAmount(e.target.value)} className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900" aria-describedby={error?"monthly-error":undefined}/></label>}
         <button disabled={busy} className="entry-primary min-h-11 w-full">{busy?"Saving check-in…":confirm==="complete"?"Confirm recorded as invested":"Confirm undo completion"}</button>
         <button type="button" disabled={busy} className="entry-link min-h-11" onClick={()=>setConfirm(null)}>Cancel</button>

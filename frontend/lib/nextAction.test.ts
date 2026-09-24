@@ -17,7 +17,7 @@ for(const [key,destination] of [["financial_foundation","investment_profile"],["
     assert.match(html,/What should I do next/);
     assert.match(html,/min-h-11/);
     assert.doesNotMatch(html,/buy|sell|recommended|best for you/i);
-    element.props.children[3].props.onClick();
+    element.props.children.find((child: {type?:string}) => child?.type === "button").props.onClick();
     assert.equal(received,destination);
   });
 }

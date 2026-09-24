@@ -3,7 +3,7 @@ import type { BitcoinProvider, ContributionRequest, ContributionResult, Contribu
 import { createLatestRequest, type RequestState } from "./dashboardConsistency";
 
 export const SLEEVE_LABELS: Record<Sleeve, string> = { global_equity: "Global Equity", defensive: "Defensive", technology_tilt: "Technology", crypto: "Bitcoin" };
-export const ROUTES: Record<RouteId, string> = { gcash: "GCash / GFunds", dragonfi: "DragonFi", gotrade: "Gotrade", ibkr: "Interactive Brokers" };
+export const ROUTES: Record<RouteId, string> = { gcash: "GFunds", dragonfi: "DragonFi", gotrade: "Gotrade", ibkr: "Interactive Brokers" };
 export const BEGINNER_ROUTES = ["gcash", "dragonfi", "gotrade"] as const;
 export const BITCOIN_PROVIDERS: Record<BitcoinProvider, string> = { gcrypto: "GCrypto", coins_ph: "Coins.ph", pdax: "PDAX" };
 export const EMPTY_VALUES: Record<Sleeve, string> = { global_equity: "", defensive: "", technology_tilt: "", crypto: "" };

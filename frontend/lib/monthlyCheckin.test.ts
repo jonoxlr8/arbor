@@ -25,7 +25,7 @@ test("UTC labels do not shift completion to next local day",()=>{
 test("pending and complete copy distinguishes self-report from portfolio",()=>{
  assert.match(render(createElement(MonthlySummary,{state:pending})),/outside Arbor|UTC/);
  const html=render(createElement(MonthlySummary,{state:complete}));
- assert.match(html,/check-in complete/);assert.match(html,/5,000.25/);assert.match(html,/No holdings or trades were created/);
+ assert.match(html,/You’re set for September/);assert.match(html,/5,000.25/);assert.match(html,/No holdings or trades were created/);
  assert.doesNotMatch(html,/Trade confirmed|Order completed|Buy now/);
 });
 test("first-run confirmation names user choice without assigning investments",()=>{

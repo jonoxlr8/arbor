@@ -14,7 +14,7 @@ const inputClass = "mt-1 min-h-12 w-full min-w-0 rounded-xl border border-slate-
 
 export default function ContributionCard({ value, userId, portfolio }: { value: PlanV2; userId: string; portfolio?: LivePortfolioData }) {
   const [mode, setMode] = useState<ContributionMode>("plan");
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(String(value.profile.monthly_investment || ""));
   const [holdings, setHoldings] = useState(portfolio ? portfolioValues(portfolio) : { ...EMPTY_VALUES });
   const [route, setRoute] = useState<RouteId | "">("");
   const [bitcoinProvider, setBitcoinProvider] = useState<BitcoinProvider | null>(null);
@@ -43,13 +43,14 @@ export default function ContributionCard({ value, userId, portfolio }: { value: 
         ? getContributionPlan(request, userId, signal) : getContributionRecommendation(request, userId, signal));
     } catch (error) { setInputError(error instanceof Error ? error.message : "Check your inputs."); }
   }
-  if (value.plan.path === "long_term" && !value.plan.preference_result?.effective_target) return <section className="arbor-panel"><h2 className="text-xl font-semibold text-slate-900">Contribution scenarios</h2><p role="status" className="mt-3 text-sm text-slate-600">Your effective target is unavailable. Reload your saved plan before calculating a contribution.</p></section>;
-  return <section className="arbor-panel w-full max-w-2xl">
-    <h2 className="text-2xl font-semibold text-slate-900">Contribution scenarios</h2>
-    <p className="mt-2 text-sm text-slate-600">Explore how a contribution changes gaps from your selected targets. You choose the route and implementation options; nothing is invested.</p>
-    <div role="group" aria-label="Contribution mode" className="mt-4 grid grid-cols-2 gap-2">{(["plan", "recommendation"] as const).map(option => <button key={option} type="button" aria-pressed={mode === option}
-      onClick={() => { invalidate(); setMode(option); }} className={`min-h-11 rounded-xl border px-3 py-2 text-sm font-semibold ${mode === option ? "border-forest bg-forest text-white" : "border-slate-300 text-slate-700"}`}>{option === "plan" ? "Monthly scenario" : "Largest target gap"}</button>)}</div>
-    <form className="mt-5 space-y-5" onSubmit={event => { event.preventDefault(); void submit(); }}>
+  if (value.plan.path === "long_term" && !value.plan.preference_result?.effective_target) return <section className="arbor-panel"><h2 className="text-xl font-semibold text-slate-900">Monthly contribution</h2><p role="status" className="mt-3 text-sm text-slate-600">Your effective target is unavailable. Reload your saved plan before calculating a contribution.</p></section>;
+  return <section className="contribution-workspace w-full">
+    <h2 className="text-2xl font-semibold text-slate-900">Monthly contribution</h2>
+    <p className="mt-2 text-sm text-slate-600">Preview how this month’s contribution could align with your chosen plan. You choose where to invest. Arbor does not place trades or move money.</p>
+    <details className="mt-3"><summary className="text-sm text-slate-600">Compare another approach to this contribution</summary><div role="group" aria-label="Contribution mode" className="mt-4 grid grid-cols-2 gap-2">{(["plan", "recommendation"] as const).map(option => <button key={option} type="button" aria-pressed={mode === option}
+      onClick={() => { invalidate(); setMode(option); }} className={`min-h-11 rounded-xl border px-3 py-2 text-sm font-semibold ${mode === option ? "border-forest bg-forest text-white" : "border-slate-300 text-slate-700"}`}>{option === "plan" ? "Across my targets" : "Largest target gap"}</button>)}</div></details>
+    {result && !review && <ContributionResult result={result} />}
+    <details open={!result || !!review}><summary className="text-sm font-medium">{result && !review ? "Edit contribution preview" : "Set up your contribution"}</summary><form className="mt-5 space-y-5" onSubmit={event => { event.preventDefault(); void submit(); }}>
       <label className="block text-sm font-medium text-slate-700">Contribution amount ({portfolio ? "PHP" : value.profile.currency})<input className={inputClass} inputMode="decimal" type="text" required value={amount} placeholder="10000"
         onChange={event => { invalidate(); setAmount(event.target.value); }} /></label>
       <ImplementationChoices route={route} bitcoinProvider={bitcoinProvider}
@@ -67,10 +68,10 @@ export default function ContributionCard({ value, userId, portfolio }: { value: 
         <label className="flex min-h-11 items-center gap-3 text-sm text-slate-700"><input type="radio" name="contribution-ownership" checked={ownershipMode === "none"} onChange={() => { invalidate(); setOwnershipMode("none"); setConfirmed({}); }} />I do not own any products through these options</label>
         <p className="text-xs text-slate-500">This determines first-purchase versus additional-purchase minimums. Your choices stay in this view only.</p>
       </fieldset>}
-      <button type="submit" disabled={busy} className="entry-primary w-full disabled:opacity-50">{busy ? "Calculating your scenario…" : "Calculate scenario"}</button>
-    </form>
+      <button type="submit" disabled={busy} className="entry-primary w-full disabled:opacity-50">{busy ? "Preparing your preview…" : "Preview contribution"}</button>
+    </form></details>
     <ContributionFeedback loading={busy} error={inputError || (state?.status === "error" ? state.error : "")} />
-    {review && result && <section className="mt-5 rounded-2xl border border-slate-200 p-4" aria-label="Choose implementation options"><h3 className="font-semibold text-slate-900">Choose options for this scenario</h3><p className="mt-2 text-sm text-slate-600">These are catalog matches for your route, not personalized recommendations. Select each option only if you want to include it in this scenario. You can change route instead.</p>
+    {review && result && <section className="mt-5 rounded-2xl border border-slate-200 p-4" aria-label="Choose implementation options"><h3 className="font-semibold text-slate-900">Choose where to invest</h3><p className="mt-2 text-sm text-slate-600">These are catalog matches for your route, not personalized recommendations. Select each option only if you want to include it in this preview. You can choose another provider instead.</p>
       {resultProducts(result).map(product => <div key={product.product_id} className="border-b border-slate-200 py-3">
         <label className="flex min-h-12 items-center gap-3 text-sm text-slate-700"><input type="checkbox" checked={selectedProducts[product.product_id] ?? false} onChange={event => setSelectedProducts({ ...selectedProducts, [product.product_id]: event.target.checked })} /><span className="min-w-0 break-words">Use {product.display_name}<span className="block text-xs text-slate-500">{product.platform}</span></span></label>
         {!portfolio && ownershipMode === "review" && <label className="flex min-h-12 items-center gap-3 text-sm text-slate-700"><input type="checkbox" checked={draftOwned[product.product_id] ?? confirmed[product.product_id] ?? false}
@@ -81,13 +82,12 @@ export default function ContributionCard({ value, userId, portfolio }: { value: 
         const next = { ...confirmed }; for (const product of resultProducts(result)) next[product.product_id] = draftOwned[product.product_id] ?? confirmed[product.product_id] ?? false;
         setAcceptedProducts({ ...acceptedProducts, ...selectedProducts });
         setConfirmed(next); void submit(next);
-      }}>Use these options in my scenario</button>
+      }}>Use these options in my preview</button>
     </section>}
-    {result && !review && <ContributionResult result={result} />}
     <MonthlyCheckin value={value} userId={userId} scenarioAmount={result && !review && result.data.state === "active" ? result.data.contribution_amount : undefined}/>
   </section>;
 }
 
 export function ContributionFeedback({ loading, error }: { loading?: boolean; error: string }) {
-  return <>{loading && <p role="status" className="mt-3 text-sm text-slate-600">Calculating your scenario…</p>}{error && <p role="alert" className="mt-3 text-sm text-slate-700">{error}</p>}</>;
+  return <>{loading && <p role="status" className="mt-3 text-sm text-slate-600">Preparing your preview…</p>}{error && <p role="alert" className="mt-3 text-sm text-slate-700">{error}</p>}</>;
 }

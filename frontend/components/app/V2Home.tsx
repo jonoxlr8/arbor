@@ -5,33 +5,63 @@ import { HORIZON_OPTIONS } from "@/lib/onboardingV2";
 import { portfolioApi, type LivePortfolioData } from "@/lib/livePortfolio";
 import { formatContributionMoney } from "@/lib/contributions";
 import { useAccountAccess } from "../AccountAccess";
-import { PortfolioSummary, DataAttribution } from "../portfolio/LivePortfolio";
-import PortfolioHistoryChart from "../portfolio/PortfolioHistoryChart";
-import ProviderBrand from "../ProviderBrand";
+import Allocation from "../portfolio/Allocation";
+import { monthlyApi, monthLabel, checkinDate, type MonthlyState } from "@/lib/monthlyCheckin";
 
 export default function V2Home({ value, userId, nextAction }: { value: PlanV2; userId?: string; nextAction?: ReactNode }) {
   const access = useAccountAccess();
   const available = access?.value?.availability?.live_portfolio === true && access.value.features.includes("live_portfolio");
-  return <div className="max-w-3xl space-y-6">
-    {available && userId ? <HomePortfolio userId={userId} /> : <div className="py-2"><p className="text-sm text-slate-500">Your saved plan</p><h2 className="mt-2 text-3xl font-semibold">{value.plan.path === "short_term" ? "A short-term path" : value.plan.selected_strategy}</h2><p className="mt-2 text-sm text-slate-600">A little clarity about where you are and what comes next.</p></div>}
+  const monthlyAllowed = access?.value?.availability?.monthly_checkin === true && access.value.features.includes("monthly_contribution_planner") && value.plan.path === "long_term" && value.plan.plan_basis === "user_selected" && value.plan.readiness.actionable_contribution_guidance_allowed;
+  const [monthly, setMonthly] = useState<MonthlyState | null>(null);
+  const [monthlyError, setMonthlyError] = useState(false);
+  useEffect(() => {
+    if (!monthlyAllowed || !userId) return;
+    let current = new AbortController();
+    const read = () => {
+      current.abort(); current = new AbortController(); const signal = current.signal;
+      monthlyApi(userId, signal).then(state => { if (!signal.aborted) { setMonthly(state);setMonthlyError(false); } }).catch(() => { if (!signal.aborted) setMonthlyError(true); });
+    };
+    read();
+    const visible = () => { if (document.visibilityState === "visible") read(); };
+    let month = new Date().toISOString().slice(0,7);
+    const timer = setInterval(() => { const next = new Date().toISOString().slice(0,7);if (next !== month) { month=next;read(); } },60000);
+    window.addEventListener("arbor-monthly-changed",read);document.addEventListener("visibilitychange",visible);
+    return () => { current.abort();clearInterval(timer);window.removeEventListener("arbor-monthly-changed",read);document.removeEventListener("visibilitychange",visible); };
+  }, [monthlyAllowed,userId]);
+  const currentMonthly = monthlyAllowed && !monthlyError ? monthly : null;
+  return <div className="space-y-6">
     {nextAction}
-    <HomePlanContext value={value} />
+    <div className="home-grid">
+      {available && userId ? <HomePortfolio userId={userId} /> : <a className="home-metric" href="#portfolio/plan"><p>Time horizon</p><strong>{HORIZON_OPTIONS.find(([id])=>id===value.profile.horizon)?.[1]}</strong><small>View your saved plan →</small></a>}
+      <a className="home-metric" href={value.plan.path === "short_term" || !value.plan.readiness.actionable_contribution_guidance_allowed ? "#portfolio/plan" : "#portfolio/contribution"}><p>Monthly contribution</p><strong>{formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP")}</strong><small className={currentMonthly?.current ? "completed-label" : ""}>{currentMonthly?.current ? `✓ Recorded for ${monthLabel(currentMonthly.month).split(" ")[0]}` : "Your planned amount · Review →"}</small></a>
+      <a className="home-metric" href="#settings/investment"><p>Investment profile</p><strong>{value.plan.path === "short_term" ? "Short term" : value.plan.selected_strategy}</strong><small>{value.plan.path === "short_term" ? "Long-term selection stays saved" : value.plan.plan_basis === "user_selected" ? "Your selected approach →" : "Historical plan →"}</small></a>
+    </div>
+    <div className="home-bottom"><HomePlanContext value={value} /><HomeActivity state={currentMonthly} available={monthlyAllowed} error={monthlyError}/></div>
   </div>;
 }
 
 export function HomePlanContext({ value }: { value: PlanV2 }) {
   const { profile, plan } = value;
   const status = plan.readiness.readiness === "foundation_first" ? "Financial foundation first" : plan.path === "short_term" ? "Your short-term path is active" : plan.readiness.readiness === "getting_ready" ? "Getting ready" : "Your plan is ready to review";
-  return <section className="border-t border-slate-200 pt-5">
-    <h2 className="text-lg font-semibold">{status}</h2>
-    <p className="mt-2 text-sm text-slate-600">{plan.readiness.readiness === "foundation_first" ? "Contribution scenarios are paused while your profile indicates difficult-to-manage high-interest debt." : "Your assessment is informational. Your saved plan changes only when you confirm a choice."}</p>
-    <dl className="mt-5 grid gap-5 sm:grid-cols-2 text-sm">
+  return <section className="home-plan">
+    <header><h2 className="text-lg font-semibold">Your plan</h2><a href="#portfolio/plan" className="entry-link">View plan →</a></header>
+    {plan.path === "long_term" && <Allocation weights={plan.plan_basis === "user_selected" ? plan.base_allocation : plan.preference_result?.effective_target?.allocation.weights ?? plan.base_allocation}/>}
+    {(plan.path === "short_term" || plan.readiness.readiness !== "ready") && <p className="text-sm font-medium">{status}</p>}
+    <details><summary className="text-sm">About your plan</summary><p className="mt-2 text-sm text-slate-600">{plan.readiness.readiness === "foundation_first" ? "Contribution previews are paused while your profile indicates difficult-to-manage high-interest debt." : "Your assessment is informational. Your saved plan changes only when you confirm a choice."}</p><dl className="mt-5 grid gap-5 sm:grid-cols-2 text-sm">
       <div><dt className="text-slate-500">Time horizon</dt><dd className="mt-1 font-medium">{HORIZON_OPTIONS.find(([id]) => id === profile.horizon)?.[1]}</dd></div>
       <div><dt className="text-slate-500">Planned monthly contribution</dt><dd className="mt-1 font-medium">{formatContributionMoney(String(profile.monthly_investment), "PHP")}</dd></div>
       {profile.goal_target !== null && <div><dt className="text-slate-500">Planning goal</dt><dd className="mt-1 font-medium">{formatContributionMoney(String(profile.goal_target), "PHP")}</dd></div>}
     </dl>
     <p className="mt-4 text-xs text-slate-500">Planning assumptions, not recorded holdings or a guaranteed outcome.</p>
-    <a href="#portfolio/plan" className="entry-link mt-2">Review your plan</a>
+    </details>
+  </section>;
+}
+
+export function HomeActivity({state,available,error=false}:{state:MonthlyState|null;available:boolean;error?:boolean}) {
+  return <section className="home-activity"><header><h2>Recent activity</h2><a href={available ? "#portfolio/contribution" : "#portfolio/plan"} aria-label={available ? "View monthly activity" : "View your plan"}>↗</a></header>
+    {state?.history.length ? <ul>{state.history.slice(0,3).map(row=><li key={row.month}><span className="activity-date" aria-hidden="true"><small>{new Date(row.completed_at).toLocaleDateString("en-PH",{month:"short",timeZone:"UTC"})}</small>{new Date(row.completed_at).getUTCDate()}</span><div><strong>{row.undone_at ? "Check-in undone" : "Contribution recorded"}</strong><small>{monthLabel(row.month)}</small></div><span>{formatContributionMoney(row.amount_php,"PHP")}</span></li>)}</ul>
+      : <div className="activity-empty"><span aria-hidden="true">◷</span><h3>{error ? "Activity is temporarily unavailable" : "A little progress, over time"}</h3><p>{error ? "Open your monthly contribution to retry." : available ? "Your recorded monthly check-ins will appear here." : "Monthly history isn’t available yet. Your saved plan is ready to review."}</p></div>}
+    {state?.current && <p className="activity-note">Recorded as invested {checkinDate(state.current.completed_at)}. Holdings are tracked separately.</p>}
   </section>;
 }
 
@@ -45,10 +75,6 @@ function HomePortfolio({ userId }: { userId: string }) {
     return () => controller.abort();
   }, [userId, attempt]);
   if (error) return <section className="arbor-panel"><p role="alert">We couldn’t load your portfolio.</p><button className="entry-secondary mt-3" onClick={() => { setError(false); setAttempt(n => n + 1); }}>Try again</button></section>;
-  if (!portfolio) return <section className="arbor-panel animate-pulse" role="status">Checking your recorded portfolio…</section>;
-  if (!portfolio.holdings.length) return <section><h2 className="text-2xl font-semibold">Your plan is a starting point</h2><p className="mt-2 text-sm text-slate-600">No holdings are recorded yet. Your targets describe a plan, not investments you own.</p></section>;
-  return <div className="space-y-5"><PortfolioSummary portfolio={portfolio} /><PortfolioHistoryChart history={portfolio.history} />
-    <div className="flex flex-wrap gap-2" aria-label="Recorded providers">{[...new Map(portfolio.holdings.map(h => [h.provider, h.provider_name])).entries()].map(([id, name]) => <ProviderBrand key={id} provider={id} name={name} />)}</div>
-    <DataAttribution sources={portfolio.data_sources ?? []} />
-  </div>;
+  if (!portfolio) return <section className="home-metric arbor-skeleton" role="status"><span className="sr-only">Checking your recorded portfolio…</span><i/><i/></section>;
+  return <a className="home-metric" href="#portfolio"><p>{portfolio.complete ? "Portfolio value" : "Known portfolio value"}</p><strong>{portfolio.holdings.length ? formatContributionMoney(portfolio.known_value_php,"PHP") : "Start tracking"}</strong><small>{!portfolio.holdings.length ? "Add what you already own →" : !portfolio.complete ? "Some values are unavailable · Review →" : portfolio.stale_count ? "Cached values · Check dates →" : "View your investments →"}</small></a>;
 }

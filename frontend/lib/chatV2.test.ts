@@ -13,7 +13,7 @@ import type { RequestState } from "./dashboardConsistency";
 const plan = { strategy_engine_version:"2.0", profile:{selected_approach:"Growth"}, plan:{plan_basis:"user_selected"} } as unknown as PlanV2;
 test("V2 Ask Arbor replaces unavailable state with the shared labelled composer and focused suggestions", () => {
   const html = renderToStaticMarkup(createElement(V2Destination, {value:plan, active:"ask", userId:"fixture"}));
-  assert.match(html, /Understand your plan/);
+  assert.match(html, /Your investing companion/);
   assert.match(html, /Your question about your Arbor plan/);
   assert.match(html, /Explain my investment plan/);
   assert.match(html, /How does the contribution planner work/);

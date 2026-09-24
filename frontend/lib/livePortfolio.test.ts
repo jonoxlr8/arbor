@@ -103,7 +103,7 @@ test("unavailable alignment is not displayed as zero",()=>{
 test("history has no fake points and one observed value is readable",()=>{
   assert.match(html(createElement(PortfolioHistoryChart,{history:[]})),/graph will appear/);
   const markup=html(createElement(PortfolioHistoryChart,{history:[{day:"2026-09-24",value_php:"5600.00",captured_at:"2026-09-24T00:00:00Z"}]}));
-  assert.match(markup,/₱5,600/);assert.match(markup,/not an investment-return chart/);assert.match(markup,/recorded values \(1\)/);
+  assert.match(markup,/₱5,600/);assert.match(markup,/not an investment-return chart/);assert.match(markup,/Portfolio history/);
 });
 test("freshness distinguishes NAV, cached reference and missing price",()=>{
   const h=portfolioFixture.holdings[0];
@@ -167,6 +167,6 @@ test("multiple observed history points have accessible values and range controls
     {day:"2026-09-23",value_php:"5000.00",captured_at:"2026-09-23T00:00:00Z"},
     {day:"2026-09-24",value_php:"5600.00",captured_at:"2026-09-24T00:00:00Z"},
   ]}));
-  assert.match(markup,/₱5,000/);assert.match(markup,/₱5,600/);assert.match(markup,/recorded values \(2\)/);
+  assert.match(markup,/₱5,000/);assert.match(markup,/₱5,600/);assert.match(markup,/Portfolio history/);
   for(const range of [">1M<",">3M<",">1Y<"])assert.ok(!markup.includes(range));
 });

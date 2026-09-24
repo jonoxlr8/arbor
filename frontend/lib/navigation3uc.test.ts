@@ -29,7 +29,7 @@ test("Home uses planning inputs without inventing projections or current balance
 });
 test("Home respects readiness and short-term state without manufacturing progress", () => {
   const foundation=structuredClone(value);foundation.plan.readiness.readiness="foundation_first";
-  assert.match(render(createElement(HomePlanContext,{value:foundation})),/Contribution scenarios are paused/);
+  assert.match(render(createElement(HomePlanContext,{value:foundation})),/Contribution previews are paused/);
   const short=structuredClone(value);short.plan={...short.plan,path:"short_term",selected_strategy:null,base_allocation:null,planning_return_pct:null};
   assert.match(render(createElement(HomePlanContext,{value:short})),/short-term path is active/);
 });
@@ -42,7 +42,7 @@ test("Home only mounts holdings reader for server availability AND entitlement",
 });
 test("Free Portfolio keeps plan and implementation education with calm Plus destination", () => {
   const html=render(createElement(AccountAccessContext.Provider,{value:{value:{...access,features:[],effective_tier:"free"},error:"",retry(){}}},createElement(V2Destination,{value,userId:"test",active:"portfolio",section:"contribution"})));
-  assert.match(html,/Your model targets|Explore implementation options|Explore Arbor Plus/);
+  assert.match(html,/Your model targets|Where can I invest\?|Explore Arbor Plus/);
   assert.doesNotMatch(html,/Calculate scenario|Add holding/);
 });
 test("provider fallback is visible accessible text without remote or invented logos", () => {

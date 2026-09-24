@@ -13,7 +13,7 @@ await withAuthenticatedBrowser(async ({page,reused})=>{
     await page.evaluate(()=>{location.hash='portfolio/contribution';});
     await page.getByText('Hypothetical current values',{exact:false}).waitFor();
     stage='contribution inputs';
-    assert.equal(await page.getByRole('button',{name:'Add holding',exact:true}).count(),0);
+    assert.equal(await page.getByRole('button',{name:'+ Add Investment',exact:true}).count(),0);
     await page.getByLabel('Contribution amount (PHP)',{exact:true}).fill('1000');
     await page.getByRole('button',{name:/Gotrade Access supported/}).click();
     await page.getByRole('button',{name:/I have no investments yet/}).click();
@@ -21,15 +21,15 @@ await withAuthenticatedBrowser(async ({page,reused})=>{
     await page.getByRole('radio',{name:'I do not own any products through these options'}).check();
     const calculated=page.waitForResponse(r=>new URL(r.url()).pathname==='/contributions/plan');
     stage='calculate scenario';
-    await page.getByRole('button',{name:'Calculate scenario',exact:true}).click();
+    await page.getByRole('button',{name:'Preview contribution',exact:true}).click();
     const response=await calculated;
     assert.equal(response.status(),200);
     assert.equal((await response.json()).current_portfolio_value,'0');
-    await page.getByRole('heading',{name:'Choose options for this scenario',exact:true}).waitFor();
+    await page.getByRole('heading',{name:'Choose where to invest',exact:true}).waitFor();
     stage='accept options';
     for(const checkbox of await page.getByRole('checkbox',{name:/Use /}).all())await checkbox.check();
     const accepted=page.waitForResponse(r=>new URL(r.url()).pathname==='/contributions/plan');
-    await page.getByRole('button',{name:'Use these options in my scenario',exact:true}).click();
+    await page.getByRole('button',{name:'Use these options in my preview',exact:true}).click();
     assert.equal((await accepted).status(),200);
     stage='chat';
     await page.evaluate(()=>{location.hash='ask';});

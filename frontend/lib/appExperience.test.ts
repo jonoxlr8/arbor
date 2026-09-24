@@ -66,7 +66,7 @@ test("chat renders conversation before composer and prompts are empty-state only
   assert.ok(source.indexOf("messages.map") < source.indexOf("<textarea"));
   assert.match(source, /messages.length === 0/);
   const html = renderToStaticMarkup(createElement(ChatSection, { plan }));
-  assert.match(html, />Ask Arbor<\/button>/);
+  assert.match(html, /aria-label="Ask Arbor"/);
   assert.doesNotMatch(html, /Personalized to your plan/);
 });
 
@@ -157,7 +157,7 @@ test("app initially gates actual analytics while keeping destination owners moun
 
 test("dedicated Ask destination preserves bounded explanation copy and suggested prompts", () => {
   const html = renderToStaticMarkup(createElement(ChatSection, { plan }));
-  assert.match(html, /Understand your plan/);
+  assert.match(html, /Your investing companion/);
   assert.match(html, /What are my target allocations/);
   assert.doesNotMatch(html, /rule-based|limited set/);
   assert.match(html, /No live market, tax or trading advice/);

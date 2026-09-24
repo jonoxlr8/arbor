@@ -32,9 +32,9 @@ await withAuthenticatedBrowser(async({page,reused})=>{
    layouts.push(`${width}/${theme}`);
    if(width===390){await page.getByRole('region',{name:'What should I do next?'}).getByRole('button').waitFor();await page.screenshot({path:`/tmp/arbor-3uc-home-${theme}.png`,fullPage:true});}
   }
-  stage='back forward';await go('portfolio');await page.getByRole('heading',{name:'Your model targets'}).waitFor();await go('settings');await page.getByRole('heading',{name:'Investment Profile',exact:true}).waitFor();await page.goBack();await page.getByRole('heading',{name:'Your model targets'}).waitFor();await page.goForward();await page.getByRole('heading',{name:'Investment Profile',exact:true}).waitFor();
+  stage='back forward';await go('portfolio/plan');await page.getByRole('heading',{name:'Your model targets'}).waitFor();await go('settings');await page.getByRole('button',{name:'Edit investment profile',exact:true}).waitFor();await page.goBack();await page.getByRole('heading',{name:'Your model targets'}).waitFor();await page.goForward();await page.getByRole('button',{name:'Edit investment profile',exact:true}).waitFor();
   stage='profile cancel';await page.getByRole('button',{name:'Edit investment profile',exact:true}).click();await page.getByRole('heading',{name:'Review your investment profile',exact:true}).waitFor();await page.getByRole('button',{name:'Cancel editing',exact:true}).click();
-  await page.getByRole('heading',{name:'Compare Arbor plans'}).waitFor();
+  await page.locator('summary').filter({hasText:'Arbor Plus'}).click();await page.getByRole('heading',{name:'Compare Arbor plans'}).waitFor();
   stage='chat';await go('ask');
   assert.equal(await page.getByRole('button',{name:'What is my current portfolio worth?',exact:true}).count(),enabled?1:0);
   for(const question of ['What should I do next?','Write Python for me']){
@@ -45,15 +45,15 @@ await withAuthenticatedBrowser(async({page,reused})=>{
   }
   await go('home');await go('ask');await page.getByText('Write Python for me',{exact:true}).waitFor();
   if(enabled){
-   stage='fixture manual holding';const loaded=page.waitForResponse(r=>new URL(r.url()).pathname==='/v2/portfolio');await go('portfolio');const response=await loaded;assert.equal(response.headers()['x-arbor-portfolio-fixture'],'isolated');assert.equal((await response.json()).holdings.length,0);
-   await page.getByRole('button',{name:'Add holding',exact:true}).click();await page.getByRole('combobox',{name:'Provider',exact:true}).selectOption('gcash');await page.getByRole('combobox',{name:'Investment',exact:true}).selectOption('gcash_global_equity');await page.getByLabel('Current value (PHP)',{exact:true}).fill('8000');
-   const saved=page.waitForResponse(r=>new URL(r.url()).pathname==='/v2/portfolio'&&r.request().method()==='GET');await page.getByRole('button',{name:'Save holding record',exact:true}).click();assert.equal((await(await saved).json()).total_value_php,'8000.00');await page.getByText(/Updated by you/).waitFor();
-   await go('home');await page.getByText('₱8,000',{exact:true}).first().waitFor();await page.getByRole('heading',{name:'Portfolio value over time'}).waitFor();
-   await go('portfolio');await page.getByRole('heading',{name:'Plan Alignment'}).waitFor();await page.screenshot({path:'/tmp/arbor-3uc-portfolio.png',fullPage:true});
-   stage='cleanup';await page.getByRole('button',{name:/^Remove ATRAM/}).click();const clean=page.waitForResponse(r=>new URL(r.url()).pathname==='/v2/portfolio'&&r.request().method()==='GET');await page.getByRole('button',{name:'Remove from Arbor',exact:true}).click();assert.equal((await(await clean).json()).holdings.length,0);
+   stage='fixture manual holding';const loaded=page.waitForResponse(r=>new URL(r.url()).pathname==='/v2/portfolio'&&r.request().method()==='GET');await go('portfolio');const response=await loaded;assert.equal(response.headers()['x-arbor-portfolio-fixture'],'isolated');assert.equal((await response.json()).holdings.length,0);
+   await page.getByRole('button',{name:'+ Add Investment',exact:true}).first().click();await page.locator('.catalogue-row[data-product="gcash_global_equity"]').click();await page.getByLabel('Current value (PHP)',{exact:true}).fill('8000');
+   const saved=page.waitForResponse(r=>new URL(r.url()).pathname==='/v2/portfolio'&&r.request().method()==='GET');await page.getByRole('button',{name:'Save Investment',exact:true}).click();assert.equal((await(await saved).json()).total_value_php,'8000.00');await page.getByText(/Updated by you/).waitFor();
+   await go('home');await page.getByText('₱8,000',{exact:true}).first().waitFor();assert.equal(await page.getByRole('heading',{name:'Portfolio value over time'}).count(),0);
+   await go('portfolio');await page.getByRole('button',{name:'Allocation',exact:true}).click();await page.getByRole('heading',{name:'Plan Alignment'}).waitFor();await page.screenshot({path:'/tmp/arbor-3uc-portfolio.png',fullPage:true});
+   stage='cleanup';await page.getByRole('button',{name:'Holdings',exact:true}).click();await page.getByRole('button',{name:/^View ATRAM/}).click();await page.getByRole('button',{name:/^Remove ATRAM/}).click();const clean=page.waitForResponse(r=>new URL(r.url()).pathname==='/v2/portfolio'&&r.request().method()==='GET');await page.getByRole('button',{name:'Remove from Arbor',exact:true}).click();assert.equal((await(await clean).json()).holdings.length,0);
   }else{
    stage='next action contribution link';await go('home');await page.getByRole('region',{name:'What should I do next?'}).getByRole('button').click();await page.getByLabel('Contribution amount (PHP)',{exact:true}).waitFor();
-   assert.equal(portfolioRequests,0);assert.equal(await page.getByRole('button',{name:'Add holding',exact:true}).count(),0);
+   assert.equal(portfolioRequests,0);assert.equal(await page.getByRole('button',{name:'+ Add Investment',exact:true}).count(),0);
   }
   assert.equal(errors,0);
   console.log(JSON.stringify({enabled,reused,layouts,errors,portfolioRequests,hostedWrites:0}));

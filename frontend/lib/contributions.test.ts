@@ -88,7 +88,7 @@ test("invalid response and mismatched request identity rejected", () => {
 test("monthly plan multiple allocations, summary, warnings and product names", () => {
   const second = { ...row, allocated_amount: "2000", implementation: { ...mapped, product: { ...product, product_id: "other", display_name: "Another public fund" } } };
   const html = render(plan({ allocations: [{ ...row, allocated_amount: "10000" }, second] }));
-  assert.match(html, /Your ₱12,000 scenario/); assert.match(html, /Another public fund/);
+  assert.match(html, /Your contribution preview[\s\S]*₱12,000/); assert.match(html, /Another public fund/);
   assert.match(html, /Minimum check met/); assert.match(html, /Check provider eligibility/);
   assert.match(html, /Broad match/); assert.doesNotMatch(html, /Buy now|Execute|affiliate|compensation|partnership/);
 });
@@ -120,13 +120,13 @@ test("empty results and null product are safe", () => {
 });
 test("card labels, default monthly mode, feedback and placement", () => {
   const html = renderToStaticMarkup(createElement(ContributionCard, { value: contributionFixture, userId: "A" }));
-  assert.match(html, /aria-pressed="true"[^>]*>Monthly scenario/);
+  assert.match(html, /aria-pressed="true"[^>]*>Across my targets/);
   for (const label of ["Contribution amount", "Hypothetical current values", "Global Equity", "Technology", "Bitcoin", "Defensive", "Product ownership", "Choose an option"]) assert.ok(html.includes(label));
   assert.doesNotMatch(html, /999999|Buy now/);
   const selected: PlanV2 = {...contributionFixture, plan:{...contributionFixture.plan, plan_basis:"user_selected"}};
   const access = { features: ["monthly_contribution_planner", "live_portfolio"], availability: {live_portfolio: true} } as Entitlements;
   const destination = renderToStaticMarkup(createElement(AccountAccessContext.Provider, { value: { value: access, error: "", retry: () => {} } }, createElement(V2Destination, { value: selected, active: "portfolio", userId: "A" })));
-  assert.match(destination, /Your portfolio/); assert.match(destination, /Loading your portfolio/);
+  assert.match(destination, /Your investments, together/); assert.match(destination, /Loading your portfolio/);
   const feedback = renderToStaticMarkup(createElement(ContributionFeedback, { loading: true, error: "Please try again" }));
   assert.match(feedback, /role="status"/); assert.match(feedback, /role="alert"/);
 });
@@ -147,7 +147,7 @@ test("ownership never implies product selection, and newly mapped options requir
 test("scenario result describes mathematics and minimums, not security-level instructions", () => {
   for (const result of [plan(), recommendation(), plan({status:"reserve", reserve_amount:"12000"})]) {
     const html = render(result);
-    assert.match(html, /mathematical target-alignment scenario/);
+    assert.match(html, /hypothetical target-alignment calculation/);
     assert.match(html, /You make your own investment decisions/);
     assert.doesNotMatch(html, /Ready to invest|You should buy|Arbor recommends|Buy now|Keep this contribution/);
   }
@@ -172,7 +172,7 @@ test("duplicate submit, changed inputs, mode switch and unmount ignore stale res
 
 test("beginner implementation choices are neutral, independent and unselected", () => {
   const html = renderToStaticMarkup(createElement(ImplementationChoices, {route:"", bitcoinProvider:null, hasBitcoinTarget:false, onRoute:()=>{}, onBitcoin:()=>{}}));
-  for (const label of ["GCash / GFunds", "DragonFi", "Gotrade", "GCrypto", "Coins.ph", "PDAX"]) assert.ok(html.includes(label));
+  for (const label of ["GFunds", "DragonFi", "Gotrade", "GCrypto", "Coins.ph", "PDAX"]) assert.ok(html.includes(label));
   assert.equal((html.match(/aria-pressed="false"/g) ?? []).length, 6);
   assert.doesNotMatch(html, /Interactive Brokers|IBKR|recommended|best for you|aria-pressed="true"/);
   assert.match(html, /does not add Bitcoin/);

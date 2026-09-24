@@ -14,7 +14,8 @@ import NextActionCard from "./NextActionCard";
 import { AccountAccessProvider, AccountPlans, PlusFeature, AccessLoading, useAccountAccess } from "./AccountAccess";
 import { ImplementationEducation } from "./contributions/ImplementationChoices";
 import V2Home from "./app/V2Home";
-import { SLEEVE_LABELS } from "@/lib/contributions";
+import Allocation from "./portfolio/Allocation";
+import SettingsIcon from "./app/SettingsIcon";
 
 type Props = {
   value: PlanV2; userId?: string; onSignOut: () => void; signingOut: boolean; logoutError: string; onPlanChange?: (plan: AccountPlan) => void;
@@ -42,7 +43,7 @@ function PlanV2Shell({ value, userId, onSignOut, signingOut, logoutError, onPlan
       {active === "home" && <V2Home value={value} userId={userId} nextAction={userId && <NextActionCard key={`${userId}:${JSON.stringify(value)}`} userId={userId} onAction={(destination,action)=>{
         window.location.hash = destination === "investment_profile" || destination === "onboarding" ? "settings/investment" : destination === "settings" ? "settings/plus" : destination === "plan" ? "portfolio/plan" : action.key === "monthly_complete" ? "portfolio" : action.key === "review_monthly_contribution" ? "portfolio/contribution" : "portfolio/holdings";
       }}/>}/>}
-      {active === "settings" && userId && onPlanChange && <section id="section-investment" className="mb-6" aria-label="Investment profile"><h2 className="text-xl font-semibold">Investment Profile</h2><p className="mt-2 text-sm text-slate-600">Review your answers, compare approaches and preview changes. Your plan stays the same until you confirm.</p><button className="entry-secondary mt-4" onClick={() => setChoosing(true)}>Edit investment profile</button></section>}
+      {active === "settings" && userId && onPlanChange && <section id="section-investment" className="settings-list" aria-label="Investment profile"><div className="settings-account-header"><span aria-hidden="true">{value.profile.full_name.trim().slice(0,1)}</span><div><strong>{value.profile.full_name}</strong><small>Your Arbor account</small></div></div><p className="settings-group-label">Investment</p><button className="settings-row" aria-label="Edit investment profile" onClick={() => setChoosing(true)}><SettingsIcon kind="plan"/><span>Investment Profile<small className="block mt-1">Review or change your plan</small></span><span className="text-sm text-slate-500">{value.plan.path === "short_term" ? "Short term" : value.plan.selected_strategy} ›</span></button></section>}
       {active !== "home" && active !== "ask" && <V2Destination key={`${active}:${JSON.stringify(value)}`} value={value} active={active} userId={userId} section={section} />}
     </>}
     {chatVisited && <div hidden={active !== "ask" || choosing}><ChatSection key={`${userId}:${JSON.stringify(value)}`} plan={value} /></div>}
@@ -53,25 +54,25 @@ export function V2Destination({ value, active, userId, section = "" }: { value: 
   const access = useAccountAccess();
   if (active === "ask") return <ChatSection key={userId} plan={value} />;
   if (active === "portfolio" && userId && !access?.value) return <AccessLoading />;
-  if (active === "portfolio") return <div className="max-w-3xl space-y-8">
-    {userId && access?.value?.availability?.live_portfolio === true && <PlusFeature feature="live_portfolio" title="Live Portfolio"><LivePortfolio value={value} userId={userId} section={section} /></PlusFeature>}
-    <V2PlanContent value={value} />
-    {value.plan.path === "short_term" || value.plan.plan_basis !== "user_selected" ? <p className="text-sm leading-6 text-slate-600">{value.plan.path === "short_term" ? "Long-term scenarios are paused on your short-term path." : "Your historical plan remains saved. Explicitly choose a standard approach before exploring new contribution scenarios."} <a className="entry-link" href="#settings/investment">Review investment profile</a></p> : userId && access?.value?.availability?.live_portfolio !== true && <ContributionDisclosure key={section} open={section === "contribution"} value={value} userId={userId} />}
+  if (active === "portfolio") return <div className="space-y-5">
+    {userId && access?.value?.availability?.live_portfolio === true && <PlusFeature feature="live_portfolio" title="Live Portfolio"><LivePortfolio key={section} value={value} userId={userId} section={section} /></PlusFeature>}
+    {access?.value?.availability?.live_portfolio === true ? <details open={section === "plan"}><summary className="font-semibold">Your chosen plan · {value.plan.selected_strategy}</summary><V2PlanContent value={value}/></details> : <V2PlanContent value={value} />}
+    {value.plan.path === "short_term" || value.plan.plan_basis !== "user_selected" ? <p className="text-sm leading-6 text-slate-600">{value.plan.path === "short_term" ? "Long-term contribution previews are paused on your short-term path." : "Your historical plan remains saved. Explicitly choose a standard approach before exploring new contribution previews."} <a className="entry-link" href="#settings/investment">Review investment profile</a></p> : userId && access?.value?.availability?.live_portfolio !== true && <ContributionDisclosure key={section} open={section === "contribution"} value={value} userId={userId} />}
     <ImplementationEducation />
   </div>;
-  if (active === "settings") return <div className="space-y-6">
-    <div id="section-plus"><AccountPlans /></div>
+  if (active === "settings") return <div className="settings-list">
+    <details id="section-plus" open={section === "plus"}><summary><SettingsIcon kind="plus"/><span>Arbor Plus<small className="block mt-1">{access?.value?.private_beta ? "Private Beta · Included for now" : "Compare plans and access"}</small></span></summary><AccountPlans /></details>
+    <p className="settings-group-label">Preferences</p>
     <AppearanceSettings />
-    <section className="arbor-panel">
-      <h2 className="text-xl font-semibold text-slate-900">Account details</h2>
+    <details><summary><SettingsIcon kind="account"/><span>Account details</span></summary>
       <dl className="mt-4 space-y-3 text-sm text-slate-700">
         <div><dt>Name</dt><dd className="font-semibold">{value.profile.full_name}</dd></div>
         <div><dt>Country</dt><dd className="font-semibold">{value.profile.country}</dd></div>
         <div><dt>Planning currency</dt><dd className="font-semibold">{value.profile.currency}</dd></div>
       </dl>
       <p className="mt-4 text-sm text-slate-600">Use Edit investment profile to review assumptions and preview changes before saving.</p>
-    </section>
-    <section className="px-1"><h2 className="text-lg font-semibold">Help &amp; disclosures</h2><p className="mt-2 text-sm text-slate-600">Ask Arbor can explain your plan and how existing tools work. You make your own investment decisions; projections are hypothetical.</p><a className="entry-link" href="#ask">Ask about Arbor</a></section>
+    </details>
+    <details><summary><SettingsIcon kind="help"/><span>Help &amp; disclosures</span></summary><p className="mt-2 text-sm text-slate-600">Ask Arbor can explain your plan and how existing tools work. You make your own investment decisions; projections are hypothetical. Arbor does not execute trades or hold your money.</p><a className="entry-link" href="#ask">Ask about Arbor →</a><p className="mt-3 text-xs text-slate-500">Bitcoin symbol from <a className="underline" href="https://bitcoin.design/guide/getting-started/visual-language/" target="_blank" rel="noreferrer">Bitcoin Design</a>, used under <a className="underline" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>. Artwork unchanged. Other identity tiles are text labels, not official logos or endorsements.</p></details>
   </div>;
   return <V2PlanContent value={value} />;
 }
@@ -94,18 +95,18 @@ export function V2PlanContent({ value }: { value: PlanV2 }) {
       {plan.plan_basis !== "user_selected" && <p className="text-sm text-slate-600">This saved plan came from an earlier assessment. It has not been changed or recorded as your explicit model choice. Explore approaches to choose a standard plan.</p>}
       {plan.dormant_selected_approach && <p className="text-sm text-slate-600">Your {plan.dormant_selected_approach} choice remains saved but dormant. A long-term horizon restores it; no long-term allocation is active now.</p>}
       {plan.historical_allocation_preserved && <p className="text-sm text-slate-600">Your historical allocation is preserved separately from the updated assessment and readiness. Readiness restrictions still apply.</p>}
-      <section className="arbor-panel">
+      <details className="border-b border-slate-200"><summary className="text-sm">Financial readiness · {stateLabel}</summary>
         <h2 className="text-lg font-semibold text-slate-900">{stateLabel}</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
           {readiness.message_requirement === "foundation_first" ? "Your answers indicate difficult-to-manage high-interest debt. This plan is a preview; contribution allocations are paused in this tool."
             : readiness.message_requirement === "readiness_caution" ? "Your savings or debt answers flag a financial-foundation consideration. Scenarios do not assess whether an investment is right for you."
             : "Your savings and debt answers meet Arbor’s readiness check."}
         </p>
-      </section>
+      </details>
       {plan.path === "short_term" ? <section className="arbor-panel"><p className="text-sm leading-6 text-slate-600">The short-term path is active. No long-term allocation, planning return or investment contribution guidance is provided. Review your profile and compare approaches if your planning horizon changes.</p></section>
         : <section className="arbor-panel">
           <h2 className="text-lg font-semibold text-slate-900">Your model targets</h2>
-          <dl className="mt-4 divide-y divide-slate-200">{(plan.plan_basis !== "user_selected" ? plan.preference_result?.effective_target?.allocation.weights ?? plan.base_allocation : plan.base_allocation).map(weight => <div key={weight.role} className="flex items-center justify-between gap-3 py-3"><dt className="text-slate-600">{SLEEVE_LABELS[weight.role]}</dt><dd className="text-2xl font-semibold text-slate-900">{weight.percentage_points}%</dd></div>)}</dl>
+          <Allocation weights={plan.plan_basis !== "user_selected" ? plan.preference_result?.effective_target?.allocation.weights ?? plan.base_allocation : plan.base_allocation}/>
           <details className="mt-4"><summary className="min-h-11 cursor-pointer py-3 font-medium">Planning assumptions</summary><p className="mt-4 font-semibold text-slate-900">Planning return: {plan.planning_return_pct.toFixed(1)}%</p>
           <p className="mt-2 text-sm text-slate-600">An annual effective modeling assumption, not a forecast or guarantee. Inflation assumption: {plan.inflation_pct.toFixed(1)}%.</p>
           {plan.selection.cap_applied && <p className="mt-4 text-sm leading-6 text-slate-600">Assessment context: {plan.selection.requested_strategy} volatility comfort; the horizon check for {horizon} returned {plan.selection.selected_strategy}. {plan.plan_basis === "user_selected" || plan.historical_allocation_preserved ? "This does not override your saved plan." : "This was used by the earlier assessment flow."}</p>}

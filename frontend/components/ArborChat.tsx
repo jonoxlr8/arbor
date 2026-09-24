@@ -137,7 +137,7 @@ function ArborResponse({ text }: { text: string }) {
 
 function ArborMessage({ text }: { text: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+    <div className="chat-reply rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sage-soft">
           <ArborMark className="h-8 w-8" />
@@ -205,23 +205,21 @@ function PlanChat({ v2 }: { v2: boolean }) {
   const limited = error === FREE_LIMIT_MESSAGE || currentUsage?.remaining === 0;
 
   return (
-    <div className="mt-6 min-w-0">
+    <div className="min-w-0">
       {/* Intro */}
       <div className="text-sm">
         {access?.value?.effective_tier === "plus" && <p className="mb-2 text-xs font-medium text-slate-500">Arbor Plus · Full Ask Arbor access</p>}
         {currentUsage && !limited && <p role="status" className="mb-2 text-sm text-slate-600">{currentUsage.remaining} Free questions remaining this month.</p>}
         {limited && <div role="status" className="mb-4 rounded-xl border border-slate-200 p-4"><p className="text-slate-700">{FREE_LIMIT_MESSAGE}</p><a className="entry-link mt-2 inline-flex min-h-11 items-center" href="#settings/plus">Explore Arbor Plus</a></div>}
         {access?.value?.ask_usage_available === false && <p role="status" className="mb-3 text-sm text-slate-600">Ask Arbor usage is temporarily unavailable. Your saved plan remains accessible.</p>}
-        <p className="leading-7 text-slate-700">
-          {livePortfolio ? "Understand your selected plan and recorded holdings. Values may include amounts you entered." : "About your target plan—not actual holdings."} No live market, tax or trading advice. Each question stands alone.
-        </p>
       </div>
 
       {/* Suggested questions */}
       {messages.length === 0 && <div className="mt-6">
-        <p className="mb-3 text-sm font-semibold text-slate-500">Try asking:</p>
+        <div className="chat-intro-bubble"><ArborMark className="h-7 w-7"/><p>{livePortfolio ? "Let’s make sense of your investments. Ask about your portfolio, your plan or your next step." : "Your plan is a starting point. I’m here to help you understand it, one question at a time."}</p></div>
+        <p className="mb-3 mt-5 text-xs font-medium text-slate-500">A few places to start</p>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="chat-suggestions">
           {prompts.map((prompt) => (
             <button
               key={prompt}
@@ -245,7 +243,7 @@ function PlanChat({ v2 }: { v2: boolean }) {
                 disabled:opacity-50
               "
             >
-              {prompt}
+              <span aria-hidden="true" className="suggestion-spark">✧</span>{prompt}
             </button>
           ))}
         </div>
@@ -258,7 +256,7 @@ function PlanChat({ v2 }: { v2: boolean }) {
               message.role === "arbor" ? (
                 <ArborMessage key={index} text={message.text} />
               ) : (
-                <div key={index} className="ml-3 rounded-2xl bg-sage-soft p-4 sm:ml-8">
+                <div key={index} className="chat-user">
                   <p className="text-sm font-medium text-slate-500">You</p>
 
                   <p className="mt-1 whitespace-pre-wrap leading-7 text-slate-700">
@@ -269,8 +267,9 @@ function PlanChat({ v2 }: { v2: boolean }) {
             )}
           </div>
         )}
+      {messages.length > 0 && v2 && <nav aria-label="Explore your plan" className="mt-4 flex gap-5 text-sm"><a className="entry-link min-h-11" href="#portfolio/plan">View your plan</a><a className="entry-link min-h-11" href="#portfolio">View portfolio</a></nav>}
       {/* Input */}
-      <div className="mt-6">
+      <div className="chat-composer">
         {error && error !== FREE_LIMIT_MESSAGE && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-red-800">{error}</p>}
         <textarea
           aria-label="Your question about your Arbor plan"
@@ -283,9 +282,9 @@ function PlanChat({ v2 }: { v2: boolean }) {
               handleAsk();
             }
           }}
-          rows={3}
+          rows={1}
           disabled={loading || limited}
-          placeholder="Ask about Arbor targets, asset roles or projection assumptions..."
+          placeholder="Ask about your plan…"
           className="
             w-full
             resize-none
@@ -305,36 +304,22 @@ function PlanChat({ v2 }: { v2: boolean }) {
           "
         />
 
-        <div className="mt-2 flex items-center justify-between">
+        <div className="send-row">
           <p className="text-xs text-slate-400">
-            Press Enter to send · Shift + Enter for a new line
+            Enter to send · Shift + Enter for a new line
           </p>
-
-
-        </div>
 
         <button
           onClick={handleAsk}
           disabled={loading || limited || !question.trim()}
-          className={`
-            mt-4
-            w-full
-            rounded-xl
-            py-4
-            font-semibold
-            shadow-sm
-            transition
-            ${
-              loading || limited || !question.trim()
-                ? "cursor-not-allowed bg-slate-300 text-slate-500"
-                : "bg-emerald-600 text-white hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-md"
-            }
-          `}
+          aria-label={loading ? "Loading explanation..." : "Ask Arbor"}
+          className="entry-primary disabled:opacity-50"
         >
-          {loading ? "Loading explanation..." : "Ask Arbor"}
-        </button>
+          <span aria-hidden="true">{loading ? "…" : "↑"}</span>
+        </button></div>
         {loading && <p role="status" className="mt-2 text-sm text-slate-500">Explaining your saved plan…</p>}
       </div>
+      <details className="chat-about"><summary className="text-xs text-slate-500">About your Arbor answers</summary><p className="text-sm leading-6 text-slate-700">{livePortfolio ? "Understand your selected plan and recorded holdings. Values may include amounts you entered." : "About your target plan—not actual holdings."} No live market, tax or trading advice. Each question stands alone.</p></details>
     </div>
   );
 }

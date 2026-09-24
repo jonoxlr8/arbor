@@ -40,12 +40,11 @@ export default function AppShell({ active, name, children, onSignOut, signingOut
       <a href="#app-content" onClick={event => { event.preventDefault(); document.getElementById("app-content")?.focus(); }} className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:p-4">Skip to content</a>
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-slate-200/70 bg-white p-6 lg:flex">
         <a href="#home" aria-label="Arbor Home"><Logo /></a>
-        <p className="mt-4 text-xs leading-5 text-slate-500">Build wealth.<br />Grow with Arbor.</p>
         <nav aria-label="Primary navigation" className="mt-12 space-y-2">
           {destinations.map(item => <a key={item.id} href={`#${item.id}`} aria-current={active === item.id ? "page" : undefined} className={`flex min-h-12 items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${active === item.id ? "bg-forest text-white" : "text-slate-600 hover:bg-slate-50 hover:text-forest"}`}><NavIcon name={item.id} />{item.label}</a>)}
         </nav>
         <div className="mt-auto space-y-3 pt-8">
-          <p className="pt-3 text-xs text-slate-400">A little clarity. A longer view.</p>
+          <a href="#settings" className="account-chip"><span aria-hidden="true">{name.trim().slice(0,1).toUpperCase()}</span><div>{name.trim().split(/\s+/)[0]}<small>Account &amp; preferences</small></div></a>
         </div>
       </aside>
       <div className="lg:pl-60">
@@ -56,13 +55,12 @@ export default function AppShell({ active, name, children, onSignOut, signingOut
           <header className="mb-7 flex min-w-0 flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
               <h1 ref={heading} tabIndex={-1} className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 outline-none sm:text-4xl">{active === "home" ? `Hello, ${name.trim().split(/\s+/)[0] || "there"}.` : destination?.label ?? "Settings"}</h1>
+              <p className="mt-2 text-sm text-slate-500">{{home:"A little clarity. A longer view.",portfolio:"Your investments, in perspective.",ask:"Your Arbor investment companion.",settings:"Make Arbor feel like yours."}[active]}</p>
             </div>
-            <span className="hidden rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500 sm:block">Long-term, by design</span>
           </header>
           {logoutError && <p role="alert" className="mb-5 rounded-xl bg-red-50 p-4 text-sm text-red-800">{logoutError}</p>}
           {children}
           {active === "settings" && <section className="mt-6 max-w-2xl"><h2 className="mb-3 text-lg font-semibold">Account &amp; security</h2>{signOut}</section>}
-          <footer className="mt-10 border-t border-slate-200 pt-5 text-xs leading-5 text-slate-500">Arbor is a planning and educational companion. It does not purchase, custody or execute investments. Scenarios are not orders.</footer>
         </main>
       </div>
       <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-slate-200 bg-white/95 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm lg:hidden">

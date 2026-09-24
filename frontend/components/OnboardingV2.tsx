@@ -75,8 +75,8 @@ export default function OnboardingV2({ userId, onComplete, onSignOut, signingOut
     setReview(onboardingRequest(answers));
   }
   if (isPlanV2(created)) return <PlanCreated value={created} onContinue={destination=>{window.location.hash=destination;onComplete(created);}}/>;
-  if (review) return <main className="min-h-dvh bg-background px-4 py-6 sm:py-12"><ApproachSelection input={review} userId={userId} onComplete={plan=>{if(isPlanV2(plan))setCreated(plan);else onComplete(plan);}} onBack={() => setReview(null)} /></main>;
-  return <main className="flex min-h-dvh justify-center bg-background px-4 py-6 sm:py-12">
+  if (review) return <main className="onboarding-consumer min-h-dvh bg-background px-4 py-6 sm:py-12"><ApproachSelection input={review} userId={userId} onComplete={plan=>{if(isPlanV2(plan))setCreated(plan);else onComplete(plan);}} onBack={() => setReview(null)} /></main>;
+  return <main className="onboarding-consumer flex min-h-dvh justify-center bg-background px-4 py-6 sm:py-12">
     <div className="w-full min-w-0 max-w-xl"><Card>
       <Logo />
       <ProgressBar step={step + 1} totalSteps={steps.length + 1} />
