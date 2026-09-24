@@ -1,13 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import type { PlanV2 } from "@/lib/types/planV2";
-import { portfolioApi, validHolding, freshnessText, scenarioAvailability, type HoldingDraft, type LivePortfolioData, type PortfolioHolding } from "@/lib/livePortfolio";
+import { portfolioApi, validHolding, freshnessText, scenarioAvailability, supportsManualValue, validManualValue, type HoldingDraft, type LivePortfolioData, type PortfolioHolding } from "@/lib/livePortfolio";
 import { decimalText, formatContributionMoney, SLEEVE_LABELS } from "@/lib/contributions";
 import ContributionCard from "../contributions/ContributionCard";
 import PortfolioHistoryChart from "./PortfolioHistoryChart";
 
 const inputClass = "mt-1 min-h-12 w-full min-w-0 rounded-xl border border-slate-300 bg-white p-3 text-slate-900";
-const blank = (): HoldingDraft => ({ provider: "", product_id: "", units: "", cost_basis_php: null });
+const blank = (): HoldingDraft => ({ provider: "", product_id: "", units: null, cost_basis_php: null, manual_value_php: null });
 const money = (v: string) => formatContributionMoney(v, "PHP");
 
 export default function LivePortfolio({ value, userId }: { value: PlanV2; userId: string }) {
@@ -21,6 +21,7 @@ export default function LivePortfolio({ value, userId }: { value: PlanV2; userId
   const [draft, setDraft] = useState<HoldingDraft | null>(null);
   const [editing, setEditing] = useState<string>();
   const [deleting, setDeleting] = useState<PortfolioHolding | null>(null);
+  const [manual, setManual] = useState<{ holding: PortfolioHolding; value: string } | null>(null);
   useEffect(() => {
     const controller = new AbortController();
     portfolioApi.read(userId, controller.signal).then(async data => {
@@ -39,7 +40,7 @@ export default function LivePortfolio({ value, userId }: { value: PlanV2; userId
   async function mutate(work: () => Promise<unknown>) {
     if (pending.current) return;
     pending.current = true; setBusy(true); setError("");
-    try { await work(); setDraft(null); setDeleting(null); setEditing(undefined); refresh(); }
+    try { await work(); setDraft(null); setDeleting(null); setManual(null); setEditing(undefined); refresh(); }
     catch (e) { setError(e instanceof Error ? e.message : "We couldn’t update your record. Please retry."); }
     finally { pending.current = false; setBusy(false); }
   }
@@ -57,17 +58,31 @@ export default function LivePortfolio({ value, userId }: { value: PlanV2; userId
           <p className="mt-2 text-sm text-slate-600">Known provider value: {money(portfolio.provider_values_php[provider] ?? "0")}{portfolio.holdings.some(h => h.provider === provider && h.value_php === null) ? " · incomplete" : ""}</p>
           {portfolio.holdings.filter(h => h.provider === provider).map(h => <div className="mt-2 border-b border-slate-200 py-3 text-sm" key={h.id}>
             <div className="flex flex-wrap justify-between gap-2"><p className="min-w-0 break-words font-semibold text-slate-900">{h.display_name}</p><p className="font-semibold text-slate-900">{h.value_php === null ? "Value unavailable" : money(h.value_php)}</p></div>
-            <p className="mt-1 break-all text-slate-600">{decimalText(h.units)} {h.sleeve === "crypto" ? "BTC" : "units"}</p><p className="mt-1 text-xs text-slate-500">{freshnessText(h)}</p>
-            <button className="entry-link min-h-11 pr-5" disabled={busy} aria-label={`Edit ${h.display_name}`} onClick={() => { setEditing(h.id); setDraft({ provider: h.provider, product_id: h.product_id, units: decimalText(h.units), cost_basis_php: h.cost_basis_php }); }}>Edit record</button>
+            <p className="mt-1 break-all text-slate-600">{h.units === null ? "Units not recorded. Add your fund units to enable automatic NAV-based tracking." : `${decimalText(h.units)} ${h.sleeve === "crypto" ? "BTC" : "units"}`}</p><p className="mt-1 text-xs text-slate-500">{freshnessText(h)}</p>
+            {supportsManualValue(h) && <>
+              {(h.valuation_source === "manual_user" || h.freshness === "unavailable") && <button className="entry-link min-h-11 pr-5" disabled={busy} onClick={() => { setManual({ holding: h, value: h.manual_value_php ?? "" }); setDraft(null); }}>{h.manual_value_php ? "Update current value" : "Add current value"}</button>}
+              {h.manual_value_php && h.valuation_source === "nav" && <button className="entry-link min-h-11 pr-5" disabled={busy} onClick={() => setManual({ holding: h, value: h.manual_value_php! })}>Manage saved value</button>}
+            </>}
+            <button className="entry-link min-h-11 pr-5" disabled={busy} aria-label={`Edit ${h.display_name}`} onClick={() => { setManual(null); setEditing(h.id); setDraft({ provider: h.provider, product_id: h.product_id, units: h.units === null ? null : decimalText(h.units), cost_basis_php: h.cost_basis_php, manual_value_php: h.manual_value_php ?? null }); }}>Edit record</button>
             <button className="entry-link min-h-11" disabled={busy} aria-label={`Remove ${h.display_name}`} onClick={() => setDeleting(h)}>Remove record</button>
           </div>)}
         </section>)}
       </section>
-      {draft && <form className="arbor-panel space-y-4" onSubmit={e => { e.preventDefault(); if (!validHolding(draft, portfolio.catalog)) { setError("Choose a supported investment and enter positive units (up to 12 decimal places). Cost basis is optional PHP with up to 2 decimal places."); return; } void mutate(() => portfolioApi.save(userId, draft, editing)); }}>
+      {manual && <form className="arbor-panel min-w-0 space-y-4" onSubmit={e => { e.preventDefault(); if (!validManualValue(manual.value)) { setError("Enter a positive PHP value with up to 2 decimal places."); return; } void mutate(() => portfolioApi.manualValue(userId, manual.holding.id, manual.value)); }}>
+        <h3 className="font-semibold text-slate-900">{manual.holding.display_name}</h3>
+        <p className="text-sm text-slate-600">Enter the current value shown in {manual.holding.provider === "gcash" ? "GFunds" : "DragonFi"}. This is the whole holding’s value, not a unit price.</p>
+        <label className="block text-sm text-slate-700">Current value (PHP)<input required inputMode="decimal" className={inputClass} disabled={busy} value={manual.value} onChange={e => setManual({ ...manual, value: e.target.value })} /></label>
+        <p className="text-sm text-slate-600">Your value is used for seven days. Arbor has not independently verified it. A usable NAV takes priority only when fund units are recorded.</p>
+        <button disabled={busy} className="entry-primary min-h-11 w-full">{busy ? "Saving value…" : "Save current value"}</button>
+        {manual.holding.manual_value_php && (manual.holding.units !== null ? <button type="button" disabled={busy} className="entry-secondary min-h-11 w-full" onClick={() => void mutate(() => portfolioApi.manualValue(userId, manual.holding.id, null))}>Clear current value — keep holding</button> : <p className="text-sm text-slate-600">To clear this value, first add fund units in Edit record. Otherwise, remove the holding.</p>)}
+        <button type="button" disabled={busy} className="entry-link min-h-11" onClick={() => setManual(null)}>Cancel</button>
+      </form>}
+      {draft && <form className="arbor-panel space-y-4" onSubmit={e => { e.preventDefault(); if (!validHolding(draft, portfolio.catalog)) { setError("For a fund, enter a positive PHP current value or fund units. ETFs and Bitcoin require positive units. PHP amounts support up to 2 decimal places."); return; } void mutate(() => portfolioApi.save(userId, draft, editing)); }}>
         <h3 className="text-lg font-semibold text-slate-900">{editing ? "Edit holding record" : "Add holding"}</h3>
-        <label className="block text-sm text-slate-700">Provider<select className={inputClass} required disabled={busy || !!editing} value={draft.provider} onChange={e => setDraft({ ...draft, provider: e.target.value, product_id: "" })}><option value="">Choose provider</option>{[...new Map(portfolio.catalog.map(p => [p.provider, p.provider_name])).entries()].map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
-        <label className="block text-sm text-slate-700">Investment<select className={inputClass} required disabled={busy || !!editing} value={draft.product_id} onChange={e => setDraft({ ...draft, product_id: e.target.value })}><option value="">Choose investment</option>{portfolio.catalog.filter(p => p.provider === draft.provider).map(p => <option key={p.product_id} value={p.product_id}>{p.display_name}</option>)}</select></label>
-        <label className="block text-sm text-slate-700">Units<input className={inputClass} inputMode="decimal" required disabled={busy} value={draft.units} onChange={e => setDraft({ ...draft, units: e.target.value })} /></label>
+        <label className="block text-sm text-slate-700">Provider<select className={inputClass} required disabled={busy || !!editing} value={draft.provider} onChange={e => setDraft({ ...blank(), provider: e.target.value })}><option value="">Choose provider</option>{[...new Map(portfolio.catalog.map(p => [p.provider, p.provider_name])).entries()].map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+        <label className="block text-sm text-slate-700">Investment<select className={inputClass} required disabled={busy || !!editing} value={draft.product_id} onChange={e => setDraft({ ...draft, product_id: e.target.value, units: null, manual_value_php: null })}><option value="">Choose investment</option>{portfolio.catalog.filter(p => p.provider === draft.provider).map(p => <option key={p.product_id} value={p.product_id}>{p.display_name}</option>)}</select></label>
+        {supportsManualValue(draft) && <><label className="block text-sm text-slate-700">Current value (PHP)<input className={inputClass} inputMode="decimal" disabled={busy} value={draft.manual_value_php ?? ""} onChange={e => setDraft({ ...draft, manual_value_php: e.target.value || null })} /></label><p className="text-sm text-slate-600">Enter the value shown in {draft.provider === "gcash" ? "GFunds" : "DragonFi"}. This is enough to track your fund; update it every seven days.</p></>}
+        {supportsManualValue(draft) ? <details open={!!draft.units}><summary className="min-h-11 cursor-pointer text-sm text-slate-700">I know my fund units</summary><label className="block text-sm text-slate-700">Units (optional)<input className={inputClass} inputMode="decimal" disabled={busy} value={draft.units ?? ""} onChange={e => setDraft({ ...draft, units: e.target.value || null })} /></label><p className="mt-2 text-sm text-slate-600">Recorded units enable automatic valuation when a usable fund NAV is available. You can also track with units alone.</p></details> : <label className="block text-sm text-slate-700">Units<input className={inputClass} inputMode="decimal" required disabled={busy} value={draft.units ?? ""} onChange={e => setDraft({ ...draft, units: e.target.value || null })} /></label>}
         <label className="block text-sm text-slate-700">Total cost basis (PHP, optional)<input className={inputClass} inputMode="decimal" disabled={busy} value={draft.cost_basis_php ?? ""} onChange={e => setDraft({ ...draft, cost_basis_php: e.target.value || null })} /></label>
         <p className="text-sm text-slate-600">This updates Arbor’s record only. It does not place a trade. Cost basis is saved for reference, not used as current value.</p>
         <button className="entry-primary min-h-11 w-full" disabled={busy}>{busy ? "Saving record…" : "Save holding record"}</button><button type="button" className="entry-link min-h-11" disabled={busy} onClick={() => setDraft(null)}>Cancel</button>
@@ -75,7 +90,7 @@ export default function LivePortfolio({ value, userId }: { value: PlanV2; userId
       {deleting && <section role="alertdialog" aria-label="Confirm removal" className="arbor-panel"><h3 className="font-semibold text-slate-900">Remove {deleting.display_name} from Arbor?</h3><p className="mt-2 text-sm text-slate-600">This removes the record, not the investment in your provider account. Recorded history stays unchanged.</p><button className="entry-primary mt-4 min-h-11" disabled={busy} onClick={() => void mutate(() => portfolioApi.remove(userId, deleting.id))}>Remove from Arbor</button><button className="entry-link ml-4 min-h-11" disabled={busy} onClick={() => setDeleting(null)}>Cancel</button></section>}
       <PlanAlignment portfolio={portfolio} />
       {scenarioAvailability(value, portfolio) !== "plan_required" ? (
-        scenarioAvailability(value, portfolio) === "prices_required" ? <p className="arbor-panel text-sm text-slate-600">Contribution scenarios are paused until complete, fresh reference values are available. Your records remain editable.</p> :
+        scenarioAvailability(value, portfolio) === "prices_required" ? <p className="arbor-panel text-sm text-slate-600">Contribution scenarios are paused until complete, up-to-date values are available. Update any fund values that need attention. Your records remain editable.</p> :
         showContribution ? <ContributionCard key={`${reload}:${portfolio.valued_at}`} value={value} userId={userId} portfolio={portfolio.holdings.length ? portfolio : undefined} /> :
         <button className="entry-primary min-h-11" onClick={() => setShowContribution(true)}>{portfolio.holdings.length ? "Review contribution" : "Explore a hypothetical contribution"}</button>
       ) : <p className="arbor-panel text-sm text-slate-600">Your holdings can be tracked independently. Long-term contribution scenarios need an explicitly selected active long-term plan. Review your plan for the current path.</p>}

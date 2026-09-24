@@ -15,7 +15,7 @@ if (os.getenv("APP_ENV") != "test" or os.getenv("ARBOR_PORTFOLIO_E2E") != "true"
 
 from app.main import app
 from app.routes import live_portfolio
-from app.services.live_portfolio import Holding, Price, value_portfolio
+from app.services.live_portfolio import Holding, Price, value_portfolio, MANUAL_FUNDS
 
 rows = {}
 history = {}
@@ -36,7 +36,8 @@ class LocalFixtureStore:
     def prices(self, keys):
         return {key: Price(price_key=key, value="56" if key == "usd_php" else
                           "3000000" if key == "btc_php" else "100", as_of=datetime.now(timezone.utc),
-                          source="exchangerate_api" if key == "usd_php" else "coinranking" if key == "btc_php" else "marketstack" if key.startswith("gotrade_") else "official_nav") for key in keys}
+                          source="exchangerate_api" if key == "usd_php" else "coinranking" if key == "btc_php" else "marketstack" if key.startswith("gotrade_") else "official_nav") for key in keys
+                if not (os.getenv("ARBOR_MANUAL_VALUE_E2E") == "true" and key in MANUAL_FUNDS)}
 
     def save(self, request, holding_id=None):
         with lock:
@@ -45,7 +46,25 @@ class LocalFixtureStore:
             if not holding_id and any(h.product_id == request.product_id for h in rows.values()):
                 raise HTTPException(409, "Already recorded")
             now = datetime.now(timezone.utc)
-            rows[key] = Holding(**request.model_dump(), id=key, created_at=rows[key].created_at if key in rows else now, updated_at=now)
+            previous = rows.get(key)
+            payload = request.model_dump()
+            if previous and "manual_value_php" not in request.model_fields_set:
+                payload["manual_value_php"] = previous.manual_value_php
+            stamp = (previous.manual_value_updated_at if previous and payload["manual_value_php"] == previous.manual_value_php
+                     else now if payload["manual_value_php"] is not None else None)
+            rows[key] = Holding(**payload, id=key, created_at=previous.created_at if previous else now,
+                                updated_at=now, manual_value_updated_at=stamp)
+
+    def save_manual_value(self, holding_id, request):
+        with lock:
+            key = str(holding_id)
+            if key not in rows: raise HTTPException(404, "Holding not found")
+            if rows[key].product_id not in MANUAL_FUNDS: raise HTTPException(422, "Supported PHP funds only")
+            if request.manual_value_php is None and rows[key].units is None:
+                raise HTTPException(422, "Keep units or a current value")
+            now = datetime.now(timezone.utc)
+            rows[key] = Holding(**{**rows[key].model_dump(), **request.model_dump(),
+                "manual_value_updated_at": now if request.manual_value_php is not None else None, "updated_at": now})
 
     def delete(self, holding_id):
         with lock:

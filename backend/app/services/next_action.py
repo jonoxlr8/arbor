@@ -26,7 +26,7 @@ def get_next_action(saved: dict | None, entitlements: Entitlements | None = None
                 destination="portfolio", button_label="Add holding")
         elif not portfolio.complete or portfolio.stale_count:
             action = NextAction(key="update_portfolio", title="Review portfolio data",
-                explanation="Some reference values are stale or unavailable. Review your records and price freshness before calculating a contribution scenario.",
+                explanation="Some portfolio values are stale or unavailable. Review your records and update any fund values before calculating a contribution scenario.",
                 destination="portfolio", button_label="Review portfolio")
     if entitlements is not None:
         if action.destination == "portfolio" and "monthly_contribution_planner" not in entitlements.features:

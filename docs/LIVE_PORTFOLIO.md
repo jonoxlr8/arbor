@@ -3,17 +3,90 @@
 Manual records of investments already owned; reference valuation, not execution,
 custody, broker linking or a recommendation. V1 holdings remain unchanged.
 
-## Release prerequisites — NOT applied
+## Holding-specific manual fund values (3U-B.5)
 
-`backend/migrations/3u_b_live_portfolio.sql` is prepared only. Review and deliberately
-apply it before exposing the Portfolio feature in a release. No hosted migration
-was applied during development. The separate **3U-A Ask Arbor quota migration is
-also still unapplied**; this feature does not apply or depend on it for Plus users.
+Only `gcash_global_equity`, `gcash_technology`, `gcash_defensive`,
+`dragonfi_global_equity`, `dragonfi_technology`, and `dragonfi_defensive` accept a
+personal current PHP value. Fund units are optional: a fund must retain positive
+units OR a positive manual value. ETFs and Bitcoin still require positive units
+and cannot use manual values. The user enters the **whole holding value** shown in
+GFunds/DragonFi, not a NAV or price per unit. Cost basis remains separate.
 
-Production adapters are prepared for Marketstack Basic, ExchangeRate-API Open and
-Coinranking Free. **No production credentials, hosted ingestion or activation was
-configured by this milestone.** Commercial/display rights and hosted validation
-remain activation prerequisites. No scraper, scheduler or browser vendor calls.
+`PUT /v2/portfolio/holdings/{id}/manual-value` accepts only `manual_value_php`
+(positive finite Decimal, under PHP 10^16, at most two decimal places), or null to
+clear it without deleting the holding, but only if positive units remain. Otherwise
+add units first or delete the holding. Value-only creation uses the normal holding
+POST with `units=null` and `manual_value_php`; timestamps remain database-assigned.
+No owner, source, timestamp or price URL
+is accepted. JWT owner RLS remains in force. A database trigger sets
+`manual_value_updated_at`; even reaffirming the same amount explicitly refreshes
+it. Editing units/cost alone does not refresh the manual value. Normal clients
+cannot write the timestamp or shared market cache. Source is exposed as
+`valuation_source=manual_user` only when the value is actually used.
+
+When units exist, central valuation precedence: fresh verified canonical NAV, then acceptable cached
+canonical NAV (existing 7-day maximum), then valid personal manual value, otherwise
+unavailable. Without units, NAV cannot determine a holding value: the valid manual
+value remains authoritative even when a NAV exists. Adding units later enables
+NAV valuation without refreshing an unchanged manual value's timestamp.
+A manual value is usable for **7 × 24 hours inclusive** after its
+recorded update time; future or older timestamps fail closed. Beyond that window
+it is excluded, not zero: the portfolio becomes partial, complete percentages and
+contribution scenarios are withheld, and no new snapshot is captured. Existing
+history is retained. Next Action uses the existing update-portfolio action after
+higher-priority readiness/profile/path checks.
+
+Fresh manual values participate in totals, provider/sleeve grouping, alignment,
+canonical contribution inputs and first-complete daily snapshots. They are not
+penalized for being manual and are never written to the shared NAV cache. Ask Arbor
+identifies the amount, holding provider, manual origin and date. The UI says
+“Updated by you”; canonical valuation says “NAV updated”. If NAV becomes available,
+it wins, while the saved manual record remains available to clear. An acceptable
+but stale NAV still wins and follows the existing conservative scenario/snapshot
+pause; a fresh manual value cannot conceal stale canonical data.
+
+Migration order before activation: existing `3u_b_live_portfolio.sql`, then review
+and deliberately apply **only** `20260924070525_3u_b_5_manual_fund_values.sql`.
+The latter adds two holding columns, a restrictive constraint, timestamp trigger,
+column-only update grant, extends the security-invoker text view, and replaces the
+owner-derived snapshot calculation. It does not change RLS, shared cache, products,
+profiles or quota objects. Validate hosted CRUD/RLS after eventual application.
+Keep the feature OFF until that validation and the Basic subscription check pass.
+Rollback: disable availability first; retain holding/manual/history data.
+Do not roll back to an older portfolio reader while leaving the feature enabled:
+older strict models may reject the new view columns. Roll back with availability
+OFF, or deploy a reader compatible with both column sets.
+
+Local isolated SQL regression command (no hosted database):
+
+```sh
+ARBOR_PGLITE_PATH=/path/to/@electric-sql/pglite node --test tests/sql/live_portfolio.test.mjs tests/sql/manual_fund_values.test.mjs
+```
+
+Local browser fixture: use the existing `tests.e2e_portfolio_app` test server with
+`APP_ENV=test`, `ARBOR_PORTFOLIO_E2E=true`, the dedicated
+test user ID, and local-only `LIVE_PORTFOLIO_ENABLED=true`. Leave
+`ARBOR_MANUAL_VALUE_E2E` unset for the value-only / later-units test: fixture NAVs
+exist but cannot value a holding until units are added. The optional `true` mode
+still omits fund NAVs for missing-price checks. Run `node scripts/e2e/manual-fund-values.mjs` with the normal
+isolated authenticated harness. No hosted holdings/history or profile writes occur.
+Stop the fixture process afterward to discard all fixture history.
+
+## Current release status — feature remains OFF
+
+`backend/migrations/3u_b_live_portfolio.sql` was applied and hosted persistence/RLS
+validated in 3U-B.3. The new additive
+`20260924070525_3u_b_5_manual_fund_values.sql` is **prepared, NOT applied**.
+The separate **3U-A Ask Arbor quota migration remains unapplied**; this feature
+does not apply or depend on it for Plus users.
+
+Production adapters and hosted technical ingestion were validated before 3U-B.5.
+The product owner reports Marketstack confirmed **Basic supports Arbor's intended
+commercial customer-facing use**. Display permission is no longer an unresolved
+clarification; **Marketstack Basic must be active before private-beta activation**.
+The development account may remain Free until then. This milestone does not change
+subscriptions, credentials, hosted data, migrations or feature flags. No scraper,
+scheduler or browser vendor calls are added.
 
 ## Production-safe availability (3U-B.1)
 
@@ -52,7 +125,7 @@ expose unvalidated production functionality merely to test it.
 4. Verify snapshot owner RLS.
 5. Verify shared-cache write restrictions and privileged snapshot function access.
 6. Configure an approved server-side market-data source/ingestion.
-7. Verify commercial use and display rights.
+7. Verify Marketstack Basic is active under the confirmed commercial-use permission.
 8. Test real ETF reference valuation.
 9. Test USD/PHP reference conversion.
 10. Test BTC/PHP across supported providers.
@@ -67,7 +140,9 @@ expose unvalidated production functionality merely to test it.
 
 The independent `3u_a_ask_usage.sql` is required **before enabling production Free
 Ask Arbor quotas**; it is not part of Live Portfolio activation. Both migrations
-remain prepared and unapplied by this work. Neither is run by application startup.
+are independent. The base Live Portfolio migration is already applied; the new
+manual-value migration and Free quota migration remain unapplied by this work.
+No migration runs at application startup.
 
 ### Rollback
 
@@ -79,9 +154,10 @@ these additive tables. No existing profile JSON changes are needed.
 ## Data and ownership
 
 - `arbor_portfolio_holdings`: authenticated owner defaulted from `auth.uid()`, UUID,
-  canonical product/provider, positive units (12 fractional digits), optional total
-  PHP cost basis (2 fractional digits), timestamps. One record per owner/product;
-  update total units rather than inserting duplicate lots.
+  canonical product/provider, positive units (12 fractional digits; nullable only
+  for supported funds with a manual value), optional total PHP cost basis,
+  personal manual PHP value (2 fractional digits), timestamps. One record per
+  owner/product; update that record rather than inserting duplicate lots.
 - `arbor_portfolio_products`: a locked subset of the existing implementation
   catalog. No arbitrary ticker search or user-entered provider names.
 - `arbor_market_prices`: shared reference price cache, trusted server writes only.
@@ -144,8 +220,12 @@ All `/v2/portfolio` routes require JWT, operational availability and Plus `live_
 
 - `GET /v2/portfolio`: owner records, PHP values, catalog, comparisons and history;
   read-only, no-store. History returns up to 366 daily observations.
-- `POST /v2/portfolio/holdings`: supported provider/product, units, optional cost.
-- `PUT /v2/portfolio/holdings/{id}`: units/cost only for the authenticated owner.
+- `POST /v2/portfolio/holdings`: supported provider/product, units and/or fund
+  manual value under the tracking-input rules above, optional cost.
+- `PUT /v2/portfolio/holdings/{id}`: units/cost/manual value for the authenticated
+  owner, never product/provider changes. An unchanged manual value retains its date.
+- `PUT /v2/portfolio/holdings/{id}/manual-value`: explicitly reaffirm/update a
+  manual value or clear it when units remain; timestamp is assigned by the DB.
 - `DELETE /v2/portfolio/holdings/{id}`: removes record, never a broker transaction.
 - `POST /v2/portfolio/snapshot`: DB-derived daily observation; no request values.
 - `POST /v2/portfolio/scenarios/{plan|recommendation}`: amount, chosen route and
@@ -327,7 +407,8 @@ to use Arbor snapshots, never TradingView widgets.
 Planning estimate: existing Marketstack Basic approximately **US$9.99/month**;
 Coinranking Free $0; ExchangeRate-API Open $0; manual official NAV $0. No additional
 paid source is introduced. Prices and terms can change; this is not a guaranteed
-quote. Confirm the actual subscription and display rights before activation.
+quote. Confirm the Basic subscription is active before activation. User-entered
+manual fund values also cost $0; no additional data subscription is needed.
 
 References inspected for implementation:
 
@@ -339,7 +420,7 @@ References inspected for implementation:
 
 ### Exact eventual hosted activation sequence — NOT executed
 
-1. Confirm Marketstack customer-facing display rights.
+1. Activate Marketstack Basic before enabling private-beta access (permission confirmed by the product owner).
 2. Configure Marketstack key server-side.
 3. Configure Coinranking key server-side and confirm intended-use terms.
 4. Confirm ExchangeRate-API Open endpoint/attribution (no key required).

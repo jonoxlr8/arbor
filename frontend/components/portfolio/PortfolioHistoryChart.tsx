@@ -15,7 +15,7 @@ export default function PortfolioHistoryChart({ history }: { history: PortfolioH
       {points.length === 1 && <p className="mt-3 text-sm text-slate-700">{formatContributionMoney(points[0].value_php, "PHP")} recorded {points[0].day}. More observations will form your chart.</p>}
       {points.length > 1 && <div className="h-48 min-w-0 text-forest" aria-hidden="true"><ResponsiveContainer width="100%" height="100%"><LineChart data={points.map(p => ({ ...p, plotValue: Number(p.value_php) }))} margin={{ left: 10, right: 10, top: 12, bottom: 0 }}><XAxis dataKey="day" tick={{ fontSize: 10 }} minTickGap={50} /><YAxis hide domain={[0, "auto"]} /><Tooltip formatter={(_, __, item) => formatContributionMoney(item.payload.value_php, "PHP")} /><Line type="linear" dataKey="plotValue" stroke="currentColor" strokeWidth={2} dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer></div>}
       <details className="mt-3"><summary className="min-h-11 cursor-pointer text-sm text-slate-700">View recorded values ({points.length})</summary><dl className="text-sm text-slate-700">{points.map(p => <div className="flex flex-wrap justify-between gap-2 py-2" key={p.day}><dt>{p.day}</dt><dd>{formatContributionMoney(p.value_php, "PHP")}</dd></div>)}</dl></details>
-      <p className="text-xs text-slate-500">First complete fresh reference valuation each day. Changes include edits to your holdings; this is not an investment-return chart.</p>
+      <p className="text-xs text-slate-500">First complete up-to-date valuation each day, including valid values entered by you. Changes include edits to your holdings; this is not an investment-return chart.</p>
     </>}
   </section>;
 }

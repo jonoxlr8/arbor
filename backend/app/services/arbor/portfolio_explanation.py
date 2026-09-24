@@ -12,10 +12,19 @@ def explain_portfolio(question: str, portfolio: Portfolio | None) -> str:
         return "No holdings are recorded yet. Add investments you already own in Portfolio. Your plan targets are not evidence of ownership."
     if re.search(r"perform|worst|best|gain|loss", question, re.I):
         return "Arbor has reference valuations, not complete transaction or contribution history. I can’t separate investment growth from added holdings or rank performance."
-    prefix = (f"Latest reference portfolio value: PHP {portfolio.total_value_php:,.2f}. " if portfolio.complete else
-              f"Known reference value: PHP {portfolio.known_value_php:,.2f}, with {portfolio.unavailable_count} holding(s) unavailable. This is not your complete portfolio value. ")
+    prefix = (f"Recorded portfolio value: PHP {portfolio.total_value_php:,.2f}. " if portfolio.complete else
+              f"Known recorded value: PHP {portfolio.known_value_php:,.2f}, with {portfolio.unavailable_count} holding(s) unavailable. This is not your complete portfolio value. ")
     if portfolio.stale_count:
         prefix += f"{portfolio.stale_count} holding(s) use clearly dated cached prices. "
+    for holding in portfolio.holdings:
+        if holding.valuation_source == "manual_user":
+            prefix += (f"You entered {holding.display_name}'s current value from {holding.provider_name} "
+                       f"as PHP {holding.value_php:,.2f} on {holding.as_of:%b %d, %Y}. "
+                       "This is a manually updated holding value, not an official NAV. ")
+            if holding.units is None:
+                prefix += "Arbor does not currently have units for this holding, so it is using the value you entered. Automatic NAV valuation requires recorded fund units. "
+        elif holding.value_php is None and holding.manual_value_updated_at:
+            prefix += f"{holding.display_name}'s manual value needs updating and is excluded from the known total. "
     if re.search(r"bitcoin|btc|crypto", question, re.I):
         prefix += f"Recorded Bitcoin units across providers: {portfolio.bitcoin_units:f} BTC. "
     if not portfolio.complete:

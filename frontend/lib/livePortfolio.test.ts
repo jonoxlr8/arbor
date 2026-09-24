@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createPortfolioApi, isPortfolio, validHolding, freshnessText, portfolioValues, scenarioAvailability, type LivePortfolioData } from "./livePortfolio";
+import { createPortfolioApi, isPortfolio, validHolding, freshnessText, portfolioValues, scenarioAvailability, supportsManualValue, validManualValue, type LivePortfolioData } from "./livePortfolio";
 import LivePortfolio, { PortfolioSummary, PlanAlignment, DataAttribution } from "../components/portfolio/LivePortfolio";
 import PortfolioHistoryChart from "../components/portfolio/PortfolioHistoryChart";
 import ContributionCard from "../components/contributions/ContributionCard";
@@ -23,6 +23,45 @@ export const portfolioFixture: LivePortfolioData = {
     {sleeve:"crypto",known_value_php:"0.00",current_percentage:"0",target_percentage:0,difference_pp:"0"}],
 };
 const html=(component: Parameters<typeof renderToStaticMarkup>[0])=>renderToStaticMarkup(component);
+test("manual value is limited to six funds and exact positive PHP amounts",()=>{
+  for(const provider of ["gcash","dragonfi"])for(const sleeve of ["global_equity","technology","defensive"])assert.ok(supportsManualValue({product_id:`${provider}_${sleeve}`}));
+  for(const product_id of ["gotrade_vt","pdax_btc","AAPL","gcash_arbitrary"])assert.equal(supportsManualValue({product_id}),false);
+  for(const value of ["0","-1","NaN","Infinity","0.001","10000000000000000",""])assert.equal(validManualValue(value),false);
+  assert.ok(validManualValue("12450.25"));
+});
+test("fund value-only drafts work while ETF/BTC units remain mandatory",()=>{
+  for(const product_id of ["gcash_global_equity","dragonfi_defensive"]){
+    const provider=product_id.split('_')[0];
+    const catalog=[{...portfolioFixture.catalog[0],product_id,provider}];
+    const draft={provider,product_id,units:null,cost_basis_php:null,manual_value_php:"8000"};
+    assert.ok(validHolding(draft,catalog));
+    assert.equal(validHolding({...draft,manual_value_php:null},catalog),false);
+    assert.ok(validHolding({...draft,units:"10",manual_value_php:null},catalog));
+  }
+  for(const product_id of ["gotrade_vt","pdax_btc"]){
+    const provider=product_id.split('_')[0],catalog=[{...portfolioFixture.catalog[0],product_id,provider}];
+    assert.equal(validHolding({provider,product_id,units:null,cost_basis_php:null,manual_value_php:"8000"},catalog),false);
+  }
+});
+test("manual source and expiry never masquerade as official NAV",()=>{
+  const h={...portfolioFixture.holdings[0],product_id:"gcash_global_equity",provider:"gcash",price_kind:"nav" as const,valuation_source:"manual_user" as const,manual_value_php:"8000.00",manual_value_updated_at:"2026-09-24T00:00:00Z"};
+  assert.match(freshnessText(h),/Updated by you/);assert.doesNotMatch(freshnessText(h),/NAV|market price/);
+  assert.match(freshnessText({...h,freshness:"unavailable",as_of:null}),/Value needs updating.*Last updated by you/);
+  assert.match(freshnessText({...h,valuation_source:"nav"}),/NAV updated/);
+});
+test("manual-value API sends only value and supports clearing without deleting",async()=>{
+  const calls:RequestInit[]=[];
+  const api=createPortfolioApi(async()=>"fixture",async(url,options)=>{assert.match(String(url),/holdings\/record\/manual-value$/);calls.push(options!);return Response.json({saved:true});});
+  await api.manualValue("A","record","12450.25");await api.manualValue("A","record",null);
+  assert.deepEqual(calls.map(c=>c.method),["PUT","PUT"]);
+  assert.deepEqual(calls.map(c=>JSON.parse(String(c.body))),[{manual_value_php:"12450.25"},{manual_value_php:null}]);
+});
+test("manual value failures are safe and do not trigger a delete or another write",async()=>{
+  let calls=0;
+  const api=createPortfolioApi(async()=>"fixture",async(_,options)=>{calls++;assert.equal(options?.method,"PUT");return Response.json({detail:"internal storage error"},{status:503});});
+  await assert.rejects(api.manualValue("A","record","8000"),/temporarily unavailable/);
+  assert.equal(calls,1);
+});
 for (const enabled of [undefined, false, true]) test(`server availability ${enabled} selects live or manual path independently of Plus`,()=>{
   const value = structuredClone(contributionFixture); value.plan.plan_basis="user_selected";
   const access: Entitlements = {tier:"plus",status:"trial",effective_tier:"plus",private_beta:true,

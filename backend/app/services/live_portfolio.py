@@ -24,18 +24,31 @@ UNIVERSE = {
 Units = Annotated[Decimal, Field(gt=0, lt=10**12, max_digits=24, decimal_places=12, allow_inf_nan=False)]
 Cost = Annotated[Decimal, Field(ge=0, lt=10**16, max_digits=18, decimal_places=2, allow_inf_nan=False)]
 PriceValue = Annotated[Decimal, Field(gt=0, lt=10**12, max_digits=24, decimal_places=12, allow_inf_nan=False)]
+ManualValue = Annotated[Decimal, Field(gt=0, lt=10**16, max_digits=18, decimal_places=2, allow_inf_nan=False)]
+MANUAL_FUNDS = frozenset(k for k, provider in UNIVERSE.items() if provider in ("gcash", "dragonfi"))
+MANUAL_VALUE_MAX_AGE = 7 * 86400
+
+
+class ManualValueInput(DomainModel):
+    manual_value_php: ManualValue | None
 
 
 class HoldingInput(DomainModel):
     provider: Literal["gcash", "dragonfi", "gotrade", "gcrypto", "coins_ph", "pdax"]
     product_id: str
-    units: Units
+    units: Units | None = None
     cost_basis_php: Cost | None = None
+    manual_value_php: ManualValue | None = None
 
     @model_validator(mode="after")
     def supported_pair(self):
         if UNIVERSE.get(self.product_id) != self.provider:
             raise ValueError("Choose a supported investment for this provider")
+        if self.product_id not in MANUAL_FUNDS:
+            if self.units is None or self.manual_value_php is not None:
+                raise ValueError("ETF and Bitcoin holdings require units and cannot use manual values")
+        elif self.units is None and self.manual_value_php is None:
+            raise ValueError("Enter a current PHP value or your fund units")
         return self
 
 
@@ -43,6 +56,15 @@ class Holding(HoldingInput):
     id: UUID
     created_at: datetime
     updated_at: datetime
+    manual_value_updated_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def manual_record(self):
+        if (self.manual_value_php is None) != (self.manual_value_updated_at is None):
+            raise ValueError("Manual value requires its recorded update time")
+        if self.manual_value_php is not None and (self.product_id not in MANUAL_FUNDS or self.manual_value_updated_at.tzinfo is None):
+            raise ValueError("Manual values are only supported for PHP fund holdings")
+        return self
 
 
 class Price(DomainModel):
@@ -99,6 +121,7 @@ class ValuedHolding(Holding):
     freshness: Literal["fresh", "stale", "unavailable"]
     price_kind: Literal["nav", "reference"]
     as_of: datetime | None
+    valuation_source: Literal["nav", "market_reference", "manual_user", "unavailable"]
 
 
 class SleeveValue(DomainModel):
@@ -143,13 +166,24 @@ def _value_portfolio(holdings, market, target, now):
     for holding in holdings:
         needed = [price_key(holding.product_id)] + (["usd_php"] if holding.provider == "gotrade" else [])
         available = [prices[k] for k in needed if k in prices]
-        valid = len(available) == len(needed) and all(
+        valid = holding.units is not None and len(available) == len(needed) and all(
             0 <= (now - p.as_of).total_seconds() <= price_limits(p.price_key)[1] for p in available)
         stale = valid and any((now - p.as_of).total_seconds() > price_limits(p.price_key)[0] for p in available)
         amount = holding.units
-        for p in available:
-            amount *= p.value
+        if valid:
+            for p in available:
+                amount *= p.value
         amount = amount.quantize(Decimal(".01"), rounding=ROUND_HALF_UP) if valid else None
+        source = ("nav" if holding.product_id in MANUAL_FUNDS else "market_reference") if valid else "unavailable"
+        as_of = min(p.as_of for p in available) if valid else None
+        # A manual amount is a whole holding's PHP value, never a per-unit NAV.
+        # Acceptable cached NAV remains authoritative, even if it is marked stale.
+        if not valid and holding.product_id in MANUAL_FUNDS and holding.manual_value_php is not None:
+            age = (now - holding.manual_value_updated_at).total_seconds()
+            if 0 <= age <= MANUAL_VALUE_MAX_AGE:
+                amount = holding.manual_value_php.quantize(Decimal(".01"))
+                valid, stale, source = True, False, "manual_user"
+                as_of = holding.manual_value_updated_at
         product = PRODUCTS[holding.product_id]
         if amount is not None:
             providers[holding.provider] = providers.get(holding.provider, Decimal(0)) + amount
@@ -158,7 +192,7 @@ def _value_portfolio(holdings, market, target, now):
             provider_name=PROVIDERS[holding.provider], sleeve=product.sleeve, value_php=amount,
             freshness="stale" if stale else "fresh" if valid else "unavailable",
             price_kind="nav" if holding.provider in ("gcash", "dragonfi") else "reference",
-            as_of=min(p.as_of for p in available) if valid else None))
+            as_of=as_of, valuation_source=source))
     total = sum(sleeves.values(), Decimal(0))
     missing = sum(r.value_php is None for r in rows)
     complete = missing == 0

@@ -30,7 +30,10 @@ await withAuthenticatedBrowser(async ({page,reused})=>{
     stage=`select investment ${product}`;
     await page.getByRole('combobox',{name:/^Investment/}).selectOption(product);
     stage=`enter units ${product}`;
-    await page.getByLabel('Units',{exact:true}).fill(units);
+    if(['gcash','dragonfi'].includes(provider)){
+      await page.getByText('I know my fund units',{exact:true}).click();
+      await page.getByLabel('Units (optional)',{exact:true}).fill(units);
+    } else await page.getByLabel('Units',{exact:true}).fill(units);
     const saved=page.waitForResponse(r=>new URL(r.url()).pathname==='/v2/portfolio/holdings'&&r.request().method()==='POST');
     await page.getByRole('button',{name:'Save holding record',exact:true}).click();
     stage=`save response ${product}`;

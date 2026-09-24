@@ -6,8 +6,11 @@ import { parseContributionResponse } from "./contributionApi";
 import type { PlanV2 } from "./types/planV2";
 
 export type PortfolioProduct = { product_id: string; provider: string; provider_name: string; display_name: string; sleeve: Sleeve; price_kind: "nav" | "reference" };
-export type HoldingDraft = { provider: string; product_id: string; units: string; cost_basis_php: string | null };
-export type PortfolioHolding = PortfolioProduct & HoldingDraft & { id: string; value_php: string | null; freshness: "fresh" | "stale" | "unavailable"; as_of: string | null; updated_at: string };
+export type HoldingDraft = { provider: string; product_id: string; units: string | null; cost_basis_php: string | null; manual_value_php?: string | null };
+export type PortfolioHolding = PortfolioProduct & HoldingDraft & { id: string; value_php: string | null; freshness: "fresh" | "stale" | "unavailable"; as_of: string | null; updated_at: string;
+  valuation_source?: "nav" | "market_reference" | "manual_user" | "unavailable"; manual_value_php?: string | null; manual_value_updated_at?: string | null };
+export const supportsManualValue = (h: { product_id: string }) => ["gcash_global_equity", "gcash_technology", "gcash_defensive", "dragonfi_global_equity", "dragonfi_technology", "dragonfi_defensive"].includes(h.product_id);
+export const validManualValue = (v: string) => /^\d{1,16}(?:\.\d{1,2})?$/.test(v) && /[1-9]/.test(v);
 export type PortfolioHistory = { day: string; value_php: string; captured_at: string };
 export type LivePortfolioData = {
   currency: "PHP"; holdings: PortfolioHolding[]; catalog: PortfolioProduct[]; history: PortfolioHistory[];
@@ -30,8 +33,11 @@ export function isPortfolio(value: unknown): value is LivePortfolioData {
     typeof p.complete === "boolean" && Number.isInteger(p.unavailable_count) && p.unavailable_count >= 0 && Number.isInteger(p.stale_count) && p.stale_count >= 0 && timestamp(p.valued_at) &&
     !!p.provider_values_php && typeof p.provider_values_php === "object" && Object.values(p.provider_values_php).every(money) &&
     Array.isArray(p.catalog) && p.catalog.every(h => h && typeof h.product_id === "string" && typeof h.provider === "string" && typeof h.provider_name === "string" && typeof h.display_name === "string" && roles.includes(h.sleeve)) &&
-    Array.isArray(p.holdings) && p.holdings.every(h => h && typeof h.id === "string" && decimal(h.units) && roles.includes(h.sleeve) && typeof h.display_name === "string" && typeof h.provider_name === "string" &&
+    Array.isArray(p.holdings) && p.holdings.every(h => h && typeof h.id === "string" && (decimal(h.units) || h.units === null && supportsManualValue(h) && h.manual_value_php != null) && roles.includes(h.sleeve) && typeof h.display_name === "string" && typeof h.provider_name === "string" &&
       p.catalog.some(c => c.product_id === h.product_id && c.provider === h.provider) && ["fresh", "stale", "unavailable"].includes(h.freshness) &&
+      (h.valuation_source === undefined || ["nav", "market_reference", "manual_user", "unavailable"].includes(h.valuation_source)) &&
+      (h.manual_value_php == null ? h.manual_value_updated_at == null : supportsManualValue(h) && validManualValue(h.manual_value_php) && timestamp(h.manual_value_updated_at)) &&
+      (h.valuation_source !== "manual_user" || supportsManualValue(h) && h.freshness === "fresh" && h.manual_value_php != null && h.as_of === h.manual_value_updated_at) &&
       (h.freshness === "unavailable" ? h.value_php === null : money(h.value_php) && timestamp(h.as_of))) &&
     p.unavailable_count === p.holdings.filter(h => h.value_php === null).length && p.complete === (p.unavailable_count === 0) &&
     p.stale_count === p.holdings.filter(h => h.freshness === "stale").length &&
@@ -41,8 +47,10 @@ export function isPortfolio(value: unknown): value is LivePortfolioData {
       (s.difference_pp === null || decimal(s.difference_pp)) && (s.target_percentage === null || (Number.isInteger(s.target_percentage) && s.target_percentage >= 0 && s.target_percentage <= 100)));
 }
 export function validHolding(draft: HoldingDraft, catalog: PortfolioProduct[]) {
+  const unitsValid = draft.units !== null && /^\d{1,12}(?:\.\d{1,12})?$/.test(draft.units) && /[1-9]/.test(draft.units);
+  const manualValid = draft.manual_value_php != null && validManualValue(draft.manual_value_php);
   return catalog.some(p => p.product_id === draft.product_id && p.provider === draft.provider) &&
-    /^\d{1,12}(?:\.\d{1,12})?$/.test(draft.units) && /[1-9]/.test(draft.units) &&
+    (supportsManualValue(draft) ? (draft.units === null || unitsValid) && (draft.manual_value_php == null || manualValid) && (unitsValid || manualValid) : unitsValid && draft.manual_value_php == null) &&
     (draft.cost_basis_php === null || /^\d{1,16}(?:\.\d{1,2})?$/.test(draft.cost_basis_php));
 }
 export const portfolioValues = (p: LivePortfolioData) => Object.fromEntries(p.sleeves.map(s => [s.sleeve, s.known_value_php])) as Record<Sleeve, string>;
@@ -52,6 +60,8 @@ export function scenarioAvailability(plan: PlanV2, portfolio: LivePortfolioData)
   return "available";
 }
 export function freshnessText(h: PortfolioHolding) {
+  if (h.freshness === "unavailable" && h.manual_value_updated_at) return `Value needs updating · Last updated by you ${new Date(h.manual_value_updated_at).toLocaleDateString("en-PH", { dateStyle: "medium" })}`;
+  if (h.valuation_source === "manual_user" && h.as_of) return `Updated by you ${new Date(h.as_of).toLocaleDateString("en-PH", { dateStyle: "medium" })}`;
   if (!h.as_of || h.freshness === "unavailable") return "Price temporarily unavailable";
   const date = new Date(h.as_of).toLocaleString("en-PH", { dateStyle: "medium", ...(h.price_kind === "nav" ? {} : { timeStyle: "short" as const }) });
   return `${h.freshness === "stale" ? "Cached · " : ""}${h.price_kind === "nav" ? "Latest NAV updated" : h.sleeve === "crypto" ? "Reference price updated" : "Latest available market price updated"}: ${date}`;
@@ -67,7 +77,7 @@ export function createPortfolioApi(token = getAccessToken, request: typeof fetch
       if (response.status === 401) throw new Error("Your session has expired. Sign in again to continue.");
       if (response.status === 403) throw new Error("Live Portfolio is part of Arbor Plus. Explore plans in Settings.");
       if (response.status === 409) throw new Error("Review your records and refresh prices. For an existing investment, edit its recorded units instead of adding it again.");
-      if ([400, 422].includes(response.status)) throw new Error("Check the supported investment, units and optional PHP cost basis.");
+      if ([400, 422].includes(response.status)) throw new Error("Check the supported investment, positive units and PHP amounts (up to 2 decimal places).");
       if (!response.ok) throw new Error("Portfolio records are temporarily unavailable. Please retry.");
       return response.json();
     }, signal);
@@ -80,6 +90,7 @@ export function createPortfolioApi(token = getAccessToken, request: typeof fetch
     },
     save: (userId: string, draft: HoldingDraft, id?: string) => call(userId, `/holdings${id ? `/${encodeURIComponent(id)}` : ""}`, id ? "PUT" : "POST", draft),
     remove: (userId: string, id: string) => call(userId, `/holdings/${encodeURIComponent(id)}`, "DELETE"),
+    manualValue: (userId: string, id: string, value: string | null) => call(userId, `/holdings/${encodeURIComponent(id)}/manual-value`, "PUT", { manual_value_php: value }),
     async capture(userId: string, signal?: AbortSignal): Promise<{ recorded: boolean; history: PortfolioHistory[] }> {
       const body = await call(userId, "/snapshot", "POST", undefined, signal);
       if (!body || typeof body.recorded !== "boolean" || !isHistory(body.history)) throw new Error("Portfolio history is temporarily unavailable.");

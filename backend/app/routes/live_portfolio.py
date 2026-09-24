@@ -8,7 +8,7 @@ from app.config import live_portfolio_enabled
 from app.routes.profiles import get_my_profile
 from app.services.entitlements import require_feature
 from app.services.arbor.v2_context import build_v2_context
-from app.services.live_portfolio import HoldingInput, Portfolio, catalog, value_portfolio, current_values
+from app.services.live_portfolio import HoldingInput, ManualValueInput, Portfolio, catalog, value_portfolio, current_values
 from app.services.portfolio_store import PortfolioStore
 from app.services.strategy_v2 import DomainModel
 from app.services.implementation.models import NonNegative, BitcoinProvider
@@ -80,6 +80,13 @@ def update_holding(holding_id: UUID, request: HoldingInput, user_id: str = Depen
 def delete_holding(holding_id: UUID, user_id: str = Depends(get_current_user_id), authorization: str | None = Header(default=None)):
     PortfolioStore(user_id, authorization).delete(holding_id)
     return {"deleted": True}
+
+
+@router.put("/holdings/{holding_id}/manual-value")
+def update_manual_value(holding_id: UUID, request: ManualValueInput,
+                        user_id: str = Depends(get_current_user_id), authorization: str | None = Header(default=None)):
+    PortfolioStore(user_id, authorization).save_manual_value(holding_id, request)
+    return {"saved": True}
 
 
 @router.post("/snapshot")
