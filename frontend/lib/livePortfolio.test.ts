@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createPortfolioApi, isPortfolio, validHolding, freshnessText, portfolioValues, scenarioAvailability, type LivePortfolioData } from "./livePortfolio";
-import LivePortfolio, { PortfolioSummary, PlanAlignment } from "../components/portfolio/LivePortfolio";
+import LivePortfolio, { PortfolioSummary, PlanAlignment, DataAttribution } from "../components/portfolio/LivePortfolio";
 import PortfolioHistoryChart from "../components/portfolio/PortfolioHistoryChart";
 import ContributionCard from "../components/contributions/ContributionCard";
 import { contributionFixture } from "./contributions.test";
@@ -68,10 +68,18 @@ test("history has no fake points and one observed value is readable",()=>{
 });
 test("freshness distinguishes NAV, cached reference and missing price",()=>{
   const h=portfolioFixture.holdings[0];
-  assert.match(freshnessText(h),/Reference price/);
+  assert.match(freshnessText(h),/Latest available market price updated/);
   assert.match(freshnessText({...h,price_kind:"nav"}),/Latest NAV/);
   assert.match(freshnessText({...h,freshness:"stale"}),/Cached/);
   assert.match(freshnessText({...h,as_of:null}),/unavailable/);
+});
+test("source attribution is separate from holding provider and uses fixed links",()=>{
+  const markup=html(createElement(DataAttribution,{sources:["coinranking","exchangerate_api","marketstack","https://evil"]}));
+  assert.match(markup,/Crypto data by Coinranking/);assert.match(markup,/Rates By Exchange Rate API/);
+  assert.doesNotMatch(markup,/evil|Coinranking account/);assert.match(markup,/min-h-11/);
+  assert.equal(isPortfolio({...portfolioFixture,data_sources:"coinranking"}),false);
+  assert.equal(isPortfolio({...portfolioFixture,data_sources:["coinranking"]}),true);
+  assert.match(freshnessText({...portfolioFixture.holdings[0],sleeve:"crypto"}),/Reference price updated/);
 });
 test("canonical holdings replace manual sleeve and ownership inputs; explicit options remain",()=>{
   assert.deepEqual(portfolioValues(portfolioFixture),{global_equity:"5600.00",defensive:"0.00",technology_tilt:"0.00",crypto:"0.00"});

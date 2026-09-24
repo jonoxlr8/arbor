@@ -11,6 +11,7 @@ export type PortfolioHolding = PortfolioProduct & HoldingDraft & { id: string; v
 export type PortfolioHistory = { day: string; value_php: string; captured_at: string };
 export type LivePortfolioData = {
   currency: "PHP"; holdings: PortfolioHolding[]; catalog: PortfolioProduct[]; history: PortfolioHistory[];
+  data_sources?: string[];
   known_value_php: string; total_value_php: string | null; complete: boolean; unavailable_count: number; stale_count: number;
   provider_values_php: Record<string, string>; valued_at: string;
   sleeves: { sleeve: Sleeve; known_value_php: string; current_percentage: string | null; target_percentage: number | null; difference_pp: string | null }[];
@@ -22,6 +23,8 @@ const timestamp = (v: unknown) => typeof v === "string" && Number.isFinite(Date.
 export const isHistory = (v: unknown): v is PortfolioHistory[] => Array.isArray(v) && v.every(h => h && /^\d{4}-\d{2}-\d{2}$/.test(h.day) && money(h.value_php) && timestamp(h.captured_at));
 export function isPortfolio(value: unknown): value is LivePortfolioData {
   if (!value || typeof value !== "object") return false;
+  const sources = (value as LivePortfolioData).data_sources;
+  if (sources !== undefined && (!Array.isArray(sources) || !sources.every(s => ["marketstack", "coinranking", "exchangerate_api"].includes(s)))) return false;
   const p = value as LivePortfolioData;
   return p.currency === "PHP" && money(p.known_value_php) && (p.total_value_php === null || money(p.total_value_php)) &&
     typeof p.complete === "boolean" && Number.isInteger(p.unavailable_count) && p.unavailable_count >= 0 && Number.isInteger(p.stale_count) && p.stale_count >= 0 && timestamp(p.valued_at) &&
@@ -51,7 +54,7 @@ export function scenarioAvailability(plan: PlanV2, portfolio: LivePortfolioData)
 export function freshnessText(h: PortfolioHolding) {
   if (!h.as_of || h.freshness === "unavailable") return "Price temporarily unavailable";
   const date = new Date(h.as_of).toLocaleString("en-PH", { dateStyle: "medium", ...(h.price_kind === "nav" ? {} : { timeStyle: "short" as const }) });
-  return `${h.freshness === "stale" ? "Cached · " : ""}${h.price_kind === "nav" ? "Latest NAV" : "Reference price"}: ${date}`;
+  return `${h.freshness === "stale" ? "Cached · " : ""}${h.price_kind === "nav" ? "Latest NAV updated" : h.sleeve === "crypto" ? "Reference price updated" : "Latest available market price updated"}: ${date}`;
 }
 export function createPortfolioApi(token = getAccessToken, request: typeof fetch = fetch) {
   async function call(userId: string, path = "", method = "GET", body?: unknown, signal?: AbortSignal) {

@@ -80,9 +80,19 @@ export default function LivePortfolio({ value, userId }: { value: PlanV2; userId
         <button className="entry-primary min-h-11" onClick={() => setShowContribution(true)}>{portfolio.holdings.length ? "Review contribution" : "Explore a hypothetical contribution"}</button>
       ) : <p className="arbor-panel text-sm text-slate-600">Your holdings can be tracked independently. Long-term contribution scenarios need an explicitly selected active long-term plan. Review your plan for the current path.</p>}
       <button className="entry-link min-h-11" onClick={refresh} disabled={busy}>Refresh portfolio</button>
+      <DataAttribution sources={portfolio.data_sources ?? []} />
       <p className="text-xs leading-5 text-slate-500">Reference valuations are not executable quotes and may exclude fees or spreads. Provider names and trademarks belong to their respective owners. Arbor is not affiliated with or endorsed by these providers unless explicitly stated.</p>
     </>}
   </div>;
+}
+
+export function DataAttribution({ sources }: { sources: string[] }) {
+  const known = [
+    ["coinranking", "Crypto data by Coinranking", "https://coinranking.com"],
+    ["marketstack", "Market data by Marketstack", "https://marketstack.com"],
+    ["exchangerate_api", "Rates By Exchange Rate API", "https://www.exchangerate-api.com"],
+  ];
+  return <div className="flex flex-wrap gap-x-4 text-xs text-slate-500">{known.filter(([key]) => sources.includes(key)).map(([key, label, href]) => <a key={key} className="inline-flex min-h-11 items-center underline" href={href} target="_blank" rel="noopener noreferrer">{label}</a>)}</div>;
 }
 
 export function PortfolioSummary({ portfolio: p }: { portfolio: LivePortfolioData }) {

@@ -33,8 +33,37 @@ create table public.arbor_market_prices (
    'gotrade_vt','gotrade_vgt','gotrade_bnd','btc_php','usd_php')),
   value numeric not null check(value > 0 and value < 1000000000000 and value = round(value,12)),
   as_of timestamptz not null check(as_of <= now()),
-  source text not null check(length(source) between 1 and 200)
+  source text not null check(length(source) between 1 and 200),
+  currency text not null default 'PHP' check(currency in ('PHP','USD')),
+  kind text not null default 'nav' check(kind in ('etf_eod','btc_reference','fx','nav')),
+  fetched_at timestamptz not null default now(),
+  provenance text, unit_class text, reference_id text,
+  verified boolean not null default false
 );
+-- Operator-only coordination, not user activity/history. Survives worker restarts.
+create table public.arbor_market_refresh (
+ source_id text primary key check(source_id in ('marketstack','coinranking','exchangerate_api')),
+ attempted_at timestamptz not null
+);
+alter table public.arbor_market_refresh enable row level security;
+revoke all on public.arbor_market_refresh from public,anon,authenticated;
+grant select,insert,update on public.arbor_market_refresh to service_role;
+create function public.arbor_claim_market_refresh(source_id text, cooldown_seconds integer)
+returns boolean language plpgsql security invoker set search_path='' as $$
+declare claimed text;
+begin
+ if source_id not in ('marketstack','coinranking','exchangerate_api') or cooldown_seconds <
+    (case when source_id='coinranking' then 600 else 86400 end) then
+   raise exception 'Invalid refresh cadence';
+ end if;
+ insert into public.arbor_market_refresh as r values(source_id,now())
+ on conflict on constraint arbor_market_refresh_pkey do update set attempted_at=excluded.attempted_at
+ where r.attempted_at <= now()-make_interval(secs=>cooldown_seconds)
+ returning r.source_id into claimed;
+ return claimed is not null;
+end $$;
+revoke all on function public.arbor_claim_market_refresh(text,integer) from public,anon,authenticated;
+grant execute on function public.arbor_claim_market_refresh(text,integer) to service_role;
 create table public.arbor_portfolio_snapshots (
   user_id uuid not null references auth.users(id) on delete cascade,
   day date not null, value_php numeric not null check(value_php >= 0),
@@ -64,7 +93,7 @@ create view public.arbor_portfolio_holding_values with (security_invoker=true) a
  select id,user_id,product_id,provider,units::text,cost_basis_php::text,created_at,updated_at
  from public.arbor_portfolio_holdings;
 create view public.arbor_market_price_values with (security_invoker=true) as
- select price_key,value::text,as_of from public.arbor_market_prices;
+ select price_key,value::text,as_of,source,currency,kind,fetched_at,provenance,unit_class,reference_id,verified from public.arbor_market_prices;
 create view public.arbor_portfolio_history with (security_invoker=true) as
  select user_id,day,value_php::text,captured_at from public.arbor_portfolio_snapshots;
 revoke all on public.arbor_portfolio_holding_values,public.arbor_market_price_values,
@@ -89,9 +118,13 @@ begin
    left join public.arbor_market_prices fx on fx.price_key='usd_php'
    where price.price_key=p.price_key
     and price.as_of <= now()
+    and price.verified
+    and (h.provider not in ('gcash','dragonfi') or
+      (h.product_id in ('dragonfi_global_equity','dragonfi_technology') and price.unit_class='PHP / Class P') or
+      (h.product_id='dragonfi_defensive' and price.unit_class='PHP'))
     and price.as_of >= now() - case when h.provider in ('gcash','dragonfi') then interval '48 hours'
-       when p.price_key='btc_php' then interval '5 minutes' else interval '15 minutes' end
-    and (h.provider <> 'gotrade' or (fx.as_of between now()-interval '15 minutes' and now()))
+       when p.price_key='btc_php' then interval '10 minutes' else interval '48 hours' end
+    and (h.provider <> 'gotrade' or (fx.verified and fx.as_of between now()-interval '48 hours' and now()))
  ) v on true where h.user_id=owner_id;
  if total_rows=0 or total_rows<>valued_rows then return false; end if;
  insert into public.arbor_portfolio_snapshots(user_id,day,value_php)

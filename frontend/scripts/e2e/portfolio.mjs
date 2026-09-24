@@ -44,6 +44,8 @@ await withAuthenticatedBrowser(async ({page,reused})=>{
   await add('pdax','pdax_btc','0.001');
   stage='totals and contribution';
   await page.getByText('₱15,200',{exact:true}).waitFor();
+  for(const label of ['Crypto data by Coinranking','Market data by Marketstack','Rates By Exchange Rate API'])
+    await page.getByRole('link',{name:label,exact:true}).waitFor();
   for(const name of ['Gotrade','GCash / GFunds','PDAX'])await page.getByRole('heading',{name,exact:true}).waitFor();
   assert.equal(await page.getByText('Hypothetical current values',{exact:false}).count(),0);
   await page.getByRole('button',{name:'Review contribution',exact:true}).click();

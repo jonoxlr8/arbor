@@ -10,16 +10,20 @@ apply it before exposing the Portfolio feature in a release. No hosted migration
 was applied during development. The separate **3U-A Ask Arbor quota migration is
 also still unapplied**; this feature does not apply or depend on it for Plus users.
 
-There is **no approved production market-data source configured**. No scraper,
-public endpoint with unverified terms, or market-data credential was introduced.
-Production prices remain unavailable until an approved, licensed server-side feed
-populates the shared price cache. Do not deploy expecting automatic external price
-ingestion: provider selection, licensing and ingestion are release prerequisites.
+Production adapters are prepared for Marketstack Basic, ExchangeRate-API Open and
+Coinranking Free. **No production credentials, hosted ingestion or activation was
+configured by this milestone.** Commercial/display rights and hosted validation
+remain activation prerequisites. No scraper, scheduler or browser vendor calls.
 
 ## Production-safe availability (3U-B.1)
 
 `LIVE_PORTFOLIO_ENABLED` is server-only and defaults to **false**. Only the exact
-value `true` enables it. Missing, empty or unrecognized values fail closed.
+value `true` requests enablement. Missing, empty or unrecognized values fail closed.
+In production (APP_ENV=production or Render/Vercel host markers), availability also
+requires MARKETSTACK_API_KEY, COINRANKING_API_KEY and an explicit
+MARKETSTACK_DISPLAY_RIGHTS_CONFIRMED=true operational sign-off. This is not a legal
+conclusion. The API still fails safely if tables are missing; individual missing,
+unverified or stale prices never become fabricated valuations.
 Code may be deployed with the flag absent before either migration is applied.
 Plus Trial/Active entitlement does not enable infrastructure. No browser, query,
 request body or account-tier override can enable it.
@@ -117,8 +121,8 @@ test adapter. Browsers never fetch individual market prices or send prices.
 
 | Reference | Fresh | Maximum labeled cached fallback |
 | --- | --- | --- |
-| ETF and USD/PHP | 15 minutes | 4 days (weekends/holidays) |
-| BTC/PHP | 5 minutes | 1 hour |
+| ETF EOD and daily USD/PHP | 48 hours | 4 days (weekends/holidays) |
+| BTC/PHP | 10 minutes | 1 hour |
 | Fund NAV | 48 hours | 7 days |
 
 Future timestamps are rejected. Missing/expired/invalid individual prices yield
@@ -200,3 +204,154 @@ responsive themes. It never exports tokens or changes hosted profile/holdings.
 configure a feed, then validate real Supabase persistence, timestamp freshness,
 scheduled ingestion and history across calendar days with the disposable account.
 These prerequisites are not satisfied by deterministic fixture browser tests.
+
+## Production adapter preparation (3U-B.2)
+
+### Contracts and scope
+
+- Marketstack: fixed `https://api.marketstack.com/v2/eod/latest`, batched VT/VGT/BND
+  only, unadjusted `close` in USD and vendor effective `date`. No ticker search or
+  intraday/execution data. Missing/malformed batch preserves previous cache.
+- ExchangeRate-API Open: fixed `https://open.er-api.com/v6/latest/USD`, retain only
+  PHP and `time_last_update_unix`. No key needed for this chosen endpoint. One daily
+  shared rate serves all ETFs/users. The keyed endpoint is intentionally not added.
+- Coinranking: documented Bitcoin UUID `Qwsogvtv82FCd`, `/v2/coin/{uuid}/price` with
+  PHP `referenceCurrencyUuid`. First resolve `/v2/reference-currencies` using PHP
+  search + fiat type; require exactly one exact PHP fiat match. No guessed PHP UUID,
+  no configurable arbitrary URL and no BTC→USD→PHP conversion. Persist the validated
+  reference ID in the trusted BTC cache record for reuse. If it stops working, fail
+  closed; an operator must investigate before changing reference identity.
+
+`ReferencePrice` extends the existing Price contract with source, USD/PHP currency,
+reference kind, fetched timestamp, verified identity, optional official provenance,
+unit class and reference ID. Effective time is never replaced with fetch time to
+make old data appear fresh. Decimal JSON parsing avoids binary floats; incoming
+precision is rounded half-up to the existing cache's 12 fractional digits. No raw
+vendor response reaches valuation or the frontend. Attribution uses fixed IDs/URLs.
+
+The existing **unapplied** 3U-B SQL was extended with these cache columns and one
+operator-only refresh coordination table/RPC. This is the migration to review and
+apply later, not an already-installed schema upgrade. Authenticated users cannot
+claim refresh slots or write reference prices. Snapshot freshness matches Python.
+
+### Commands (server operator only)
+
+From `backend/`:
+
+```sh
+.venv/bin/python -m app.market_data refresh
+.venv/bin/python -m app.market_data set-nav dragonfi_global_equity 123.456789 2026-09-24 https://www.bpi.com.ph/official-source-page --unit-class 'PHP / Class P'
+```
+
+The NAV command above is syntax only: **not a real NAV or source page**. Enter the
+actual latest official published value/date and the exact official source URL.
+No website is fetched. The command does not touch user holdings, plans or snapshots.
+Dates use midnight UTC conservatively, not an invented intraday publication time.
+Future dates, non-positive/invalid values, wrong currency/class and non-official
+provenance URLs are rejected. Older NAV dates cannot replace newer ones through CLI.
+
+Server-only ignored environment variables:
+
+- `SUPABASE_URL`: existing project URL.
+- `SUPABASE_MARKET_DATA_KEY`: separately configured privileged cache-writer credential
+  (service-role/secret capability); **only the operator CLI** consumes it. Prefer a
+  dedicated restricted writer deployment/secret store; never frontend or user routes.
+- `MARKETSTACK_API_KEY`, `COINRANKING_API_KEY`.
+- `MARKETSTACK_DISPLAY_RIGHTS_CONFIRMED`: explicit activation sign-off, not credentials.
+- `LIVE_PORTFOLIO_ENABLED`: remains false until activation is approved.
+
+No keys were created or installed. Never put secrets in CLI arguments, test fixtures
+or NEXT_PUBLIC variables. HTTP logging is disabled in the CLI; failures print only
+static codes. Requests use fixed HTTPS provider paths, ten-second timeouts and no
+redirects/retries. The operator cache URL must be an HTTPS Supabase project root.
+
+### Shared cache / request budget
+
+Refresh is a callable, demand-driven **operator operation**, not a scheduler and
+not a side effect of opening Portfolio. It skips values fetched within 24 hours
+(ETF/FX) or 10 minutes (BTC). Atomic database claims coordinate overlapping CLI
+processes and throttle failed attempts too. Normal readers only read the cache;
+two users never cause two provider requests. No unused-background quota consumption.
+
+Coinranking first resolution needs two requests, so the cold/unresolved path uses
+a 20-minute cooldown; after a successful cached PHP reference it uses ten minutes.
+About 4,320 calls per 30 days (4,464 per 31 days) at continuous ten-minute cadence,
+plus initial resolution, stays below the assumed 5,000 allowance for this dedicated
+key. Other consumers of the same key must be budgeted separately. There is no polling
+loop here. A future demand-triggered trusted worker can invoke this operation; until
+then operators must refresh when needed and stale/unavailable behavior is intentional.
+Failure of any source retains its old cache and does not prevent unrelated sources
+from updating. A database failure produces safe operational errors, not fake prices.
+
+### Exact fund identity / activation status
+
+| Existing product ID | Required identity | Ingestion status |
+| --- | --- | --- |
+| gcash_global_equity | ATRAM Global Equity Opportunity Feeder Fund; exact PHP unit class to verify | Blocked/unverified |
+| gcash_technology | ATRAM Global Technology Feeder Fund; expected A PHP class, not proven by catalog | Blocked/unverified |
+| gcash_defensive | ATRAM Medium Term Peso Bond Fund; exact PHP/A identity unresolved | Blocked/unverified |
+| dragonfi_global_equity | BPI Global Equity Fund-of-Funds — PHP / Class P | Explicit required mapping; operator must verify official NAV source |
+| dragonfi_technology | BPI World Technology Feeder Fund — PHP / Class P | Explicit required mapping; operator must verify official NAV source |
+| dragonfi_defensive | BPI Premium Bond Fund — PHP | Explicit required mapping; operator must verify official NAV source |
+
+ATRAM requests cannot silently select a class. They fail ingestion and cache-reader
+validation; snapshots also exclude unverified fund identities. Resolve evidence and
+update the narrow identity allowlist and snapshot checks before accepting those NAVs.
+An ETF-only portfolio does not require six fund NAVs. Unavailable fund values are
+null, never zero. No standardized allocation or implementation provider mapping changed.
+
+### Attribution, terms and estimated cost
+
+Holding providers (GCrypto/Coins.ph/PDAX, etc.) remain distinct from reference-data
+sources. Portfolio displays `Crypto data by Coinranking`, `Rates By Exchange Rate API`
+and Marketstack attribution once where their data is used, with accessible fixed
+links. These are not executable provider quotes or endorsements. History continues
+to use Arbor snapshots, never TradingView widgets.
+
+Planning estimate: existing Marketstack Basic approximately **US$9.99/month**;
+Coinranking Free $0; ExchangeRate-API Open $0; manual official NAV $0. No additional
+paid source is introduced. Prices and terms can change; this is not a guaranteed
+quote. Confirm the actual subscription and display rights before activation.
+
+References inspected for implementation:
+
+- [Marketstack EOD documentation](https://docs.apilayer.com/marketstack/docs/api-documentation): confirm customer-facing cached/derived-value use under the actual Basic agreement.
+- [Coinranking reference currencies](https://coinranking.com/api/documentation/reference-currencies) and [price endpoint](https://coinranking.com/api/documentation/coins/coin-price): reference valuation with attribution; confirm current terms, no raw API resale or generic redistribution.
+- [Coinranking Free pricing](https://coinranking.com/api/pricing): 5,000 calls is a planning budget, not a promise by Arbor.
+- [ExchangeRate-API Open](https://www.exchangerate-api.com/docs/free): daily caching and commercial conversion with attribution; no FX API redistribution.
+- Fund NAV: operator-entered official published values only; no scraping or claimed API partnership.
+
+### Exact eventual hosted activation sequence — NOT executed
+
+1. Confirm Marketstack customer-facing display rights.
+2. Configure Marketstack key server-side.
+3. Configure Coinranking key server-side and confirm intended-use terms.
+4. Confirm ExchangeRate-API Open endpoint/attribution (no key required).
+5. Verify exact ATRAM class identities and resolve blocked mappings.
+6. Collect current official ATRAM/BPI NAV inputs offline; do not write before migration.
+7. Review the revised 3U-B migration.
+8. Apply only `3u_b_live_portfolio.sql` deliberately.
+9. Keep `3u_a_ask_usage.sql` unapplied (separate Free-quota launch prerequisite).
+10. Validate hosted holdings RLS.
+11. Validate history RLS.
+12. Validate cache-write and refresh-RPC restrictions; configure isolated writer secret.
+13. Run production market-data refresh and enter the reviewed NAV inputs.
+14. Verify VT/VGT/BND.
+15. Verify USD/PHP.
+16. Verify direct BTC/PHP and attribution.
+17. Verify six fund NAV records/classes.
+18. In a controlled enabled validation environment, use the disposable hosted account for Add/Edit/Delete.
+19. Verify portfolio PHP total.
+20. Verify target-versus-current.
+21. Verify snapshot creation.
+22. Verify canonical contribution integration.
+23. Verify Ask Arbor holdings context.
+24. Verify next actions.
+25. Set production `LIVE_PORTFOLIO_ENABLED=true` only after sign-off.
+26. Restart/redeploy as required.
+27. Run production smoke tests.
+28. Monitor errors and freshness.
+
+Rollback: disable flag first, restart/reload, verify normal manual fallback flows,
+retain holdings/history/cache, then investigate. Do not drop tables/delete user
+holdings as a first response. No activation step above was performed in 3U-B.2.

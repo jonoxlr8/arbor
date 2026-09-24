@@ -1,7 +1,7 @@
 """Canonical manual holdings and reference valuation. No investment decisions.
 
-The database is the shared price cache. Only a future approved server-side feed
-may write it; the application never substitutes fixture prices in production.
+The database is the shared price cache. Only the server-side operator ingestion
+tool may write it; the application never substitutes fixture prices in production.
 """
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP, localcontext
@@ -49,6 +49,7 @@ class Price(DomainModel):
     price_key: str
     value: PriceValue
     as_of: datetime
+    source: str | None = None
 
     @model_validator(mode="after")
     def aware(self):
@@ -79,8 +80,8 @@ def price_limits(key: str) -> tuple[int, int]:
     if key.startswith(("gcash_", "dragonfi_")):
         return 172800, 604800
     if key == "btc_php":
-        return 300, 3600
-    return 900, 345600  # ETF/FX: four days maximum (weekends/holidays).
+        return 600, 3600
+    return 172800, 345600  # Daily ETF EOD/FX; bounded weekend fallback.
 
 
 def catalog():
@@ -120,6 +121,7 @@ class Portfolio(DomainModel):
     provider_values_php: dict[str, Decimal]
     sleeves: tuple[SleeveValue, ...]
     valued_at: datetime
+    data_sources: tuple[str, ...] = ()
 
 
 def value_portfolio(holdings: list[Holding], market: MarketData, target: Allocation | None,
@@ -171,7 +173,8 @@ def _value_portfolio(holdings, market, target, now):
         total_value_php=total if complete else None, complete=complete, unavailable_count=missing,
         bitcoin_units=sum((h.units for h in holdings if PRODUCTS[h.product_id].sleeve == AssetRole.CRYPTO), Decimal(0)),
         stale_count=sum(r.freshness == "stale" for r in rows), provider_values_php=providers,
-        sleeves=tuple(comparisons), valued_at=now)
+        sleeves=tuple(comparisons), valued_at=now,
+        data_sources=tuple(sorted({p.source for p in prices.values() if p.source in ("marketstack", "coinranking", "exchangerate_api")})))
 
 
 def current_values(portfolio: Portfolio):

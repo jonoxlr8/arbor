@@ -68,8 +68,8 @@ def test_injection_and_bad_cost_rejected(patch):
         HoldingInput(**{ "provider": "gotrade", "product_id": "gotrade_vt", "units": "1", **patch })
 
 
-@pytest.mark.parametrize("key,fresh,max_age", [("gotrade_vt",900,345600), ("usd_php",900,345600),
-    ("btc_php",300,3600), ("gcash_defensive",172800,604800)])
+@pytest.mark.parametrize("key,fresh,max_age", [("gotrade_vt",172800,345600), ("usd_php",172800,345600),
+    ("btc_php",600,3600), ("gcash_defensive",172800,604800)])
 def test_freshness_boundaries_and_future_data(key, fresh, max_age):
     product = "gotrade_vt" if key == "usd_php" else "coins_btc" if key == "btc_php" else key
     for age, status in [(0,"fresh"),(fresh,"fresh"),(fresh+1,"stale"),(max_age,"stale"),(max_age+1,"unavailable"),(-1,"unavailable")]:
@@ -230,7 +230,7 @@ def test_chat_owner_grounding_and_decision_guard(endpoint):
         assert client.post("/chat",json={"message":question}).json()["intent"]=="decision_boundary"
 
 
-@pytest.mark.parametrize("state_change",[{"age":901},{"missing":{"usd_php"}}])
+@pytest.mark.parametrize("state_change",[{"age":172801},{"missing":{"usd_php"}}])
 def test_partial_or_stale_cannot_become_canonical_scenario(endpoint,state_change):
     client,state=endpoint
     client.post("/v2/portfolio/holdings",json={"provider":"gotrade","product_id":"gotrade_vt","units":"1"})

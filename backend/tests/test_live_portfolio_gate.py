@@ -91,6 +91,9 @@ def test_manual_contribution_remains_available(disabled, mode):
 
 def test_enabled_availability_does_not_query_storage_or_grant_free_access(disabled, monkeypatch):
     monkeypatch.setenv("LIVE_PORTFOLIO_ENABLED", "true")
+    monkeypatch.setenv("MARKETSTACK_API_KEY", "synthetic")
+    monkeypatch.setenv("COINRANKING_API_KEY", "synthetic")
+    monkeypatch.setenv("MARKETSTACK_DISPLAY_RIGHTS_CONFIRMED", "true")
     assert disabled.get("/account/entitlements").json()["availability"] == {"live_portfolio": True}
     from app.services import entitlements
     monkeypatch.setattr(entitlements, "get_entitlements", lambda _: resolve_entitlements("free", "active"))

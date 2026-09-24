@@ -35,7 +35,8 @@ class LocalFixtureStore:
 
     def prices(self, keys):
         return {key: Price(price_key=key, value="56" if key == "usd_php" else
-                          "3000000" if key == "btc_php" else "100", as_of=datetime.now(timezone.utc)) for key in keys}
+                          "3000000" if key == "btc_php" else "100", as_of=datetime.now(timezone.utc),
+                          source="exchangerate_api" if key == "usd_php" else "coinranking" if key == "btc_php" else "marketstack" if key.startswith("gotrade_") else "official_nav") for key in keys}
 
     def save(self, request, holding_id=None):
         with lock:

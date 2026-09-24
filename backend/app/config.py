@@ -7,7 +7,12 @@ from urllib.parse import urlsplit
 
 def live_portfolio_enabled() -> bool:
     """Operational availability, independent of account entitlement. Fail closed."""
-    return os.getenv("LIVE_PORTFOLIO_ENABLED") == "true"
+    if os.getenv("LIVE_PORTFOLIO_ENABLED") != "true":
+        return False
+    if os.getenv("APP_ENV") == "production" or os.getenv("RENDER") or os.getenv("VERCEL"):
+        return bool(os.getenv("MARKETSTACK_API_KEY") and os.getenv("COINRANKING_API_KEY")
+                    and os.getenv("MARKETSTACK_DISPLAY_RIGHTS_CONFIRMED") == "true")
+    return True  # Local fixture injection remains test-only; no production override.
 
 
 def cors_origins(value=None, environment="development"):

@@ -45,7 +45,7 @@ test('quantity and allowlist enforced even through direct REST equivalent',async
 test('users cannot change shared prices, product universe or snapshots',async()=>{
   await identity(A);
   for(const sql of [
-    "insert into public.arbor_market_prices values('usd_php',1,now(),'fake')",
+    "insert into public.arbor_market_prices(price_key,value,as_of,source) values('usd_php',1,now(),'fake')",
     "update public.arbor_market_prices set value=1",
     "delete from public.arbor_market_prices",
     "insert into public.arbor_portfolio_products values('AAPL','gotrade','AAPL')",
@@ -57,7 +57,7 @@ test('users cannot change shared prices, product universe or snapshots',async()=
 test('no snapshot for missing prices or empty owner; trusted prices use exact FX',async()=>{
   await identity(A);
   assert.equal((await db.query('select public.arbor_capture_portfolio() as ok')).rows[0].ok,false);
-  await db.exec("reset role; insert into public.arbor_market_prices values('gotrade_vt',100.125,now(),'isolated fixture'),('usd_php',56.25,now(),'isolated fixture')");
+  await db.exec("reset role; insert into public.arbor_market_prices(price_key,value,as_of,source,verified) values('gotrade_vt',100.125,now(),'isolated fixture',true),('usd_php',56.25,now(),'isolated fixture',true)");
   await identity(A);
   assert.equal((await db.query('select public.arbor_capture_portfolio() as ok')).rows[0].ok,true);
   const row=(await db.query('select * from public.arbor_portfolio_history')).rows[0];
@@ -76,10 +76,23 @@ test('first complete daily observation is idempotent; edits do not rewrite histo
 });
 test('stale, future and partial quotes never create false snapshots',async()=>{
   await identity(B); await add('coins_btc','coins_ph','0.1');
-  await db.exec("reset role; insert into public.arbor_market_prices values('btc_php',1000000,now()-interval '6 minutes','fixture')");
+  await db.exec("reset role; insert into public.arbor_market_prices(price_key,value,as_of,source,verified) values('btc_php',1000000,now()-interval '11 minutes','fixture',true)");
   await identity(B); assert.equal((await db.query('select public.arbor_capture_portfolio() as ok')).rows[0].ok,false);
   await db.exec('reset role');
   await assert.rejects(db.exec("update public.arbor_market_prices set as_of=now()+interval '1 hour'"),/check constraint/);
+});
+test('shared refresh claim is atomic, survives repeat calls and is operator-only',async()=>{
+  await identity(A);
+  await assert.rejects(db.query("select public.arbor_claim_market_refresh('coinranking',600)"),/permission denied/);
+  await db.exec('reset role; set role service_role');
+  const claims=await Promise.all(Array.from({length:10},()=>db.query("select public.arbor_claim_market_refresh('coinranking',600) as ok")));
+  assert.equal(claims.filter(r=>r.rows[0].ok).length,1);
+  await assert.rejects(db.query("select public.arbor_claim_market_refresh('coinranking',1)"),/Invalid refresh cadence/);
+});
+test('BTC snapshot threshold matches ten-minute valuation policy',async()=>{
+  await db.exec("reset role; update public.arbor_market_prices set as_of=now()-interval '7 minutes' where price_key='btc_php'");
+  await identity(B);
+  assert.equal((await db.query('select public.arbor_capture_portfolio() as ok')).rows[0].ok,true);
 });
 test('anonymous functions and missing identity denied; owner deletion cascades',async()=>{
   await db.exec('reset role; set role anon');

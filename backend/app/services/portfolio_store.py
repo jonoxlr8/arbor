@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from postgrest.exceptions import APIError
 from httpx import TransportError
 from app.database import get_authenticated_client
-from app.services.live_portfolio import Holding, HoldingInput, Price
+from app.services.live_portfolio import Holding, HoldingInput
 
 
 def storage_errors(fn):
@@ -65,7 +65,8 @@ class PortfolioStore:
         result = {}
         for row in rows:
             try:
-                price = Price.model_validate(row)
+                from app.market_data.models import ReferencePrice
+                price = ReferencePrice.model_validate(row)
                 result[price.price_key] = price
             except ValueError:
                 continue
