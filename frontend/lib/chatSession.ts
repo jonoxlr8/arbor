@@ -8,8 +8,8 @@ export function chatPlanKey(plan: AccountPlan) {
   return JSON.stringify([plan.profile, plan.portfolio, plan.projection]);
 }
 
-export function chatPrompts(v2: boolean) {
-  return v2 ? ["Explain my investment plan", "Why does my plan include Global Equity?", "Explain my projection", "How does the contribution planner work?"]
+export function chatPrompts(v2: boolean, livePortfolio = false) {
+  return v2 ? ["Explain my investment plan", ...(livePortfolio ? ["What is my current portfolio worth?"] : ["Why does my plan include Global Equity?"]), "What should I do next?", "How does the contribution planner work?"]
     : ["Explain my Arbor plan", "What are my target allocations?", "What are my projection assumptions?", "Does my projection reach my goal?"];
 }
 

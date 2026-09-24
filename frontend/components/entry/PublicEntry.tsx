@@ -39,7 +39,7 @@ export function EntryView({ screen, onAuthenticated }: Props & { screen: EntrySc
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-forest">A longer view. A clearer plan.</p>
             <h1 className="mt-5 text-[2.6rem] leading-[1.08] font-semibold tracking-tight text-slate-900 sm:text-6xl">Build wealth.<br />Grow with Arbor.</h1>
-            <p className="mt-5 max-w-lg text-base leading-7 text-slate-600 sm:text-lg">A simple investment companion that helps you build a long-term plan, understand what to invest in, and stay on track.</p>
+            <p className="mt-5 max-w-lg text-base leading-7 text-slate-600 sm:text-lg">A simple investment companion that helps you choose a long-term plan, understand your targets, and stay on track.</p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <a href={entryLinks.signup} className="entry-primary">Get started <span aria-hidden="true">→</span></a>
               <a href={entryLinks.login} className="entry-secondary">Log in</a>

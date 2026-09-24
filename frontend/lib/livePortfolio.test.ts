@@ -69,7 +69,7 @@ for (const enabled of [undefined, false, true]) test(`server availability ${enab
     ...(enabled === undefined ? {} : {availability:{live_portfolio:enabled}})};
   assert.ok(isEntitlements(access));
   const markup=html(createElement(AccountAccessContext.Provider,{value:{value:access,error:"",retry:()=>{}}},
-    createElement(V2Destination,{value,active:"portfolio",userId:"test"})));
+    createElement(V2Destination,{value,active:"portfolio",userId:"test",section:"contribution"})));
   assert.equal(markup.includes("Hypothetical current values"),enabled!==true);
   assert.doesNotMatch(markup,/Add holding|Explore Arbor Plus/);
   assert.equal(isEntitlements({...access,availability:{live_portfolio:"true"}}),false);
@@ -93,7 +93,7 @@ test("summary uses PHP grouping and distinguishes partial/stale totals",()=>{
 });
 test("alignment is a signed comparison not a health score",()=>{
   const markup=html(createElement(PlanAlignment,{portfolio:portfolioFixture}));
-  assert.match(markup,/Plan Alignment/);assert.match(markup,/-20.00pp/);assert.match(markup,/100.00%/);assert.match(markup,/not a score/);
+  assert.match(markup,/Plan Alignment/);assert.match(markup,/20.00 percentage points below your target/);assert.match(markup,/100.00%/);assert.match(markup,/not a score/);
 });
 test("unavailable alignment is not displayed as zero",()=>{
   const p={...portfolioFixture,sleeves:portfolioFixture.sleeves.map(s=>({...s,current_percentage:null,difference_pp:null,target_percentage:null}))};
@@ -168,5 +168,5 @@ test("multiple observed history points have accessible values and range controls
     {day:"2026-09-24",value_php:"5600.00",captured_at:"2026-09-24T00:00:00Z"},
   ]}));
   assert.match(markup,/₱5,000/);assert.match(markup,/₱5,600/);assert.match(markup,/recorded values \(2\)/);
-  for(const range of ["1M","3M","1Y","All"])assert.ok(markup.includes(range));
+  for(const range of [">1M<",">3M<",">1Y<"])assert.ok(!markup.includes(range));
 });

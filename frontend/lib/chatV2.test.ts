@@ -23,7 +23,9 @@ test("V2 Ask Arbor replaces unavailable state with the shared labelled composer 
 });
 test("V1 prompts remain unchanged and V2 prompts do not presume a projection result", () => {
   assert.ok(chatPrompts(false).includes("Does my projection reach my goal?"));
-  assert.ok(chatPrompts(true).includes("Explain my projection"));
+  assert.ok(chatPrompts(true).includes("What should I do next?"));
+  assert.ok(!chatPrompts(true).includes("What is my current portfolio worth?"));
+  assert.ok(chatPrompts(true, true).includes("What is my current portfolio worth?"));
   assert.ok(!chatPrompts(true).includes("Does my projection reach my goal?"));
 });
 test("V2 context changes reset conversation and account mounting isolates sessions", () => {

@@ -5,23 +5,29 @@ import { portfolioApi, validHolding, freshnessText, scenarioAvailability, suppor
 import { decimalText, formatContributionMoney, SLEEVE_LABELS } from "@/lib/contributions";
 import ContributionCard from "../contributions/ContributionCard";
 import PortfolioHistoryChart from "./PortfolioHistoryChart";
+import ProviderBrand from "../ProviderBrand";
 
 const inputClass = "mt-1 min-h-12 w-full min-w-0 rounded-xl border border-slate-300 bg-white p-3 text-slate-900";
 const blank = (): HoldingDraft => ({ provider: "", product_id: "", units: null, cost_basis_php: null, manual_value_php: null });
 const money = (v: string) => formatContributionMoney(v, "PHP");
 
-export default function LivePortfolio({ value, userId }: { value: PlanV2; userId: string }) {
+export default function LivePortfolio({ value, userId, section = "" }: { value: PlanV2; userId: string; section?: string }) {
   const [portfolio, setPortfolio] = useState<LivePortfolioData | null>(null);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
   const [busy, setBusy] = useState(false);
   const [historyError, setHistoryError] = useState(false);
-  const [showContribution, setShowContribution] = useState(false);
+  const [showContribution, setShowContribution] = useState(section === "contribution");
   const pending = useRef(false);
   const [draft, setDraft] = useState<HoldingDraft | null>(null);
   const [editing, setEditing] = useState<string>();
   const [deleting, setDeleting] = useState<PortfolioHolding | null>(null);
   const [manual, setManual] = useState<{ holding: PortfolioHolding; value: string } | null>(null);
+  const portfolioLoaded = portfolio !== null;
+  useEffect(() => {
+    if (showContribution) document.getElementById("section-contribution")?.scrollIntoView({ block: "start" });
+    else if (section === "holdings") document.getElementById("section-holdings")?.scrollIntoView({ block: "start" });
+  }, [showContribution, portfolioLoaded, section]);
   useEffect(() => {
     const controller = new AbortController();
     portfolioApi.read(userId, controller.signal).then(async data => {
@@ -51,10 +57,11 @@ export default function LivePortfolio({ value, userId }: { value: PlanV2; userId
     {portfolio && <>
       <PortfolioSummary portfolio={portfolio} />
       <PortfolioHistoryChart history={portfolio.history} />
+      {scenarioAvailability(value, portfolio) === "available" && !showContribution && <button className="entry-primary min-h-11" onClick={() => setShowContribution(true)}>{portfolio.holdings.length ? "Review contribution" : "Explore a hypothetical contribution"}</button>}
       {historyError && <p role="status" className="text-sm text-slate-600">Current values are available, but today’s history could not be recorded. Please retry later.</p>}
-      <section className="arbor-panel min-w-0"><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="text-lg font-semibold text-slate-900">Where you invest</h3><button className="entry-secondary min-h-11" disabled={busy} onClick={() => { setDraft(blank()); setEditing(undefined); }}>Add holding</button></div>
+      <section id="section-holdings" className="arbor-panel min-w-0"><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="text-lg font-semibold text-slate-900">Where you invest</h3><button className="entry-secondary min-h-11" disabled={busy} onClick={() => { setDraft(blank()); setEditing(undefined); }}>Add holding</button></div>
         {!portfolio.holdings.length && <p className="mt-3 text-sm text-slate-600">Add your first holding. Tell Arbor what you already own so it can compare your portfolio with your selected plan.</p>}
-        {[...new Set(portfolio.holdings.map(h => h.provider))].map(provider => <section key={provider} className="mt-5"><h4 className="inline-flex rounded-full border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">{portfolio.holdings.find(h => h.provider === provider)!.provider_name}</h4>
+        {[...new Set(portfolio.holdings.map(h => h.provider))].map(provider => <section key={provider} className="mt-5"><h4 className="text-slate-700"><ProviderBrand provider={provider} name={portfolio.holdings.find(h => h.provider === provider)!.provider_name} /></h4>
           <p className="mt-2 text-sm text-slate-600">Known provider value: {money(portfolio.provider_values_php[provider] ?? "0")}{portfolio.holdings.some(h => h.provider === provider && h.value_php === null) ? " · incomplete" : ""}</p>
           {portfolio.holdings.filter(h => h.provider === provider).map(h => <div className="mt-2 border-b border-slate-200 py-3 text-sm" key={h.id}>
             <div className="flex flex-wrap justify-between gap-2"><p className="min-w-0 break-words font-semibold text-slate-900">{h.display_name}</p><p className="font-semibold text-slate-900">{h.value_php === null ? "Value unavailable" : money(h.value_php)}</p></div>
@@ -91,8 +98,7 @@ export default function LivePortfolio({ value, userId }: { value: PlanV2; userId
       <PlanAlignment portfolio={portfolio} />
       {scenarioAvailability(value, portfolio) !== "plan_required" ? (
         scenarioAvailability(value, portfolio) === "prices_required" ? <p className="arbor-panel text-sm text-slate-600">Contribution scenarios are paused until complete, up-to-date values are available. Update any fund values that need attention. Your records remain editable.</p> :
-        showContribution ? <ContributionCard key={`${reload}:${portfolio.valued_at}`} value={value} userId={userId} portfolio={portfolio.holdings.length ? portfolio : undefined} /> :
-        <button className="entry-primary min-h-11" onClick={() => setShowContribution(true)}>{portfolio.holdings.length ? "Review contribution" : "Explore a hypothetical contribution"}</button>
+        showContribution ? <div id="section-contribution"><ContributionCard key={`${reload}:${portfolio.valued_at}`} value={value} userId={userId} portfolio={portfolio.holdings.length ? portfolio : undefined} /></div> : null
       ) : <p className="arbor-panel text-sm text-slate-600">Your holdings can be tracked independently. Long-term contribution scenarios need an explicitly selected active long-term plan. Review your plan for the current path.</p>}
       <button className="entry-link min-h-11" onClick={refresh} disabled={busy}>Refresh portfolio</button>
       <DataAttribution sources={portfolio.data_sources ?? []} />
@@ -117,7 +123,7 @@ export function PortfolioSummary({ portfolio: p }: { portfolio: LivePortfolioDat
   </section>;
 }
 export function PlanAlignment({ portfolio: p }: { portfolio: LivePortfolioData }) {
-  return <section className="arbor-panel"><h3 className="text-lg font-semibold text-slate-900">Plan Alignment</h3><p className="mt-2 text-sm text-slate-600">Current allocation minus your saved target, in percentage points. This is a comparison, not a score or instruction to trade.</p>
-    <dl className="mt-4 divide-y divide-slate-200">{p.sleeves.map(s => <div className="py-3" key={s.sleeve}><dt className="font-semibold text-slate-900">{SLEEVE_LABELS[s.sleeve]}</dt><dd className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600"><span>Target: {s.target_percentage === null ? "Not applicable" : `${s.target_percentage}%`}</span><span>Current: {s.current_percentage === null ? "Unavailable" : `${Number(s.current_percentage).toFixed(2)}%`}</span><span>Difference: {s.difference_pp === null ? "Unavailable" : `${Number(s.difference_pp).toFixed(2)}pp`}</span></dd></div>)}</dl>
+  return <section className="arbor-panel"><h3 className="text-lg font-semibold text-slate-900">Plan Alignment</h3><p className="mt-2 text-sm text-slate-600">Compare what you’ve recorded with the targets you chose. This is a comparison, not a score or instruction to trade.</p>
+    <dl className="mt-4 divide-y divide-slate-200">{p.sleeves.map(s => <div className="py-3" key={s.sleeve}><dt className="font-semibold text-slate-900">{SLEEVE_LABELS[s.sleeve]}</dt><dd className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600"><span>Target: {s.target_percentage === null ? "Not applicable" : `${s.target_percentage}%`}</span><span>Current: {s.current_percentage === null ? "Unavailable" : `${Number(s.current_percentage).toFixed(2)}%`}</span><span>{s.difference_pp === null ? "Comparison unavailable" : Number(s.difference_pp) === 0 ? "At your target" : `${Math.abs(Number(s.difference_pp)).toFixed(2)} percentage points ${Number(s.difference_pp) < 0 ? "below" : "above"} your target`}</span></dd></div>)}</dl>
   </section>;
 }

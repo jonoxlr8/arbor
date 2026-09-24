@@ -54,8 +54,8 @@ test("malformed options fail closed, including null records and weights",()=>{
 });
 test("selected plan may differ from assessment; historical preferences do not change standard target",()=>{
   const value=selected();assert.ok(isPlanV2(value));
-  const html=renderToStaticMarkup(createElement(V2Destination,{value,active:"plan"}));
-  assert.match(html,/Your selected plan/);assert.match(html,/not applied to this model/);
+  const html=renderToStaticMarkup(createElement(V2Destination,{value,active:"portfolio"}));
+  assert.match(html,/Your plan/);assert.match(html,/not applied to this model/);
   assert.doesNotMatch(html,/Effective target allocation|recommended for you/);
   const bad=structuredClone(value);bad.plan.preference_result!.effective_target!.allocation.weights[0].percentage_points=70;bad.plan.preference_result!.effective_target!.allocation.weights[1].percentage_points=30;
   assert.equal(isPlanV2(bad),false);

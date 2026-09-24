@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import PlanV2View, { V2Destination } from "../components/PlanV2View";
+import PlanV2View, { V2Destination, V2PlanContent } from "../components/PlanV2View";
 import { isPlanV2 } from "./planV2";
 import { createV2ProfileCreator, isAccountPlan } from "./profileV2Api";
 import { createProfileReader } from "./api";
@@ -18,14 +18,14 @@ function fixture(): PlanV2 {
     readiness:{readiness:"ready",core_strategy_can_be_shown:true,actionable_contribution_guidance_allowed:true,technology_satellite_readiness_eligible:true,bitcoin_satellite_readiness_eligible:true,message_requirement:"none"}}};
 }
 const legacy: Plan = {profile:{full_name:"Legacy",country:"Philippines",currency:"PHP",risk_tolerance:"Balanced",goal_target:100,investment_horizon:10,monthly_investment:0,current_portfolio_value:0},portfolio:[],explanation:{summary:"Plan",reasons:[]},projection:{starting_value:0,projected_value:0,investment_period_years:10,assumed_return:.08,monthly_contribution:0,required_monthly_investment:1,yearly_projection:[]}};
-const html = (value: PlanV2) => renderToStaticMarkup(createElement(PlanV2View,{value,onSignOut:()=>{},signingOut:false,logoutError:""}));
+const html = (value: PlanV2) => renderToStaticMarkup(createElement(V2PlanContent,{value}));
 
 test("v2 restored plan uses the shared desktop/mobile shell and destinations", () => {
-  const markup = html(fixture());
+  const markup = renderToStaticMarkup(createElement(PlanV2View,{value:fixture(),onSignOut:()=>{},signingOut:false,logoutError:""}));
   assert.match(markup, /aria-label="Primary navigation"/);
   assert.match(markup, /aria-label="Mobile navigation"/);
-  for (const destination of ["home", "portfolio", "plan", "ask", "settings"]) assert.ok(markup.includes(`href="#${destination}"`));
-  assert.match(markup, /Sign out/);
+  for (const destination of ["home", "portfolio", "ask", "settings"]) assert.ok(markup.includes(`href="#${destination}"`));
+  assert.doesNotMatch(markup, /href="#plan"/);
   const page = readFileSync("app/page.tsx", "utf8");
   assert.match(page, /if \(isPlanV2\(account.plan\)\) return <PlanV2View/);
   assert.match(page, /return <ResultsDashboard key=\{account.userId\}/);
@@ -33,9 +33,9 @@ test("v2 restored plan uses the shared desktop/mobile shell and destinations", (
 test("v2 unsupported destinations remain safe; settings preserves appearance and profile", () => {
   for (const active of ["portfolio"] as const) {
     const markup = renderToStaticMarkup(createElement(V2Destination, { value: fixture(), active }));
-    assert.match(markup, /Choose a plan for your scenarios/);
-    assert.match(markup, /href="#plan"/);
-    assert.doesNotMatch(markup, /Planning return:|Add Holding|Send message/);
+    assert.match(markup, /Your historical plan remains saved/);
+    assert.match(markup, /href="#settings\/investment"/);
+    assert.doesNotMatch(markup, /Add Holding|Send message/);
   }
   const settings = renderToStaticMarkup(createElement(V2Destination, { value: fixture(), active: "settings" }));
   assert.match(settings, /Appearance/);
@@ -57,7 +57,7 @@ test("numeric v2 contract is recognized; malformed or unknown tagged plans canno
 });
 test("long-term plan renders backend allocation and planning assumption", () => {
   const markup = html(fixture());
-  assert.match(markup,/Growth strategy/);
+  assert.match(markup,/Growth/);
   assert.match(markup,/80%/); assert.match(markup,/20%/);
   assert.match(markup,/Planning return: 5.0%/);
   assert.match(markup,/not a forecast or guarantee/);
@@ -68,7 +68,7 @@ test("Foundation First preserves Aggressive preview without contribution action"
   value.plan.selected_strategy = "Aggressive";
   value.plan.readiness = {...value.plan.readiness,readiness:"foundation_first",actionable_contribution_guidance_allowed:false,technology_satellite_readiness_eligible:false,bitcoin_satellite_readiness_eligible:false,message_requirement:"foundation_first"};
   const markup = html(value);
-  assert.match(markup,/Aggressive strategy preview/);
+  assert.match(markup,/Aggressive · preview/);
   assert.match(markup,/Foundation First/);
   assert.match(markup,/contribution allocations are paused/);
   assert.doesNotMatch(markup, /Create contribution|Invest now/);

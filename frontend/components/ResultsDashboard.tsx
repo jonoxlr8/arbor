@@ -104,13 +104,15 @@ function LegacyDashboard({
 
       </div>
 
-      <div hidden={active !== "plan"} className="app-destination space-y-6">
+      <div hidden={active !== "portfolio"} className="app-destination space-y-6">
+        <details className="mt-6"><summary className="min-h-11 cursor-pointer py-3 text-xl font-semibold">Your plan and planning tools</summary>
         <HeroSection plan={plan} />
         <PortfolioSection plan={plan} />
         <ProjectionSection projection={plan.projection} currency={plan.profile.currency} goalAmount={plan.profile.goal_target} />
         <GoalProgress plan={plan} />
         <WhatIfSection plan={plan} />
         <InsightsSection plan={plan} />
+        </details>
       </div>
 
       <div hidden={active !== "ask"} className="app-destination">

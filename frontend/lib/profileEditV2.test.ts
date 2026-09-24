@@ -80,7 +80,7 @@ test("cancel, compare, duplicate and stale-response guards remain local; save ch
   assert.match(editor,/onClick=\{onCancel\}/);assert.match(editor,/if\(pending.current\)return/);
   assert.match(editor,/!signal.aborted/);assert.match(editor,/Compare approaches/);assert.match(editor,/Keep \{planChoiceLabel/);
   assert.doesNotMatch(editor,/localStorage|sessionStorage|console\.log/);
-  assert.match(readFileSync("components/PlanV2View.tsx","utf8"),/LivePortfolio key=\{`\$\{userId\}:\$\{JSON.stringify\(value\)\}`\}/);
+  assert.match(readFileSync("components/PlanV2View.tsx","utf8"),/V2Destination key=\{`\$\{active\}:\$\{JSON.stringify\(value\)\}`\}/);
   const current=fixture(),changed=fixture();changed.profile.monthly_investment=8000;
   assert.notEqual(chatPlanKey(current),chatPlanKey(changed));
 });

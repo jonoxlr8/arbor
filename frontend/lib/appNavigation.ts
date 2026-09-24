@@ -1,14 +1,15 @@
 export const destinations = [
   { id: "home", label: "Home", mobileLabel: "Home", description: "Your long-term picture, at a glance." },
   { id: "portfolio", label: "Portfolio", mobileLabel: "Portfolio", description: "Your recorded holdings, and how they compare with your Arbor targets." },
-  { id: "plan", label: "Plan", mobileLabel: "Plan", description: "Your targets, your goals, and the assumptions behind them." },
-  { id: "ask", label: "Ask Arbor", mobileLabel: "Ask", description: "Understand your plan, one question at a time." },
+  { id: "ask", label: "Ask Arbor", mobileLabel: "Ask Arbor", description: "Understand your plan, one question at a time." },
+  { id: "settings", label: "Settings", mobileLabel: "Settings", description: "Your profile, preferences and Arbor access." },
 ] as const;
-export type Destination = typeof destinations[number]["id"] | "settings";
+export type Destination = typeof destinations[number]["id"];
 
 export function destinationFromHash(hash: string): Destination {
-  const candidate = hash.replace(/^#/, "");
-  return candidate === "settings" || destinations.some(item => item.id === candidate)
+  const candidate = hash.replace(/^#/, "").split("/")[0];
+  if (candidate === "plan") return "portfolio"; // Preserve old bookmarks.
+  return destinations.some(item => item.id === candidate)
     ? candidate as Destination : "home";
 }
 
@@ -20,3 +21,4 @@ export function subscribeNavigation(callback: () => void) {
 }
 export function navigationSnapshot() { return destinationFromHash(window.location.hash); }
 export function serverNavigationSnapshot(): Destination { return "home"; }
+export function sectionSnapshot() { return window.location.hash === "#plan" ? "plan" : window.location.hash.split("/")[1] ?? ""; }

@@ -35,7 +35,7 @@ export function PlusFeature({ feature, title, children, onBack }: { feature: str
   return <section className="arbor-panel"><p className="text-xs font-semibold text-slate-500">Arbor Plus</p>
     <h2 className="mt-2 text-xl font-semibold text-slate-900">{title}</h2>
     <p className="mt-3 text-sm leading-6 text-slate-600">This ongoing planning tool is part of Plus. Your saved plan, basic planning assumptions and implementation education remain available on Free.</p>
-    <a href="#settings" className="entry-secondary mt-4 inline-flex min-h-11 items-center">Explore Arbor Plus</a>
+    <a href="#settings/plus" onClick={onBack} className="entry-secondary mt-4 inline-flex min-h-11 items-center">Explore Arbor Plus</a>
     {onBack && <button className="entry-link mt-3 min-h-11 w-full" onClick={onBack}>Back to your plan</button>}</section>;
 }
 

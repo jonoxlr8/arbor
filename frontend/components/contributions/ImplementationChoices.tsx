@@ -1,5 +1,6 @@
 import { BEGINNER_ROUTES, BITCOIN_PROVIDERS, ROUTES } from "@/lib/contributions";
 import type { BitcoinProvider, RouteId } from "@/lib/types/contributions";
+import ProviderBrand from "../ProviderBrand";
 
 const descriptions = {
   gcash: "Access supported funds through GFunds.",
@@ -11,7 +12,7 @@ const choiceClass = (selected: boolean) => `min-h-12 w-full rounded-xl border p-
 export function ImplementationEducation() {
   return <details className="arbor-panel"><summary className="min-h-11 cursor-pointer font-semibold text-slate-900">Explore implementation options</summary>
     <p className="mt-2 text-sm text-slate-600">These are ways to implement a plan, not changes to its targets. No option is chosen for you.</p>
-    <dl className="mt-4 space-y-4">{BEGINNER_ROUTES.map(id => <div key={id}><dt className="font-medium text-slate-900">{ROUTES[id]}</dt><dd className="text-sm text-slate-600">{descriptions[id]}</dd></div>)}</dl>
+    <dl className="mt-4 space-y-4">{BEGINNER_ROUTES.map(id => <div key={id}><dt className="font-medium text-slate-900"><ProviderBrand provider={id} name={ROUTES[id]} /></dt><dd className="mt-2 text-sm text-slate-600">{descriptions[id]}</dd></div>)}</dl>
   </details>;
 }
 

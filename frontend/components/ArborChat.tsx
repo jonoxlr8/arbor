@@ -199,7 +199,8 @@ function PlanChat({ v2 }: { v2: boolean }) {
     await sendMessage(prompt);
   };
 
-  const prompts = chatPrompts(v2);
+  const livePortfolio = v2 && access?.value?.availability?.live_portfolio === true && access.value.features.includes("live_portfolio");
+  const prompts = chatPrompts(v2, livePortfolio);
   const currentUsage = usage ?? access?.value?.ask_usage;
   const limited = error === FREE_LIMIT_MESSAGE || currentUsage?.remaining === 0;
 
@@ -209,10 +210,10 @@ function PlanChat({ v2 }: { v2: boolean }) {
       <div className="text-sm">
         {access?.value?.effective_tier === "plus" && <p className="mb-2 text-xs font-medium text-slate-500">Arbor Plus · Full Ask Arbor access</p>}
         {currentUsage && !limited && <p role="status" className="mb-2 text-sm text-slate-600">{currentUsage.remaining} Free questions remaining this month.</p>}
-        {limited && <div role="status" className="mb-4 rounded-xl border border-slate-200 p-4"><p className="text-slate-700">{FREE_LIMIT_MESSAGE}</p><a className="entry-link mt-2 inline-flex min-h-11 items-center" href="#settings">Explore Arbor Plus</a></div>}
+        {limited && <div role="status" className="mb-4 rounded-xl border border-slate-200 p-4"><p className="text-slate-700">{FREE_LIMIT_MESSAGE}</p><a className="entry-link mt-2 inline-flex min-h-11 items-center" href="#settings/plus">Explore Arbor Plus</a></div>}
         {access?.value?.ask_usage_available === false && <p role="status" className="mb-3 text-sm text-slate-600">Ask Arbor usage is temporarily unavailable. Your saved plan remains accessible.</p>}
         <p className="leading-7 text-slate-700">
-          About your target plan—not actual holdings. No live market, tax or trading advice. Each question stands alone.
+          {livePortfolio ? "Understand your selected plan and recorded holdings. Values may include amounts you entered." : "About your target plan—not actual holdings."} No live market, tax or trading advice. Each question stands alone.
         </p>
       </div>
 

@@ -8,7 +8,6 @@ function NavIcon({ name }: { name: Destination }) {
   const paths: Record<Destination, ReactNode> = {
     home: <><path d="m3 10 9-7 9 7v10H3Z" /><path d="M9 20v-7h6v7" /></>,
     portfolio: <><rect x="3" y="7" width="18" height="14" rx="3" /><path d="M8 7V4h8v3M3 12h18m-11 0v3h4v-3" /></>,
-    plan: <><path d="M6 3h9l4 4v14H6ZM14 3v5h5M9 12h7m-7 4h5" /></>,
     ask: <><path d="M20 15a3 3 0 0 1-3 3H9l-5 3V6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3Z" /><path d="M8 8h8m-8 5h5" /></>,
     settings: <><path d="m9 3-.5 3-2 1.2-2.8-1-2 3.5L4 12l-2.3 2.3 2 3.5 2.8-1 2 1.2.5 3h6l.5-3 2-1.2 2.8 1 2-3.5L20 12l2.3-2.3-2-3.5-2.8 1-2-1.2L15 3Z" /><circle cx="12" cy="12" r="3" /></>,
   };
@@ -46,15 +45,12 @@ export default function AppShell({ active, name, children, onSignOut, signingOut
           {destinations.map(item => <a key={item.id} href={`#${item.id}`} aria-current={active === item.id ? "page" : undefined} className={`flex min-h-12 items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${active === item.id ? "bg-forest text-white" : "text-slate-600 hover:bg-slate-50 hover:text-forest"}`}><NavIcon name={item.id} />{item.label}</a>)}
         </nav>
         <div className="mt-auto space-y-3 pt-8">
-          <a href="#settings" aria-current={active === "settings" ? "page" : undefined} className={`flex min-h-11 items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium ${active === "settings" ? "bg-sage-soft text-forest" : "text-slate-600 hover:bg-slate-50"}`}><NavIcon name="settings" />Settings</a>
-          {signOut}
           <p className="pt-3 text-xs text-slate-400">A little clarity. A longer view.</p>
         </div>
       </aside>
       <div className="lg:pl-60">
         <header className="flex min-h-16 items-center justify-between border-b border-slate-200/70 bg-white px-4 sm:px-6 lg:hidden">
           <a href="#home" aria-label="Arbor Home"><Logo /></a>
-          <a href="#settings" aria-label="Settings" className="flex h-11 w-11 items-center justify-center rounded-full bg-sage-soft text-forest"><NavIcon name="settings" /></a>
         </header>
         <main id="app-content" tabIndex={-1} className="mx-auto w-full min-w-0 max-w-6xl px-4 pt-7 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-8 lg:px-10 lg:py-10">
           <header className="mb-7 flex min-w-0 flex-wrap items-start justify-between gap-4">
@@ -65,7 +61,7 @@ export default function AppShell({ active, name, children, onSignOut, signingOut
           </header>
           {logoutError && <p role="alert" className="mb-5 rounded-xl bg-red-50 p-4 text-sm text-red-800">{logoutError}</p>}
           {children}
-          {active === "settings" && <div className="mt-6 lg:hidden">{signOut}</div>}
+          {active === "settings" && <section className="mt-6 max-w-2xl"><h2 className="mb-3 text-lg font-semibold">Account &amp; security</h2>{signOut}</section>}
           <footer className="mt-10 border-t border-slate-200 pt-5 text-xs leading-5 text-slate-500">Arbor is a planning and educational companion. It does not purchase, custody or execute investments. Scenarios are not orders.</footer>
         </main>
       </div>

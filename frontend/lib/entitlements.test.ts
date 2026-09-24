@@ -30,7 +30,7 @@ for (const feature of ["profile_rebuild","monthly_contribution_planner"]) {
     const html=renderToStaticMarkup(createElement(AccountAccessContext.Provider,{value:{value,error:"",retry:()=>{}}},
       createElement(PlusFeature,{feature,title:"Planning tool"},createElement("p",null,"Tool content"))));
     assert.equal(html.includes("Tool content"),value.effective_tier==="plus");
-    if(value.effective_tier==="free")assert.match(html,/href="#settings"/);
+    if(value.effective_tier==="free")assert.match(html,/href="#settings\/plus"/);
   });
 }
 test("unknown access does not mount Plus children; errors have retry",()=>{

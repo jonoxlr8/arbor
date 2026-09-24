@@ -10,19 +10,23 @@ await withAuthenticatedBrowser(async ({page,reused})=>{
     page.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/v2/portfolio'))portfolioRequests++;});
     page.on('pageerror',()=>pageErrors++);
     page.on('console',m=>{if(m.type()==='error')consoleErrors++;});
-    await page.evaluate(()=>{location.hash='portfolio';});
+    await page.evaluate(()=>{location.hash='portfolio/contribution';});
     await page.getByText('Hypothetical current values',{exact:false}).waitFor();
+    stage='contribution inputs';
     assert.equal(await page.getByRole('button',{name:'Add holding',exact:true}).count(),0);
     await page.getByLabel('Contribution amount (PHP)',{exact:true}).fill('1000');
     await page.getByRole('button',{name:/Gotrade Access supported/}).click();
     await page.getByRole('button',{name:/I have no investments yet/}).click();
+    stage='ownership confirmation';
     await page.getByRole('radio',{name:'I do not own any products through these options'}).check();
     const calculated=page.waitForResponse(r=>new URL(r.url()).pathname==='/contributions/plan');
+    stage='calculate scenario';
     await page.getByRole('button',{name:'Calculate scenario',exact:true}).click();
     const response=await calculated;
     assert.equal(response.status(),200);
     assert.equal((await response.json()).current_portfolio_value,'0');
     await page.getByRole('heading',{name:'Choose options for this scenario',exact:true}).waitFor();
+    stage='accept options';
     for(const checkbox of await page.getByRole('checkbox',{name:/Use /}).all())await checkbox.check();
     const accepted=page.waitForResponse(r=>new URL(r.url()).pathname==='/contributions/plan');
     await page.getByRole('button',{name:'Use these options in my scenario',exact:true}).click();
@@ -43,7 +47,7 @@ await withAuthenticatedBrowser(async ({page,reused})=>{
       await page.setViewportSize({width,height:950});
       await page.evaluate(()=>{location.hash='settings';});
       await page.getByRole('radio',{name:theme,exact:true}).check();
-      await page.evaluate(()=>{location.hash='portfolio';});
+      await page.evaluate(()=>{location.hash='portfolio/contribution';});
       await page.getByText('Hypothetical current values',{exact:false}).waitFor();
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
       if(width===390)await page.screenshot({path:`/tmp/arbor-disabled-${theme}.png`,fullPage:true});
@@ -51,6 +55,7 @@ await withAuthenticatedBrowser(async ({page,reused})=>{
     assert.equal(portfolioRequests,0);assert.equal(pageErrors,0);assert.equal(consoleErrors,0);
     console.log(JSON.stringify({disabled:true,reused,manualPlan:200,chat:200,nextAction:'review_monthly_contribution',portfolioRequests,pageErrors,consoleErrors,hostedWrites:0}));
   } catch {
+    await page.screenshot({path:'/tmp/arbor-3uc-disabled-failure.png',fullPage:true});
     console.error(`Disabled portfolio QA failed at ${stage}; no request/session data logged.`);
     throw new Error('Disabled portfolio QA failed');
   }

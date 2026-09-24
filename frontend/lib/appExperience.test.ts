@@ -71,7 +71,9 @@ test("chat renders conversation before composer and prompts are empty-state only
 });
 
 test("four primary destinations and settings have deterministic bookmark identities", () => {
-  assert.deepEqual(destinations.map(item => item.id), ["home", "portfolio", "plan", "ask"]);
+  assert.deepEqual(destinations.map(item => item.id), ["home", "portfolio", "ask", "settings"]);
+  assert.equal(destinationFromHash("#plan"), "portfolio");
+  assert.equal(destinationFromHash("#portfolio/contribution"), "portfolio");
   for (const id of [...destinations.map(item => item.id), "settings"]) assert.equal(destinationFromHash(`#${id}`), id);
   for (const hash of ["", "#unknown", "#PROFILE", "#%invalid"]) assert.equal(destinationFromHash(hash), "home");
 });
@@ -95,14 +97,14 @@ test("navigation subscribes to browser hash/back-forward changes and cleans up",
 });
 
 test("desktop/mobile navigation share active destination and accessible profile/logout controls", () => {
-  for (const active of ["home", "portfolio", "plan", "ask", "settings"] as const) {
+  for (const active of ["home", "portfolio", "ask", "settings"] as const) {
     const html = renderToStaticMarkup(createElement(AppShell, { active, name: "Example", onSignOut() {}, signingOut: false, logoutError: "" }, "Content"));
     assert.match(html, /Primary navigation/);
     assert.match(html, /Mobile navigation/);
     assert.match(html, new RegExp(`href="#${active}" aria-current="page"`));
     assert.match(html, /aria-label="Settings"/);
     assert.doesNotMatch(html, /Profile &amp; settings|Profile and settings/);
-    assert.match(html, /Sign out/);
+    assert.equal(html.includes("Sign out"), active === "settings");
     assert.match(html, /safe-area-inset-bottom/);
     assert.match(html, /Skip to content/);
   }
