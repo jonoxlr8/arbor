@@ -94,6 +94,23 @@ test('BTC snapshot threshold matches ten-minute valuation policy',async()=>{
   await identity(B);
   assert.equal((await db.query('select public.arbor_capture_portfolio() as ok')).rows[0].ok,true);
 });
+test('ATRAM snapshots require the exact PHP unit class',async()=>{
+  await identity(B);
+  await db.exec('delete from public.arbor_portfolio_holdings');
+  for (const [product,unit] of [['gcash_global_equity','PHP Unit Class'],['gcash_technology','A PHP Unit Class'],['gcash_defensive','A Unit Class']]) {
+    await add(product,'gcash','1');
+    await db.exec('reset role');
+    await db.query("insert into public.arbor_market_prices(price_key,value,as_of,source,verified,unit_class) values($1,100,now(),'official_nav',true,'wrong class')",[product]);
+    await identity(B);
+    assert.equal((await db.query('select public.arbor_capture_portfolio() as ok')).rows[0].ok,false);
+    await db.exec('reset role');
+    await db.query('update public.arbor_market_prices set unit_class=$1 where price_key=$2',[unit,product]);
+    await db.query('delete from public.arbor_portfolio_snapshots where user_id=$1',[B]);
+    await identity(B);
+    assert.equal((await db.query('select public.arbor_capture_portfolio() as ok')).rows[0].ok,true);
+    await db.exec('delete from public.arbor_portfolio_holdings');
+  }
+});
 test('anonymous functions and missing identity denied; owner deletion cascades',async()=>{
   await db.exec('reset role; set role anon');
   await assert.rejects(db.query('select public.arbor_capture_portfolio()'),/permission denied/);

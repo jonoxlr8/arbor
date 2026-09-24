@@ -287,16 +287,19 @@ from updating. A database failure produces safe operational errors, not fake pri
 
 | Existing product ID | Required identity | Ingestion status |
 | --- | --- | --- |
-| gcash_global_equity | ATRAM Global Equity Opportunity Feeder Fund; exact PHP unit class to verify | Blocked/unverified |
-| gcash_technology | ATRAM Global Technology Feeder Fund; expected A PHP class, not proven by catalog | Blocked/unverified |
-| gcash_defensive | ATRAM Medium Term Peso Bond Fund; exact PHP/A identity unresolved | Blocked/unverified |
+| gcash_global_equity | ATRAM Global Equity Opportunity Feeder Fund — PHP Unit Class | Exact class required; official NAV still operator-verified |
+| gcash_technology | ATRAM Global Technology Feeder Fund — A PHP Unit Class | Exact class required; official NAV still operator-verified |
+| gcash_defensive | ATRAM Medium Term Peso Bond Fund — A Unit Class | Exact class required; official NAV still operator-verified |
 | dragonfi_global_equity | BPI Global Equity Fund-of-Funds — PHP / Class P | Explicit required mapping; operator must verify official NAV source |
 | dragonfi_technology | BPI World Technology Feeder Fund — PHP / Class P | Explicit required mapping; operator must verify official NAV source |
 | dragonfi_defensive | BPI Premium Bond Fund — PHP | Explicit required mapping; operator must verify official NAV source |
 
-ATRAM requests cannot silently select a class. They fail ingestion and cache-reader
-validation; snapshots also exclude unverified fund identities. Resolve evidence and
-update the narrow identity allowlist and snapshot checks before accepting those NAVs.
+ATRAM requests cannot silently select a class. Ingestion, cache validation and snapshot
+checks require the exact classes above. The 3U-B.3 identity review matches the
+TOAP participating-fund listings: [Global Equity](https://www.uitf.com.ph/daily_navpu_details.php?fund_id=420),
+[Technology](https://uitf.com.ph/daily_navpu_details.php?bank_id=31&fund_id=327),
+and [Medium Term Bond](https://www.uitf.com.ph/daily_navpu_details.php?fund_id=240).
+This verifies identity, not a current NAV value or commercial permission.
 An ETF-only portfolio does not require six fund NAVs. Unavailable fund values are
 null, never zero. No standardized allocation or implementation provider mapping changed.
 
@@ -327,7 +330,7 @@ References inspected for implementation:
 2. Configure Marketstack key server-side.
 3. Configure Coinranking key server-side and confirm intended-use terms.
 4. Confirm ExchangeRate-API Open endpoint/attribution (no key required).
-5. Verify exact ATRAM class identities and resolve blocked mappings.
+5. Reconfirm exact ATRAM class identities against each official NAV input.
 6. Collect current official ATRAM/BPI NAV inputs offline; do not write before migration.
 7. Review the revised 3U-B migration.
 8. Apply only `3u_b_live_portfolio.sql` deliberately.
@@ -355,3 +358,106 @@ References inspected for implementation:
 Rollback: disable flag first, restart/reload, verify normal manual fallback flows,
 retain holdings/history/cache, then investigate. Do not drop tables/delete user
 holdings as a first response. No activation step above was performed in 3U-B.2.
+
+## 3U-B.2A — official NAV source discovery (2026-09-24)
+
+**Outcome: no category-A source established; no automatic NAV adapter enabled or
+implemented. Manual official NAV remains the preferred available path.** Public
+availability is not commercial reuse permission. The classifications below are
+conservative engineering activation decisions, not legal conclusions.
+
+### ATRAM / TOAP
+
+Public GET HTML identity pages (no credentials):
+
+- `https://www.uitf.com.ph/daily_navpu_details.php?fund_id=420` — Global Equity PHP Unit Class.
+- `https://www.uitf.com.ph/daily_navpu_details.php?fund_id=327` — Global Technology A PHP Unit Class.
+- `https://www.uitf.com.ph/daily_navpu_details.php?fund_id=240` — Medium Term Peso Bond A Unit Class.
+
+The inspected fund-420 HTML returned 200. Public page code references:
+
+| Surface | Method | Observed contract / limits |
+| --- | --- | --- |
+| `https://www.uitf.com.ph/daily_navpu.php` | GET form | `bank_id` selection; HTML, not a documented API |
+| `https://www.uitf.com.ph/daily_navpu_details_call_ajax.php` | POST | DataTables data source; page form includes `bank_id`, `fund_id`, `verification_id`, `date_from`, `date_to`, and CAPTCHA validation. Expected row fields include `navpu_value`, `yoy_value`, `ytd_value`, `date`. Endpoint response/complete parameter contract NOT tested. |
+| `https://www.uitf.com.ph/daily_navpu_details_json.php` | GET | Referenced by chart JavaScript; JSON intended by page code. Parameters/response NOT validated; endpoint not requested. |
+| CSV export | Browser DataTables button | `csvHtml5` export code exists; no independent official CSV feed established. |
+
+These are page implementation details, not documented public integration contracts.
+No form was submitted, CAPTCHA solved/bypassed, or underlying endpoint probed.
+The initial page/robots discovery preceded learning the site's 60-second crawl delay;
+subsequent HTML inspection was spaced, and no bulk fund retrieval was performed.
+`https://www.uitf.com.ph/robots.txt` returned 200 with `Allow: /` and `Crawl-Delay: 60`.
+That does not grant data reuse rights.
+
+[TOAP terms](https://www.uitf.com.ph/disclaimer.php) restrict copying, distribution,
+publication/display and exploitation, and reference personal noncommercial use.
+**Category C for Arbor's proposed automated commercial use under these published
+terms.** No TOAP production adapter, parser or fallback scraping was implemented.
+An alternative directly licensed ATRAM feed remains unverified, not assumed available.
+Written source permission and an approved stable contract are prerequisites.
+
+### BPI Wealth
+
+The public [Investment Funds Monitor](https://www.bpi.com.ph/group/bpiwealth/analyst-insights/investment-funds-monitor)
+returned 200 HTML. Normal Chrome inspection confirmed separate Class A/Class P rows,
+Premium Bond, an archive and a downloadable PDF. The visible table was dated Sep 22
+while the PDF label was Sep 23; footnotes also identify t-2 prices. A future parser
+must establish each observation's true effective date, not assume the file date.
+
+Observed public GET file (linked, not a guessed URL):
+
+`https://www.bpi.com.ph/content/dam/bpi-wealth/investment-funds-monitor-pdfs/2026/09-september/Investment%20Funds%20Monitor%2009.23.2026.pdf`
+
+The download link optionally adds `?download=true`; intended response is PDF.
+The research tool could not retrieve that file; no parser or reliable PDF schema was
+validated. Archive names vary historically, so predictable filenames are not a contract.
+Public HTML references AEM `simpletable` and `listdownload` client libraries. No
+documented NAV JSON/CSV/XML API or supported integration endpoint was established.
+Browser rendering and public HTML were inspected; a complete network capture was not
+available, so this is not proof that no other endpoint exists.
+
+Official fund surfaces:
+
+- `https://www.bpi.com.ph/group/bpiwealth/our-solutions/personal/investment-solutions/funds/world-technology-feeder-fund`
+- `https://www.bpi.com.ph/group/bpiwealth/our-solutions/personal/investment-solutions/funds/premium-bond-fund`
+- [Official multi-class notice](https://www.bpi.com.ph/group/bpiwealth/news/important-notice-conversion-of-global-equity-fund-of-funds-and-bpi-world-technology-feeder-fund-to-a-multi-class-structure)
+  confirms Global Equity and World Technology Class P is PHP; Class A is USD.
+
+The monitor's expanded disclaimer limits the material to the reader's sole use;
+the footer reserves rights. **Category C for adopting this public material as an
+automated commercial display feed without separate permission.** A separately
+licensed BPI structured feed would require a new review. No permission or attribution
+license was found that makes automated reuse permissible merely by crediting BPI.
+`https://www.bpi.com.ph/robots.txt` returned 200; it excludes admin/search/image-upload
+paths but does not expressly exclude the monitor. Robots access is not a reuse license.
+
+### Safe operation and future adapter requirements
+
+`python -m app.market_data refresh` now reports both `atram_nav` and `bpi_nav` as
+`not_enabled_source_permission_required`, even before storage setup. These are
+status-only entries: no HTTP, cache reads, leases, environment enable switch or hidden
+scraper. Existing ETF/FX/BTC refresh remains independent. No extra subscription added.
+
+Manual `set-nav` retains exact class, PHP currency, positive Decimal, provenance and
+effective date checks. No TOAP provenance host was added to the manual allowlist.
+Operators must use an authorized official source; manual operation does not itself
+settle commercial display rights. Holdings provider and NAV publisher stay separate.
+
+Future approved NAV refresh should run once per banking day after publication, shared
+across users; no per-user fetch or minute polling. No new banking calendar/scheduler is
+implemented. The generic refresh boundary now retains existing NAV on older **or equal**
+effective dates, protecting manual same-date corrections; only a newer valid automatic
+observation may replace it. An operator can still deliberately correct the same date.
+Concurrent manual writers should be serialized operationally; this is not a new atomic
+multi-writer precedence guarantee. No automatic NAV writer currently exists.
+
+Source failure must retain cache without changing effective dates. NAV remains fresh
+through 48 hours, dated cached fallback through seven days, then unavailable—not zero.
+Fund NAV values are delayed daily valuations, not live trading quotes.
+
+Required next step: obtain written automated-access, caching, derived/display and
+commercial-use permission, attribution requirements, an exact approved feed contract
+and publication-date semantics. Then implement/mock-test that contract, validate a
+minimal permitted live read and hosted persistence later. Live Portfolio remains off;
+both 3U-A and 3U-B migrations remain unapplied. No hosted settings or data changed.

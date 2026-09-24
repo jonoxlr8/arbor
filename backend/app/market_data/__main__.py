@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from .models import FUND_CLASSES, MarketDataError, manual_nav
 from .adapters import VendorHTTP, Marketstack, ExchangeRate, Coinranking
 from .cache import SharedCache
-from .refresh import refresh
+from .refresh import refresh, nav_automation_status
 
 
 def main():
@@ -27,6 +27,9 @@ def main():
     # Provider keys can occur in URLs (Marketstack). Disable HTTP library logging.
     for name in ("httpx", "httpcore"):
         logging.getLogger(name).disabled = True
+    if args.command == "refresh":
+        for source, status in nav_automation_status().items():
+            print(f"{source}: {status}")
     try:
         record = manual_nav(args.product_id, args.value, args.effective_date, args.source, args.unit_class) if args.command == "set-nav" else None
         with httpx.Client() as client:

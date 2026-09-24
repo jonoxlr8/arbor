@@ -3,6 +3,12 @@ from datetime import datetime, timezone
 from .models import MarketDataError
 
 
+def nav_automation_status():
+    """Discovery result, not a runtime override or permission to fetch websites."""
+    return {"atram_nav": "not_enabled_source_permission_required",
+            "bpi_nav": "not_enabled_source_permission_required"}
+
+
 def refresh(cache, adapters, now=None):
     now = now or datetime.now(timezone.utc)
     status = {}
@@ -24,7 +30,11 @@ def refresh(cache, adapters, now=None):
                 continue
             prices = adapter.fetch(now, previous)
             # Do not replace a newer effective observation with older data.
-            accepted = [p for p in prices if p.price_key not in existing or p.as_of >= existing[p.price_key].as_of]
+            # NAV effective dates win; equal-date automatic observations must not
+            # overwrite an operator's existing value/correction. Other feeds unchanged.
+            accepted = [p for p in prices if p.price_key not in existing
+                        or p.as_of > existing[p.price_key].as_of
+                        or (p.kind != "nav" and p.as_of == existing[p.price_key].as_of)]
             if accepted:
                 cache.write(accepted)
             status[adapter.source] = "updated" if accepted else "older_data_ignored"

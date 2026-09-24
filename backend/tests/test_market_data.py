@@ -129,13 +129,12 @@ def test_refresh_isolates_sources_and_two_users_do_not_fetch():
 
 @pytest.mark.parametrize("product",list(FUND_CLASSES))
 def test_exact_nav_identity(product):
-    if product.startswith("gcash"):
-        with pytest.raises(MarketDataError,match="unverified"):
-            manual_nav(product,"1.5","2026-09-24","https://www.atram.com.ph/fund","guessed",NOW)
-    else:
-        record=manual_nav(product,"1.123456789012","2026-09-24","https://www.bpi.com.ph/fund",FUND_CLASSES[product],NOW)
-        cache=Cache();cache.write([record]);assert cache.rows[product]==record
-        assert record.provenance=="https://www.bpi.com.ph/fund" and record.currency=="PHP"
+    source = "https://www.atram.com.ph/fund" if product.startswith("gcash") else "https://www.bpi.com.ph/fund"
+    record=manual_nav(product,"1.123456789012","2026-09-24",source,FUND_CLASSES[product],NOW)
+    cache=Cache();cache.write([record]);assert cache.rows[product]==record
+    assert record.provenance==source and record.currency=="PHP"
+    with pytest.raises(ValueError):
+        manual_nav(product,"1","2026-09-24",source,"wrong class",NOW)
 
 
 @pytest.mark.parametrize("value",["-1","0","NaN","Infinity","bad","1e1000"])

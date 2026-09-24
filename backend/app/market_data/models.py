@@ -7,9 +7,11 @@ from pydantic import model_validator
 from app.services.live_portfolio import Price
 
 ETF_SYMBOLS = {"VT": "gotrade_vt", "VGT": "gotrade_vgt", "BND": "gotrade_bnd"}
-# ATRAM class identity is not established by the existing catalog. Do not guess.
+# Exact PHP classes confirmed for 3U-B.3; every NAV must still match this identity.
 FUND_CLASSES = {
-    "gcash_global_equity": None, "gcash_technology": None, "gcash_defensive": None,
+    "gcash_global_equity": "PHP Unit Class",
+    "gcash_technology": "A PHP Unit Class",
+    "gcash_defensive": "A Unit Class",
     "dragonfi_global_equity": "PHP / Class P",
     "dragonfi_technology": "PHP / Class P",
     "dragonfi_defensive": "PHP",

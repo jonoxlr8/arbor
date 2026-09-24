@@ -120,6 +120,9 @@ begin
     and price.as_of <= now()
     and price.verified
     and (h.provider not in ('gcash','dragonfi') or
+      (h.product_id='gcash_global_equity' and price.unit_class='PHP Unit Class') or
+      (h.product_id='gcash_technology' and price.unit_class='A PHP Unit Class') or
+      (h.product_id='gcash_defensive' and price.unit_class='A Unit Class') or
       (h.product_id in ('dragonfi_global_equity','dragonfi_technology') and price.unit_class='PHP / Class P') or
       (h.product_id='dragonfi_defensive' and price.unit_class='PHP'))
     and price.as_of >= now() - case when h.provider in ('gcash','dragonfi') then interval '48 hours'

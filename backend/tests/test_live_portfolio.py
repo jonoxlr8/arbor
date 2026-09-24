@@ -222,6 +222,10 @@ def test_chat_owner_grounding_and_decision_guard(endpoint):
     client.post("/v2/portfolio/holdings",json={"provider":"gotrade","product_id":"gotrade_vt","units":"1"})
     result=client.post("/chat",json={"message":"What is my current portfolio worth?"})
     assert result.status_code==200 and "5,000.00" in result.json()["reply"]
+    for question in ("What is my current Global Equity allocation?", "How much Bitcoin is recorded in Arbor?"):
+        result=client.post("/chat",json={"message":question}).json()
+        assert result["intent"] == "actual_holdings"
+        assert "100.00% current allocation" in result["reply"] if "Equity" in question else "0 BTC" in result["reply"]
     state["user"]="B"
     result=client.post("/chat?user_id=A",json={"message":"What is my current portfolio worth?"})
     assert "No holdings" in result.json()["reply"] and "5,000" not in result.json()["reply"]
