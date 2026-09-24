@@ -55,7 +55,7 @@ test("dormant long-term choice is valid only with a short horizon, and review ex
   const html=renderToStaticMarkup(createElement(ProfileEditReview,{preview:{current,proposed}}));
   assert.match(html,/Growth remains saved but dormant/);assert.match(html,/no active long-term allocation/);
   const portfolio=renderToStaticMarkup(createElement(V2Destination,{value:proposed,active:"portfolio",userId:"fixture"}));
-  assert.match(portfolio,/Long-term scenarios are paused/);assert.doesNotMatch(portfolio,/Calculate scenario|<form/);
+  assert.match(portfolio,/Checking your Arbor access/);assert.doesNotMatch(portfolio,/Calculate scenario|<form/);
 });
 test("malformed response fails safely without installing preview as a saved plan",async()=>{
   const value=fixture(),request=createProfileEditRequester(async()=>"fixture",async()=>Response.json({current:value,proposed:{}}));
@@ -80,7 +80,7 @@ test("cancel, compare, duplicate and stale-response guards remain local; save ch
   assert.match(editor,/onClick=\{onCancel\}/);assert.match(editor,/if\(pending.current\)return/);
   assert.match(editor,/!signal.aborted/);assert.match(editor,/Compare approaches/);assert.match(editor,/Keep \{planChoiceLabel/);
   assert.doesNotMatch(editor,/localStorage|sessionStorage|console\.log/);
-  assert.match(readFileSync("components/PlanV2View.tsx","utf8"),/ContributionCard key=\{`\$\{userId\}:\$\{JSON.stringify\(value\)\}`\}/);
+  assert.match(readFileSync("components/PlanV2View.tsx","utf8"),/LivePortfolio key=\{`\$\{userId\}:\$\{JSON.stringify\(value\)\}`\}/);
   const current=fixture(),changed=fixture();changed.profile.monthly_investment=8000;
   assert.notEqual(chatPlanKey(current),chatPlanKey(changed));
 });

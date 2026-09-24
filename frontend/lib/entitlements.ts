@@ -8,6 +8,7 @@ export type Entitlements = {
   effective_tier: "free" | "plus"; private_beta: boolean;
   features: string[]; ask_monthly_limit: number | null;
   ask_usage: AskUsage | null; ask_usage_available: boolean;
+  availability?: { live_portfolio: boolean };
 };
 export const FREE_LIMIT_MESSAGE = "You’ve used your Free Ask Arbor questions for this month.";
 export function isAskUsage(value: unknown): value is AskUsage {
@@ -22,7 +23,8 @@ export function isEntitlements(value: unknown): value is Entitlements {
     ["free", "plus"].includes(v.effective_tier) && typeof v.private_beta === "boolean" &&
     Array.isArray(v.features) && v.features.every(f => typeof f === "string") &&
     (v.ask_monthly_limit === null || v.ask_monthly_limit === 10) &&
-    (v.ask_usage === null || isAskUsage(v.ask_usage)) && typeof v.ask_usage_available === "boolean";
+    (v.ask_usage === null || isAskUsage(v.ask_usage)) && typeof v.ask_usage_available === "boolean" &&
+    (v.availability === undefined || (v.availability !== null && typeof v.availability.live_portfolio === "boolean"));
 }
 export function createEntitlementReader(token = getAccessToken, request: typeof fetch = fetch) {
   return (userId: string, signal: AbortSignal): Promise<Entitlements> => boundedRequest(async active => {

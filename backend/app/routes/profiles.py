@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 import json
 
 from app.auth import get_current_user_id
+from app.config import live_portfolio_enabled
 from app.database import get_authenticated_client
 from app.schemas.profile import ProfileCreate
 from app.schemas.profile_v2 import ProfileV2Create, ProfileV2Edit, ProfileV2Answers
@@ -281,7 +282,12 @@ def next_action(user_id: str = Depends(get_current_user_id), authorization: str 
     if saved and saved.get("strategy_engine_version") != "2.0":
         raise HTTPException(409, "Next actions are available for V2 plans.")
     try:
-        return get_next_action(saved, get_entitlements(user_id))
+        access = get_entitlements(user_id)
+        portfolio = None
+        if live_portfolio_enabled() and saved and "live_portfolio" in access.features and get_next_action(saved, access).key == "review_monthly_contribution":
+            from app.routes.live_portfolio import optional_portfolio
+            portfolio = optional_portfolio(user_id, authorization, saved)
+        return get_next_action(saved, access, portfolio)
     except (KeyError, ValueError, TypeError):
         raise HTTPException(503, "Your saved profile could not be checked. Please retry.") from None
 

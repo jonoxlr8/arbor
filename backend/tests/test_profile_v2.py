@@ -74,6 +74,9 @@ def test_short_term_preferences_persist_without_a_long_term_target(harness):
 
 @pytest.fixture
 def harness(monkeypatch):
+    from app.routes import live_portfolio
+    # This fixture represents profiles only. Portfolio has separate owner/RLS tests.
+    monkeypatch.setattr(live_portfolio, "optional_portfolio", lambda *args: None)
     state = {"rows": {}, "user": "A", "inserts": 0, "failure": None, "tables": []}
     class Query:
         def __init__(self):

@@ -51,7 +51,7 @@ export function ComparePlans({ value }: { value: Entitlements }) {
       <article className="min-w-0 rounded-2xl border border-slate-200 p-4"><h3 className="font-semibold text-slate-900">Arbor Plus — ₱399/month</h3>
         <p className="mt-1 text-sm text-slate-500">Or ₱3,990/year at launch</p>
         <p className="mt-2 text-sm text-slate-600">Stay aligned with the plan you chose.</p>
-        <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-700"><li>Everything in Free</li><li>Full Ask Arbor access under fair-use limits</li><li>Monthly Contribution Planner</li><li>Investment-profile editing and plan rebuild</li></ul></article>
+        <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-700"><li>Everything in Free</li><li>Full Ask Arbor access under fair-use limits</li><li>Monthly Contribution Planner</li><li>Investment-profile editing and plan rebuild</li>{value.availability?.live_portfolio === true && <li>Live Portfolio and Plan Alignment</li>}</ul></article>
     </div>
     <p className="mt-4 text-sm leading-6 text-slate-500">Prices are launch planning assumptions. No payment is collected here. Private beta is free, with no credit card, billing date or trial countdown.</p>
   </section>;

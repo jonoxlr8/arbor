@@ -8,9 +8,9 @@ from app.auth import get_current_user_id
 from app.services.strategy_v2 import DomainModel
 
 Feature = Literal["plan_creation", "basic_projection", "basic_implementation", "ask_arbor_basic",
-                  "next_action", "ask_arbor_full", "monthly_contribution_planner", "profile_rebuild"]
+                  "next_action", "ask_arbor_full", "monthly_contribution_planner", "profile_rebuild", "live_portfolio", "plan_alignment"]
 FREE_FEATURES: tuple[Feature, ...] = ("plan_creation", "basic_projection", "basic_implementation", "ask_arbor_basic", "next_action")
-PLUS_FEATURES: tuple[Feature, ...] = FREE_FEATURES + ("ask_arbor_full", "monthly_contribution_planner", "profile_rebuild")
+PLUS_FEATURES: tuple[Feature, ...] = FREE_FEATURES + ("ask_arbor_full", "monthly_contribution_planner", "profile_rebuild", "live_portfolio", "plan_alignment")
 
 
 class Entitlements(DomainModel):

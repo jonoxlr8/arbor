@@ -6,11 +6,12 @@ import { subscribeNavigation, navigationSnapshot, serverNavigationSnapshot, type
 import type { AccountPlan, PlanV2 } from "@/lib/types/planV2";
 import { HORIZON_OPTIONS } from "@/lib/onboardingV2";
 import PreferencesV2 from "./PreferencesV2";
+import LivePortfolio from "./portfolio/LivePortfolio";
 import ContributionCard from "./contributions/ContributionCard";
 import InvestmentProfileEditor from "./InvestmentProfileEditor";
 import ChatSection from "./dashboard/ChatSection";
 import NextActionCard from "./NextActionCard";
-import { AccountAccessProvider, AccountPlans, PlusFeature } from "./AccountAccess";
+import { AccountAccessProvider, AccountPlans, PlusFeature, AccessLoading, useAccountAccess } from "./AccountAccess";
 import { ImplementationEducation } from "./contributions/ImplementationChoices";
 
 type Props = {
@@ -42,14 +43,13 @@ function PlanV2Shell({ value, userId, onSignOut, signingOut, logoutError, onPlan
 }
 
 export function V2Destination({ value, active, userId }: { value: PlanV2; active: Destination; userId?: string }) {
+  const access = useAccountAccess();
   if (active === "ask") return <ChatSection key={userId} plan={value} />;
+  if (active === "portfolio" && userId && !access?.value) return <AccessLoading />;
+  if (active === "portfolio" && userId && access?.value?.availability?.live_portfolio === true) return <PlusFeature feature="live_portfolio" title="Live Portfolio"><LivePortfolio key={`${userId}:${JSON.stringify(value)}`} value={value} userId={userId} /></PlusFeature>;
   if (active === "portfolio" && value.plan.path === "short_term") return <section className="arbor-panel"><h2 className="text-xl font-semibold text-slate-900">Long-term scenarios are paused</h2><p className="mt-3 text-sm text-slate-600">Your short-term path has no active long-term allocation or contribution scenario. Any dormant or historical plan remains saved.</p><a className="entry-link mt-4 inline-flex min-h-11" href="#plan">Review your investment profile in Plan</a></section>;
   if (active === "portfolio" && value.plan.plan_basis !== "user_selected") return <section className="arbor-panel"><h2 className="text-xl font-semibold text-slate-900">Choose a plan for your scenarios</h2><p className="mt-3 text-sm text-slate-600">Your existing plan is preserved. Review the standard approaches and explicitly choose one before exploring new contribution scenarios.</p><a className="entry-link mt-4 inline-flex min-h-11 items-center" href="#plan">Explore approaches in Plan</a></section>;
-  if (active === "portfolio" && userId) return <div className="space-y-6">
-    <ImplementationEducation />
-    <PlusFeature feature="monthly_contribution_planner" title="Monthly Contribution Planner"><ContributionCard key={`${userId}:${JSON.stringify(value)}`} value={value} userId={userId} /></PlusFeature>
-    <section className="arbor-panel"><h2 className="text-lg font-semibold text-slate-900">Recorded portfolio</h2><p className="mt-2 text-sm text-slate-600">Saved holdings and Plan Alignment are not yet connected to this plan. Scenarios use only the market values you enter above.</p></section>
-  </div>;
+  if (active === "portfolio" && userId) return <div className="space-y-6"><ImplementationEducation /><PlusFeature feature="monthly_contribution_planner" title="Monthly Contribution Planner"><ContributionCard key={`${userId}:${JSON.stringify(value)}`} value={value} userId={userId} /></PlusFeature></div>;
   if (active === "portfolio") return <section className="arbor-panel">
     <h2 className="text-xl font-semibold text-slate-900">Portfolio tools are not available for this plan yet</h2>
     <p className="mt-3 text-sm text-slate-600">Holdings and Plan Alignment are not yet connected to this plan.</p>

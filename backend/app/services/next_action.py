@@ -4,11 +4,12 @@ from typing import Literal
 from app.services.strategy_v2 import DomainModel
 from app.services.arbor.v2_context import build_v2_context
 from app.services.entitlements import Entitlements
+from app.services.live_portfolio import Portfolio
 
 
 class NextAction(DomainModel):
     key: Literal["financial_foundation", "complete_profile", "review_short_term_path",
-                 "review_historical_plan", "review_monthly_contribution"]
+                 "review_historical_plan", "review_monthly_contribution", "add_first_holding", "update_portfolio"]
     title: str
     explanation: str
     destination: Literal["investment_profile", "onboarding", "plan", "portfolio", "settings"]
@@ -16,8 +17,17 @@ class NextAction(DomainModel):
     blocking: bool = False
 
 
-def get_next_action(saved: dict | None, entitlements: Entitlements | None = None) -> NextAction:
+def get_next_action(saved: dict | None, entitlements: Entitlements | None = None, portfolio: Portfolio | None = None) -> NextAction:
     action = _plan_action(saved)
+    if action.key == "review_monthly_contribution" and portfolio is not None:
+        if not portfolio.holdings:
+            action = NextAction(key="add_first_holding", title="Add your first holding",
+                explanation="Record investments you already own to compare current values with your selected plan.",
+                destination="portfolio", button_label="Add holding")
+        elif not portfolio.complete or portfolio.stale_count:
+            action = NextAction(key="update_portfolio", title="Review portfolio data",
+                explanation="Some reference values are stale or unavailable. Review your records and price freshness before calculating a contribution scenario.",
+                destination="portfolio", button_label="Review portfolio")
     if entitlements is not None:
         if action.destination == "portfolio" and "monthly_contribution_planner" not in entitlements.features:
             return action.model_copy(update={"title": "Explore contribution planning", "explanation": "Contribution scenarios are part of Arbor Plus. Your selected plan and basic planning tools remain available on Free.", "destination": "settings", "button_label": "Explore Arbor Plus"})

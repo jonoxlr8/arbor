@@ -64,7 +64,7 @@ test("selected plan may differ from assessment; historical preferences do not ch
 test("historical plan requires explicit selection before scenario UI",()=>{
   const value=selected();delete value.plan.plan_basis;delete value.profile.selected_approach;
   const html=renderToStaticMarkup(createElement(V2Destination,{value,active:"portfolio",userId:"test"}));
-  assert.match(html,/Choose a plan for your scenarios/);assert.doesNotMatch(html,/<form|Calculate scenario/);
+  assert.match(html,/Checking your Arbor access/);assert.doesNotMatch(html,/<form|Calculate scenario/);
 });
 test("historical request and effective values are explicitly labeled as earlier assessment data",()=>{
   const value=selected();

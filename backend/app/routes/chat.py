@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator
 from app.services.ask_arbor import ask_arbor
 from app.services.arbor.v2_explanations import explain_v2, classify_v2_question
 from app.auth import get_current_user_id
+from app.config import live_portfolio_enabled
 from app.routes.profiles import get_my_profile
 from app.services.entitlements import get_entitlements, subscription_explanation
 from app.services.ask_usage import ask_usage, check_quota
@@ -37,6 +38,25 @@ def chat(request: ChatRequest, user_id: str = Depends(get_current_user_id), auth
     if plan.get("strategy_engine_version") == "2.0":
         try:
             result = explain_v2(request.message, plan, entitlements).model_dump()
+            intent = result["intent"]
+            if intent == "actual_holdings" and not live_portfolio_enabled():
+                result["reply"] = "I can explain your selected plan, but Live Portfolio is not currently available, so I don’t have canonical current holdings to compare with it. Plan targets are not actual holdings. You can enter current sleeve values in the Monthly Contribution Planner to explore a scenario."
+            if live_portfolio_enabled() and "live_portfolio" in entitlements.features and intent in ("actual_holdings", "holdings_help", "next_action", "overlap", "contribution"):
+                from app.routes.live_portfolio import optional_portfolio
+                from app.services.arbor.portfolio_explanation import explain_portfolio
+                from app.services.next_action import get_next_action
+                portfolio = optional_portfolio(user_id, authorization, plan)
+                if intent == "actual_holdings":
+                    result["reply"] = explain_portfolio(request.message, portfolio)
+                elif intent == "holdings_help":
+                    result["reply"] = "Open Portfolio → Add holding, choose a supported provider and investment, and record your units. Editing or deleting a record changes Arbor only, not your provider account."
+                elif intent == "next_action":
+                    action = get_next_action(plan, entitlements, portfolio)
+                    result["reply"] = f"{action.title}. {action.explanation} Open {action.destination.replace('_', ' ')}."
+                elif intent == "overlap":
+                    result["reply"] = "Recorded product quantities do not include current fund constituents. I can explain named products, but cannot measure underlying holdings overlap from sleeve targets or units alone."
+                elif portfolio is not None and portfolio.holdings:
+                    result["reply"] = "Portfolio uses your recorded holdings and available reference prices for contribution scenarios. Choose implementation options yourself. Incomplete or stale values must be refreshed first. Readiness and your selected plan still control scenario availability. I don’t select securities, calculate a separate scenario, or execute trades."
         except (KeyError, ValueError, TypeError):
             raise HTTPException(503, "Your saved plan could not be loaded for this explanation. Please retry.") from None
     elif plan.get("strategy_engine_version") not in (None, "1.0"):

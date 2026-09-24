@@ -121,12 +121,12 @@ test("empty results and null product are safe", () => {
 test("card labels, default monthly mode, feedback and placement", () => {
   const html = renderToStaticMarkup(createElement(ContributionCard, { value: contributionFixture, userId: "A" }));
   assert.match(html, /aria-pressed="true"[^>]*>Monthly scenario/);
-  for (const label of ["Contribution amount", "Current portfolio", "Global Equity", "Technology", "Bitcoin", "Defensive", "Product ownership", "Choose an option"]) assert.ok(html.includes(label));
+  for (const label of ["Contribution amount", "Hypothetical current values", "Global Equity", "Technology", "Bitcoin", "Defensive", "Product ownership", "Choose an option"]) assert.ok(html.includes(label));
   assert.doesNotMatch(html, /999999|Buy now/);
   const selected: PlanV2 = {...contributionFixture, plan:{...contributionFixture.plan, plan_basis:"user_selected"}};
-  const access = { features: ["monthly_contribution_planner"] } as Entitlements;
+  const access = { features: ["monthly_contribution_planner", "live_portfolio"], availability: {live_portfolio: true} } as Entitlements;
   const destination = renderToStaticMarkup(createElement(AccountAccessContext.Provider, { value: { value: access, error: "", retry: () => {} } }, createElement(V2Destination, { value: selected, active: "portfolio", userId: "A" })));
-  assert.match(destination, /Contribution scenarios/); assert.match(destination, /not yet connected/);
+  assert.match(destination, /Your portfolio/); assert.match(destination, /Loading your portfolio/);
   const feedback = renderToStaticMarkup(createElement(ContributionFeedback, { loading: true, error: "Please try again" }));
   assert.match(feedback, /role="status"/); assert.match(feedback, /role="alert"/);
 });

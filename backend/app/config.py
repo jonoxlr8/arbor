@@ -5,6 +5,11 @@ from ipaddress import ip_address
 from urllib.parse import urlsplit
 
 
+def live_portfolio_enabled() -> bool:
+    """Operational availability, independent of account entitlement. Fail closed."""
+    return os.getenv("LIVE_PORTFOLIO_ENABLED") == "true"
+
+
 def cors_origins(value=None, environment="development"):
     if environment not in ("development", "test", "production"):
         raise ValueError("APP_ENV must be development, test, or production")

@@ -10,6 +10,7 @@ from app.routes import chat
 from app.routes.holdings import router as holdings_router
 from app.routes.contributions import router as contributions_router
 from app.routes.account import router as account_router
+from app.routes.live_portfolio import router as live_portfolio_router
 
 app = FastAPI()
 
@@ -26,6 +27,7 @@ app.include_router(chat.router)
 app.include_router(holdings_router)
 app.include_router(contributions_router)
 app.include_router(account_router)
+app.include_router(live_portfolio_router)
 
 
 @app.get("/")
