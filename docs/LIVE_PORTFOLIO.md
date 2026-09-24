@@ -3,6 +3,42 @@
 Manual records of investments already owned; reference valuation, not execution,
 custody, broker linking or a recommendation. V1 holdings remain unchanged.
 
+## Hosted rehearsal status — 2026-09-24 (3U-B.6)
+
+Arbor project `gnjjtlswwhkpiabyayvi` now has the manual-fund-value migration
+applied as hosted version `20260924094606` (`3u_b_5_manual_fund_values`), from
+`20260924070525_3u_b_5_manual_fund_values.sql`. The base migration history matches
+the repository unchanged. The Free Ask Arbor quota migration remains unapplied.
+Live Portfolio remains disabled. Disposable holdings/history were cleaned; the
+seven existing shared market observations were retained.
+
+Marketstack has confirmed customer-facing commercial use on **Basic**. The account
+may remain Free during development, but Basic must be confirmed active before
+private-beta activation. This is a subscription-tier gate, not pending permission.
+
+### Next activation sequence (not performed)
+
+1. Upgrade Marketstack Free to Basic.
+2. Confirm Basic is active.
+3. Run the trusted hosted market-data refresh.
+4. Verify VT/VGT/BND, USD/PHP and BTC/PHP freshness and attribution.
+5. Confirm the manual-value migration above is applied.
+6. Validate the disposable portfolio again, including both natural-language
+   valuation questions after deploying the separately reviewed chat-routing fix.
+7. Set `LIVE_PORTFOLIO_ENABLED=true` on Render after sign-off.
+8. Deploy/restart the backend as required to load the flag.
+9. Verify `/account/entitlements` reports availability for Plus.
+10. Verify the Vercel frontend exposes Live Portfolio.
+11. Add disposable test holdings.
+12. Validate graph, target/current differences, contributions and Ask Arbor.
+13. Clean disposable holdings/history, retaining shared market data.
+14. Monitor Render, Vercel and Supabase errors.
+15. If needed, roll back by disabling the flag and reloading the backend; preserve
+    holdings/history and investigate rather than dropping tables.
+
+Earlier milestone sections below record historical state, not current migration
+status. No activation, Marketstack upgrade or Free-quota migration occurred here.
+
 ## Holding-specific manual fund values (3U-B.5)
 
 Only `gcash_global_equity`, `gcash_technology`, `gcash_defensive`,

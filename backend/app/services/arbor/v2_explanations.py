@@ -58,6 +58,8 @@ def classify_v2_question(question: str) -> tuple[str, str]:
         return ("product_support" if has(r"how.*work") else "investment"), "contribution"
     if has(r"overlap"):
         return "investment", "overlap"
+    if has(r"^what is my portfolio worth(?: now| today)?\??$|^how is my fund valued\??$"):
+        return "investment", "actual_holdings"
     if has(r"overweight|underweight|(?:above|below).*target|furthest|largest gap|current.*(value|portfolio|holding|allocation)|how much.*(own|have|recorded)|which holding|my holdings|performance|how.*perform"):
         return "investment", "actual_holdings"
     if has(r"preferenc|earlier|historical|capped|\bcaps?\b"):

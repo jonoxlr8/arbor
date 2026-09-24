@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from app.services.live_portfolio import Holding, HoldingInput, ManualValueInput, MANUAL_FUNDS, current_values
 from app.services.portfolio_store import PortfolioStore
 from app.services.arbor.portfolio_explanation import explain_portfolio
+from app.services.arbor.v2_explanations import classify_v2_question
 from app.services.next_action import get_next_action
 from app.routes.live_portfolio import PortfolioScenario, scenario_request
 from app.services.contributions.planner import plan_monthly_contribution
@@ -18,6 +19,15 @@ from test_live_portfolio import holding, price, valued, NOW, saved, endpoint
 def manual(product="gcash_global_equity", value="8000.25", age=0):
     return Holding(**{**holding(product, "10").model_dump(), "manual_value_php": value,
                       "manual_value_updated_at": NOW-timedelta(seconds=age)})
+
+
+@pytest.mark.parametrize("question", ["What is my portfolio worth?", "How is my fund valued?"])
+def test_manual_value_questions_route_to_canonical_holdings(question):
+    assert classify_v2_question(question) == ("investment", "actual_holdings")
+    result = valued([manual().model_copy(update={"units": None})], [])
+    reply = explain_portfolio(question, result)
+    assert "8,000.25" in reply and "Sep 24, 2026" in reply
+    assert "not an official NAV" in reply and "does not currently have units" in reply
 
 
 @pytest.mark.parametrize("product", sorted(MANUAL_FUNDS))
