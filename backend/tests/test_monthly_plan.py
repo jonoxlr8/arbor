@@ -343,3 +343,55 @@ def test_ask_missing_values_does_not_substitute_starting_assumption(endpoint):
     state["rows"]["A"]["current_portfolio_value"] = 987654
     response = client.post("/chat", json={"message": "How much should I invest this month?"}, headers=HEADERS)
     assert "not treated as zero" in response.json()["reply"] and "987654" not in response.json()["reply"]
+
+
+@pytest.mark.parametrize("question", [
+    "How much is my monthly plan?",
+    "What is my monthly plan?",
+    "Show me my monthly plan.",
+    "How much am I investing this month?",
+    "What is my contribution this month?",
+    "How much should I put into my plan this month?",
+])
+def test_ask_monthly_wording_cannot_recover_unsaved_preview(endpoint, monkeypatch, question):
+    from app.routes import chat
+    client, state = endpoint
+    monkeypatch.setattr(chat, "ask_arbor", lambda *args, **kwargs: pytest.fail("V2 must not call the LLM"))
+    state["rows"]["A"]["current_portfolio_value"] = 987654
+    before = deepcopy((state["rows"], state["portfolio"]))
+    preview = client.post("/v2/monthly-plan", json={"contribution_amount": "12345.67",
+        "manual_current": current((85000, 0, 5000, 10000)).model_dump(mode="json")}, headers=HEADERS)
+    assert preview.status_code == 200
+    assert Decimal(preview.json()["contribution_amount"]) == Decimal("12345.67")
+    response = client.post("/chat", json={"message": question}, headers=HEADERS)
+    assert response.status_code == 200 and response.json()["intent"] == "monthly_plan"
+    reply = response.json()["reply"]
+    assert "Invest this month on Home" in reply
+    assert "unsaved current-value inputs" in reply and "previous preview amount" in reply
+    assert "not treated as zero" in reply
+    assert all(value not in reply for value in ("₱", "12345", "12,345", "987654", "987,654", "10,000"))
+    assert (state["rows"], state["portfolio"]) == before and state["writes"] == []
+
+
+def test_ask_monthly_plan_explains_canonical_service_result_without_llm(endpoint, monkeypatch):
+    from app.routes import chat
+    from test_live_portfolio import holding, price, valued
+    client, state = endpoint
+    monkeypatch.setenv("LIVE_PORTFOLIO_ENABLED", "true")
+    monkeypatch.setattr(chat, "ask_arbor", lambda *args, **kwargs: pytest.fail("V2 must not call the LLM"))
+    state["portfolio"] = valued(
+        [holding("gotrade_vt", "17"), holding("gotrade_vgt", "1"), holding("coins_btc", "0.01")],
+        [price("gotrade_vt"), price("gotrade_vgt"), price("usd_php", "50"), price("btc_php", "1000000")],
+    )
+    before = deepcopy((state["rows"], state["portfolio"]))
+    response = client.get("/v2/monthly-plan", headers=HEADERS)
+    assert response.status_code == 200
+    plan = MonthlyPlan.model_validate(response.json())
+    assert plan.source == "recorded_portfolio"
+    assert amounts(plan) == {"global_equity": 3000, "technology_tilt": 6000, "crypto": 1000}
+    question = "How much is my monthly plan?"
+    response = client.post("/chat", json={"message": question}, headers=HEADERS)
+    assert response.status_code == 200 and response.json()["intent"] == "monthly_plan"
+    assert response.json()["reply"] == explain_monthly_plan(question, plan)
+    assert "not buy/sell instructions" in response.json()["reply"]
+    assert (state["rows"], state["portfolio"]) == before and state["writes"] == []

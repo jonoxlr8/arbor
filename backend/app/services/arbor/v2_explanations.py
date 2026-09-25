@@ -40,6 +40,13 @@ def classify_v2_question(question: str) -> tuple[str, str]:
     # Out-of-scope tasks win even when mixed with investment keywords.
     if has(r"\b(python|javascript|code|coding|recipe|cook|vacation|travel|basketball|football|trivia|poem|joke)\b|ignore.*instructions|system prompt"):
         return "out_of_scope", "out_of_scope"
+    # Match whole questions so extra advice requests keep their existing boundary.
+    if re.fullmatch(
+        r"\s*(?:(?:how much is|what is|show me) my monthly plan"
+        r"|what is my contribution this month"
+        r"|how much should i put into my plan this month)[?.!]*\s*", q
+    ):
+        return "investment", "monthly_plan"
     if has(r"how much.*invest.*(?:this month|monthly)|how (?:was|is).*contribution.*calculated|why.*amount.*(?:global equity|technology|bitcoin|defensive)|why.*(?:technology|bitcoin|global equity|defensive).*minimum"):
         return "investment", "monthly_plan"
     if has(r"\b(buy|sell|hold|switch|recommend|best|suitable|undervalued|overvalued)\b|should i (invest|use)|which.*(choose|pick|should i use)|better for (me|my)"):

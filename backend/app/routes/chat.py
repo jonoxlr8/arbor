@@ -49,7 +49,7 @@ def chat(request: ChatRequest, user_id: str = Depends(get_current_user_id), auth
                 except HTTPException as error:
                     if error.status_code not in (409, 503):
                         raise
-                    result["reply"] = "I can’t calculate a complete monthly breakdown from the current data. Open Invest this month on Home to review your current values and investment choices. Missing or stale values are not treated as zero."
+                    result["reply"] = "I can’t calculate a complete monthly breakdown from the current data. I can’t reconstruct unsaved current-value inputs or a previous preview amount from chat. Open Invest this month on Home to review your current values and investment choices. Missing or stale values are not treated as zero."
             if intent == "actual_holdings" and not live_portfolio_enabled():
                 result["reply"] = "I can explain your selected plan, but Live Portfolio is not currently available, so I don’t have canonical current holdings to compare with it. Plan targets are not actual holdings. On Home, Invest this month lets you explicitly enter current sleeve values to calculate a breakdown. These inputs do not create recorded holdings."
             if live_portfolio_enabled() and "live_portfolio" in entitlements.features and intent in ("actual_holdings", "holdings_help", "next_action", "overlap", "contribution"):
