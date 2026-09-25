@@ -114,8 +114,9 @@ test("freshness distinguishes NAV, cached reference and missing price",()=>{
   assert.match(freshnessText({...h,as_of:null}),/unavailable/);
 });
 test("source attribution is separate from holding provider and uses fixed links",()=>{
-  const markup=html(createElement(DataAttribution,{sources:["coinranking","exchangerate_api","marketstack","https://evil"]}));
+  const markup=html(createElement(DataAttribution,{sources:["coinranking","exchangerate_api","marketstack","toap","https://evil"]}));
   assert.match(markup,/Crypto data by Coinranking/);assert.match(markup,/Rates By Exchange Rate API/);
+  assert.match(markup,/NAV data by TOAP \/ UITF.com.ph/);assert.match(markup,/href="https:\/\/uitf.com.ph"/);
   assert.doesNotMatch(markup,/evil|Coinranking account/);assert.match(markup,/min-h-11/);
   assert.equal(isPortfolio({...portfolioFixture,data_sources:"coinranking"}),false);
   assert.equal(isPortfolio({...portfolioFixture,data_sources:["coinranking"]}),true);

@@ -208,7 +208,7 @@ def _value_portfolio(holdings, market, target, now):
         bitcoin_units=sum((h.units for h in holdings if PRODUCTS[h.product_id].sleeve == AssetRole.CRYPTO), Decimal(0)),
         stale_count=sum(r.freshness == "stale" for r in rows), provider_values_php=providers,
         sleeves=tuple(comparisons), valued_at=now,
-        data_sources=tuple(sorted({p.source for p in prices.values() if p.source in ("marketstack", "coinranking", "exchangerate_api")})))
+        data_sources=tuple(sorted({p.source for p in prices.values() if p.source in ("marketstack", "coinranking", "exchangerate_api", "toap")})))
 
 
 def current_values(portfolio: Portfolio):

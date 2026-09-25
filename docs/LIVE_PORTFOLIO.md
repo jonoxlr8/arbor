@@ -424,6 +424,10 @@ from updating. A database failure produces safe operational errors, not fake pri
 
 ### Exact fund identity / activation status
 
+The identities below are unchanged. Their operator-only ingestion status was
+superseded by the authorized [daily TOAP adapters](TOAP_NAV.md); hosted validation
+and the prepared TOAP migration remain pending separate approval.
+
 | Existing product ID | Required identity | Ingestion status |
 | --- | --- | --- |
 | gcash_global_equity | ATRAM Global Equity Opportunity Feeder Fund — PHP Unit Class | Exact class required; official NAV still operator-verified |
@@ -462,7 +466,8 @@ References inspected for implementation:
 - [Coinranking reference currencies](https://coinranking.com/api/documentation/reference-currencies) and [price endpoint](https://coinranking.com/api/documentation/coins/coin-price): reference valuation with attribution; confirm current terms, no raw API resale or generic redistribution.
 - [Coinranking Free pricing](https://coinranking.com/api/pricing): 5,000 calls is a planning budget, not a promise by Arbor.
 - [ExchangeRate-API Open](https://www.exchangerate-api.com/docs/free): daily caching and commercial conversion with attribution; no FX API redistribution.
-- Fund NAV: operator-entered official published values only; no scraping or claimed API partnership.
+- Fund NAV: authorized daily TOAP ingestion is prepared locally; see [TOAP_NAV.md](TOAP_NAV.md)
+  for hosted prerequisites. Trusted operator `set-nav` remains available; no API partnership is claimed.
 
 ### Exact eventual hosted activation sequence — NOT executed
 
@@ -499,7 +504,14 @@ Rollback: disable flag first, restart/reload, verify normal manual fallback flow
 retain holdings/history/cache, then investigate. Do not drop tables/delete user
 holdings as a first response. No activation step above was performed in 3U-B.2.
 
-## 3U-B.2A — official NAV source discovery (2026-09-24)
+## 3U-B.2A — historical official NAV source discovery (2026-09-24)
+
+**Superseded for the two TOAP daily pages:** the founder has now confirmed permission
+for daily automated retrieval of the six supported classes. See [TOAP NAV ingestion](TOAP_NAV.md)
+for the implemented adapters, exact mappings, prepared migration, daily schedule,
+failure/precedence policy and future hosted validation. The research below records
+the earlier decision, not a current prohibition. Direct issuer/history/ROI scraping
+is still outside the authorized scope.
 
 **Outcome: no category-A source established; no automatic NAV adapter enabled or
 implemented. Manual official NAV remains the preferred available path.** Public
@@ -572,32 +584,19 @@ license was found that makes automated reuse permissible merely by crediting BPI
 `https://www.bpi.com.ph/robots.txt` returned 200; it excludes admin/search/image-upload
 paths but does not expressly exclude the monitor. Robots access is not a reuse license.
 
-### Safe operation and future adapter requirements
+### Current authorized operation
 
-`python -m app.market_data refresh` now reports both `atram_nav` and `bpi_nav` as
-`not_enabled_source_permission_required`, even before storage setup. These are
-status-only entries: no HTTP, cache reads, leases, environment enable switch or hidden
-scraper. Existing ETF/FX/BTC refresh remains independent. No extra subscription added.
+`python -m app.market_data refresh` now includes `atram_nav` and `bpi_nav` adapters;
+the permission-required placeholder is removed. Source permission is founder-confirmed.
+The existing trusted writer, exact fund classes, manual `set-nav`, manual holding values,
+48-hour/7-day freshness and calculation rules are retained. TOAP source metadata is
+distinct from GFunds/DragonFi holding providers.
 
-Manual `set-nav` retains exact class, PHP currency, positive Decimal, provenance and
-effective date checks. No TOAP provenance host was added to the manual allowlist.
-Operators must use an authorized official source; manual operation does not itself
-settle commercial display rights. Holdings provider and NAV publisher stay separate.
+Before hosted use, review and separately authorize the **unapplied**
+`20260925114901_toap_nav_ingestion.sql` prerequisite for leases, snapshot source
+validation and atomic NAV overwrite protection. Do not edit/reapply historical base
+migrations. No hosted migration, deployment or schedule was performed in this pass.
 
-Future approved NAV refresh should run once per banking day after publication, shared
-across users; no per-user fetch or minute polling. No new banking calendar/scheduler is
-implemented. The generic refresh boundary now retains existing NAV on older **or equal**
-effective dates, protecting manual same-date corrections; only a newer valid automatic
-observation may replace it. An operator can still deliberately correct the same date.
-Concurrent manual writers should be serialized operationally; this is not a new atomic
-multi-writer precedence guarantee. No automatic NAV writer currently exists.
-
-Source failure must retain cache without changing effective dates. NAV remains fresh
-through 48 hours, dated cached fallback through seven days, then unavailable—not zero.
-Fund NAV values are delayed daily valuations, not live trading quotes.
-
-Required next step: obtain written automated-access, caching, derived/display and
-commercial-use permission, attribution requirements, an exact approved feed contract
-and publication-date semantics. Then implement/mock-test that contract, validate a
-minimal permitted live read and hosted persistence later. Live Portfolio remains off;
-both 3U-A and 3U-B migrations remain unapplied. No hosted settings or data changed.
+See [TOAP_NAV.md](TOAP_NAV.md) for exact mappings, parser/date rules, sanitized statuses,
+once-daily Render plan (`0 14 * * *`, 22:00 Philippines), environment names, source
+request budget, partial failures, manual correction and rollback instructions.

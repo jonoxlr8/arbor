@@ -16,10 +16,33 @@ FUND_CLASSES = {
     "dragonfi_technology": "PHP / Class P",
     "dragonfi_defensive": "PHP",
 }
+TOAP_FUNDS = {
+    "gcash_global_equity": "ATRAM Global Equity Opportunity Feeder Fund (PHP Unit Class)",
+    "gcash_technology": "ATRAM Global Technology Feeder Fund (A PHP Unit Class)",
+    "gcash_defensive": "ATRAM Medium Term Peso Bond Fund (A Unit Class)",
+    "dragonfi_global_equity": "BPI GLOBAL EQUITY FUND-OF-FUNDS CLASS P (PHP CLASS)",
+    "dragonfi_technology": "BPI WORLD TECHNOLOGY FEEDER FUND CLASS P (PHP CLASS)",
+    "dragonfi_defensive": "BPI PREMIUM BOND FUND",
+}
+TOAP_PAGES = {
+    "atram_nav": "https://uitf.com.ph/daily_navpu.php?bank_id=31",
+    "bpi_nav": "https://uitf.com.ph/daily_navpu.php?bank_id=3",
+}
+
+
+def normalized_name(value):
+    return " ".join(value.split()).casefold()
+
+
+def toap_source(product):
+    return "atram_nav" if product.startswith("gcash_") else "bpi_nav"
+
+
 ATTRIBUTIONS = {
     "marketstack": ("Market data by Marketstack", "https://marketstack.com"),
     "coinranking": ("Crypto data by Coinranking", "https://coinranking.com"),
     "exchangerate_api": ("Rates By Exchange Rate API", "https://www.exchangerate-api.com"),
+    "toap": ("NAV data by TOAP / UITF.com.ph", "https://uitf.com.ph"),
 }
 
 
@@ -31,7 +54,7 @@ class ReferencePrice(Price):
     verified: Literal[True] = True
     currency: Literal["USD", "PHP"]
     kind: Literal["etf_eod", "btc_reference", "fx", "nav"]
-    source: Literal["marketstack", "coinranking", "exchangerate_api", "official_nav"]
+    source: Literal["marketstack", "coinranking", "exchangerate_api", "official_nav", "toap"]
     fetched_at: datetime
     provenance: str | None = None
     unit_class: str | None = None
@@ -42,7 +65,7 @@ class ReferencePrice(Price):
         expected = (("USD", "etf_eod", "marketstack") if self.price_key in ETF_SYMBOLS.values()
                     else ("PHP", "btc_reference", "coinranking") if self.price_key == "btc_php"
                     else ("PHP", "fx", "exchangerate_api") if self.price_key == "usd_php"
-                    else ("PHP", "nav", "official_nav") if self.price_key in FUND_CLASSES else None)
+                    else ("PHP", "nav", "toap" if self.source == "toap" else "official_nav") if self.price_key in FUND_CLASSES else None)
         if expected != (self.currency, self.kind, self.source):
             raise ValueError("Reference identity mismatch")
         if self.fetched_at.tzinfo is None or self.as_of > self.fetched_at:
@@ -50,7 +73,12 @@ class ReferencePrice(Price):
         if self.kind == "nav":
             if not FUND_CLASSES[self.price_key] or self.unit_class != FUND_CLASSES[self.price_key]:
                 raise ValueError("Fund class requires activation verification")
-            official_source(self.provenance, self.price_key)
+            if self.source == "toap":
+                if (self.provenance != TOAP_PAGES[toap_source(self.price_key)]
+                        or normalized_name(self.reference_id or "") != normalized_name(TOAP_FUNDS[self.price_key])):
+                    raise ValueError("TOAP page and exact fund identity required")
+            else:
+                official_source(self.provenance, self.price_key)
         if self.kind == "btc_reference" and not self.reference_id:
             raise ValueError("Validated PHP reference identity required")
         return self

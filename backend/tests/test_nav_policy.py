@@ -1,8 +1,8 @@
-"""No internet or speculative source parser: test the permitted fallback boundary."""
+"""Offline NAV valuation, operator correction and refresh safety boundaries."""
 from datetime import timedelta
 import pytest
 from app.market_data.models import FUND_CLASSES, manual_nav, ReferencePrice, MarketDataError
-from app.market_data.refresh import refresh, nav_automation_status
+from app.market_data.refresh import refresh
 from app.services.live_portfolio import value_portfolio, FixtureMarketData
 from test_market_data import NOW, Cache
 from test_live_portfolio import holding
@@ -11,14 +11,6 @@ from test_live_portfolio import holding
 def nav(product, day="2026-09-23", value="100"):
     host="atram.com.ph" if product.startswith("gcash") else "bpi.com.ph"
     return manual_nav(product,value,day,f"https://www.{host}/fund",FUND_CLASSES[product],NOW)
-
-
-def test_no_source_can_be_enabled_by_environment(monkeypatch):
-    for key in ("ATRAM_NAV_ENABLED","BPI_NAV_ENABLED","LIVE_PORTFOLIO_ENABLED"):
-        monkeypatch.setenv(key,"true")
-    assert nav_automation_status()=={
-        "atram_nav":"not_enabled_source_permission_required",
-        "bpi_nav":"not_enabled_source_permission_required"}
 
 
 @pytest.mark.parametrize("product",FUND_CLASSES)
@@ -62,12 +54,11 @@ def test_nav_failure_preserves_all_cached_sources():
     assert cache.rows==before
 
 
-def test_refresh_cli_reports_disabled_nav_before_storage(monkeypatch,capsys):
+def test_refresh_cli_configuration_failure_does_not_claim_permission_gate(monkeypatch,capsys):
     from app.market_data import __main__ as cli
     monkeypatch.setattr(cli.sys,"argv",["market_data","refresh"])
     def unavailable(*_):raise MarketDataError("cache_configuration_required")
     monkeypatch.setattr(cli,"SharedCache",unavailable)
     assert cli.main()==1
     output=capsys.readouterr().out
-    assert "atram_nav: not_enabled_source_permission_required" in output
-    assert "bpi_nav: not_enabled_source_permission_required" in output
+    assert "permission_required" not in output

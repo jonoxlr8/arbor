@@ -1,12 +1,7 @@
 """Shared cache coordination. Caller invokes explicitly; no background scheduler."""
 from datetime import datetime, timezone
 from .models import MarketDataError
-
-
-def nav_automation_status():
-    """Discovery result, not a runtime override or permission to fetch websites."""
-    return {"atram_nav": "not_enabled_source_permission_required",
-            "bpi_nav": "not_enabled_source_permission_required"}
+from .toap import NAVBatch
 
 
 def refresh(cache, adapters, now=None):
@@ -14,11 +9,16 @@ def refresh(cache, adapters, now=None):
     status = {}
     for adapter in adapters:
         try:
+            if not getattr(adapter, "enabled", True):
+                status[adapter.source] = "disabled_by_config"
+                continue
             if adapter.source in ("marketstack", "coinranking") and not adapter.key:
                 status[adapter.source] = "configuration_required"
                 continue
             existing = cache.read(adapter.keys)
-            if all(k in existing and 0 <= (now-existing[k].fetched_at).total_seconds() < adapter.interval
+            current = getattr(adapter, "cache_is_current",
+                              lambda p, at: 0 <= (at-p.fetched_at).total_seconds() < adapter.interval)
+            if all(k in existing and current(existing[k], now)
                    for k in adapter.keys):
                 status[adapter.source] = "cached"
                 continue
@@ -28,7 +28,8 @@ def refresh(cache, adapters, now=None):
             if not cache.claim(adapter.source, interval):
                 status[adapter.source] = "cooldown"
                 continue
-            prices = adapter.fetch(now, previous)
+            batch = adapter.fetch(now, previous)
+            prices = batch.prices if isinstance(batch, NAVBatch) else batch
             # Do not replace a newer effective observation with older data.
             # NAV effective dates win; equal-date automatic observations must not
             # overwrite an operator's existing value/correction. Other feeds unchanged.
@@ -38,6 +39,13 @@ def refresh(cache, adapters, now=None):
             if accepted:
                 cache.write(accepted)
             status[adapter.source] = "updated" if accepted else "older_data_ignored"
+            if isinstance(batch, NAVBatch):
+                if batch.errors:
+                    status[adapter.source] = "partial" if prices else "unavailable"
+                    for product, reason in batch.errors.items():
+                        status[f"{adapter.source}/{product}"] = reason
+                elif not accepted:
+                    status[adapter.source] = "cached"
         except MarketDataError as error:
             status[adapter.source] = str(error)
     return status

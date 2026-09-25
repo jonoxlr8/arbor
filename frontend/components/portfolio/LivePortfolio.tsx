@@ -115,6 +115,7 @@ export function DataAttribution({ sources }: { sources: string[] }) {
     ["coinranking", "Crypto data by Coinranking", "https://coinranking.com"],
     ["marketstack", "Market data by Marketstack", "https://marketstack.com"],
     ["exchangerate_api", "Rates By Exchange Rate API", "https://www.exchangerate-api.com"],
+    ["toap", "NAV data by TOAP / UITF.com.ph", "https://uitf.com.ph"],
   ];
   return <div className="flex flex-wrap gap-x-4 text-xs text-slate-500">{known.filter(([key]) => sources.includes(key)).map(([key, label, href]) => <a key={key} className="inline-flex min-h-11 items-center underline" href={href} target="_blank" rel="noopener noreferrer">{label}</a>)}</div>;
 }
