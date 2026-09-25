@@ -430,6 +430,39 @@ delays honestly rather than extending valuation freshness.
 Failure of any source retains its old cache and does not prevent unrelated sources
 from updating. A database failure produces safe operational errors, not fake prices.
 
+#### Prepared 540-second SQL lease alignment — not applied
+
+`backend/migrations/20260925204248_allow_coinranking_540s_refresh.sql` is an
+additive follow-up to `20260925114901_toap_nav_ingestion.sql`. The hosted lease
+function still rejects Coinranking cooldowns below 600 seconds, so the deployed
+540-second adapter currently fails before making a vendor request. The new
+migration changes only that minimum to 540. It preserves atomic claim/update
+behavior, `SECURITY INVOKER`, empty `search_path`, the existing operator-only ACL,
+all other source minimums, and TOAP's Philippine calendar-day handling. It does not
+change BTC valuation (600/3600 seconds), shared observations, or snapshot math.
+
+Review and obtain explicit approval before applying **only this migration** using
+normal migration tooling. No hosted application is authorized by preparing it.
+After approved application, observe the existing five-minute cron for 20–30
+minutes without manual refresh, then validate disposable Portfolio/monthly flows
+and the remaining real auth-email gates. Do not claim operational success from
+local tests alone. Rollback must keep adapter and SQL minimum compatible; simply
+restoring SQL's 600-second minimum while the adapter sends 540 recreates the outage.
+
+Run from `backend/` using the existing isolated PGlite installation:
+
+```sh
+ARBOR_PGLITE_PATH=/absolute/path/to/@electric-sql/pglite \
+  node --test tests/sql/coinranking_lease.test.mjs tests/sql/toap_nav.test.mjs
+```
+
+The lease suite reproduces the old rejection, applies the new SQL locally, and
+passes the actual Python `Coinranking.interval` into the actual PostgreSQL function
+(not a mocked cache claim). It checks 539/540/541 boundaries, early/due and duplicate
+claims, other-source minima, TOAP calendar days, operator writes, client denials,
+and unchanged ACL/RLS/snapshot definitions. PGlite serializes queued queries on one
+connection; this checks duplicate grants, not a multi-connection load test.
+
 ### Exact fund identity / activation status
 
 The identities below are unchanged. Their operator-only ingestion status was

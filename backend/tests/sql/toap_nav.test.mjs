@@ -11,7 +11,7 @@ await db.exec(`create role anon;create role authenticated;create role service_ro
  create function auth.uid() returns uuid language sql stable as
  $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
  grant usage on schema auth to authenticated;insert into auth.users values('${A}'),('${B}');`);
-for(const file of ['3u_b_live_portfolio.sql','20260924070525_3u_b_5_manual_fund_values.sql','20260925114901_toap_nav_ingestion.sql'])
+for(const file of ['3u_b_live_portfolio.sql','20260924070525_3u_b_5_manual_fund_values.sql','20260925114901_toap_nav_ingestion.sql','20260925204248_allow_coinranking_540s_refresh.sql'])
  await db.exec(await readFile(new URL(`../../migrations/${file}`,import.meta.url),'utf8'));
 async function identity(id=A){await db.exec('reset role;set role authenticated');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);}
 async function fresh(){await db.exec('reset role;delete from public.arbor_portfolio_holdings;delete from public.arbor_market_prices;delete from public.arbor_portfolio_snapshots;delete from public.arbor_market_refresh');await identity();}
