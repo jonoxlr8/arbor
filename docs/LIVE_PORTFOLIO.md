@@ -408,17 +408,25 @@ redirects/retries. The operator cache URL must be an HTTPS Supabase project root
 
 Refresh is a callable, demand-driven **operator operation**, not a scheduler and
 not a side effect of opening Portfolio. It skips values fetched within 24 hours
-(ETF/FX) or 10 minutes (BTC). Atomic database claims coordinate overlapping CLI
+(ETF/FX) or 9 minutes (BTC source refresh eligibility). BTC valuation remains
+fresh through 600 seconds and usable fallback through 3600 seconds, measured from
+the quote's effective date, not its fetch time. The 540-second source interval gives
+the existing five-minute Render cron a safety margin around its ten-minute tick;
+it is not a guarantee against scheduler delays or older vendor observations.
+Atomic database claims coordinate overlapping CLI
 processes and throttle failed attempts too. Normal readers only read the cache;
 two users never cause two provider requests. No unused-background quota consumption.
 
 Coinranking first resolution needs two requests, so the cold/unresolved path uses
-a 20-minute cooldown; after a successful cached PHP reference it uses ten minutes.
+a 20-minute cooldown; after a successful cached PHP reference it uses nine minutes.
 About 4,320 calls per 30 days (4,464 per 31 days) at continuous ten-minute cadence,
 plus initial resolution, stays below the assumed 5,000 allowance for this dedicated
 key. Other consumers of the same key must be budgeted separately. There is no polling
-loop here. A future demand-triggered trusted worker can invoke this operation; until
-then operators must refresh when needed and stale/unavailable behavior is intentional.
+loop here. The trusted `arbor-market-data-refresh` cron invokes it on `*/5 * * * *`;
+fresh cached sources are skipped, so normal BTC requests remain approximately ten
+minutes apart. Portfolio GET remains read-only. Verify effective/fetched timestamps
+over at least 20 minutes after release; report provider-old quotes or scheduling
+delays honestly rather than extending valuation freshness.
 Failure of any source retains its old cache and does not prevent unrelated sources
 from updating. A database failure produces safe operational errors, not fake prices.
 

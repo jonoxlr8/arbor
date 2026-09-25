@@ -110,7 +110,29 @@ def test_shared_cache_reuse_and_failure_retention(kind):
     failed=adapter(kind,lambda _:httpx.Response(429))
     assert refresh(cache,[failed],NOW+timedelta(seconds=a.interval))[kind]=="rate_limited"
     assert cache.rows==old
-    if kind=="coinranking": assert cache.intervals[0]==1200 and cache.intervals[-1]==600
+    if kind=="coinranking": assert cache.intervals[0]==1200 and cache.intervals[-1]==540
+
+
+@pytest.mark.parametrize("age,expected", [(0,"cached"),(539,"cached"),(540,"updated"),(541,"updated"),(599,"updated")])
+def test_bitcoin_refresh_safety_margin(age, expected):
+    calls = []
+    cache = Cache()
+    cache.write([ReferencePrice(price_key="btc_php", value="3000000.123456789012",
+        as_of=NOW-timedelta(seconds=10), fetched_at=NOW, currency="PHP",
+        kind="btc_reference", source="coinranking", reference_id="synthetic_php")])
+    source = adapter("coinranking", handler("coinranking", calls))
+    assert source.interval == 540
+    assert refresh(cache, [source], NOW+timedelta(seconds=age)) == {"coinranking": expected}
+    assert len(calls) == (1 if expected == "updated" else 0)
+    assert cache.intervals == ([540] if expected == "updated" else [])
+    assert cache.rows["btc_php"].value == Decimal("3000000.123456789012")
+    assert price_limits("btc_php") == (600, 3600)
+
+
+def test_bitcoin_refresh_margin_does_not_change_daily_sources():
+    from app.market_data.toap import TOAP
+
+    assert Marketstack.interval == ExchangeRate.interval == TOAP.interval == 86400
 
 
 def test_refresh_isolates_sources_and_two_users_do_not_fetch():

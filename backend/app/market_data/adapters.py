@@ -93,7 +93,9 @@ class ExchangeRate:
 class Coinranking:
     source = "coinranking"
     keys = ("btc_php",)
-    interval = 600
+    # Refresh ahead of the independent 600-second valuation freshness boundary.
+    # A five-minute cron tick can start just before ten minutes since the fetch.
+    interval = 540
 
     def __init__(self, http, key):
         self.http, self.key = http, key
