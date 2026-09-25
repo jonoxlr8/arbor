@@ -19,7 +19,10 @@ def explain_portfolio(question: str, portfolio: Portfolio | None) -> str:
     if portfolio.stale_count:
         prefix += f"{portfolio.stale_count} holding(s) use clearly dated cached prices. "
     for holding in portfolio.holdings:
-        if holding.valuation_source == "manual_user":
+        if holding.valuation_source == "nav" and holding.as_of is not None:
+            prefix += (f"Your {holding.display_name} holding is valued automatically using "
+                       f"the available fund NAV dated {holding.as_of:%b %d, %Y}. ")
+        elif holding.valuation_source == "manual_user":
             provider_name = PROVIDER_DISPLAY_OVERRIDES.get(holding.provider, holding.provider_name)
             prefix += (f"You entered {holding.display_name}'s current value from {provider_name} "
                        f"as PHP {holding.value_php:,.2f} on {holding.as_of:%b %d, %Y}. "

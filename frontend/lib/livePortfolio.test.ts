@@ -79,6 +79,31 @@ test("portfolio contract requires complete typed decimal data",()=>{
   assert.ok(isPortfolio(portfolioFixture));
   for(const value of [null,{}, {...portfolioFixture,known_value_php:5600}, {...portfolioFixture,sleeves:[]}, {...portfolioFixture,holdings:[{}]}]) assert.equal(isPortfolio(value),false);
 });
+for(const sources of [["toap"], ["marketstack","coinranking","exchangerate_api","toap"], ["marketstack"], ["coinranking"], ["exchangerate_api"], []])test(`portfolio accepts canonical sources ${JSON.stringify(sources)}`,()=>{
+  assert.ok(isPortfolio({...portfolioFixture,data_sources:sources}));
+});
+test("portfolio source validation still rejects unknown and malformed metadata",()=>{
+  for(const sources of [["unknown"], ["toap","unknown"], ["TOAP"], ["https://uitf.com.ph"], "toap", null, {}, 1, [null], [1], [[]], [{source:"toap"}]]){
+    assert.equal(isPortfolio({...portfolioFixture,data_sources:sources}),false,JSON.stringify(sources));
+  }
+});
+test("TOAP portfolio passes API validation and reaches existing NAV attribution",async()=>{
+  const product={product_id:"dragonfi_global_equity",provider:"dragonfi",provider_name:"DragonFi",display_name:"BPI Global Equity Fund of Funds",sleeve:"global_equity" as const,price_kind:"nav" as const};
+  const response:LivePortfolioData={...portfolioFixture,data_sources:["toap"],known_value_php:"2031.80",total_value_php:"2031.80",
+    provider_values_php:{dragonfi:"2031.80"},catalog:[product],
+    holdings:[{...portfolioFixture.holdings[0],...product,units:"20",value_php:"2031.80",valuation_source:"nav"}],
+    sleeves:portfolioFixture.sleeves.map(s=>({...s,known_value_php:s.sleeve==="global_equity"?"2031.80":"0.00"}))};
+  const api=createPortfolioApi(async()=>"fixture",async()=>Response.json(response));
+  const portfolio=await api.read("A");
+  assert.deepEqual(portfolio,response);
+  const attribution=html(createElement(DataAttribution,{sources:portfolio.data_sources!}));
+  assert.match(attribution,/NAV data by TOAP \/ UITF.com.ph/);
+  assert.match(attribution,/href="https:\/\/uitf.com.ph"/);
+  assert.equal((attribution.match(/NAV data by TOAP/g)||[]).length,1);
+  assert.doesNotMatch(attribution,/DragonFi/);
+  assert.equal(portfolio.holdings[0].provider_name,"DragonFi");
+  assert.match(freshnessText(portfolio.holdings[0]),/NAV updated/);
+});
 test("holdings entry validates supported pairs and sensible decimal precision",()=>{
   const draft={provider:"gotrade",product_id:"gotrade_vt",units:"0.012345678901",cost_basis_php:null};
   assert.ok(validHolding(draft,portfolioFixture.catalog));

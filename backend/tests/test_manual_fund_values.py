@@ -32,6 +32,53 @@ def test_manual_value_questions_route_to_canonical_holdings(question):
 
 
 @pytest.mark.parametrize("product", sorted(MANUAL_FUNDS))
+@pytest.mark.parametrize("has_manual_value", [False, True])
+@pytest.mark.parametrize("age", [0, 3 * 86400])
+def test_automatic_nav_explanation_uses_canonical_source_and_effective_date(product, has_manual_value, age):
+    row = manual(product) if has_manual_value else holding(product, "10")
+    result = valued([row], [price(product, "101.59", age).model_copy(update={"source": "toap"})])
+    before = result.model_dump()
+    text = explain_portfolio("How is my fund valued?", result)
+    assert result.holdings[0].valuation_source == "nav"
+    assert "PHP 1,015.90" in text
+    assert row.product_id == result.holdings[0].product_id
+    assert "valued automatically using" in text and "NAV" in text
+    assert (NOW - timedelta(seconds=age)).strftime("%b %d, %Y") in text
+    assert "You entered" not in text and "8,000.25" not in text
+    assert ("clearly dated cached prices" in text) == (age > 172800)
+    assert all(word not in text.lower() for word in ("scrap", "parser", "cron", "http"))
+    assert result.model_dump() == before
+
+
+def test_manual_only_explanation_remains_exact_even_with_available_nav():
+    row = manual().model_copy(update={"units": None})
+    result = valued([row], [price(row.product_id, "101.59")])
+    assert explain_portfolio("How is my fund valued?", result) == (
+        "Recorded portfolio value: PHP 8,000.25. "
+        "You entered ATRAM Global Equity Opportunity Feeder Fund's current value from GFunds "
+        "as PHP 8,000.25 on Sep 24, 2026. "
+        "This is a manually updated holding value, not an official NAV. "
+        "Arbor does not currently have units for this holding, so it is using the value you entered. "
+        "Automatic NAV valuation requires recorded fund units. "
+        "These are recorded holdings and reference values, not execution quotes or instructions to trade."
+    )
+
+
+@pytest.mark.parametrize("question", ["How is my fund valued?", "What is my portfolio worth?"])
+def test_automatic_nav_chat_uses_existing_deterministic_result_without_llm(endpoint, monkeypatch, question):
+    from app.routes import chat, live_portfolio
+    client, _ = endpoint
+    result = valued([manual("dragonfi_global_equity")], [price("dragonfi_global_equity", "101.59")])
+    monkeypatch.setattr(live_portfolio, "optional_portfolio", lambda *args: result)
+    monkeypatch.setattr(chat, "ask_arbor", lambda *args: pytest.fail("V2 NAV explanations must not call the LLM"))
+    response = client.post("/chat", json={"message": question})
+    assert response.status_code == 200
+    assert response.json()["intent"] == "actual_holdings"
+    assert response.json()["reply"] == explain_portfolio(question, result)
+    assert "NAV" in response.json()["reply"] and "Sep 24, 2026" in response.json()["reply"]
+
+
+@pytest.mark.parametrize("product", sorted(MANUAL_FUNDS))
 def test_each_fund_manual_whole_value_not_units_times_value(product):
     result = valued([manual(product)], [])
     assert result.total_value_php == Decimal("8000.25")
@@ -145,7 +192,11 @@ def test_value_only_input_and_nav_requires_units(product):
     assert valued([with_units],[price(product,"100")]).total_value_php==1000
     assert valued([with_units],[price(product,"100")]).holdings[0].valuation_source=="nav"
     stale=Holding(**{**row.model_dump(),"manual_value_updated_at":NOW-timedelta(days=8)})
-    assert valued([stale],[price(product)]).holdings[0].value_php is None
+    unavailable=valued([stale],[price(product)])
+    assert unavailable.holdings[0].value_php is None
+    text=explain_portfolio("How is my fund valued?",unavailable)
+    assert "manual value needs updating" in text and "not your complete portfolio value" in text
+    assert "valued automatically" not in text
 
 
 @pytest.mark.parametrize("product", ["gcash_global_equity","dragonfi_defensive","gotrade_vt","pdax_btc"])

@@ -27,7 +27,7 @@ export const isHistory = (v: unknown): v is PortfolioHistory[] => Array.isArray(
 export function isPortfolio(value: unknown): value is LivePortfolioData {
   if (!value || typeof value !== "object") return false;
   const sources = (value as LivePortfolioData).data_sources;
-  if (sources !== undefined && (!Array.isArray(sources) || !sources.every(s => ["marketstack", "coinranking", "exchangerate_api"].includes(s)))) return false;
+  if (sources !== undefined && (!Array.isArray(sources) || !sources.every(s => ["marketstack", "coinranking", "exchangerate_api", "toap"].includes(s)))) return false;
   const p = value as LivePortfolioData;
   return p.currency === "PHP" && money(p.known_value_php) && (p.total_value_php === null || money(p.total_value_php)) &&
     typeof p.complete === "boolean" && Number.isInteger(p.unavailable_count) && p.unavailable_count >= 0 && Number.isInteger(p.stale_count) && p.stale_count >= 0 && timestamp(p.valued_at) &&
