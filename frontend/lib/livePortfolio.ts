@@ -28,7 +28,7 @@ export function portfolioReadError(error: unknown): PortfolioError {
 
 export type PortfolioProduct = { product_id: string; provider: string; provider_name: string; display_name: string; sleeve: Sleeve; price_kind: "nav" | "reference" };
 export type HoldingDraft = { provider: string; product_id: string; units: string | null; cost_basis_php: string | null; manual_value_php?: string | null };
-export type PortfolioHolding = PortfolioProduct & HoldingDraft & { id: string; value_php: string | null; freshness: "fresh" | "stale" | "unavailable"; as_of: string | null; updated_at: string;
+export type PortfolioHolding = PortfolioProduct & HoldingDraft & { id: string; value_php: string | null; freshness: "fresh" | "stale" | "unavailable"; as_of: string | null; updated_at: string; created_at?: string;
   valuation_source?: "nav" | "market_reference" | "manual_user" | "unavailable"; manual_value_php?: string | null; manual_value_updated_at?: string | null };
 export const supportsManualValue = (h: { product_id: string }) => ["gcash_global_equity", "gcash_technology", "gcash_defensive", "dragonfi_global_equity", "dragonfi_technology", "dragonfi_defensive"].includes(h.product_id);
 export const validManualValue = (v: string) => /^\d{1,16}(?:\.\d{1,2})?$/.test(v) && /[1-9]/.test(v);
@@ -55,7 +55,7 @@ export function isPortfolio(value: unknown): value is LivePortfolioData {
     !!p.provider_values_php && typeof p.provider_values_php === "object" && Object.values(p.provider_values_php).every(money) &&
     Array.isArray(p.catalog) && p.catalog.every(h => h && typeof h.product_id === "string" && typeof h.provider === "string" && typeof h.provider_name === "string" && typeof h.display_name === "string" && roles.includes(h.sleeve)) &&
     Array.isArray(p.holdings) && p.holdings.every(h => h && typeof h.id === "string" && (decimal(h.units) || h.units === null && supportsManualValue(h) && h.manual_value_php != null) && roles.includes(h.sleeve) && typeof h.display_name === "string" && typeof h.provider_name === "string" &&
-      p.catalog.some(c => c.product_id === h.product_id && c.provider === h.provider) && ["fresh", "stale", "unavailable"].includes(h.freshness) &&
+      (h.created_at === undefined || timestamp(h.created_at)) && p.catalog.some(c => c.product_id === h.product_id && c.provider === h.provider) && ["fresh", "stale", "unavailable"].includes(h.freshness) &&
       (h.valuation_source === undefined || ["nav", "market_reference", "manual_user", "unavailable"].includes(h.valuation_source)) &&
       (h.manual_value_php == null ? h.manual_value_updated_at == null : supportsManualValue(h) && validManualValue(h.manual_value_php) && timestamp(h.manual_value_updated_at)) &&
       (h.valuation_source !== "manual_user" || supportsManualValue(h) && h.freshness === "fresh" && h.manual_value_php != null && h.as_of === h.manual_value_updated_at) &&

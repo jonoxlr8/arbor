@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Link from "next/link";
+import { AuthEmblem } from "./AuthSurface";
 
 export default function SignupPending({ email, loading, cooldown, resendDisabled, confirmation, error, onResend, onDifferentEmail }: {
   email: string; loading: boolean; cooldown: number; resendDisabled: boolean;
@@ -8,7 +10,8 @@ export default function SignupPending({ email, loading, cooldown, resendDisabled
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { heading.current?.focus(); }, []);
-  return <section className="arbor-panel mx-auto h-fit w-full min-w-0 max-w-md" aria-labelledby="signup-pending-title">
+  return <section className="auth-content" aria-labelledby="signup-pending-title">
+    <AuthEmblem />
     <h1 ref={heading} id="signup-pending-title" tabIndex={-1} className="mt-7 text-2xl font-semibold text-slate-900 outline-none">Check your email</h1>
     <p className="mt-4 text-sm leading-6 text-slate-600">We sent a confirmation link to:</p>
     <p className="mt-2 break-all font-semibold text-slate-900">{email}</p>
@@ -19,5 +22,6 @@ export default function SignupPending({ email, loading, cooldown, resendDisabled
       {loading ? "Please wait…" : cooldown ? `Resend confirmation in ${cooldown}s` : "Resend confirmation email"}
     </button>
     <button type="button" disabled={loading} onClick={onDifferentEmail} className="entry-link mt-4 flex min-h-11 w-full items-center justify-center disabled:opacity-50">Use a different email</button>
+    <Link href="/#login" className="entry-link flex min-h-11 items-center justify-center">Back to sign in</Link>
   </section>;
 }

@@ -8,7 +8,7 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default async function OpenGraphImage() {
-  const preview = await readFile(join(process.cwd(), "public/product/premium/home-social.png"));
+  const preview = await readFile(join(process.cwd(), "public/product/vision/home-social.png"));
   return new ImageResponse(<div style={{display:"flex",width:"100%",height:"100%",background:"linear-gradient(120deg,#f7f9fc,#dcefe8 55%,#e6e5f7)",color:"#14233b",padding:60,overflow:"hidden"}}>
     <div style={{display:"flex",flexDirection:"column",width:460,flexShrink:0}}>
       <div style={{display:"flex",alignItems:"center",gap:12,color:"#0f5132",fontSize:26,fontWeight:700,letterSpacing:2}}><svg viewBox={arborMarkViewBox} width="50" height="40" fill="#0f5132">{arborMarkPaths.map(d=><path key={d} d={d}/>)}</svg>ARBOR</div>

@@ -89,6 +89,23 @@ def test_missing_fx_partial_valuation_no_false_percentages_or_zero_total():
     assert "not your complete" in explain_portfolio("current portfolio",result)
 
 
+@pytest.mark.parametrize("age,status", [(0,"fresh"),(600,"fresh"),(601,"stale"),(3600,"stale"),(3601,"unavailable")])
+def test_bitcoin_provider_parity_shared_reference_and_allocation(age, status):
+    products = ("gcrypto_btc", "coins_btc", "pdax_btc")
+    quote = price("btc_php", "3123456.123456789012", age=age)
+    assert {price_key(product) for product in products} == {"btc_php"}
+    results = [valued([holding(product,"0.001")], [quote]) for product in products]
+    assert len({result.holdings[0].value_php for result in results}) == 1
+    assert all(result.holdings[0].freshness == status for result in results)
+    if status == "unavailable":
+        assert all(result.total_value_php is None for result in results)
+        assert all(s.current_percentage is None for result in results for s in result.sleeves)
+    else:
+        assert all(result.total_value_php == Decimal("3123.46") for result in results)
+        assert all(result.holdings[0].as_of == quote.as_of for result in results)
+        assert all(next(s for s in result.sleeves if s.sleeve.value == "crypto").current_percentage == 100 for result in results)
+
+
 def test_totals_grouping_target_difference_and_owned_products():
     rows = [holding("gotrade_vt","2"),holding("gcash_defensive","10"),holding("coins_btc",".001")]
     result = valued(rows,[price("gotrade_vt","100"),price("usd_php","50"),price("gcash_defensive","100"),price("btc_php","1000000")])

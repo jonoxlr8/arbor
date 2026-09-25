@@ -81,8 +81,8 @@ await withAuthenticatedBrowser(async ({page, context, reused}) => {
     if (publicName) {
       const panel = page.locator('.plan-choice');
       assert.doesNotMatch(await panel.innerText(),/Codex|@|Bearer|https:/i);
-      await mkdir('public/product/premium',{recursive:true});
-      await sharp(await panel.screenshot({animations:'disabled'})).webp({quality:85}).toFile(`public/product/premium/${publicName}.webp`);
+      await mkdir('public/product/vision',{recursive:true});
+      await sharp(await panel.screenshot({animations:'disabled'})).webp({quality:85}).toFile(`public/product/vision/${publicName}.webp`);
     }
     screenshots.push(filename);
   };
@@ -318,7 +318,7 @@ await withAuthenticatedBrowser(async ({page, context, reused}) => {
         assert.equal(normalized(portfolio.total_value_php), '16600');
         assert.equal(portfolio.holdings.find(h => h.product_id === 'gcash_global_equity').units, null);
         assert.equal(portfolio.holdings.find(h => h.product_id === 'pdax_btc').provider, 'pdax');
-        assert.equal(await page.getByRole('group', {name:'Portfolio sections'}).getByRole('button').count(), 3);
+        assert.equal(await page.getByRole('group', {name:'Portfolio sections'}).getByRole('button').count(), 4);
         assert.equal(await page.getByRole('button', {name:'Monthly contribution', exact:true}).count(), 0);
         results.portfolio = {totalPHP:portfolio.total_value_php, holdings:3, manualOnlyFund:true};
         await matrix('populated', ['home','portfolio','ask','settings']);
@@ -326,7 +326,7 @@ await withAuthenticatedBrowser(async ({page, context, reused}) => {
         await page.getByRole('button', {name:'Allocation', exact:true}).click();
         await page.getByLabel('Current allocation', {exact:true}).waitFor();
         await capture('allocation-390-light');
-        await page.getByRole('button', {name:'Activity', exact:true}).click();
+        await page.getByRole('button', {name:'History', exact:true}).click();
         await page.getByRole('heading', {name:'Your recorded history', exact:true}).waitFor();
         await capture('activity-real-snapshot-390-light');
 
@@ -371,10 +371,10 @@ await withAuthenticatedBrowser(async ({page, context, reused}) => {
         const before = await request('/v2/portfolio');
         await go('home/monthly'); await calculate('10000');
         const activity = page.getByRole('region', {name:'Monthly check-in', exact:true});
-        await activity.getByRole('button', {name:'Mark as invested', exact:true}).click();
+        await activity.getByRole('button', {name:'Submit monthly contribution', exact:true}).click();
         await page.getByLabel('Amount you invested outside Arbor (PHP)', {exact:true}).fill('10000');
         const completed = response('/v2/monthly-checkin', 'POST');
-        await activity.getByRole('button', {name:'Confirm recorded as invested', exact:true}).click();
+        await activity.getByRole('button', {name:'Confirm contribution submitted', exact:true}).click();
         const completion = await (await completed).json();
         assert.equal(normalized(completion.current.amount_php), '10000');
         const duplicate = await request('/v2/monthly-checkin', 'POST', {month:completion.month, amount_php:'10000'});

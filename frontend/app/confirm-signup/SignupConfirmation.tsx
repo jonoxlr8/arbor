@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Logo from "@/components/Logo";
+import AuthSurface from "@/components/AuthSurface";
 import Link from "next/link";
 import { emailRedirectTo } from "@/lib/authConfig";
 import { parseSignupToken, confirmSignupToken, type SignupToken } from "@/lib/signupConfirmation";
@@ -11,7 +11,7 @@ export default function SignupConfirmation() {
   const initialized = useRef(false);
   const busy = useRef(false);
   const mounted = useRef(false);
-  const [status, setStatus] = useState<"loading" | "ready" | "invalid" | "verifying" | "failed">("loading");
+  const [status, setStatus] = useState<"loading" | "ready" | "invalid" | "verifying" | "failed" | "success">("loading");
   useEffect(() => {
     let active = true;
     mounted.current = true;
@@ -38,16 +38,14 @@ export default function SignupConfirmation() {
       return supabase.auth.verifyOtp(values);
     });
     if (!mounted.current) return;
-    if (success) window.location.replace(emailRedirectTo);
+    if (success) setStatus("success");
     else { busy.current = false; setStatus("failed"); }
   }
 
-  return <main className="flex min-h-dvh justify-center bg-background px-5 py-12">
-    <section className="arbor-panel h-fit w-full max-w-md">
-      <Logo />
-      <h1 className="mt-7 text-2xl font-semibold text-slate-900">Confirm your email address</h1>
+  return <AuthSurface>
+      <h1>{status === "success" ? "Email confirmed" : status === "failed" || status === "invalid" ? "Let’s get you a new link" : "Confirm your email"}</h1>
       <p role="status" className="mt-4 text-sm leading-6 text-slate-600">
-        {status === "loading" ? "Checking your confirmation link…" : status === "invalid"
+        {status === "success" ? "Your Arbor account is ready." : status === "loading" ? "Checking your confirmation link…" : status === "invalid"
           ? "This confirmation link is missing or invalid. Log in if you already confirmed, or request a new email."
           : status === "failed"
           ? "We couldn’t confirm this link. It may have expired or already been used, or your connection may have been interrupted. Try logging in or request a new confirmation email."
@@ -58,7 +56,6 @@ export default function SignupConfirmation() {
         className="mt-6 min-h-12 w-full rounded-xl bg-emerald-700 px-4 py-3 font-semibold text-white disabled:opacity-60">
         {status === "verifying" ? "Confirming…" : "Confirm email address"}
       </button>}
-      <Link href="/#login" prefetch={false} className="entry-link mt-4 flex min-h-11 items-center justify-center">Log in or resend confirmation</Link>
-    </section>
-  </main>;
+      {status === "success" ? <a href={emailRedirectTo} className="entry-primary mt-6 w-full">Continue to Arbor</a> : <Link href="/#login" prefetch={false} className="entry-link mt-4 flex min-h-11 items-center justify-center">Log in or resend confirmation</Link>}
+  </AuthSurface>;
 }

@@ -6,7 +6,7 @@ import sharp from 'sharp';
 import {withAuthenticatedBrowser} from './auth.mjs';
 
 // Version the output path so Next's image cache cannot serve an older milestone.
-const output = 'public/product/premium';
+const output = 'public/product/vision';
 const finish = process.argv.includes('--finish');
 await mkdir(output, {recursive:true});
 await mkdir('/tmp/arbor-premium',{recursive:true});
@@ -56,6 +56,7 @@ await withAuthenticatedBrowser(async ({page,context}) => {
   };
   try {
     assert.ok(['localhost','127.0.0.1'].includes(new URL(page.url()).hostname),'Only local app captures are permitted');
+    await page.getByRole('heading',{name:'Hello, Alex.'}).waitFor();
     const restored=page.waitForResponse(r=>new URL(r.url()).pathname==='/profiles/me'&&r.request().method()==='GET');
     await page.reload();
     const profileResponse=await restored;
@@ -128,6 +129,11 @@ await withAuthenticatedBrowser(async ({page,context}) => {
     await page.setViewportSize({width:1280,height:1300});
     stage = 'portfolio'; await go('portfolio'); await page.locator('.holding-row').first().waitFor();
     await viewport('portfolio');
+    await page.getByRole('button',{name:'Performance',exact:true}).click();
+    await viewport('performance');
+    await page.getByRole('button',{name:'History',exact:true}).click();
+    await viewport('history');
+    await page.getByRole('button',{name:'Holdings',exact:true}).click();
     // Element screenshots preserve actual UI; demo history exists only in this browser.
     await capture('holdings', page.locator('#section-holdings'));
     await page.setViewportSize({width:390,height:950});
@@ -146,7 +152,21 @@ await withAuthenticatedBrowser(async ({page,context}) => {
     for(const sleeve of ['global_equity','technology_tilt','crypto'])assert.equal(await page.locator(`.monthly-row[data-sleeve="${sleeve}"]`).count(),1);
     assert.ok(await page.locator('.monthly-provider').count()>0,'Chosen provider summary is visible');
     await page.setViewportSize({width:390,height:950});
+    if(await page.getByRole('button',{name:'Undo completion',exact:true}).count()){
+      await page.getByRole('button',{name:'Undo completion',exact:true}).click();
+      const undone=page.waitForResponse(r=>new URL(r.url()).pathname==='/v2/monthly-checkin/undo');
+      await page.getByRole('button',{name:'Confirm undo completion',exact:true}).click();assert.equal((await undone).status(),200);
+      await page.getByRole('button',{name:'Submit monthly contribution',exact:true}).waitFor();
+    }
     await capture('contribution',page.locator('.monthly-providers'));
+    await capture('contribution-submit',page.getByRole('region',{name:'Monthly check-in',exact:true}));
+    await page.getByRole('button',{name:'Submit monthly contribution',exact:true}).click();
+    const completed=page.waitForResponse(r=>new URL(r.url()).pathname==='/v2/monthly-checkin'&&r.request().method()==='POST');
+    await page.getByRole('button',{name:'Confirm contribution submitted',exact:true}).click();
+    assert.equal((await completed).status(),200);
+    await page.getByText('Contribution submitted',{exact:true}).waitFor();
+    await capture('contribution-submitted',page.getByRole('region',{name:'Monthly check-in',exact:true}));
+    await go('home');await page.getByRole('link',{name:'Update portfolio →',exact:true}).waitFor();await viewport('home-completed');
     stage = 'ask'; await page.setViewportSize({width:390,height:1050}); await go('ask');
     await page.getByRole('textbox',{name:'Your question about your Arbor plan'}).fill('What is my current portfolio worth?');
     await page.getByRole('button',{name:'Ask Arbor',exact:true}).click();

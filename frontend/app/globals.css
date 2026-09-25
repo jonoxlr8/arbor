@@ -4,6 +4,8 @@
 @import "./plan-choice.css";
 @import "./monthly-investing.css";
 @import "./marketing.css";
+@import "./auth-experience.css";
+@import "./vision.css";
 
 :root {
   color-scheme: light dark;

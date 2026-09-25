@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import Logo from "@/components/Logo";
+import AuthSurface from "@/components/AuthSurface";
 import Link from "next/link";
 import { captureRecoveryToken, verifyRecoveryToken, type RecoveryToken, endRecoverySession, passwordValidation, resetLinkMessage, updateRecoveryPassword } from "@/lib/passwordRecovery";
 
@@ -69,9 +69,8 @@ export default function ResetPassword() {
     finally { busy.current = false; }
     await finish();
   }
-  return <main className="flex min-h-dvh justify-center bg-background px-5 py-12">
-    <section className="arbor-panel h-fit w-full max-w-md">
-      <Logo /><h1 className="mt-7 text-2xl font-semibold text-slate-900">Choose a new password</h1>
+  return <AuthSurface>
+      <h1>{status === "success" ? "Password updated" : status === "invalid" ? "Request a new reset link" : "Choose a new password"}</h1>
       {status === "checking" && <p role="status" className="mt-4 text-slate-600">Checking your reset link…</p>}
       {(status === "confirm" || status === "verifying") && <>
         <p className="mt-4 text-sm text-slate-600">Verify your reset link to choose a new password.</p>
@@ -93,6 +92,5 @@ export default function ResetPassword() {
       {status === "signout" && <button onClick={() => void finish()} className="entry-link min-h-11">Retry sign-out</button>}
       <Link href="/#login" prefetch={false} className="entry-link mt-4 flex min-h-11 items-center justify-center">Return to login</Link>
       {status !== "success" && <Link href="/forgot-password" prefetch={false} className="entry-link flex min-h-11 items-center justify-center">Request another password reset</Link>}
-    </section>
-  </main>;
+  </AuthSurface>;
 }

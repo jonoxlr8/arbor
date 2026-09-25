@@ -6,6 +6,7 @@ import type { AccountSession } from "@/lib/accountRecovery";
 import { authErrorMessage } from "@/lib/authErrorMessage";
 import { entryLinks } from "@/lib/publicEntry";
 import SignupPending from "./SignupPending";
+import { AuthEmblem } from "./AuthSurface";
 import { confirmationContext, showConfirmationResend, canResendConfirmation, neutralResendMessage, type PendingConfirmation } from "@/lib/authConfirmation";
 
 type AuthFormProps = {
@@ -105,16 +106,16 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
   />;
 
   return (
-      <section className="arbor-panel mx-auto w-full max-w-md">
-        <p className="text-xs font-semibold uppercase tracking-wider text-forest">{isSignUp ? "Your next chapter" : "Your plan is waiting"}</p>
+      <section className="auth-content">
+        <AuthEmblem />
         <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
           {isSignUp ? "Create your Arbor account" : "Welcome back"}
         </h1>
 
         <p className="mt-3 text-slate-600">
           {isSignUp
-            ? "Save your investment plan and track your progress over time."
-            : "Continue building your long-term wealth plan."}
+            ? "A little clarity. A longer view."
+            : "Sign in to continue to Arbor."}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">

@@ -161,7 +161,15 @@ alone does not update Supabase templates; paste them separately after verificati
 Check fresh signup/resend and reset emails in actual inboxes, including with images
 blocked. Retain the exact TokenHash fragment links and explicit verification steps.
 
-Paste this HTML into the Confirm signup email body (also used by signup resend):
+**Final vision pass:** use the reviewed [`docs/auth-emails/confirm-signup.html`](docs/auth-emails/confirm-signup.html)
+and [`docs/auth-emails/reset-password.html`](docs/auth-emails/reset-password.html)
+for the current brand. The older inline examples below are retained as historical
+link-contract references, not the latest visual templates. The new files preserve
+both TokenHash fragment links exactly, including their explicit confirmation step.
+No hosted template was changed by the local implementation. See
+[`docs/auth-emails/README.md`](docs/auth-emails/README.md) for the owner rollout checklist.
+
+Historical Confirm signup example (also used by signup resend):
 
 ```html
 <div style="max-width:560px;margin:0 auto;padding:32px 24px;background-color:#ffffff;color:#24352c;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;">

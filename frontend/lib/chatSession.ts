@@ -9,7 +9,7 @@ export function chatPlanKey(plan: AccountPlan) {
 }
 
 export function chatPrompts(v2: boolean, livePortfolio = false) {
-  return v2 ? ["Explain my investment plan", ...(livePortfolio ? ["What is my current portfolio worth?"] : ["Why does my plan include Global Equity?"]), "What should I do next?", "How does the contribution planner work?"]
+  return v2 ? ["Explain my investment plan", ...(livePortfolio ? ["What is my current portfolio worth?", "How does my portfolio compare with my targets?"] : ["Why does my plan include Global Equity?", "How does the contribution planner work?"]), "What should I do next?"]
     : ["Explain my Arbor plan", "What are my target allocations?", "What are my projection assumptions?", "Does my projection reach my goal?"];
 }
 

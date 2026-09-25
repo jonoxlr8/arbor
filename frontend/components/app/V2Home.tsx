@@ -10,6 +10,7 @@ import { monthlyApi, monthLabel, checkinDate, type MonthlyState } from "@/lib/mo
 import PortfolioHistoryChart from "../portfolio/PortfolioHistoryChart";
 import { DataAttribution } from "../portfolio/LivePortfolio";
 import { planTargets } from "@/lib/planImplementation";
+import { recentPortfolioActivity, holdingsUpdatedAfter } from "@/lib/portfolioActivity";
 
 export default function V2Home({ value, userId, nextAction }: { value: PlanV2; userId?: string; nextAction?: ReactNode }) {
   const access = useAccountAccess();
@@ -18,6 +19,7 @@ export default function V2Home({ value, userId, nextAction }: { value: PlanV2; u
   const monthlyAllowed = access?.value?.availability?.monthly_checkin === true && access.value.features.includes("monthly_contribution_planner") && value.plan.path === "long_term" && value.plan.plan_basis === "user_selected" && value.plan.readiness.actionable_contribution_guidance_allowed;
   const [monthly, setMonthly] = useState<MonthlyState | null>(null);
   const [monthlyError, setMonthlyError] = useState(false);
+  const [portfolio, setPortfolio] = useState<LivePortfolioData | null>(null);
   useEffect(() => {
     if (!monthlyAllowed || !userId) return;
     let current = new AbortController();
@@ -36,14 +38,16 @@ export default function V2Home({ value, userId, nextAction }: { value: PlanV2; u
   return <div className="space-y-6">
     {nextAction}
     <div className="home-grid">
-      {available && userId ? <HomePortfolio userId={userId} /> : <section className="home-metric home-portfolio" aria-label="Portfolio overview"><header><h2>Portfolio</h2><span className="access-badge">{access?.value?.effective_tier === "free" ? "Plus" : "Preview"}</span></header>
+      {available && userId ? <HomePortfolio userId={userId} onLoaded={setPortfolio} /> : <section className="home-metric home-portfolio" aria-label="Portfolio overview"><header><h2>Portfolio</h2><span className="access-badge">{access?.value?.effective_tier === "free" ? "Plus" : "Preview"}</span></header>
         <div className="home-history-empty"><span aria-hidden="true">◷</span><strong>Your investments.<br/>One clear view.</strong><p>{!implementationAllowed ? "Your saved profile and current path are ready to review. Tracking stays separate from your plan." : access?.value?.effective_tier === "free" ? "Tracking is part of Arbor Plus. Explore ways to invest your plan on Free." : "Tracking isn’t available yet. Your chosen plan and ways to invest are ready to explore."}</p></div>
         <a className="entry-link" href="#portfolio">Explore your portfolio →</a>
       </section>}
       <a className="home-metric" href={value.plan.path === "short_term" || !value.plan.readiness.actionable_contribution_guidance_allowed ? "#portfolio/plan" : "#home/monthly"}><p>Monthly contribution</p><strong>{formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP")}</strong><small className={currentMonthly?.current ? "completed-label" : ""}>{currentMonthly?.current ? `✓ Recorded for ${monthLabel(currentMonthly.month).split(" ")[0]}` : "Your planned amount · Review →"}</small></a>
       <a className="home-metric" href="#settings/investment"><p>Investment profile</p><strong>{value.plan.path === "short_term" ? "Short term" : value.plan.selected_strategy}</strong><small>{value.plan.path === "short_term" ? "Long-term selection stays saved" : value.plan.plan_basis === "user_selected" ? "Your selected approach →" : "Historical plan →"}</small></a>
     </div>
-    <div className="home-bottom"><HomePlanContext value={value} /><HomeActivity state={currentMonthly} available={monthlyAllowed} error={monthlyError}/></div>
+    {currentMonthly?.current && portfolio && !holdingsUpdatedAfter(portfolio.holdings,currentMonthly.current.completed_at) && <div className="home-update-followup"><p>Contribution submitted. Update your holdings with what you actually received.</p><a className="entry-link" href="#portfolio">Update portfolio →</a></div>}
+    <div className="home-bottom"><HomePlanContext value={value} /><HomeActivity state={currentMonthly} available={monthlyAllowed} error={monthlyError} portfolio={portfolio}/></div>
+    {portfolio && <div className="home-data-attribution"><DataAttribution sources={portfolio.data_sources ?? []}/></div>}
   </div>;
 }
 
@@ -64,31 +68,31 @@ export function HomePlanContext({ value }: { value: PlanV2 }) {
   </section>;
 }
 
-export function HomeActivity({state,available,error=false}:{state:MonthlyState|null;available:boolean;error?:boolean}) {
+export function HomeActivity({state,available,error=false,portfolio=null}:{state:MonthlyState|null;available:boolean;error?:boolean;portfolio?:LivePortfolioData|null}) {
+  const events = recentPortfolioActivity(portfolio?.holdings ?? [],state);
   return <section className="home-activity"><header><h2>Recent activity</h2><a href={available ? "#home/monthly" : "#portfolio/plan"} aria-label={available ? "View monthly activity" : "View your plan"}>↗</a></header>
-    {state?.history.length ? <ul>{state.history.slice(0,3).map(row=><li key={row.month}><span className="activity-date" aria-hidden="true"><small>{new Date(row.completed_at).toLocaleDateString("en-PH",{month:"short",timeZone:"UTC"})}</small>{new Date(row.completed_at).getUTCDate()}</span><div><strong>{row.undone_at ? "Check-in undone" : "Contribution recorded"}</strong><small>{monthLabel(row.month)}</small></div><span>{formatContributionMoney(row.amount_php,"PHP")}</span></li>)}</ul>
+    {events.length ? <ul>{events.map(row=><li key={row.key}><time className="activity-date" dateTime={new Date(row.at).toISOString()}><small>{new Date(row.at).toLocaleDateString("en-PH",{month:"short",timeZone:"UTC"})}</small>{new Date(row.at).getUTCDate()}</time><div><strong>{row.title}</strong><small>{row.detail}</small></div>{row.amount !== null && <span>{formatContributionMoney(row.amount,"PHP")}</span>}</li>)}</ul>
       : <div className="activity-empty"><span aria-hidden="true">◷</span><h3>{error ? "Activity is temporarily unavailable" : "A little progress, over time"}</h3><p>{error ? "Open your monthly contribution to retry." : available ? "Your recorded monthly check-ins will appear here." : "Monthly history isn’t available yet. Your saved plan is ready to review."}</p></div>}
     {state?.current && <p className="activity-note">Recorded as invested {checkinDate(state.current.completed_at)}. Holdings are tracked separately.</p>}
   </section>;
 }
 
-function HomePortfolio({ userId }: { userId: string }) {
+function HomePortfolio({ userId, onLoaded }: { userId: string; onLoaded: (portfolio:LivePortfolioData|null)=>void }) {
   const [portfolio, setPortfolio] = useState<LivePortfolioData | null>(null);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
-    portfolioApi.read(userId, controller.signal).then(p => { if (!controller.signal.aborted) setPortfolio(p); }).catch(() => { if (!controller.signal.aborted) setError(true); });
+    portfolioApi.read(userId, controller.signal).then(p => { if (!controller.signal.aborted) {setPortfolio(p);onLoaded(p);} }).catch(() => { if (!controller.signal.aborted) {setError(true);onLoaded(null);} });
     return () => controller.abort();
-  }, [userId, attempt]);
+  }, [userId, attempt, onLoaded]);
   if (error) return <section className="home-metric home-portfolio" aria-label="Portfolio overview"><p role="alert">We couldn’t load your portfolio.</p><button className="entry-secondary mt-3" onClick={() => { setError(false); setAttempt(n => n + 1); }}>Try again</button></section>;
   if (!portfolio) return <section className="home-metric home-portfolio arbor-skeleton" role="status"><span className="sr-only">Checking your recorded portfolio…</span><i/><i/></section>;
   return <section className="home-metric home-portfolio" aria-label="Portfolio overview"><header><h2>{portfolio.holdings.length ? portfolio.complete ? "Portfolio value" : "Known portfolio value" : "Portfolio"}</h2><a className="entry-link" href="#portfolio" aria-label="View portfolio">↗</a></header>
     {portfolio.holdings.length ? <>
       <strong>{formatContributionMoney(portfolio.known_value_php,"PHP")}</strong>
       <PortfolioHistoryChart history={portfolio.history} compact/>
-      <a className="entry-link" href="#portfolio">{!portfolio.complete ? "Some values are unavailable · Review →" : portfolio.stale_count ? "Cached values · Check dates →" : "View portfolio →"}</a>
-      <div className="home-data-attribution"><DataAttribution sources={portfolio.data_sources ?? []}/></div>
+      {(!portfolio.complete || portfolio.stale_count > 0) && <a className="entry-link" href="#portfolio">{!portfolio.complete ? "Some values are unavailable · Review →" : "Cached values · Check dates →"}</a>}
     </> : <>
       <div className="home-history-empty"><span aria-hidden="true">◷</span><strong>No investments<br/>recorded yet.</strong><p>Record your first investment to start building your portfolio history.</p></div>
       <a className="entry-primary" href="#portfolio/add">+ Add Investment</a>

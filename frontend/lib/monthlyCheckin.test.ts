@@ -33,7 +33,7 @@ for (const [scenarioAmount, expected] of [["10000","10000.00"],["10000.0","10000
   const props=child.props;
   const activity=child.type as (componentProps:typeof props)=>React.ReactNode;
   const draw=()=>{cursor=0;return activity(props);};
-  const button=findElement(draw(),el=>el.type==="button"&&el.props.children==="Mark as invested");assert.ok(button);
+  const button=findElement(draw(),el=>el.type==="button"&&el.props.children==="Submit monthly contribution");assert.ok(button);
   (button.props.onClick as ()=>void)();
   const input=findElement(draw(),el=>el.type==="input");assert.ok(input);
   assert.equal(input.props.value,expected);assert.equal(input.props.required,true);

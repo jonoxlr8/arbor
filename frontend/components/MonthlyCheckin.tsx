@@ -13,7 +13,7 @@ export function MonthlyCheckin({value,userId,scenarioAmount}:{value:PlanV2;userI
 
 export function MonthlySummary({state}:{state:MonthlyState}) {
   return <div role="status"><h3 className="text-lg font-semibold">{state.current ? `You’re set for ${monthLabel(state.month)}` : `${monthLabel(state.month)} check-in`}</h3>
-    {state.current ? <><p className="mt-2">You recorded a {formatContributionMoney(state.current.amount_php,"PHP")} contribution as invested {checkinDate(state.current.completed_at)}.</p><p className="mt-2 text-sm text-slate-600">Your portfolio is tracked separately. No holdings or trades were created by this check-in.</p></> : <p className="mt-2 text-sm text-slate-600">Review your monthly contribution. Record completion only if you invested outside Arbor. Calendar months use UTC.</p>}
+    {state.current ? <><p className="mt-2">You recorded a {formatContributionMoney(state.current.amount_php,"PHP")} contribution as invested {checkinDate(state.current.completed_at)}.</p><p className="mt-2 text-sm text-slate-600">Your portfolio is tracked separately. No holdings or trades were created by this check-in.</p><div className="contribution-submitted"><strong>Contribution submitted</strong><p>Now update your portfolio with what you actually received.</p><a href="#portfolio" className="entry-primary">Update holdings</a><small>Edit an existing holding’s total units, or use + Add Investment for a new one.</small></div></> : <p className="mt-2 text-sm text-slate-600">Review your monthly contribution. Submit only after you invest outside Arbor. Calendar months use UTC.</p>}
   </div>;
 }
 
@@ -47,11 +47,11 @@ function MonthlyActivity({userId,scenarioAmount}:{userId:string;scenarioAmount?:
   }
   return <section className="monthly-activity" aria-label="Monthly check-in">
     {state?<><MonthlySummary state={state}/>
-      {!confirm && (state.current?<button className="entry-link mt-3 min-h-11" onClick={()=>{setError("");setConfirm("undo");}}>Undo completion</button>:scenarioAmount&&<button className="entry-secondary mt-4 min-h-11" onClick={()=>{setError("");const prefill=checkinAmountInput(scenarioAmount);setAmount(prefill);if(!prefill)setError("Enter the PHP amount you actually invested, with at most two decimal places.");setConfirm("complete");}}>Mark as invested</button>)}
+      {!confirm && (state.current?<button className="entry-link mt-3 min-h-11" onClick={()=>{setError("");setConfirm("undo");}}>Undo completion</button>:scenarioAmount&&<button className="entry-primary mt-4 min-h-11" onClick={()=>{setError("");const prefill=checkinAmountInput(scenarioAmount);setAmount(prefill);if(!prefill)setError("Enter the PHP amount you actually invested, with at most two decimal places.");setConfirm("complete");}}>Submit monthly contribution</button>)}
       {confirm && <form ref={confirmation} className="mt-4 space-y-3" onSubmit={e=>{e.preventDefault();void save();}}>
         <p>{confirm==="complete"?"Arbor does not place trades or move money. Confirm only after you invest through your provider.":"Undo this month’s completion? The record will be labeled undone; your holdings will not change."}</p>
         {confirm==="complete"&&<label className="block text-sm font-medium">Amount you invested outside Arbor (PHP)<input required inputMode="decimal" value={amount} onChange={e=>setAmount(e.target.value)} className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900" aria-describedby={error?"monthly-error":undefined}/></label>}
-        <button disabled={busy} className="entry-primary min-h-11 w-full">{busy?"Saving check-in…":confirm==="complete"?"Confirm recorded as invested":"Confirm undo completion"}</button>
+        <button disabled={busy} className="entry-primary min-h-11 w-full">{busy?"Submitting…":confirm==="complete"?"Confirm contribution submitted":"Confirm undo completion"}</button>
         <button type="button" disabled={busy} className="entry-link min-h-11" onClick={()=>setConfirm(null)}>Cancel</button>
       </form>}
       {!!state.history.length&&<details className="mt-4"><summary className="min-h-11 cursor-pointer py-3">Recent check-ins</summary><ul className="space-y-3 text-sm">{state.history.map(row=><li key={row.month}>{monthLabel(row.month)} · {formatContributionMoney(row.amount_php,"PHP")}<span className="block text-slate-600">{row.undone_at?`Completion undone ${checkinDate(row.undone_at)}`:`Recorded as invested ${checkinDate(row.completed_at)}`}</span></li>)}</ul></details>}

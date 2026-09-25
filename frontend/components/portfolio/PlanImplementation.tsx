@@ -52,7 +52,7 @@ export default function PlanImplementation({ value, onRecord, intro = true, user
     </section>)}
     <p className="implementation-footnote">Options are listed by provider name, not ranked. Funds and ETFs differ in holdings, fees and structure. Check availability and terms with your provider.</p>
     <div className="record-return"><div><h3>{onRecord ? "Already invested?" : "Your choices. Your provider."}</h3><p>You invest through your provider. Arbor does not place trades or move money.</p>{onRecord && <small>Come back to record what you own—not a broker transaction.</small>}</div>
-      {onRecord && <button type="button" className="entry-primary" onClick={onRecord}>+ Record investment</button>}
+      {onRecord && <p className="text-sm">Use + Add Investment above to start tracking what you own.</p>}
     </div>
     {choosing&&userId&&onPlanChange&&<ImplementationPicker value={value} userId={userId} sleeve={choosing} onClose={()=>setChoosing(null)} onSaved={onPlanChange}/>}
   </section>;

@@ -10,7 +10,7 @@ import { PLAN_OPTIONS, providerDestination } from "@/lib/planImplementation";
 import { AppearanceSelect } from "@/components/app/Appearance";
 import { entryLinks } from "@/lib/publicEntry";
 import { publicFaqs, publicSections } from "@/lib/publicWebsite";
-import imageSizes from "@/public/product/premium/sizes.json";
+import imageSizes from "@/public/product/vision/sizes.json";
 
 function Arrow() { return <span aria-hidden="true">↗</span>; }
 function StartLink({ children = "Get started free" }: { children?: React.ReactNode }) {
@@ -22,8 +22,8 @@ function ProductImage({ name, alt, hero = false }: { name: keyof typeof imageSiz
   const sizes = name === "fund-value" ? "(max-width: 600px) 260px, (max-width: 1100px) 245px, 290px" : name === "ask" ? "(max-width: 600px) 280px, (max-width: 900px) 290px, 330px" : "(max-width: 760px) 90vw, 650px";
   // Mobile crops are already compressed at their native 390px width. Serve the
   // exact WebP instead of upscaling it through a second optimizer/srcset.
-  return <picture>{mobile && <source media="(max-width: 600px)" srcSet={`/product/premium/${name}-mobile.webp`} width={mobile.width} height={mobile.height}/>}
-    <Image src={`/product/premium/${name}.webp`} width={width} height={height} alt={alt}
+  return <picture>{mobile && <source media="(max-width: 600px)" srcSet={`/product/vision/${name}-mobile.webp`} width={mobile.width} height={mobile.height}/>}
+    <Image src={`/product/vision/${name}.webp`} width={width} height={height} alt={alt}
     sizes={hero || name === "portfolio" || name === "ways" ? "(max-width: 760px) 94vw, (max-width: 1280px) 90vw, 1120px" : sizes}
     loading={hero ? "eager" : "lazy"} fetchPriority={hero ? "high" : undefined} /></picture>;
 }
@@ -113,9 +113,9 @@ export default function PublicWebsite() {
 
       <section id="monthly-contribution" className="m-container m-section m-monthly" aria-labelledby="monthly-title">
         <div className="m-monthly-copy"><p className="m-eyebrow">Invest this month · Arbor Plus</p><h2 id="monthly-title">A clear month.<br/>A longer view.</h2><p className="m-section-lead">Know what this month’s contribution looks like.</p><p>Arbor uses your chosen plan and recorded portfolio to calculate a breakdown. See exact amounts by provider, with amounts below a minimum visible.</p><p className="m-note">Your saved implementation choices organize the result. You review the amounts and invest outside Arbor.</p>
-          <div className="m-monthly-loop"><span>Review</span><span aria-hidden="true">→</span><span>Record</span><span aria-hidden="true">→</span><span>Keep perspective</span></div><p className="m-fine">Monthly check-ins are available in private beta. “Recorded as invested” means you invested outside Arbor—not that Arbor placed a trade or updated your holdings.</p>
+          <div className="m-monthly-loop"><span>Review</span><span aria-hidden="true">→</span><span>Submit</span><span aria-hidden="true">→</span><span>Update holdings</span></div><p className="m-fine">After investing through your provider, choose “Submit monthly contribution” to record your check-in. Then update the holdings you received. Arbor does not place trades or increase your portfolio value from a check-in.</p>
         </div>
-        <figure className="m-contribution-preview"><ProductImage name="contribution" alt="Arbor’s monthly breakdown groups the user’s assigned amounts by provider. Illustrative calculation, no trade placed."/><figcaption>Example calculation, not a buy list. You invest through your provider.</figcaption></figure>
+        <figure className="m-contribution-preview"><ProductImage name="contribution" alt="Arbor’s monthly breakdown groups the user’s assigned amounts by provider. Illustrative calculation, no trade placed."/><ProductImage name="contribution-submit" alt="Submit monthly contribution records a check-in only after investing through a provider. Holdings are updated separately."/><figcaption>Example calculation, not a buy list. You invest through your provider.</figcaption></figure>
       </section>
 
       <section id="ask-arbor" className="m-ask m-section" aria-labelledby="ask-title"><div className="m-container m-ask-layout">

@@ -7,10 +7,10 @@ import SignupPending from "../components/SignupPending";
 import { confirmationContext, neutralResendMessage } from "./authConfirmation";
 
 const props = { email: "alex@example.com", loading: false, cooldown: 0, resendDisabled: false, confirmation: "", error: "", onResend: () => {}, onDifferentEmail: () => {} };
-test("pending screen preserves auth card styling without duplicating the shell logo", () => {
+test("pending screen shares the focused auth surface and decorative Arbor emblem", () => {
   const html = renderToStaticMarkup(createElement(SignupPending, props));
-  assert.doesNotMatch(html, /arbor-logo-color|ARBOR|<svg/);
-  assert.match(html, /max-w-md/);
+  assert.match(html, /auth-emblem/);
+  assert.match(html, /auth-content/);
   assert.match(html, /mt-7 text-2xl/);
   assert.match(html, /break-all/);
   assert.doesNotMatch(html, /<img/);

@@ -138,21 +138,7 @@ function ArborResponse({ text }: { text: string }) {
 
 function ArborMessage({ text }: { text: string }) {
   return (
-    <div className="chat-reply rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sage-soft">
-          <ArborMark className="h-8 w-8" />
-        </div>
-
-        <div>
-          <h4 className="font-semibold text-slate-900">Arbor</h4>
-
-          <p className="text-xs text-slate-500">Your plan, explained</p>
-        </div>
-      </div>
-
-      <ArborResponse text={providerDisplayText(text)} />
-    </div>
+    <div className="chat-answer-row"><span className="chat-avatar"><ArborMark className="h-7 w-7"/><span className="sr-only">Arbor</span></span><div className="chat-reply"><ArborResponse text={providerDisplayText(text)} /></div></div>
   );
 }
 
@@ -170,6 +156,8 @@ function PlanChat({ v2 }: { v2: boolean }) {
   const [error, setError] = useState("");
   const session = useRef<ReturnType<typeof createChatSession> | null>(null);
   const busy = useRef(false);
+  const bottom = useRef<HTMLDivElement>(null);
+  useEffect(()=>{if(messages.length)bottom.current?.scrollIntoView({block:"nearest",behavior:"instant"});},[messages.length]);
   useEffect(() => {
     const current = createChatSession(askArbor, state => {
       busy.current = state.status === "loading";
@@ -206,7 +194,7 @@ function PlanChat({ v2 }: { v2: boolean }) {
   const limited = error === FREE_LIMIT_MESSAGE || currentUsage?.remaining === 0;
 
   return (
-    <div className="min-w-0">
+    <div className="chat-thread min-w-0">
       {/* Intro */}
       <div className="text-sm">
         {access?.value?.effective_tier === "plus" && <p className="mb-2 text-xs font-medium text-slate-500">Arbor Plus · Full Ask Arbor access</p>}
@@ -253,13 +241,13 @@ function PlanChat({ v2 }: { v2: boolean }) {
 
         {/* Conversation */}
         {messages.length > 0 && (
-          <div aria-live="polite" className="mt-8 space-y-4 break-words">
+          <div role="log" aria-label="Conversation with Arbor" aria-live="polite" className="chat-messages mt-8 space-y-4 break-words">
             {messages.map((message, index) =>
               message.role === "arbor" ? (
                 <ArborMessage key={index} text={message.text} />
               ) : (
                 <div key={index} className="chat-user">
-                  <p className="text-sm font-medium text-slate-500">You</p>
+                  <p className="sr-only">You</p>
 
                   <p className="mt-1 whitespace-pre-wrap leading-7 text-slate-700">
                     {message.text}
@@ -270,6 +258,7 @@ function PlanChat({ v2 }: { v2: boolean }) {
           </div>
         )}
       {messages.length > 0 && v2 && <nav aria-label="Explore your plan" className="mt-4 flex gap-5 text-sm"><a className="entry-link min-h-11" href="#portfolio/plan">View your plan</a><a className="entry-link min-h-11" href="#portfolio">View portfolio</a></nav>}
+      <div ref={bottom}/>
       {/* Input */}
       <div className="chat-composer">
         {error && error !== FREE_LIMIT_MESSAGE && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-red-800">{error}</p>}
@@ -286,7 +275,7 @@ function PlanChat({ v2 }: { v2: boolean }) {
           }}
           rows={1}
           disabled={loading || limited}
-          placeholder="Ask about your plan…"
+          placeholder="Ask Arbor…"
           className="
             w-full
             resize-none

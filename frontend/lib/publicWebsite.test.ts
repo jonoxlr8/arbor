@@ -25,7 +25,7 @@ test("public navigation preserves real auth links without fake checkout or broke
 });
 test("private beta copy reflects activated tracking without claiming broker sync", () => {
   assert.match(html,/Arbor Plus tracking is available in private beta/);
-  assert.match(html,/Monthly check-ins are available in private beta/);
+  assert.match(html,/Submit monthly contribution/);
   assert.match(html,/Your saved implementation choices organize the result/);
   assert.doesNotMatch(html,/Live Portfolio is not enabled|upcoming customization|when tracking is released/i);
 });
@@ -36,15 +36,15 @@ test("pricing is beta-free, future prices display only and Free explicitly at la
   assert.doesNotMatch(html,/Unlimited AI|limited time|countdown|discount|ACT NOW/i);
 });
 test("actual local product images are optimized, accessible and labeled illustrative", () => {
-  assert.equal((html.match(/<picture>/g) ?? []).length,12);
+  assert.equal((html.match(/<picture>/g) ?? []).length,13);
   assert.match(html,/srcSet=/); assert.match(html,/loading="lazy"/); assert.match(html,/fetchPriority="high"/);
   assert.match(html,/loading="eager"/);
-  assert.match(html,/<source media="\(max-width: 600px\)" srcSet="\/product\/premium\/home-mobile.webp"/);
+  assert.match(html,/<source media="\(max-width: 600px\)" srcSet="\/product\/vision\/home-mobile.webp"/);
   assert.doesNotMatch(html,/<img[^>]+alt=""/);
   assert.match(html,/Actual Arbor interface · Illustrative data/);
   assert.doesNotMatch(html,/Codex|@example\.com|sb_secret_|service_role/);
-  assert.match(html,/product%2Fpremium%2Fhome/);
-  for (const name of ['home','portfolio','ways','catalogue','holdings','allocation','ask','contribution','fund-value','settings','ask-desktop','customize','approaches','final-plan']) assert.ok(statSync(`public/product/premium/${name}.webp`).size<150_000);
+  assert.match(html,/product%2Fvision%2Fhome/);
+  for (const name of ['home','portfolio','ways','catalogue','holdings','allocation','ask','contribution','contribution-submit','fund-value','settings','ask-desktop','customize','approaches','final-plan']) assert.ok(statSync(`public/product/vision/${name}.webp`).size<150_000);
 });
 test("public ways reuse canonical providers and the current recording journey",()=>{
   const source=readFileSync('components/entry/PublicWebsite.tsx','utf8');
@@ -57,7 +57,7 @@ test("public ways reuse canonical providers and the current recording journey",(
   for(const id of ['ways-to-invest','record-investment'])assert.ok(html.includes(`id="${id}"`));
 });
 test("final product story preserves explicit optional choices and exact monthly amount semantics",()=>{
-  for(const text of ["Your core plan is complete as-is","None, 5% or 10%","Nothing is added for you","You review it, then confirm","exact amounts by provider","below a minimum visible","not that Arbor placed a trade or updated your holdings"])assert.ok(html.includes(text));
+  for(const text of ["Your core plan is complete as-is","None, 5% or 10%","Nothing is added for you","You review it, then confirm","exact amounts by provider","below a minimum visible","does not place trades or increase your portfolio value from a check-in"])assert.ok(html.includes(text));
   assert.match(html,/Optional customization · Included in Free/);
   assert.match(html,/id="customize-plan"/);
   assert.doesNotMatch(html,/automatically add|recommended provider|Bitcoin is required|broker sync is available/i);

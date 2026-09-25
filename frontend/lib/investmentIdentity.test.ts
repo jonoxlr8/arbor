@@ -102,7 +102,7 @@ test("Home shows only supplied history and labels undone records distinctly",()=
   const html=render(createElement(HomeActivity,{available:true,state:{month:"2026-09",current:row,history:[row]}}));
   assert.match(html,/₱5,000/);assert.match(html,/Holdings are tracked separately/);
   const undone=render(createElement(HomeActivity,{available:true,state:{month:"2026-09",current:null,history:[{...row,undone_at:"2026-09-25T08:00:00Z"}]}}));
-  assert.match(undone,/Check-in undone/);assert.doesNotMatch(undone,/Contribution recorded/);
+  assert.match(undone,/Contribution undone/);assert.doesNotMatch(undone,/Contribution recorded/);
 });
 test("price attribution stays visible while source explanation is disclosed",()=>{
   const source=readFileSync("components/portfolio/LivePortfolio.tsx","utf8");assert.match(source,/<\/details><DataAttribution/);assert.match(source,/About prices &amp; data/);

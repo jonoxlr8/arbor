@@ -1,4 +1,5 @@
 "use client";
+import ChangePassword from "./ChangePassword";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import AppShell from "./app/AppShell";
 import { AppearanceSettings } from "./app/Appearance";
@@ -71,6 +72,7 @@ export function V2Destination({ value, active, userId, section = "", onPlanChang
     <details id="section-plus" open={section === "plus"}><summary><SettingsIcon kind="plus"/><span>Arbor Plus<small className="block mt-1">{access?.value?.private_beta ? "Private Beta · Included for now" : access?.value?.effective_tier === "free" ? "Arbor Free · Explore Plus" : "Arbor Plus · Your access"}</small></span></summary><AccountPlans /></details>
     <p className="settings-group-label">Preferences</p>
     <AppearanceSettings />
+    {userId && <details><summary><SettingsIcon kind="account"/><span>Change password<small className="block mt-1">Account &amp; security</small></span></summary><ChangePassword userId={userId}/></details>}
     <details><summary><SettingsIcon kind="account"/><span>Account details</span></summary>
       <dl className="mt-4 space-y-3 text-sm text-slate-700">
         <div><dt>Name</dt><dd className="font-semibold">{value.profile.full_name}</dd></div>

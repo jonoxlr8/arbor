@@ -74,7 +74,7 @@ test("return flow calls existing recording action only when provided", () => {
   const value=plan();const off=render(createElement(PlanImplementation,{value}));
   assert.doesNotMatch(off,/Record investment/);
   const on=render(createElement(PlanImplementation,{value,onRecord(){}}));
-  assert.match(on,/Already invested/);assert.match(on,/\+ Record investment/);assert.match(on,/does not place trades/);
+  assert.match(on,/Already invested/);assert.match(on,/Use \+ Add Investment above/);assert.doesNotMatch(on,/\+ Record investment/);assert.match(on,/does not place trades/);
 });
 for(const plus of [false,true])for(const available of [false,true])test(`Portfolio access: plus ${plus}, availability ${available}`,()=>{
   const html=withAccess(plus,available,createElement(V2Destination,{value:plan(),userId:"test",active:"portfolio"}));
@@ -97,7 +97,7 @@ test("explicit final allocation drives Ways to invest without changing the core"
 });
 test("Portfolio primary tabs contain no monthly peer",()=>{
   const source=readFileSync("components/portfolio/LivePortfolio.tsx","utf8");
-  assert.match(source,/\["holdings", "allocation", "activity"\]/);
+  assert.match(source,/\["holdings", "performance", "allocation", "history"\]/);
   assert.doesNotMatch(source,/showContribution|ContributionCard/);
 });
 test("Home always includes Portfolio while off and Free never reads holdings",()=>{
