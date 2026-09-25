@@ -82,10 +82,23 @@ for(const plus of [false,true])for(const available of [false,true])test(`Portfol
   else {assert.match(html,/Ways to invest/);assert.match(html,/Open GFunds/);assert.doesNotMatch(html,/\+ Add Investment|Loading your portfolio/);}
   if(!plus)assert.match(html,/Explore Arbor Plus/);
 });
-test("feature-OFF Portfolio makes education primary and contribution secondary", () => {
+test("feature-OFF Portfolio keeps education primary; monthly investing belongs to Home", () => {
   const html=withAccess(true,false,createElement(V2Destination,{value:plan(),userId:"test",active:"portfolio"}));
-  assert.ok(html.indexOf("Ways to invest")<html.indexOf("Review this month"));
-  assert.match(html,/contribution-secondary/);assert.doesNotMatch(html,/Contribution amount \(PHP\)/);
+  assert.match(html,/Ways to invest/);
+  assert.doesNotMatch(html,/contribution-secondary|Contribution amount \(PHP\)|Review this month/);
+  const home=withAccess(true,false,createElement(V2Home,{value:plan(),userId:"test"}));
+  assert.match(home,/href="#home\/monthly"/);
+});
+test("explicit final allocation drives Ways to invest without changing the core",()=>{
+  const value=plan();if(value.plan.path!=="long_term")throw Error("Expected long term");
+  value.plan.final_allocation=[{role:"global_equity",percentage_points:80},{role:"technology_tilt",percentage_points:10},{role:"crypto",percentage_points:10},{role:"defensive",percentage_points:0}];
+  assert.deepEqual(implementationGroups(value).map(g=>g.role),["global_equity","technology_tilt","crypto"]);
+  assert.deepEqual(value.plan.base_allocation,[{role:"global_equity",percentage_points:80},{role:"defensive",percentage_points:20}]);
+});
+test("Portfolio primary tabs contain no monthly peer",()=>{
+  const source=readFileSync("components/portfolio/LivePortfolio.tsx","utf8");
+  assert.match(source,/\["holdings", "allocation", "activity"\]/);
+  assert.doesNotMatch(source,/showContribution|ContributionCard/);
 });
 test("Home always includes Portfolio while off and Free never reads holdings",()=>{
   for(const plus of [false,true]){

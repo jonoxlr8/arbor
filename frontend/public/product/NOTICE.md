@@ -1,5 +1,31 @@
 # Arbor product previews
 
+## Current completion-pass captures — September 25, 2026
+
+The active website now uses `completion/`: 17 WebPs totaling 381,032 bytes,
+plus a separate 211,350-byte PNG for the social-image renderer. They are actual
+captures of the current local UI, using neutral Alex fixture data and the
+unchanged supplied logos. Older image sets below remain historical only.
+
+The explicitly chosen target is 80% Global Equity / 10% Technology / 10% Bitcoin.
+The illustrative holdings total PHP 16,600: fund current value PHP 8,000, one VT
+share at PHP 5,600, and 0.001 BTC at PHP 3,000. For a planned PHP 10,000 contribution,
+the authoritative target-gap result is PHP 7,680 VT and PHP 2,320 VGT through
+Gotrade; no new amount is assigned to Bitcoin. The contribution crop is a provider
+summary, not the entire minimum-check screen or an instruction to trade.
+
+The one recorded PHP 8,000 history point came from the first real fixture holding
+save. It was not backfilled or changed to match the later current total. All test
+holdings were removed afterward; the guarded fixture uses process-local storage,
+not hosted financial/profile writes. No email or account identifier is in these
+public assets. Production was checked read-only: Live Portfolio OFF, Monthly
+Check-In ON. New local capabilities and gated tracking remain labeled previews.
+
+See `docs/FULL_PRODUCT_COMPLETION.md` for current evidence. The following account
+describes earlier captures and is not the current runtime/asset status.
+
+## Historical supplied-logo captures
+
 Refreshed with owner-supplied logos under `3ug1-supplied/` on September 25, 2026.
 Previous `3ug1/` captures are retained as earlier review artifacts, not used by
 the active public website. Captured from Arbor's existing authenticated interface on the

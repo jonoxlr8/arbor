@@ -157,7 +157,7 @@ test("v2 profile read preserves single auth refresh and rejects malformed succes
 test("onboarding keeps pending/cancellation guards and no browser persistence",()=>{
   const source=readFileSync("components/OnboardingV2.tsx","utf8");
   const selection=readFileSync("components/ApproachSelection.tsx","utf8");
-  assert.ok(selection.includes("saving.current"));
+  assert.ok(selection.includes("pending.current"));
   assert.ok(selection.includes("!controller.signal.aborted"));
   assert.ok(selection.includes("owner.current?.abort()"));
   assert.ok(source.includes("setStep(step - 1)"));

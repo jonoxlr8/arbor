@@ -26,7 +26,7 @@ def get_next_action(saved: dict | None, entitlements: Entitlements | None = None
                 destination="portfolio", button_label="Add holding")
         elif not portfolio.complete or portfolio.stale_count:
             action = NextAction(key="update_portfolio", title="Review portfolio data",
-                explanation="Some portfolio values are stale or unavailable. Review your records and update any fund values before calculating a contribution scenario.",
+                explanation="Some portfolio values need updating. Review your records before calculating this month’s contribution.",
                 destination="portfolio", button_label="Review portfolio")
     if entitlements is not None:
         if action.destination == "portfolio" and "monthly_contribution_planner" not in entitlements.features:
@@ -40,9 +40,9 @@ def get_next_action(saved: dict | None, entitlements: Entitlements | None = None
             from decimal import Decimal
             amount = Decimal(monthly["current"]["amount_php"])
             return NextAction(key="monthly_complete", title=f"You’re set for {label}",
-                explanation=f"You recorded ₱{amount:,.2f} as invested outside Arbor. Your holdings remain tracked separately. The next calendar month starts a new check-in (UTC).",
+                explanation=f"You recorded ₱{amount:,.2f} as invested outside Arbor. Your holdings remain tracked separately. Your next check-in starts next month.",
                 destination="portfolio", button_label="View your portfolio")
-        return action.model_copy(update={"title": f"{label} check-in", "explanation": "Review your plan and contribution scenario. If you invested outside Arbor, you can record it afterward. This check-in uses the UTC calendar month."})
+        return action.model_copy(update={"title": f"{label} check-in", "explanation": "Review this month’s contribution. Record completion after you invest through your providers."})
     return action
 
 
@@ -50,7 +50,7 @@ def _plan_action(saved: dict | None) -> NextAction:
     """Consume an owner-restored canonical response. None means verified absence.
 
     Corrupt records raise; they are not interpreted as new/incomplete profiles.
-    Implementation choices are not persisted, so no completion claim is made.
+    Investment choices do not imply that the user completed a contribution.
     """
     if saved is None:
         return NextAction(key="complete_profile", title="Complete your investment profile",
@@ -70,5 +70,5 @@ def _plan_action(saved: dict | None) -> NextAction:
             explanation="Your historical plan remains saved. Review it and compare standardized approaches before starting new contribution scenarios.",
             destination="investment_profile", button_label="Review existing plan")
     return NextAction(key="review_monthly_contribution", title="Review this month’s contribution",
-        explanation="Explore how a contribution could affect your selected targets. Implementation choices and current values are entered for each session; nothing is invested automatically.",
+        explanation="Review the contribution calculated for your chosen targets and investments. Nothing is invested automatically.",
         destination="portfolio", button_label="Review contribution")

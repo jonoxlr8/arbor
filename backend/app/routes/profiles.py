@@ -269,6 +269,17 @@ def explore_approaches(profile: ProfileV2Create, user_id: str = Depends(get_curr
                 for strategy in StrategyType]}
 
 
+@router.post("/v2/plan-preview")
+def preview_new_plan(profile: ProfileV2Create, user_id: str = Depends(get_current_user_id)):
+    """Backend-calculated final review before first save; no table access or writes."""
+    if profile.selected_approach is None:
+        raise HTTPException(422, "Choose an approach before previewing your plan.")
+    try:
+        return restore_profile_v2(profile_v2_row(profile, user_id))
+    except ValueError:
+        raise HTTPException(422, "Check your approach and optional Technology and Bitcoin choices.") from None
+
+
 @router.get("/v2/next-action", response_model=NextAction)
 def next_action(user_id: str = Depends(get_current_user_id), authorization: str | None = Header(default=None)):
     """One product action from the authenticated owner's saved plan."""
@@ -305,9 +316,11 @@ def choose_approach(profile: ProfileV2Create, user_id: str = Depends(get_current
         raise HTTPException(422, "Choose an approach before saving.")
     # Compatibility endpoint ignores client financial answers and shares the
     # owner-scoped, stale-write-safe path without dropping historical state.
+    customization = ({"explicit_customization": profile.explicit_customization}
+                     if profile.explicit_customization is not None else {})
     return _edit_profile_v2(ProfileV2Edit(
         inputs={key:saved["profile"][key] for key in ProfileV2Answers.model_fields},
-        proposed_approach=profile.selected_approach, expected_revision=saved["revision"]),
+        proposed_approach=profile.selected_approach, expected_revision=saved["revision"], **customization),
         user_id, authorization, save=True)
 
 

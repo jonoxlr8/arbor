@@ -1,5 +1,16 @@
 # Arbor consumer experience — 3U-E
 
+> **Current status — full product completion pass, 25 September 2026:** see
+> [FULL_PRODUCT_COMPLETION.md](FULL_PRODUCT_COMPLETION.md). The approved shell,
+> tokens and supplied-logo identity system are retained. The current local pass
+> adds explicit optional customization, saved implementation choices and a
+> Home-owned “Invest this month” experience; Portfolio no longer owns the monthly
+> workflow. Read-only production verification reports Live Portfolio OFF and
+> monthly check-in ON, without changing either flag. The earlier milestone
+> sections below are preserved as historical reports, not current activation
+> status or a list of still-missing assets. Final visual evidence for the current
+> pass is tracked in the completion report.
+
 Presentation redesign only. 3U-D first-run/monthly persistence and its hosted
 validation are complete; this milestone does not rebuild or revalidate storage.
 Production availability remains server-controlled and OFF for monthly check-in

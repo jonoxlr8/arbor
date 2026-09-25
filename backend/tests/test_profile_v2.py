@@ -157,7 +157,8 @@ def test_create_and_restore_paths_and_readiness(harness, horizon, risk, strategy
     assert response.status_code == 200, response.text
     result = response.json()
     assert result == client.get("/profiles/me", headers=HEADERS).json()
-    assert result["profile"] == {**payload, "saved_preferences": {"technology_tilt": 0, "bitcoin": 0}}
+    assert result["profile"] == {**payload, "saved_preferences": {"technology_tilt": 0, "bitcoin": 0},
+                                "explicit_customization": None, "implementation_choices": {}}
     assert result["strategy_engine_version"] == state["rows"]["A"]["strategy_engine_version"] == "2.0"
     assert result["plan"]["selected_strategy"] == strategy
     assert result["plan"]["readiness"]["readiness"] == state_name

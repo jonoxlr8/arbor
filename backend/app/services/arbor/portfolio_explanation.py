@@ -3,6 +3,8 @@ import re
 from app.services.live_portfolio import Portfolio
 
 LABELS = {"global_equity": "Global Equity", "defensive": "Defensive", "technology_tilt": "Technology", "crypto": "Bitcoin"}
+# Presentation aliases only; canonical provider IDs and valuation data stay unchanged.
+PROVIDER_DISPLAY_OVERRIDES = {"gcash": "GFunds", "gcrypto": "GCrypto"}
 
 
 def explain_portfolio(question: str, portfolio: Portfolio | None) -> str:
@@ -18,7 +20,8 @@ def explain_portfolio(question: str, portfolio: Portfolio | None) -> str:
         prefix += f"{portfolio.stale_count} holding(s) use clearly dated cached prices. "
     for holding in portfolio.holdings:
         if holding.valuation_source == "manual_user":
-            prefix += (f"You entered {holding.display_name}'s current value from {holding.provider_name} "
+            provider_name = PROVIDER_DISPLAY_OVERRIDES.get(holding.provider, holding.provider_name)
+            prefix += (f"You entered {holding.display_name}'s current value from {provider_name} "
                        f"as PHP {holding.value_php:,.2f} on {holding.as_of:%b %d, %Y}. "
                        "This is a manually updated holding value, not an official NAV. ")
             if holding.units is None:

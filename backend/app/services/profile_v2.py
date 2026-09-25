@@ -4,12 +4,14 @@ from app.schemas.profile_v2 import (
 )
 import hashlib
 import json
+from uuid import uuid4
 from app.services.portfolio_plan_v2 import build_portfolio_plan
 from app.services.strategy_v2 import StrategyType, SavedPreferences, get_base_strategy
 from app.services.preferences_v2 import apply_preferences
 from app.services.readiness_v2 import evaluate_readiness
 from app.services.strategy_selection_v2 import select_strategy
 from app.services.strategy_v2 import INFLATION_ANNUAL_RATE
+from app.services.plan_customization import PlanCustomization, explicit_target
 
 V2_ANSWER_FIELDS = ("emergency_savings", "high_interest_debt", "horizon", "risk_response")
 SHARED_FIELDS = ("full_name", "country", "currency", "goal_target",
@@ -23,6 +25,13 @@ def profile_v2_row(profile: ProfileV2Data, user_id: str) -> dict:
         inputs["saved_preferences"] = data["saved_preferences"]
     if profile.selected_approach is not None:
         inputs["selected_approach"] = data["selected_approach"]
+    if profile.explicit_customization is not None:
+        inputs["explicit_customization"] = data["explicit_customization"]
+        target = explicit_target(profile.selected_approach, profile.explicit_customization)
+        inputs["plan_state"] = ProfilePlanState(revision_nonce=uuid4().hex,
+            explicit_target=target, customization_provenance="user_selected").model_dump(mode="json", exclude_computed_fields=True)
+    if profile.implementation_choices or "implementation_choices" in profile.model_fields_set:
+        inputs["implementation_choices"] = data["implementation_choices"]
     return {"user_id": user_id, "strategy_engine_version": "2.0",
             **{key: data[key] for key in SHARED_FIELDS},
             "v2_inputs": inputs,
@@ -34,7 +43,8 @@ def profile_v2_row(profile: ProfileV2Data, user_id: str) -> dict:
 def restore_profile_v2(row: dict) -> dict:
     inputs = row.get("v2_inputs")
     if (not isinstance(inputs, dict) or not set(V2_ANSWER_FIELDS).issubset(inputs)
-            or set(inputs) - set(V2_ANSWER_FIELDS) - {"saved_preferences", "selected_approach", "plan_state"}
+            or set(inputs) - set(V2_ANSWER_FIELDS) - {"saved_preferences", "selected_approach", "plan_state",
+                                                    "explicit_customization", "implementation_choices"}
             or ("selected_approach" in inputs and inputs["selected_approach"] is None)):
         raise ValueError("Invalid saved v2 input shape")
     state = ProfilePlanState.model_validate(inputs["plan_state"]) if "plan_state" in inputs else None
@@ -43,6 +53,17 @@ def restore_profile_v2(row: dict) -> dict:
         **{key: row[key] for key in SHARED_FIELDS},
         **{k:v for k,v in inputs.items() if k != "plan_state"},
     })
+    customized = (explicit_target(profile.selected_approach, profile.explicit_customization)
+                  if profile.explicit_customization is not None else None)
+    # Do not trust a final allocation written directly to the profile JSON. It
+    # must agree with the backend calculation from the explicit saved choices.
+    if customized is not None:
+        if state is None or state.explicit_target != customized or state.customization_provenance != "user_selected":
+            raise ValueError("Saved customization does not match its canonical final allocation")
+    elif state is not None and (state.explicit_target is not None or state.customization_provenance is not None):
+        raise ValueError("Saved final allocation has no explicit choices")
+    customization = (PlanCustomization(**profile.explicit_customization.model_dump())
+                     if profile.explicit_customization is not None else None)
     revision = hashlib.sha256(json.dumps({"profile":profile.model_dump(mode="json"),
         "state":state.model_dump(mode="json") if state else None}, sort_keys=True).encode()).hexdigest()
     def response(plan):
@@ -58,7 +79,8 @@ def restore_profile_v2(row: dict) -> dict:
             chosen = None if profile.selected_approach == "short_term" else StrategyType(profile.selected_approach)
             short = selection.is_short_term or chosen is None
             common.update(plan_basis="user_selected", preference_result=apply_preferences(
-                None if short else chosen, readiness, SavedPreferences()))
+                None if short else chosen, readiness, SavedPreferences()), customization=customization,
+                final_allocation=list(customized.allocation.weights) if customized and not short else None)
             if short:
                 return response(ShortTermPlanDTO(**common, dormant_selected_approach=chosen))
             definition = get_base_strategy(chosen)

@@ -70,7 +70,8 @@ for (const enabled of [undefined, false, true]) test(`server availability ${enab
   assert.ok(isEntitlements(access));
   const markup=html(createElement(AccountAccessContext.Provider,{value:{value:access,error:"",retry:()=>{}}},
     createElement(V2Destination,{value,active:"portfolio",userId:"test",section:"contribution"})));
-  assert.equal(markup.includes("Hypothetical current values"),enabled!==true);
+  assert.doesNotMatch(markup,/Hypothetical current values/); // Monthly workflow now belongs to Home.
+  assert.equal(markup.includes("Loading your portfolio"),enabled===true);
   assert.doesNotMatch(markup,/Add holding|Explore Arbor Plus/);
   assert.equal(isEntitlements({...access,availability:{live_portfolio:"true"}}),false);
 });

@@ -42,8 +42,8 @@ export function providerDestination(provider: string): string | null {
 
 export function planTargets(value: PlanV2) {
   if (value.plan.path !== "long_term") return [];
-  const weights = value.plan.plan_basis === "user_selected" ? value.plan.base_allocation
-    : value.plan.preference_result?.effective_target?.allocation.weights ?? value.plan.base_allocation;
+  const weights = value.plan.final_allocation ?? (value.plan.plan_basis === "user_selected" ? value.plan.base_allocation
+    : value.plan.preference_result?.effective_target?.allocation.weights ?? value.plan.base_allocation);
   return weights.filter(weight => weight.percentage_points > 0);
 }
 

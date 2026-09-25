@@ -1,9 +1,10 @@
 """Explicit v2 onboarding boundary; no legacy request reinterpretation."""
 from typing import Annotated, Literal
-from pydantic import Field, StringConstraints, model_validator
+from pydantic import Field, StringConstraints, field_validator, model_validator
 
 from app.schemas.validation import Money, Goal
-from app.services.strategy_v2 import DomainModel, StrategyType, RoleWeight, SavedPreferences
+from app.services.strategy_v2 import AssetRole, DomainModel, EffectiveTargetAllocation, StrategyType, RoleWeight, SavedPreferences
+from app.services.plan_customization import ExplicitCustomization, PlanCustomization
 from app.services.preferences_v2 import PreferenceResult
 from app.services.readiness_v2 import EmergencySavings, HighInterestDebt, ReadinessResult
 from app.services.strategy_selection_v2 import HorizonBucket, RiskResponse, StrategySelectionResult
@@ -26,6 +27,20 @@ class ProfileV2Answers(DomainModel):
 class ProfileV2Data(ProfileV2Answers):
     saved_preferences: SavedPreferences = Field(default_factory=SavedPreferences)
     selected_approach: StrategyType | Literal["short_term"] | None = None
+    explicit_customization: ExplicitCustomization | None = None
+    implementation_choices: dict[AssetRole, str] = Field(default_factory=dict)
+
+    @field_validator("implementation_choices")
+    @classmethod
+    def supported_implementations(cls, value):
+        from app.services.implementation.choices import validate_implementation_choices
+        return validate_implementation_choices(value)
+
+    @model_validator(mode="after")
+    def explicit_plan_required(self):
+        if self.explicit_customization is not None and self.selected_approach in (None, "short_term"):
+            raise ValueError("Customization requires an explicitly selected long-term approach")
+        return self
 
 
 class ProfileV2Create(ProfileV2Data):
@@ -46,6 +61,8 @@ class PlanDTO(DomainModel):
     preference_result: PreferenceResult
     dormant_selected_approach: StrategyType | None = None
     historical_allocation_preserved: bool = False
+    customization: PlanCustomization | None = None
+    final_allocation: list[RoleWeight] | None = None
 
 
 class LongTermPlanDTO(PlanDTO):
@@ -69,6 +86,8 @@ class ProfilePlanState(DomainModel):
     """Server-only saved metadata. Never accepted as editable request fields."""
     historical_plan: PlanResponse | None = None
     revision_nonce: str
+    explicit_target: EffectiveTargetAllocation | None = None
+    customization_provenance: Literal["user_selected"] | None = None
 
 
 class ProfileV2Edit(DomainModel):
@@ -76,6 +95,14 @@ class ProfileV2Edit(DomainModel):
     # Null means retain the saved choice/snapshot, not choose from assessment.
     proposed_approach: StrategyType | Literal["short_term"] | None = None
     expected_revision: Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{64}$")]
+    explicit_customization: ExplicitCustomization | None = None
+
+    @field_validator("explicit_customization")
+    @classmethod
+    def explicit_reset(cls, value):
+        if value is None:
+            raise ValueError("Choose None for both sleeves to return to the core plan")
+        return value
 
 
 class ProfileV2Response(DomainModel):

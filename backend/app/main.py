@@ -12,6 +12,7 @@ from app.routes.contributions import router as contributions_router
 from app.routes.account import router as account_router
 from app.routes.live_portfolio import router as live_portfolio_router
 from app.routes.monthly_checkin import router as monthly_checkin_router
+from app.routes.monthly_plan import router as monthly_plan_router
 
 app = FastAPI()
 
@@ -30,6 +31,7 @@ app.include_router(contributions_router)
 app.include_router(account_router)
 app.include_router(live_portfolio_router)
 app.include_router(monthly_checkin_router)
+app.include_router(monthly_plan_router)
 
 
 @app.get("/")

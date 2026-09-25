@@ -28,6 +28,7 @@ def test_manual_value_questions_route_to_canonical_holdings(question):
     reply = explain_portfolio(question, result)
     assert "8,000.25" in reply and "Sep 24, 2026" in reply
     assert "not an official NAV" in reply and "does not currently have units" in reply
+    assert "from GFunds" in reply and "GCash /" not in reply
 
 
 @pytest.mark.parametrize("product", sorted(MANUAL_FUNDS))

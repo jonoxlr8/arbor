@@ -1,6 +1,6 @@
 "use client";
 import {useEffect, useRef, useState} from "react";
-import type {PlanV2, Strategy} from "@/lib/types/planV2";
+import type {ExplicitCustomization, PlanV2, Strategy} from "@/lib/types/planV2";
 import {ONBOARDING_STEPS, answerError} from "@/lib/onboardingV2";
 import {editAnswers, editInputs, EDIT_LABELS, displayAnswer, planChoiceLabel, editSaveLabel, profileEditRequest, type EditPreview, type EditRequest} from "@/lib/profileEditV2";
 import {approachRequest, getAccountProfile} from "@/lib/profileV2Api";
@@ -8,11 +8,13 @@ import {isPlanV2} from "@/lib/planV2";
 import {OnboardingQuestionV2} from "./OnboardingV2";
 import {ApproachOptions, validApproaches} from "./ApproachSelection";
 import {onboardingEnter} from "@/lib/onboardingKeyboard";
+import {CORE_CUSTOMIZATION, FinalPlanReview, PlanCustomization} from "./PlanCustomization";
+import {planTargets} from "@/lib/planImplementation";
 
 export function ProfileEditReview({preview}: {preview: EditPreview}) {
   const {current,proposed}=preview;
   const changes=ONBOARDING_STEPS.filter(field=>current.profile[field]!==proposed.profile[field]);
-  const weights=(value:PlanV2,role:string)=>value.plan.path==="short_term" ? "Not active" : `${value.plan.preference_result?.effective_target?.allocation.weights.find(w=>w.role===role)?.percentage_points ?? 0}%`;
+  const weights=(value:PlanV2,role:string)=>value.plan.path==="short_term" ? "Not active" : `${planTargets(value).find(w=>w.role===role)?.percentage_points ?? 0}%`;
   return <div className="space-y-5">
     <h2 className="text-2xl font-semibold text-slate-900">Review changes</h2>
     <p className="text-sm text-slate-600">Nothing has been saved. Your assessment describes your answers; it does not choose a plan.</p>
@@ -41,16 +43,30 @@ export function ProfileEditReview({preview}: {preview: EditPreview}) {
   </div>;
 }
 
-export default function InvestmentProfileEditor({value,userId,onCancel,onSaved}: {value:PlanV2;userId:string;onCancel:()=>void;onSaved:(value:PlanV2)=>void}) {
+export default function InvestmentProfileEditor({value,userId,onCancel,onSaved,initialMode="profile"}: {value:PlanV2;userId:string;onCancel:()=>void;onSaved:(value:PlanV2)=>void;initialMode?:"profile"|"plan"}) {
   const [answers,setAnswers]=useState(()=>editAnswers(value.profile));
   const [field,setField]=useState<typeof ONBOARDING_STEPS[number]|null>(null);
   const [preview,setPreview]=useState<EditPreview|null>(null);
   const [payload,setPayload]=useState<EditRequest|null>(null);
   const [options,setOptions]=useState<Parameters<typeof ApproachOptions>[0]["options"]|null>(null);
+  const [stage,setStage]=useState<"answers"|"profile-review"|"approach"|"customize"|"plan-review">(initialMode==="plan"?"approach":"answers");
+  const [selected,setSelected]=useState<Strategy|"short_term"|"">("");
+  const [customization,setCustomization]=useState<ExplicitCustomization>(()=>({...value.profile.explicit_customization??CORE_CUSTOMIZATION}));
+  const panel=useRef<HTMLElement|null>(null);
   const [error,setError]=useState("");
   const [busy,setBusy]=useState(false);
   const owner=useRef<AbortController|null>(null), pending=useRef(false);
   useEffect(()=>()=>owner.current?.abort(),[]);
+  useEffect(()=>{panel.current?.focus({preventScroll:true});panel.current?.scrollIntoView({block:"start",behavior:"instant"});},[stage]);
+  useEffect(()=>{
+    if(initialMode!=="plan")return;
+    const controller=new AbortController();owner.current=controller;
+    approachRequest("approaches",editInputs(editAnswers(value.profile)),userId,controller.signal).then(result=>{
+      if(!validApproaches(result))throw new Error("We couldn’t load the approaches. Please retry.");
+      if(!controller.signal.aborted)setOptions(result);
+    }).catch(error=>{if(!controller.signal.aborted)setError(error instanceof Error?error.message:"Please retry.");});
+    return()=>controller.abort();
+  },[initialMode,userId,value.profile]);
   async function work(action:(signal:AbortSignal)=>Promise<void>) {
     if(pending.current)return;
     pending.current=true;setBusy(true);setError("");
@@ -59,28 +75,28 @@ export default function InvestmentProfileEditor({value,userId,onCancel,onSaved}:
     catch(error){if(!controller.signal.aborted)setError(error instanceof Error ? error.message : "Please retry.");}
     finally{pending.current=false;if(!controller.signal.aborted)setBusy(false);}
   }
-  async function review(proposed:Strategy|"short_term"|null=null) {
+  async function review(proposed:Strategy|"short_term"|null=null, explicit?:ExplicitCustomization) {
     await work(async signal=>{
       if(!value.revision)throw new Error("Reload your saved profile before editing.");
-      const request:EditRequest={inputs:editInputs(answers),proposed_approach:proposed,expected_revision:value.revision};
+      const request:EditRequest={inputs:editInputs(answers),proposed_approach:proposed,expected_revision:value.revision,...(explicit?{explicit_customization:explicit}:{})};
       const result=await profileEditRequest(false,request,userId,signal) as EditPreview;
-      if(!signal.aborted){setPreview(result);setPayload(request);setOptions(null);}
+      if(!signal.aborted){setPreview(result);setPayload(request);setStage(proposed?"plan-review":"profile-review");}
     });
   }
   async function compare() {
     await work(async signal=>{
       const result=await approachRequest("approaches",editInputs(answers),userId,signal);
       if(!validApproaches(result))throw new Error("We couldn’t load the approaches. Please retry.");
-      if(!signal.aborted)setOptions(result);
+      if(!signal.aborted){setOptions(result);setSelected("");setStage("approach");}
     });
   }
   async function save() {
     if(!payload||!preview)return;
     await work(async signal=>{const result=await profileEditRequest(true,payload,userId,signal);if(!signal.aborted&&isPlanV2(result))onSaved(result);});
   }
-  return <section className="arbor-panel mx-auto w-full max-w-2xl" aria-label="Investment profile editor">
+  return <section ref={panel} tabIndex={-1} className="plan-choice" aria-label="Investment profile editor">
     <button type="button" disabled={busy} className="entry-link mb-4 min-h-11" onClick={onCancel}>Cancel editing</button>
-    {!preview ? <>
+    {stage==="answers" && <>
       <h2 className="text-2xl font-semibold text-slate-900">Review your investment profile</h2>
       <p className="mt-3 text-sm text-slate-600">Your current plan remains {planChoiceLabel(value)} unless you choose another approach. A short-term horizon pauses long-term allocations without deleting your saved choice.</p>
       {field ? <form className="mt-6" onSubmit={e=>{e.preventDefault();if(!answerError(field,answers[field]))setField(null);}} onKeyDown={e=>{
@@ -90,13 +106,29 @@ export default function InvestmentProfileEditor({value,userId,onCancel,onSaved}:
         <button disabled={!!answerError(field,answers[field])} className="entry-primary mt-5 w-full disabled:opacity-50">Done editing this answer</button>
       </form> : <><div className="mt-5 divide-y divide-slate-200">{ONBOARDING_STEPS.map(key=><button type="button" key={key} disabled={busy} onClick={()=>setField(key)} className="flex min-h-14 w-full flex-wrap items-center justify-between gap-2 py-3 text-left text-sm"><span className="font-medium text-slate-900">{EDIT_LABELS[key]}</span><span className="text-slate-600">{displayAnswer(key,answers[key])} <span aria-hidden="true">›</span></span></button>)}</div>
         <button type="button" disabled={busy} className="entry-primary mt-5 w-full disabled:opacity-50" onClick={()=>void review()}>Preview changes</button></>}
-    </> : <>
+    </>}
+    {stage==="profile-review" && preview && <>
       <ProfileEditReview preview={preview}/>
-      <div className="mt-5 flex flex-wrap gap-3"><button type="button" disabled={busy} className="entry-secondary" onClick={()=>{setPreview(null);setPayload(null);setOptions(null);}}>Edit answers</button>
+      <div className="mt-5 flex flex-wrap gap-3"><button type="button" disabled={busy} className="entry-secondary" onClick={()=>{setPreview(null);setPayload(null);setStage("answers");}}>Edit answers</button>
         <button type="button" disabled={busy} className="entry-secondary" onClick={()=>void review()}>Keep {planChoiceLabel(value)}</button>
         <button type="button" disabled={busy} className="entry-secondary" onClick={()=>void compare()}>Compare approaches</button></div>
-      {options && <div className="mt-6"><ApproachOptions options={options} selected={payload?.proposed_approach??""} onSelect={choice=>{if(!busy)void review(choice);}} /></div>}
-      {!options && <button type="button" disabled={busy} className="entry-primary mt-6 w-full whitespace-normal disabled:opacity-50" onClick={()=>void save()}>{editSaveLabel(preview)}</button>}
+      <button type="button" disabled={busy} className="entry-primary mt-6 w-full whitespace-normal disabled:opacity-50" onClick={()=>void save()}>{editSaveLabel(preview)}</button>
+    </>}
+    {stage==="approach" && <>
+      {options ? <fieldset disabled={busy} className="min-w-0"><ApproachOptions options={options} selected={selected} onSelect={choice=>{setSelected(choice);setPreview(null);setError("");}} />
+        <div className="choice-actions"><button type="button" disabled={!selected} className="entry-primary disabled:opacity-50" onClick={()=>selected==="short_term"?void review(selected):setStage("customize")}>{selected==="short_term"?"Review my plan":"Continue"}</button></div>
+      </fieldset> : !error && <p role="status">Loading approaches…</p>}
+      <button type="button" disabled={busy} className="entry-link mt-3 min-h-11" onClick={()=>setStage("answers")}>Review profile answers</button>
+      {!options&&error&&<button type="button" disabled={busy} className="entry-primary mt-3" onClick={()=>void compare()}>Retry</button>}
+    </>}
+    {stage==="customize" && selected && selected!=="short_term" && <>
+      <PlanCustomization approach={selected} value={customization} disabled={busy} onChange={choice=>{setCustomization(choice);setPreview(null);setError("");}}/>
+      <div className="choice-actions"><button type="button" disabled={busy} className="entry-primary" onClick={()=>void review(selected,customization)}>Review my plan</button><button type="button" disabled={busy} className="entry-link" onClick={()=>setStage("approach")}>Change approach</button></div>
+    </>}
+    {stage==="plan-review" && preview && <>
+      <FinalPlanReview value={preview.proposed}/>
+      <p className="choice-note">Nothing has been saved. Confirm to replace your current plan.</p>
+      <div className="choice-actions"><button type="button" disabled={busy} className="entry-primary" onClick={()=>void save()}>Use this as my plan</button><button type="button" disabled={busy} className="entry-link" onClick={()=>{setPreview(null);setPayload(null);setStage(selected==="short_term"?"approach":"customize");}}>Change choices</button></div>
     </>}
     {busy && <p role="status" className="mt-4 text-sm text-slate-600">Checking your changes…</p>}
     {error && <div className="mt-4"><p role="alert" className="text-sm text-slate-700">{error}</p><button type="button" disabled={busy} className="entry-link min-h-11" onClick={()=>void work(async signal=>{const saved=await getAccountProfile(userId,undefined,signal);if(saved&&isPlanV2(saved)&&!signal.aborted)onSaved(saved);})}>Reload saved profile (discard edits)</button></div>}

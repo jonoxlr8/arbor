@@ -16,6 +16,12 @@ export function isAccountPlan(body: unknown): body is AccountPlan {
 }
 export const getAccountProfile = createProfileReader<AccountPlan>(getAccessToken, fetch, 12000, isAccountPlan);
 
+export function isMatchingPlanPreview(body: unknown, input: ProfileV2Input): body is import("./types/planV2").PlanV2 {
+  return isPlanV2(body) && body.profile.selected_approach === input.selected_approach &&
+    (body.profile.explicit_customization?.technology_tilt ?? null) === (input.explicit_customization?.technology_tilt ?? null) &&
+    (body.profile.explicit_customization?.bitcoin ?? null) === (input.explicit_customization?.bitcoin ?? null);
+}
+
 export function createV2ProfileCreator(
   token = getAccessToken, request: typeof fetch = fetch,
   recover = getAccountProfile, timeoutMs = 12000,
@@ -54,14 +60,15 @@ export function createV2ProfileCreator(
 export const createV2Profile = createV2ProfileCreator();
 
 export function createApproachRequester(token = getAccessToken, request: typeof fetch = fetch) {
- return async (path: "approaches" | "profiles/approach", input: ProfileV2Input, userId: string, signal: AbortSignal): Promise<unknown> => boundedRequest(async active => {
+ return async (path: "approaches" | "plan-preview" | "profiles/approach", input: ProfileV2Input, userId: string, signal: AbortSignal): Promise<unknown> => boundedRequest(async active => {
     const accessToken = await token(userId);
     active.throwIfAborted();
     const response = await request(`${apiBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL, process.env.NODE_ENV)}/v2/${path}`, {
-      method: path === "approaches" ? "POST" : "PUT", signal: active,
+      method: path === "profiles/approach" ? "PUT" : "POST", signal: active,
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(input),
     });
     if (response.status === 401) throw new InvalidSessionError("Please sign in again to continue.");
+    if (response.status === 422) throw new Error("We couldn’t use those choices. Review your approach and optional exposure, then try again.");
     if (!response.ok) throw new Error("We couldn’t confirm this selection. Please retry or reload your saved plan.");
     return response.json();
   }, signal);

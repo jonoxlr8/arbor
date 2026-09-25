@@ -1,4 +1,7 @@
+"use client";
+import { useState } from "react";
 import type { PlanV2 } from "@/lib/types/planV2";
+import type { Sleeve } from "@/lib/types/contributions";
 import { implementationGroups, planTargets, providerDestination } from "@/lib/planImplementation";
 import { investmentIdentity, providerName } from "@/lib/investmentIdentity";
 import { SLEEVE_LABELS } from "@/lib/contributions";
@@ -6,6 +9,7 @@ import InvestmentIdentity from "../InvestmentIdentity";
 import ProviderIdentity from "../ProviderIdentity";
 import { sleeveColors } from "../AssetIdentity";
 import Allocation from "./Allocation";
+import ImplementationPicker from "./ImplementationPicker";
 
 export function TrackingAvailability({ plus }: { plus: boolean }) {
   return <div className="tracking-availability">
@@ -16,7 +20,8 @@ export function TrackingAvailability({ plus }: { plus: boolean }) {
   </div>;
 }
 
-export default function PlanImplementation({ value, onRecord, intro = true }: { value: PlanV2; onRecord?: () => void; intro?: boolean }) {
+export default function PlanImplementation({ value, onRecord, intro = true, userId, onPlanChange }: { value: PlanV2; onRecord?: () => void; intro?: boolean; userId?: string; onPlanChange?: (value: PlanV2) => void }) {
+  const [choosing,setChoosing]=useState<Sleeve|null>(null);
   const groups = implementationGroups(value);
   if (!groups.length) return null; // Foundation/short-term guidance remains upstream.
   return <section className="plan-implementation" aria-label="Ways to invest your plan">
@@ -31,6 +36,7 @@ export default function PlanImplementation({ value, onRecord, intro = true }: { 
     {value.plan.readiness.readiness === "getting_ready" && <p className="implementation-caution">Your readiness check flags a financial-foundation consideration. Review your saved plan before exploring a contribution.</p>}
     {groups.map(group => <section className="implementation-sleeve" key={group.role} data-sleeve={group.role}>
       <header><h3><span className="allocation-dot" style={{ background: sleeveColors[group.role] }}/>{SLEEVE_LABELS[group.role]}</h3><span>{group.percentage_points}% target</span></header>
+      {userId&&onPlanChange&&value.plan.plan_basis==="user_selected"&&<div className="implementation-saved-choice"><p>{value.profile.implementation_choices?.[group.role]?<>Your choice: <strong>{investmentIdentity(value.profile.implementation_choices[group.role]!).shortName}</strong></>:"No investment chosen yet"}</p><button className="entry-link" onClick={()=>setChoosing(group.role)}>{value.profile.implementation_choices?.[group.role]?"Change":"Choose investment"}</button></div>}
       <ul className="implementation-options">{group.options.map(option => {
         const identity = investmentIdentity(option.product);
         const href = providerDestination(option.provider);
@@ -48,5 +54,6 @@ export default function PlanImplementation({ value, onRecord, intro = true }: { 
     <div className="record-return"><div><h3>{onRecord ? "Already invested?" : "Your choices. Your provider."}</h3><p>You invest through your provider. Arbor does not place trades or move money.</p>{onRecord && <small>Come back to record what you own—not a broker transaction.</small>}</div>
       {onRecord && <button type="button" className="entry-primary" onClick={onRecord}>+ Record investment</button>}
     </div>
+    {choosing&&userId&&onPlanChange&&<ImplementationPicker value={value} userId={userId} sleeve={choosing} onClose={()=>setChoosing(null)} onSaved={onPlanChange}/>}
   </section>;
 }

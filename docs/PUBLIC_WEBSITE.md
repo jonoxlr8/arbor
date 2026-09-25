@@ -1,5 +1,15 @@
 # Public website and brand experience
 
+> **Current status — full product completion pass, 25 September 2026:** see
+> [FULL_PRODUCT_COMPLETION.md](FULL_PRODUCT_COMPLETION.md). The existing public
+> design is being synchronized with explicit optional customization, saved Ways
+> to invest choices and the Home-owned monthly breakdown, not redesigned again.
+> Production verification found monthly check-in ON and Live Portfolio OFF;
+> undeployed completion-pass screens are labeled as previews. Supplied logos remain
+> unchanged. Final refreshed-image inventory and validation totals belong to the
+> completion report; counts and image paths in the earlier reports below describe
+> historical capture batches and must not be presented as this pass's results.
+
 ## Supplied-logo follow-up (2026-09-25)
 
 The founder supplied nine PNGs and confirmed use unchanged. All primary provider

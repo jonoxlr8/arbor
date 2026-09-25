@@ -2,7 +2,7 @@
 from decimal import Decimal, localcontext
 
 from app.services.implementation.mapper import map_effective_target
-from .engine import TIE_PRIORITY, check_allocation_minimum, contribution_precision, recommend_next_contribution
+from .engine import TIE_PRIORITY, candidate_for_gap, check_allocation_minimum, contribution_precision, ordered_positive_gaps, recommend_next_contribution
 from .models import ContributionRequest
 from .plan_models import ContributionAllocation, ContributionPlan
 
@@ -66,8 +66,8 @@ def _plan(request):
     mapped = {item.sleeve: item for item in mapping.implementations}
     eligible = [(mapped[calc.sleeve], calc) for calc in single.calculations
                 if mapped[calc.sleeve].actionable and mapped[calc.sleeve].product.available_in_ph is not False]
-    positive = sorted((pair for pair in eligible if pair[1].deficit > 0),
-                      key=lambda pair: (-pair[1].deficit, TIE_PRIORITY.index(pair[0].sleeve)))
+    positive = [(mapped[calc.sleeve], calc) for calc in ordered_positive_gaps(
+        calc for _, calc in eligible)]
     remaining = request.contribution_amount
     allocations, blocked, filled = [], {}, set()
     # Known executable buys take precedence, but never exceed their deficit.
@@ -78,7 +78,7 @@ def _plan(request):
                 break
             if item.sleeve in filled:
                 continue
-            candidate = min(remaining, calc.deficit)
+            candidate = candidate_for_gap(remaining, calc)
             minimum = check_allocation_minimum(item.product, request, candidate)
             if minimum.status == "below_minimum":
                 blocked[item.sleeve] = _allocation(item, calc, candidate, minimum, "deficit_fill")

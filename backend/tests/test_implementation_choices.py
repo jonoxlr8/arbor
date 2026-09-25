@@ -107,13 +107,13 @@ def test_chat_does_not_rank_providers(question):
 
 def test_chat_choices_not_claimed_saved_and_selected_plan_independent():
     result = answer("Explain implementation options")
-    assert "GCash/GFunds, DragonFi and Gotrade" in result.reply
+    assert "GFunds, DragonFi and Gotrade" in result.reply
     assert "GCrypto, Coins.ph or PDAX" in result.reply
-    assert "No implementation route or product choice is saved" in result.reply
+    assert "No implementation product choice is saved" in result.reply
     value = saved(saved_preferences={"technology_tilt":20, "bitcoin":20})
     before = repr(value)
     assert value["plan"]["plan_basis"] == "user_selected"
-    # Provider choices never enter profile/plan persistence or the chat context adapter.
+    # Legacy stateless route previews do not persist their temporary choices.
     for route in ROUTES:
         body = payload(route=route, tech=0, btc=0)
         body["context"]["effective_target_allocation"] = value["plan"]["preference_result"]["effective_target"]

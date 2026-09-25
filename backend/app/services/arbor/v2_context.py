@@ -1,12 +1,13 @@
 """Allowlisted, in-memory context from get_my_profile, never from the chat body.
 
-No current holdings, scenario inputs, or implementation choices are persisted
-for V2. Their absence must not be filled from planning assumptions or targets.
+Current holdings and unsaved scenario inputs are not inferred from planning
+assumptions. Implementation choices and explicit customization are owner-saved.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 
 from app.services.strategy_v2 import Allocation, AssetRole, ReadinessState, StrategyType
+from app.services.plan_customization import canonical_target
 
 
 @dataclass(frozen=True)
@@ -31,6 +32,8 @@ class V2ChatContext:
     historical_effective: tuple[int, int] | None
     dormant_approach: StrategyType | None = None
     historical_preserved: bool = False
+    explicit_customization: tuple[int, int] | None = None
+    implementation_choices: dict[AssetRole, str] = field(default_factory=dict)
 
 
 def build_v2_context(saved: dict) -> V2ChatContext:
@@ -46,12 +49,8 @@ def build_v2_context(saved: dict) -> V2ChatContext:
     if basis == "user_selected" and profile.get("selected_approach") != (approach or dormant or "short_term"):
         raise ValueError("Inconsistent selected plan")
     target = None
-    preferences = plan["preference_result"]
     if path == "long_term":
-        # Explicit model choice is authoritative; historical requests cannot override it.
-        weights = (plan["base_allocation"] if basis == "user_selected" else
-                   preferences["effective_target"]["allocation"]["weights"])
-        target = Allocation.model_validate({"weights": weights})
+        target = canonical_target(plan)
     elif plan["selected_strategy"] is not None or plan["planning_return_pct"] is not None:
         raise ValueError("Inconsistent short-term plan")
     requests = profile.get("saved_preferences", {})
@@ -71,4 +70,9 @@ def build_v2_context(saved: dict) -> V2ChatContext:
         historical_effective=(target.weight(AssetRole.TECHNOLOGY_TILT), target.weight(AssetRole.CRYPTO))
         if basis == "historical_assessment" and target else None,
         dormant_approach=dormant, historical_preserved=plan.get("historical_allocation_preserved", False),
+        explicit_customization=((profile["explicit_customization"]["technology_tilt"],
+                                 profile["explicit_customization"]["bitcoin"])
+                                if profile.get("explicit_customization") is not None else None),
+        implementation_choices={AssetRole(role): product for role, product
+                                in profile.get("implementation_choices", {}).items()},
     )

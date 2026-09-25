@@ -76,4 +76,4 @@ def explain_monthly(state):
         return (f"For {state['month']} (UTC), you recorded a ₱{Decimal(current['amount_php']):,.2f} contribution as invested on "
                 f"{date}. This is your report of activity outside Arbor, not a verified trade. "
                 "Your holdings and portfolio history are tracked separately; this record does not update them.")
-    return f"No completed check-in is recorded for {state['month']} (UTC). Review your contribution scenario in Portfolio if you want to record activity completed outside Arbor. This is not an instruction to invest."
+    return f"No completed check-in is recorded for {state['month']} (UTC). Open Home → Invest this month to review your contribution and record activity completed outside Arbor. This is not an instruction to invest."

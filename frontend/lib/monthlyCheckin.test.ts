@@ -31,7 +31,7 @@ test("pending and complete copy distinguishes self-report from portfolio",()=>{
 test("first-run confirmation names user choice without assigning investments",()=>{
  const value=structuredClone(contributionFixture);value.plan.plan_basis="user_selected";
  const html=render(createElement(PlanCreated,{value,onContinue(){}}));
- assert.match(html,/Your plan is ready|You chose/);assert.match(html,/Go to Home/);assert.match(html,/does not place trades/);
+ assert.match(html,/Your plan is ready|You chose/);assert.match(html,/See ways to invest/);assert.match(html,/does not place trades/);
  value.plan.plan_basis="historical_assessment";
  assert.doesNotMatch(render(createElement(PlanCreated,{value,onContinue(){}})),/You chose/);
 });

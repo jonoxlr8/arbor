@@ -6,6 +6,9 @@ export type HighInterestDebt = "none" | "paying_down" | "difficult_to_manage" | 
 export type Horizon = "less_than_3_years" | "three_to_five_years" | "five_to_ten_years" | "ten_plus_years";
 export type RiskResponse = "sell_all" | "sell_some" | "hold" | "continue_investing" | "invest_more";
 export type SavedPreferences = { technology_tilt: number; bitcoin: number };
+export type ExplicitCustomization = { technology_tilt: 0 | 5 | 10; bitcoin: 0 | 5 | 10 };
+export type PlanRole = "global_equity" | "defensive" | "technology_tilt" | "crypto";
+export type RoleWeight = { role: PlanRole; percentage_points: number };
 export type PreferenceApplication = {
   requested_percentage_points: number; effective_percentage_points: number;
   strategy_cap_percentage_points: number | null;
@@ -23,8 +26,12 @@ export type ProfileV2Input = {
   horizon: Horizon; risk_response: RiskResponse;
   saved_preferences?: SavedPreferences;
   selected_approach?: Strategy | "short_term" | null;
+  explicit_customization?: ExplicitCustomization | null;
+  implementation_choices?: Partial<Record<PlanRole, string>>;
 };
 type PlanCommon = {
+  customization?: (ExplicitCustomization & { provenance: "user_selected" }) | null;
+  final_allocation?: RoleWeight[] | null;
   dormant_selected_approach?: Strategy | null;
   historical_allocation_preserved?: boolean;
   plan_basis?: "historical_assessment" | "user_selected";

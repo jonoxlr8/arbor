@@ -23,8 +23,8 @@ class V2ChatReply(BaseModel):
 
 SCOPE = "I’m here to help with your Arbor investment plan, portfolio, goals and how Arbor works. Try asking me to explain your plan."
 DECISION = "You make the investment decisions. I can explain your selected targets and factual implementation options, but I don’t choose securities or providers for you or give buy, sell, hold or market-timing instructions."
-ACTUAL = "Your plan targets are not actual holdings. Arbor does not yet have saved current holding values for this plan, so I can’t determine ownership, performance or current target gaps. In Portfolio, the Monthly Contribution Planner can explore scenarios using the current sleeve values you enter; those values are not saved holdings."
-IMPLEMENTATION = "No implementation route or product choice is saved in your V2 plan. Temporary choices in the Monthly Contribution Planner are not available to this chat. You choose implementation options in Portfolio; I don’t select or rank them for you."
+ACTUAL = "Your plan targets are not actual holdings. Arbor does not yet have saved current holding values for this plan, so I can’t determine ownership, performance or current target gaps. On Home, Invest this month can calculate a breakdown using the current sleeve values you enter; those values are not saved holdings."
+IMPLEMENTATION = "No implementation product choice is saved in your plan yet. In Portfolio, Ways to invest shows neutral options for your active targets. You choose; I don’t select or rank providers for you."
 HORIZONS = {"less_than_3_years": "less than 3 years", "three_to_five_years": "3–5 years", "five_to_ten_years": "5–10 years", "ten_plus_years": "10+ years"}
 ROLES = {
     AssetRole.GLOBAL_EQUITY: ("Global Equity", r"global equity|global equities|stocks|equity", "Global equity spreads stock exposure across companies and markets. Its value can fluctuate substantially; diversification does not prevent losses."),
@@ -40,6 +40,8 @@ def classify_v2_question(question: str) -> tuple[str, str]:
     # Out-of-scope tasks win even when mixed with investment keywords.
     if has(r"\b(python|javascript|code|coding|recipe|cook|vacation|travel|basketball|football|trivia|poem|joke)\b|ignore.*instructions|system prompt"):
         return "out_of_scope", "out_of_scope"
+    if has(r"how much.*invest.*(?:this month|monthly)|how (?:was|is).*contribution.*calculated|why.*amount.*(?:global equity|technology|bitcoin|defensive)|why.*(?:technology|bitcoin|global equity|defensive).*minimum"):
+        return "investment", "monthly_plan"
     if has(r"\b(buy|sell|hold|switch|recommend|best|suitable|undervalued|overvalued)\b|should i (invest|use)|which.*(choose|pick|should i use)|better for (me|my)"):
         if has(r"(buy|invest).*(month|contribut)|what should i buy"):
             return "investment", "contribution"
@@ -58,6 +60,8 @@ def classify_v2_question(question: str) -> tuple[str, str]:
         return "investment", "assumptions"
     if has(r"contribut|planner"):
         return ("product_support" if has(r"how.*work") else "investment"), "contribution"
+    if has(r"where can i invest|ways to invest|investment choices"):
+        return "investment", "implementation"
     if has(r"overlap"):
         return "investment", "overlap"
     if has(r"^what is my portfolio worth(?: now| today)?\??$|^how is my fund valued\??$"):
@@ -103,29 +107,38 @@ def readiness(c: V2ChatContext) -> str:
 
 
 def explain(c: V2ChatContext, question: str, intent: str) -> str:
+    if intent == "monthly_plan":
+        if c.path == "short_term": return "Your short-term path has no long-term monthly investment plan."
+        if not c.contributions_allowed: return readiness(c)
+        return "Open Invest this month on Home. I need the saved targets, your chosen investments and complete current portfolio values to explain the deterministic monthly calculation. I won’t infer current values from planning assumptions."
     if intent == "monthly_checkin": return "Monthly activity is separate from your holdings. I need your saved check-in record to explain completion."
     if intent == "out_of_scope": return SCOPE
     if intent == "decision_boundary": return DECISION
     if intent == "plus": return "I don’t have a confirmed Arbor Plus feature or pricing contract to explain. I can help with the plan and planning tools currently available in Arbor."
     if intent == "change_plan": return "Open Plan or Settings, then Edit investment profile. Preview your changes, keep your current plan or compare standardized approaches, and explicitly save. Your assessment does not choose or replace your plan."
     if intent == "holdings_help": return ACTUAL
-    if intent == "help": return "Ask me about your saved plan, targets, assessment or planning assumptions. Portfolio contains the Monthly Contribution Planner; Plan lets you explore approaches. Each question stands alone."
+    if intent == "help": return "Ask me about your saved plan, targets, assessment or planning assumptions. Home contains Invest this month; Portfolio shows Ways to invest and your recorded holdings. Each question stands alone."
     if intent == "actual_holdings": return ACTUAL
     if intent == "overlap": return "I can’t measure overlap in your actual portfolio. No implementation products or current holdings are saved for this V2 chat; asset-class targets alone do not identify fund constituents. I can describe catalog products factually if you name them, without treating them as holdings."
     if intent == "contribution":
         if c.path == "short_term": return "Your short-term path has no active long-term allocation. Long-term contribution scenarios are paused. You can review your investment profile in Plan; this chat does not choose a product."
         if not c.contributions_allowed: return readiness(c) + " No product purchase is proposed."
         if c.plan_basis != "user_selected": return identity(c) + " New contribution scenarios require an explicit plan choice."
-        return "In Portfolio, open the Monthly Contribution Planner. Enter current sleeve values and a contribution amount, choose a route, confirm the implementation options and declare product ownership. The deterministic engine calculates a target-alignment scenario and minimum conditions—not an instruction to trade. I cannot calculate a current gap from targets alone, and I cannot see temporary scenario results. Nothing is invested or saved as a transaction."
+        return "On Home, open Invest this month. Your current sleeve values come from recorded holdings when available; otherwise enter them explicitly. You choose an investment for each target sleeve. Arbor calculates amounts from target gaps and checks known minimums—not an instruction to trade. I cannot calculate a current gap from targets alone or see an unsaved amount edited in the monthly view. Nothing is invested or saved as a transaction."
     if intent == "readiness": return readiness(c)
     if intent == "assessment":
         check = c.horizon_assessment.value if c.horizon_assessment else "a short-term path"
         return f"Your recorded reaction corresponds to {c.assessment.value} volatility comfort. The informational horizon check returned {check} for {HORIZONS[c.horizon]}. " + identity(c)
     if intent == "preferences":
+        explicit = getattr(c, "explicit_customization", None)
+        if explicit is not None and not re.search(r"historical|earlier", question, re.I):
+            return f"You explicitly chose Technology {explicit[0]}% and Bitcoin {explicit[1]}%. These optional choices came from Global Equity only; Defensive stayed unchanged. Arbor did not choose them. Your earlier saved preference requests remain separate."
         tech, btc = c.historical_requests
         if c.plan_basis == "user_selected" and not (tech or btc):
             return "Your selected standardized approach defines your targets. Technology and Bitcoin are not added automatically. No non-zero historical preference requests are recorded."
         result = f"Your saved earlier preference requests are Technology {tech}% and Bitcoin {btc}%. These are requests, not actual holdings. "
+        if c.plan_basis == "user_selected" and explicit is not None:
+            return result + f"Those historical requests do not apply to your current explicit choices: Technology {explicit[0]}% and Bitcoin {explicit[1]}%. Your saved earlier requests have not been overwritten."
         if c.plan_basis == "user_selected": return result + "They do not apply to your selected standardized model, which has no Technology or Bitcoin satellites. Your saved requests have not been overwritten."
         if c.historical_effective:
             tech, btc = c.historical_effective
@@ -137,13 +150,20 @@ def explain(c: V2ChatContext, question: str, intent: str) -> str:
         # Only named catalog products; never invoke a mapper or infer selections.
         matches = [p for p in PRODUCTS.values() if re.search(r"(?<!\w)" + re.escape(p.display_name) + r"(?!\w)", question, re.I)]
         facts = "\n".join(f"- {p.display_name}: {ROLES[p.sleeve][0]} catalog sleeve; provider {p.provider}; platform {p.platform}; currency {p.currency or 'not specified'}. " + " ".join(p.eligibility_notes) for p in matches)
-        return IMPLEMENTATION + ("\n\nCatalog facts, not personalized selections:\n" + facts if facts else " Beginner non-Bitcoin options are GCash/GFunds, DragonFi and Gotrade. Bitcoin choices are independently GCrypto, Coins.ph or PDAX; none is selected automatically. These choices do not change your plan targets. Interactive Brokers remains an advanced/internal catalog option, not part of the beginner selection flow.") + "\n\nCatalog information is static; confirm current terms in the provider app. This chat does not verify fees, live availability or order minimums."
+        choices = getattr(c, "implementation_choices", {})
+        chosen = [f"{ROLES[AssetRole(role)][0]}: {PRODUCTS[product].display_name} through {PRODUCTS[product].platform}"
+                  for role, product in choices.items() if c.target and c.target.weight(AssetRole(role)) > 0]
+        introduction = ("You chose these investments: " + "; ".join(chosen) + ". Your targets do not change when you change provider. "
+                        "Open Portfolio → Ways to invest to review choices and official provider links. Arbor does not rank providers.") if chosen else IMPLEMENTATION
+        return introduction + ("\n\nCatalog facts, not personalized selections:\n" + facts if facts else " Supported non-Bitcoin options are GFunds, DragonFi and Gotrade. Bitcoin choices are independently GCrypto, Coins.ph or PDAX; none is selected automatically. These choices do not change your plan targets.") + "\n\nCatalog information is static; confirm current terms in the provider app. Arbor does not place trades."
     assumptions = f"Saved horizon: {HORIZONS[c.horizon]}. Starting balance assumption: {c.currency} {c.starting_assumption:,.2f}. Monthly contribution assumption: {c.currency} {c.monthly_assumption:,.2f}. " + (f"Goal in today’s {c.currency}: {c.goal:,.2f}." if c.goal is not None else "No goal amount is saved.")
     if intent == "assumptions": return assumptions + " These are planning inputs, not current portfolio values or transactions."
     if intent == "projection":
         if c.path == "short_term": return "Your short-term path has no long-term planning return or allocation. I won’t invent a projection or convert it to Conservative. " + assumptions
         return f"Your plan uses a {c.planning_return_pct:g}% nominal annual effective planning return and {c.inflation_pct:g}% inflation assumption. These are hypothetical assumptions, not forecasts or guarantees. " + assumptions + " No saved projected balance or requested what-if result is available to this chat. I haven’t calculated a new result or determined whether your goal will be reached."
     if not c.target: return identity(c) + " There is no long-term target allocation or planning return for this path. " + readiness(c)
+    if re.search(r"do i need (?:bitcoin|btc)|is (?:bitcoin|btc) (?:required|necessary)", question, re.I):
+        return "No. Bitcoin is optional and is not required for a complete long-term plan. You decide whether to include it; Arbor does not add it automatically. Its price can fluctuate sharply."
     roles = [role for role, (_, pattern, _) in ROLES.items() if re.search(pattern, question, re.I)]
     lines = []
     for role in roles or ROLES:
@@ -152,6 +172,8 @@ def explain(c: V2ChatContext, question: str, intent: str) -> str:
         explanation = purpose if weight else "This plan does not allocate to this sleeve."
         if role == AssetRole.TECHNOLOGY_TILT:
             explanation += " Broad equity investments can already include technology companies. A dedicated Technology sleeve adds extra concentration."
+        if role in (AssetRole.TECHNOLOGY_TILT, AssetRole.CRYPTO) and weight and getattr(c, "explicit_customization", None) is not None:
+            explanation += " You explicitly added this exposure from Global Equity. Arbor did not choose it for you."
         if role == AssetRole.CRYPTO and not weight:
             explanation += " Bitcoin is not automatically added to a standardized plan. Its price can be highly volatile; owning it is a separate user decision."
         lines.append(f"- {label}: {weight}% target. " + explanation)
@@ -167,10 +189,11 @@ def explain_v2(question: str, saved: dict, entitlements: Entitlements | None = N
         from app.services.next_action import get_next_action
         action = get_next_action(saved, entitlements)
         locations = {"investment_profile": "Plan → Edit investment profile", "plan": "Plan",
-                     "portfolio": "Portfolio → Monthly Contribution Planner", "onboarding": "onboarding", "settings": "Settings → Arbor Plus"}
-        return V2ChatReply(reply=f"{action.title}. {action.explanation} Open {locations[action.destination]}.",
+                     "portfolio": "Portfolio", "onboarding": "onboarding", "settings": "Settings → Arbor Plus"}
+        location = "Home → Invest this month" if action.key == "review_monthly_contribution" and action.destination == "portfolio" else locations[action.destination]
+        return V2ChatReply(reply=f"{action.title}. {action.explanation} Open {location}.",
                           category=category, intent=intent)
     reply = explain(context, question, intent)
-    if entitlements is not None and entitlements.effective_tier == "free" and intent in ("contribution", "change_plan", "help"):
-        reply += " Monthly Contribution Planner and profile editing are Plus capabilities. You can explore Arbor Plus in Settings; your basic saved plan remains available on Free."
+    if entitlements is not None and entitlements.effective_tier == "free" and intent in ("contribution", "monthly_plan", "change_plan", "help"):
+        reply += " Monthly contribution planning and profile editing are Plus capabilities. You can explore Arbor Plus in Settings; your basic saved plan remains available on Free."
     return V2ChatReply(reply=reply, category=category, intent=intent)

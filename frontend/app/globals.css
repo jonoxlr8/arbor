@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "./consumer.css";
 @import "./investing.css";
+@import "./plan-choice.css";
+@import "./monthly-investing.css";
 @import "./marketing.css";
 
 :root {

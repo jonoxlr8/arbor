@@ -92,7 +92,7 @@ export default function OnboardingV2({ userId, onComplete, onSignOut, signingOut
           <OnboardingQuestionV2 field={field} value={answers[field]} onChange={value => setAnswers(previous => ({ ...previous, [field]: value }))} />
           {field === "goal_target" && <button type="button" onClick={() => { setAnswers(a => ({ ...a, goal_target: "" })); setStep(step + 1); }} className="mt-3 min-h-11 text-sm font-medium text-emerald-700">Not yet</button>}
           <button type="submit" disabled={!valid} className="mt-6 min-h-12 w-full rounded-2xl bg-emerald-700 px-4 py-3 font-semibold text-white disabled:opacity-50">
-            {step === steps.length - 1 ? "Review approaches" : "Continue →"}
+            {step === steps.length - 1 ? "See my investing profile" : "Continue →"}
           </button>
         </fieldset>
       </form>

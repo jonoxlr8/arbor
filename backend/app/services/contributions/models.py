@@ -34,10 +34,14 @@ class CurrentPortfolio(DomainModel):
         return getattr(self, role.value)
 
 
-class ContributionRequest(DomainModel):
+class MinimumInputs(DomainModel):
+    """The unchanged minimum checker needs amounts/ownership, not a route choice."""
     contribution_amount: NonNegative
     contribution_currency: Currency
     current_portfolio: CurrentPortfolio
+
+
+class ContributionRequest(MinimumInputs):
     context: MappingInput
     readiness_inputs: ReadinessInputs
 

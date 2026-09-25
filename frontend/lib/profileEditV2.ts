@@ -1,4 +1,4 @@
-import type { PlanV2, ProfileV2Input, Strategy } from "./types/planV2";
+import type { ExplicitCustomization, PlanV2, ProfileV2Input, Strategy } from "./types/planV2";
 import { ONBOARDING_STEPS, EMPTY_ANSWERS, onboardingRequest, SAVINGS_OPTIONS, DEBT_OPTIONS, HORIZON_OPTIONS, RISK_OPTIONS, type Answers } from "./onboardingV2";
 import { getAccessToken } from "./auth";
 import { apiBaseUrl } from "./apiConfig";
@@ -6,8 +6,8 @@ import { boundedRequest } from "./dashboardConsistency";
 import { InvalidSessionError } from "./accountRecovery";
 import { isPlanV2 } from "./planV2";
 
-export type EditInputs = Omit<ProfileV2Input, "selected_approach" | "saved_preferences">;
-export type EditRequest = {inputs: EditInputs; proposed_approach: Strategy | "short_term" | null; expected_revision: string};
+export type EditInputs = Omit<ProfileV2Input, "selected_approach" | "saved_preferences" | "explicit_customization" | "implementation_choices">;
+export type EditRequest = {inputs: EditInputs; proposed_approach: Strategy | "short_term" | null; expected_revision: string; explicit_customization?: ExplicitCustomization};
 export type EditPreview = {current: PlanV2; proposed: PlanV2};
 export const EDIT_LABELS: Record<typeof ONBOARDING_STEPS[number], string> = {
   full_name:"Name", country:"Country", emergency_savings:"Emergency savings", high_interest_debt:"High-interest debt",
@@ -36,7 +36,8 @@ export function planChoiceLabel(value: PlanV2): string {
 export function editSaveLabel(preview: EditPreview) {
   const before = preview.current.profile.selected_approach;
   const after = preview.proposed.profile.selected_approach;
-  return after && after !== before ? `Save changes and use ${after === "short_term" ? "the short-term path" : after} as my plan` : "Save profile changes";
+  const customized = JSON.stringify(preview.current.profile.explicit_customization ?? null) !== JSON.stringify(preview.proposed.profile.explicit_customization ?? null);
+  return after && (after !== before || customized) ? `Save changes and use ${after === "short_term" ? "the short-term path" : after} as my plan` : "Save profile changes";
 }
 export function createProfileEditRequester(token = getAccessToken, request: typeof fetch = fetch) {
   return async (save: boolean, payload: EditRequest, userId: string, signal: AbortSignal): Promise<EditPreview | PlanV2> => boundedRequest(async active=>{

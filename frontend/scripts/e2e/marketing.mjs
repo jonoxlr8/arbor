@@ -5,7 +5,7 @@ import {chromium} from 'playwright';
 
 const base=process.env.ARBOR_PUBLIC_QA_URL ?? 'http://localhost:3000';
 assert.ok(['localhost','127.0.0.1'].includes(new URL(base).hostname),'Local validation only');
-const output='/tmp/arbor-3ug1-public'; await mkdir(output,{recursive:true});
+const output='/tmp/arbor-completion-public'; await mkdir(output,{recursive:true});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 let shots=0,errors=0,consoleErrors=0,forbiddenRequests=0,stage='load';
 const page=await browser.newPage();
@@ -36,7 +36,7 @@ try {
     await imagesReady();await page.evaluate(()=>scrollTo(0,0));
     await capture(`homepage-${width}-${theme}`);
     if([1440,390].includes(width)){
-      for(const [name,selector] of [['hero','.m-hero'],['portfolio','#product-portfolio'],['ways','#ways-to-invest'],['catalogue','#record-investment'],['monthly','#monthly-contribution'],['ask','#ask-arbor'],['pricing','#pricing'],['faq','#faq'],['footer','.m-footer']]) await capture(`${name}-${width}-${theme}`,page.locator(selector));
+      for(const [name,selector] of [['hero','.m-hero'],['onboarding','#customize-plan'],['portfolio','#product-portfolio'],['ways','#ways-to-invest'],['catalogue','#record-investment'],['monthly','#monthly-contribution'],['ask','#ask-arbor'],['pricing','#pricing'],['faq','#faq'],['footer','.m-footer']]) await capture(`${name}-${width}-${theme}`,page.locator(selector));
     }
     if(width<=900){
       await page.evaluate(()=>scrollTo(0,0));await page.getByRole('button',{name:'Open menu'}).click();

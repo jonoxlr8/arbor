@@ -84,6 +84,7 @@ def test_actual_values_never_inferred(question):
     result = answer(question, current_portfolio_value=987654)
     assert result.intent == "actual_holdings"
     assert "not actual holdings" in result.reply
+    assert "On Home, Invest this month" in result.reply
     assert "987" not in result.reply
 
 
@@ -147,7 +148,7 @@ def test_projection_uses_only_saved_assumptions():
 def test_catalog_facts_not_mapping_or_current_selection():
     result = answer("What is the difference between VT and VGT?").reply
     assert "VT: Global Equity" in result and "VGT: Technology" in result
-    assert "No implementation route or product choice is saved" in result
+    assert "No implementation product choice is saved" in result
     assert "affiliate" not in result and "revenue" not in result
     assert "No implementation products" in answer("Do my holdings overlap?").reply
 

@@ -23,11 +23,13 @@ test("public navigation preserves real auth links without fake checkout or broke
   assert.doesNotMatch(html,/href="(?:#checkout|\/checkout|\/privacy|\/terms)"/);
   assert.doesNotMatch(html,/Connect broker|Buy now|Subscribe now|Start your trial/);
 });
-test("gated previews are distinguished from available contribution planning", () => {
+test("gated tracking and new product previews are distinct from hosted monthly check-ins", () => {
   assert.match(html,/Live Portfolio is not enabled in the current public beta/);
-  assert.match(html,/Monthly check-in recording is a preview/);
-  assert.match(html,/Available now with manual inputs/);
-  assert.match(html,/Portfolio tracking and monthly check-ins are previews, not yet enabled/);
+  assert.match(html,/Monthly check-ins are available in private beta/);
+  assert.match(html,/available now with manual inputs/);
+  assert.match(html,/Portfolio tracking is a product preview/);
+  assert.match(html,/Saved implementation choices and this refined breakdown are part of the product preview/);
+  assert.doesNotMatch(html,/Monthly check-in recording is a preview|monthly check-ins are previews, not yet enabled/);
 });
 test("pricing is beta-free, future prices display only and Free explicitly at launch", () => {
   assert.match(html,/Arbor Free · At launch/); assert.match(html,/₱399\/month/); assert.match(html,/₱3,990\/year/);
@@ -36,15 +38,15 @@ test("pricing is beta-free, future prices display only and Free explicitly at la
   assert.doesNotMatch(html,/Unlimited AI|limited time|countdown|discount|ACT NOW/i);
 });
 test("actual local product images are optimized, accessible and labeled illustrative", () => {
-  assert.equal((html.match(/<picture>/g) ?? []).length,9);
+  assert.equal((html.match(/<picture>/g) ?? []).length,10);
   assert.match(html,/srcSet=/); assert.match(html,/loading="lazy"/); assert.match(html,/fetchPriority="high"/);
   assert.match(html,/loading="eager"/);
-  assert.match(html,/<source media="\(max-width: 600px\)" srcSet="\/product\/3ug1-supplied\/home-mobile.webp"/);
+  assert.match(html,/<source media="\(max-width: 600px\)" srcSet="\/product\/completion\/home-mobile.webp"/);
   assert.doesNotMatch(html,/<img[^>]+alt=""/);
   assert.match(html,/Actual Arbor interface · Illustrative data/);
   assert.doesNotMatch(html,/Codex|@example\.com|sb_secret_|service_role/);
-  assert.match(html,/product%2F3ug1-supplied%2Fhome/);
-  for (const name of ['home','portfolio','ways','catalogue','holdings','allocation','ask','contribution','fund-value','settings','ask-desktop']) assert.ok(statSync(`public/product/3ug1-supplied/${name}.webp`).size<150_000);
+  assert.match(html,/product%2Fcompletion%2Fhome/);
+  for (const name of ['home','portfolio','ways','catalogue','holdings','allocation','ask','contribution','fund-value','settings','ask-desktop','customize']) assert.ok(statSync(`public/product/completion/${name}.webp`).size<150_000);
 });
 test("public ways reuse canonical providers and the current recording journey",()=>{
   const source=readFileSync('components/entry/PublicWebsite.tsx','utf8');
@@ -55,6 +57,12 @@ test("public ways reuse canonical providers and the current recording journey",(
   assert.match(html,/holding record—not a purchase/);
   assert.match(html,/target="_blank" rel="noopener noreferrer"/);
   for(const id of ['ways-to-invest','record-investment'])assert.ok(html.includes(`id="${id}"`));
+});
+test("final product story preserves explicit optional choices and exact monthly amount semantics",()=>{
+  for(const text of ["Your core plan is complete as-is","None, 5% or 10%","Nothing is added for you","You review it, then confirm","exact amounts by provider","below a minimum visible","not that Arbor placed a trade or updated your holdings"])assert.ok(html.includes(text));
+  assert.match(html,/Optional customization · Included in Free/);
+  assert.match(html,/id="customize-plan"/);
+  assert.doesNotMatch(html,/automatically add|recommended provider|Bitcoin is required|broker sync is available/i);
 });
 test("identity metadata is reused with clear provider names and non-endorsement", () => {
   for (const name of ['GFunds','Gotrade','DragonFi','GCrypto','Coins.ph','PDAX']) assert.ok(html.includes(name));

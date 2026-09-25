@@ -40,8 +40,18 @@ def chat(request: ChatRequest, user_id: str = Depends(get_current_user_id), auth
             result = explain_v2(request.message, plan, entitlements).model_dump()
             intent = result["intent"]
             portfolio = None
+            if intent == "monthly_plan" and "monthly_contribution_planner" in entitlements.features:
+                from app.routes.monthly_plan import owner_monthly_plan
+                from app.services.monthly_plan import explain_monthly_plan
+                try:
+                    monthly_plan = owner_monthly_plan(user_id, authorization, saved=plan)
+                    result["reply"] = explain_monthly_plan(request.message, monthly_plan)
+                except HTTPException as error:
+                    if error.status_code not in (409, 503):
+                        raise
+                    result["reply"] = "I can’t calculate a complete monthly breakdown from the current data. Open Invest this month on Home to review your current values and investment choices. Missing or stale values are not treated as zero."
             if intent == "actual_holdings" and not live_portfolio_enabled():
-                result["reply"] = "I can explain your selected plan, but Live Portfolio is not currently available, so I don’t have canonical current holdings to compare with it. Plan targets are not actual holdings. You can enter current sleeve values in the Monthly Contribution Planner to explore a scenario."
+                result["reply"] = "I can explain your selected plan, but Live Portfolio is not currently available, so I don’t have canonical current holdings to compare with it. Plan targets are not actual holdings. On Home, Invest this month lets you explicitly enter current sleeve values to calculate a breakdown. These inputs do not create recorded holdings."
             if live_portfolio_enabled() and "live_portfolio" in entitlements.features and intent in ("actual_holdings", "holdings_help", "next_action", "overlap", "contribution"):
                 from app.routes.live_portfolio import optional_portfolio
                 from app.services.arbor.portfolio_explanation import explain_portfolio
@@ -50,14 +60,15 @@ def chat(request: ChatRequest, user_id: str = Depends(get_current_user_id), auth
                 if intent == "actual_holdings":
                     result["reply"] = explain_portfolio(request.message, portfolio)
                 elif intent == "holdings_help":
-                    result["reply"] = "Open Portfolio → Add holding, choose a supported provider and investment, and record your units. Editing or deleting a record changes Arbor only, not your provider account."
+                    result["reply"] = "Open Portfolio → Add Investment and choose a supported investment. Funds can use the current PHP value shown in your provider app; units are optional. ETFs use shares and Bitcoin uses its amount. Editing or deleting a record changes Arbor only, not your provider account."
                 elif intent == "next_action":
                     action = get_next_action(plan, entitlements, portfolio)
-                    result["reply"] = f"{action.title}. {action.explanation} Open {action.destination.replace('_', ' ')}."
+                    destination = "Home → Invest this month" if action.key == "review_monthly_contribution" and action.destination == "portfolio" else action.destination.replace('_', ' ')
+                    result["reply"] = f"{action.title}. {action.explanation} Open {destination}."
                 elif intent == "overlap":
                     result["reply"] = "Recorded product quantities do not include current fund constituents. I can explain named products, but cannot measure underlying holdings overlap from sleeve targets or units alone."
                 elif portfolio is not None and portfolio.holdings:
-                    result["reply"] = "Portfolio uses your recorded holdings and available reference prices for contribution scenarios. Choose implementation options yourself. Incomplete or stale values must be refreshed first. Readiness and your selected plan still control scenario availability. I don’t select securities, calculate a separate scenario, or execute trades."
+                    result["reply"] = "On Home, Invest this month uses your recorded portfolio and available reference prices for contribution calculations. Choose implementation options yourself. Incomplete or stale values must be refreshed first. Readiness and your selected plan still control availability. I don’t select securities, calculate a separate scenario, or execute trades."
             if intent in ("next_action", "monthly_checkin"):
                 from app.services.monthly_checkin import read_monthly, explain_monthly
                 from app.services.next_action import get_next_action
@@ -66,7 +77,8 @@ def chat(request: ChatRequest, user_id: str = Depends(get_current_user_id), auth
                     result["reply"] = explain_monthly(monthly)
                 elif monthly is not None:
                     action = get_next_action(plan, entitlements, portfolio, monthly)
-                    result["reply"] = f"{action.title}. {action.explanation} Open {action.destination.replace('_', ' ')}."
+                    destination = "Home → Invest this month" if action.key == "review_monthly_contribution" and action.destination == "portfolio" else action.destination.replace('_', ' ')
+                    result["reply"] = f"{action.title}. {action.explanation} Open {destination}."
         except (KeyError, ValueError, TypeError):
             raise HTTPException(503, "Your saved plan could not be loaded for this explanation. Please retry.") from None
     elif plan.get("strategy_engine_version") not in (None, "1.0"):

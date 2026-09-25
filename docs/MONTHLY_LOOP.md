@@ -1,5 +1,17 @@
 # First-run experience and monthly check-ins (3U-D)
 
+> **Current status — full product completion pass, 25 September 2026:** see
+> [FULL_PRODUCT_COMPLETION.md](FULL_PRODUCT_COMPLETION.md) for the current
+> implementation and validation record. The hosted monthly migration is already
+> applied, and the latest read-only production check reports monthly check-in
+> available and Live Portfolio unavailable. The new local “Invest this month”
+> experience belongs to Home, reuses existing check-in storage, and calculates
+> exact amounts from saved targets and explicit implementation choices. Persistent
+> carry-forward is not implemented. No hosted storage or flags were changed in
+> this pass. The original 3U-D sections below are retained as historical design
+> notes; their unapplied/OFF statements and Portfolio placement are not current
+> deployment or navigation instructions.
+
 ## Journey
 
 Normal signup/login and onboarding are unchanged. After a confirmed V2 plan

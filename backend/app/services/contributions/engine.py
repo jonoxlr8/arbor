@@ -8,6 +8,7 @@ from app.services.strategy_v2 import AssetRole
 from .models import (
     ContributionRecommendation,
     ContributionRequest,
+    MinimumInputs,
     MinimumCheck,
     SleeveCalculation,
 )
@@ -23,7 +24,7 @@ GOTRADE_PRACTICAL_MINIMUM_PHP = Decimal("100")
 
 
 def _check_minimum(
-    product: ImplementationProduct, request: ContributionRequest
+    product: ImplementationProduct, request: MinimumInputs
 ) -> MinimumCheck:
     additional = product.product_id in request.current_portfolio.owned_product_ids
     purchase = "additional" if additional else "initial"
@@ -91,7 +92,7 @@ def _check_minimum(
     )
 
 
-def contribution_precision(request: ContributionRequest) -> int:
+def contribution_precision(request: MinimumInputs) -> int:
     """Shared local precision for the single-purchase and monthly planners."""
     amounts = [request.contribution_amount] + [
         request.current_portfolio.value(role) for role in TIE_PRIORITY
@@ -105,12 +106,60 @@ def contribution_precision(request: ContributionRequest) -> int:
 
 
 def check_allocation_minimum(
-    product: ImplementationProduct, request: ContributionRequest, amount: Decimal
+    product: ImplementationProduct, request: MinimumInputs, amount: Decimal
 ) -> MinimumCheck:
     """Apply unchanged 3Q-A minimum rules to one proposed product amount."""
     return _check_minimum(
         product, request.model_copy(update={"contribution_amount": amount})
     )
+
+
+def calculate_sleeve_gaps(portfolio, target, contribution_amount):
+    """Shared canonical post-contribution deficits, independent of implementation.
+
+    The caller establishes local Decimal precision. Zero-target sleeves do not
+    receive new money but their current values remain part of the total.
+    """
+    total = sum((portfolio.value(role) for role in TIE_PRIORITY), Decimal(0))
+    after = total + contribution_amount
+    calculations = []
+    for role in TIE_PRIORITY:
+        weight = target.weight(role)
+        if weight <= 0:
+            continue
+        current = portfolio.value(role)
+        target_value = after * weight / Decimal(100)
+        calculations.append(SleeveCalculation(
+            sleeve=role, target_percentage_points=weight, current_value=current,
+            current_percentage=current * 100 / total if total else None,
+            target_value_after_contribution=target_value, deficit=target_value - current,
+        ))
+    return tuple(calculations)
+
+
+def ordered_positive_gaps(calculations):
+    return sorted((row for row in calculations if row.deficit > 0),
+                  key=lambda row: (-row.deficit, TIE_PRIORITY.index(row.sleeve)))
+
+
+def fill_sleeve_gaps(calculations, contribution_amount):
+    """Existing largest-deficit-first fill, before provider minimum classification.
+
+    Each sleeve retains its candidate even if a selected product cannot currently
+    accept that amount. Choosing a different provider cannot change this fill.
+    """
+    remaining = contribution_amount
+    candidates = {}
+    for calculation in ordered_positive_gaps(calculations):
+        candidate = candidate_for_gap(remaining, calculation)
+        candidates[calculation.sleeve] = candidate
+        remaining -= candidate
+    return candidates, remaining
+
+
+def candidate_for_gap(remaining, calculation):
+    """One shared fill step for legacy route and explicit-choice monthly paths."""
+    return min(remaining, calculation.deficit)
 
 
 def recommend_next_contribution(
@@ -180,23 +229,8 @@ def _recommend(request: ContributionRequest) -> ContributionRecommendation:
         )
 
     mapped = {item.sleeve: item for item in mapping.implementations}
-    calculations = []
-    for role in TIE_PRIORITY:
-        if role not in mapped:
-            continue
-        item = mapped[role]
-        current = portfolio.value(role)
-        target = after * item.target_percentage_points / Decimal(100)
-        calculations.append(
-            SleeveCalculation(
-                sleeve=role,
-                target_percentage_points=item.target_percentage_points,
-                current_value=current,
-                current_percentage=current * 100 / total if total else None,
-                target_value_after_contribution=target,
-                deficit=target - current,
-            )
-        )
+    calculations = calculate_sleeve_gaps(portfolio, context.effective_target_allocation.allocation,
+                                         request.contribution_amount)
     candidates = [
         calc
         for calc in calculations

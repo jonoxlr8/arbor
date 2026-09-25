@@ -1,0 +1,49 @@
+/* Scoped plan-building presentation: all allocations are returned by the backend. */
+.plan-choice {max-width:680px;margin:0 auto;padding:32px;border-radius:26px;background:var(--surface);box-shadow:0 10px 48px #163c2d08;}
+.plan-choice .choice-heading {font-size:clamp(26px,4vw,34px);font-weight:650;letter-spacing:-.045em;line-height:1.15;margin:8px 0 14px;color:var(--foreground);}
+.choice-eyebrow {font-size:11px;font-weight:650;letter-spacing:.1em;text-transform:uppercase;color:light-dark(#427560,#a6c7b7);}
+.choice-intro {font-size:14px;line-height:1.65;color:light-dark(#5f6f84,#aebdcb);max-width:56ch;}
+.choice-note,.choice-boundary {font-size:12px;line-height:1.65;color:light-dark(#657488,#aebdcb);margin-top:16px;}
+.choice-boundary {border-top:1px solid var(--line);padding-top:16px;margin-top:24px;}
+.choice-navigation {display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:28px;}
+.choice-navigation button {min-height:44px;font-size:13px;}
+.choice-navigation small {font-size:11px;color:light-dark(#64748b,#a5b5c8);}
+.choice-actions {margin-top:28px;display:flex;flex-direction:column;gap:8px;}
+.choice-actions .entry-primary {width:100%;min-height:48px;border-radius:13px;}
+.choice-actions .entry-link {min-height:44px;}
+.profile-assessment {border-radius:20px;background:linear-gradient(140deg,light-dark(#e1f2e8,#183b30),light-dark(#eef1ff,#28334e));padding:28px 24px;margin:22px 0;}
+.profile-assessment strong {font-size:38px;letter-spacing:-.055em;display:block;margin-bottom:10px;color:var(--foreground);}
+.profile-assessment p {font-size:14px;line-height:1.65;max-width:44ch;}
+.profile-context {display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin-top:18px;}
+.profile-context li {font-size:11px;border-radius:30px;background:light-dark(#f0f4f8,#253242);padding:8px 12px;}
+.approach-options {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:24px 0;}
+.approach-option {position:relative;min-height:122px;text-align:left;border:1px solid var(--line);border-radius:17px;padding:20px;background:var(--surface);color:var(--foreground);}
+.approach-option[aria-pressed="true"] {border-color:light-dark(#11865b,#7acdb2);box-shadow:inset 0 0 0 1px light-dark(#11865b,#7acdb2);background:light-dark(#f0f9f4,#163b30);}
+.approach-option strong {font-size:17px;letter-spacing:-.025em;display:block;}
+.approach-option small {display:block;font-size:11px;line-height:1.65;color:light-dark(#5c6c80,#b1bfcc);margin-top:12px;}
+.approach-option .approach-bar {display:flex;height:7px;border-radius:8px;overflow:hidden;margin-top:18px;}
+.approach-option .approach-selected {position:absolute;right:15px;top:18px;color:light-dark(#08734b,#a8e1c9);font-size:16px;}
+.approach-details summary {min-height:44px;cursor:pointer;font-size:12px;color:light-dark(#5c6c80,#b1bfcc);padding:12px 0;}
+.approach-details p {font-size:12px;line-height:1.65;color:light-dark(#5c6c80,#b1bfcc);}
+.satellite-options {margin:26px 0;}
+.satellite-options fieldset {border:0;border-top:1px solid var(--line);padding:22px 0 24px;min-width:0;}
+.satellite-options legend {font-size:17px;font-weight:600;display:flex;align-items:center;gap:10px;padding:0 0 8px;width:100%;float:left;}
+.satellite-options legend small {margin-left:auto;font-size:11px;font-weight:400;color:light-dark(#64748b,#a5b5c8);}
+.satellite-options p {clear:both;font-size:13px;line-height:1.65;color:light-dark(#5c6c80,#b1bfcc);}
+.satellite-icon {width:34px;height:34px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;font-size:22px;}
+.satellite-tech {color:#a23df0;background:light-dark(#f2e5ff,#39234d);}.satellite-bitcoin {color:light-dark(#b46703,#fbb75c);background:light-dark(#fff0d9,#45331d);}
+.satellite-segments {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:4px;gap:4px;border-radius:13px;background:light-dark(#edf1f7,#223044);margin-top:16px;}
+.satellite-segments label {position:relative;min-width:0;cursor:pointer;}
+.satellite-segments input {position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;}
+.satellite-segments span {display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:10px;font-size:13px;font-weight:600;}
+.satellite-segments input:checked + span {background:var(--surface);color:light-dark(#0b7048,#a6dfc5);box-shadow:0 2px 6px #132c3010;}
+.satellite-segments input:focus-visible + span {outline:2px solid light-dark(#0e7c54,#99dabb);outline-offset:2px;}
+.satellite-segments input:disabled + span {opacity:.6;}
+.final-plan-name {font-size:28px;font-weight:600;letter-spacing:-.04em;margin-top:8px;}
+.final-plan-review .allocation-layout {margin:22px 0 14px;border-radius:20px;background:light-dark(#f5f8fc,#1a2837);padding:24px;gap:24px;}
+.final-plan-review .allocation-ring {width:160px;height:160px;padding:18px;}
+.final-plan-review .allocation-ring > div {background:light-dark(#f5f8fc,#1a2837);}
+.choice-confirmation {font-size:15px;font-weight:600;}
+.plan-choice:focus {outline:none;}
+@media(max-width:600px){.plan-choice{padding:24px 20px;border-radius:22px;}.choice-navigation{margin-bottom:22px;}.profile-assessment{padding:24px 20px;}.approach-options{gap:10px;}.approach-option{padding:16px;min-height:125px;}.approach-option strong{font-size:15px;}.approach-option small{font-size:10px;}.approach-option .approach-selected{right:12px;top:14px;}.final-plan-review .allocation-layout{padding:20px 16px;gap:16px;flex-wrap:nowrap;}.final-plan-review .allocation-ring{width:125px;height:125px;padding:15px;}.final-plan-review .allocation-legend{min-width:0;}.final-plan-review .allocation-legend > div{font-size:11px;gap:8px;}.final-plan-review .allocation-legend dt{gap:6px;}}
+@media(max-width:350px){.plan-choice{padding:22px 16px;}.approach-options{grid-template-columns:1fr;}.approach-option{min-height:100px;}.final-plan-review .allocation-layout{flex-wrap:wrap;justify-content:center;}.final-plan-review .allocation-legend{width:100%;flex-basis:100%;}.final-plan-review .allocation-legend > div{font-size:12px;}.satellite-options legend{font-size:16px;}}
