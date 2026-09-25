@@ -82,7 +82,7 @@
 @media(prefers-reduced-motion:reduce) { .arbor-sheet,.arbor-skeleton i { animation:none; } }
 
 .portfolio-skeleton { min-height:350px; padding:20px 0; }.portfolio-skeleton div { background:var(--line); border-radius:12px; height:26px; width:45%; margin-bottom:20px; }.portfolio-skeleton div:nth-child(2) {height:60px;width:65%;}.portfolio-skeleton div:last-child {height:200px;width:100%;}
-.onboarding-consumer { background:radial-gradient(ellipse at top,light-dark(#e3eee8,#1a3532),transparent 60%),var(--background); }.onboarding-consumer > div > div { border:0; box-shadow:none; background:var(--surface); border-radius:28px; }.onboarding-consumer progress { accent-color:#16845b; }
+.onboarding-consumer { background:radial-gradient(ellipse at top,light-dark(#e3eee8,#1a3532),transparent 60%),var(--background); }.onboarding-consumer progress { accent-color:#16845b; }
 @media(max-width:480px){.holding-row {flex-wrap:wrap;}.holding-copy{flex-basis:calc(100% - 50px);}.holding-money {margin-left:46px;}.portfolio-tabs{gap:6px;}.portfolio-tabs button{padding:10px 12px;font-size:12px;}.chart-empty{min-height:150px;padding:20px;}.home-metric strong{font-size:21px;}.chat-composer .send-row > p {max-width:140px;}}
 
 @media(max-width:480px){.arbor-sheet{max-width:100vw;}.portfolio-chart{padding-bottom:0;}.chart-empty{min-height:120px;}.portfolio-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}.portfolio-tabs button{padding:10px 6px;}.app-shell .portfolio-value{padding-bottom:0;}}
@@ -96,26 +96,15 @@
 .app-shell h1 {font-size:30px;}
 .app-shell aside nav {margin-top:34px;}
 .identity-mark {display:inline-flex;align-items:center;justify-content:center;flex:none;width:54px;height:54px;border-radius:17px;background:var(--muted-surface);color:var(--foreground);font-size:15px;font-weight:750;letter-spacing:-.03em;box-shadow:inset 0 0 0 1px #ffffff38;overflow:hidden;}
-.identity-mark img {width:100%;height:100%;object-fit:contain;}
-.identity-image,.identity-variants {display:block;width:100%;height:100%;}
-.identity-variants .identity-dark {display:none;}
-:root[data-theme="dark"] .identity-variants .identity-light {display:none;}
-:root[data-theme="dark"] .identity-variants .identity-dark {display:block;}
-@media (prefers-color-scheme:dark) {
-  :root:not([data-theme="light"]) .identity-variants .identity-light {display:none;}
-  :root:not([data-theme="light"]) .identity-variants .identity-dark {display:block;}
-}
-.identity-mark[data-logo="true"][data-identity] {background:#fff;box-shadow:inset 0 0 0 1px #152d4410;padding:4px;}
-.identity-mark[data-logo="true"][data-identity="bpi"] {padding:6px;}
-.identity-mark[data-logo="true"][data-identity="dragonfi"] {background:#102c29;}
-.identity-mark.identity-small[data-logo="true"][data-identity] {padding:1px;}
+.identity-mark svg {width:68%;height:68%;}
+.identity-mark.identity-small svg {width:76%;height:76%;}
+.identity-mark[data-identity="equity"] {background:linear-gradient(140deg,light-dark(#ddf4e7,#254d40),light-dark(#c7e9df,#19382e));color:light-dark(#116346,#a1e3c6);}
+.identity-mark[data-identity="technology"] {background:linear-gradient(140deg,light-dark(#ece7ff,#3c3456),light-dark(#dfe8ff,#263c57));color:light-dark(#5947b1,#cfc1ff);}
+.identity-mark[data-identity="defensive"] {background:light-dark(#dcefed,#234b4b);color:light-dark(#20666c,#a0deda);}
+.identity-mark[data-identity="crypto"] {background:light-dark(#fff0d6,#493a24);color:light-dark(#996013,#f5cc8c);border-radius:50%;}
 .catalogue-categories {display:flex;gap:4px;padding:4px;background:var(--muted-surface);border-radius:13px;margin:16px 0 8px;}
 .catalogue-categories button {flex:1;min-height:44px;border-radius:10px;font-size:12px;color:var(--muted);}
 .catalogue-categories button[aria-pressed="true"] {background:var(--surface);color:var(--foreground);box-shadow:0 2px 8px #152d4410;font-weight:600;}
-.identity-mark[data-identity="vanguard"] {background:linear-gradient(145deg,#971f35,#621529);color:#fff;}
-.identity-mark[data-identity="atram"] {background:linear-gradient(140deg,#3b77ae,#21466d);color:#fff;font-size:10px;letter-spacing:.03em;}
-.identity-mark[data-identity="bpi"] {background:linear-gradient(145deg,#ad3143,#742331);color:#fff;}
-.identity-mark[data-identity="bitcoin"] {border-radius:50%;background:none;box-shadow:none;}
 .identity-small {width:24px;height:24px;border-radius:7px;font-size:9px;letter-spacing:-.03em;box-shadow:none;}
 .identity-mark[data-identity="gfunds"],.identity-mark[data-identity="gcrypto"] {background:light-dark(#e0eaff,#294367);color:light-dark(#2157b5,#b4ccff);}
 .identity-mark[data-identity="gotrade"] {background:light-dark(#dbf1e4,#244b3d);color:light-dark(#176849,#a8e5c8);}

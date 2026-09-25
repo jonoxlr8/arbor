@@ -1,0 +1,78 @@
+{
+  "allocation-mobile": {
+    "width": 358,
+    "height": 201
+  },
+  "allocation": {
+    "width": 992,
+    "height": 213
+  },
+  "approaches": {
+    "width": 358,
+    "height": 851
+  },
+  "ask-desktop": {
+    "width": 1440,
+    "height": 950
+  },
+  "ask": {
+    "width": 390,
+    "height": 1017
+  },
+  "catalogue": {
+    "width": 390,
+    "height": 794
+  },
+  "contribution": {
+    "width": 358,
+    "height": 290
+  },
+  "customize": {
+    "width": 358,
+    "height": 1047
+  },
+  "final-plan": {
+    "width": 358,
+    "height": 947
+  },
+  "fund-value": {
+    "width": 390,
+    "height": 758
+  },
+  "holdings-mobile": {
+    "width": 358,
+    "height": 711
+  },
+  "holdings": {
+    "width": 992,
+    "height": 544
+  },
+  "home-mobile": {
+    "width": 390,
+    "height": 844
+  },
+  "home": {
+    "width": 1280,
+    "height": 1100
+  },
+  "portfolio-mobile": {
+    "width": 390,
+    "height": 950
+  },
+  "portfolio": {
+    "width": 1280,
+    "height": 1300
+  },
+  "settings": {
+    "width": 390,
+    "height": 844
+  },
+  "ways-mobile": {
+    "width": 390,
+    "height": 950
+  },
+  "ways": {
+    "width": 1280,
+    "height": 950
+  }
+}

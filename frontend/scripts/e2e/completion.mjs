@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import {mkdir, writeFile} from 'node:fs/promises';
 import {withAuthenticatedBrowser} from './auth.mjs';
+import sharp from 'sharp';
 
 const mode = process.argv[2] ?? 'plus';
 assert.ok(['plus', 'onboarding', 'free'].includes(mode));
@@ -76,6 +77,13 @@ await withAuthenticatedBrowser(async ({page, context, reused}) => {
     assert.doesNotMatch(visible, /Codex|sb_secret_|Bearer ey/i, 'No account/test/credential identity in gallery');
     const filename = `${mode}-${name}.png`;
     await page.screenshot({path:`${output}/${filename}`, fullPage, animations:'disabled'});
+    const publicName = mode === 'onboarding' && ({'choose-approach-390-light':'approaches','customization-bitcoin-390-light':'customize','final-plan-80-10-10-390-light':'final-plan'})[name];
+    if (publicName) {
+      const panel = page.locator('.plan-choice');
+      assert.doesNotMatch(await panel.innerText(),/Codex|@|Bearer|https:/i);
+      await mkdir('public/product/premium',{recursive:true});
+      await sharp(await panel.screenshot({animations:'disabled'})).webp({quality:85}).toFile(`public/product/premium/${publicName}.webp`);
+    }
     screenshots.push(filename);
   };
   const appearance = async (width, theme) => {
@@ -164,6 +172,12 @@ await withAuthenticatedBrowser(async ({page, context, reused}) => {
         ['current_portfolio_value','input','0'], ['monthly_investment','input','10000'],
         ['risk_response','button','Keep investing'],
       ]) {
+        if (['goal_target','risk_response'].includes(field)) {
+          for(const width of [390,320]) for(const theme of ['light','dark']) {
+            await appearance(width,theme);await capture(`onboarding-${field}-${width}-${theme}`);
+          }
+          await appearance(390,'light');
+        }
         if (kind === 'input') await page.locator(`#${field}`).fill(answer);
         else await page.getByRole('button', {name:answer, exact:true}).click();
         if (kind !== 'skip') await page.getByRole('button', {name:field === 'risk_response' ? 'See my investing profile' : 'Continue →', exact:true}).click();
@@ -210,20 +224,31 @@ await withAuthenticatedBrowser(async ({page, context, reused}) => {
       await page.getByRole('button', {name:/^Aggressive/}).click();
       await page.getByRole('button', {name:'Continue', exact:true}).click();
       await page.getByRole('heading', {name:'Customize your plan', exact:true}).waitFor();
-      assert.equal(await page.locator('input[name="technology-choice"][value="0"]').isChecked(), true);
-      assert.equal(await page.locator('input[name="bitcoin-choice"][value="0"]').isChecked(), true);
+      if(mode === 'onboarding') {
+        assert.equal(await page.locator('input[name="technology-choice"][value="0"]').isChecked(), true);
+        assert.equal(await page.locator('input[name="bitcoin-choice"][value="0"]').isChecked(), true);
+      } else {
+        // Editing correctly restores prior explicit choices, unlike first onboarding.
+        await page.locator('input[name="technology-choice"][value="0"]').check();
+        await page.locator('input[name="bitcoin-choice"][value="0"]').check();
+      }
       await capture('customization-core-390-light');
       await page.locator('input[name="technology-choice"][value="10"]').check();
       await capture('customization-technology-390-light');
       await page.locator('input[name="bitcoin-choice"][value="10"]').check();
+      if(mode === 'onboarding') await page.locator('.customization-preview').getByText('80%',{exact:true}).waitFor();
       await capture('customization-bitcoin-390-light');
       const preview = response(mode === 'onboarding' ? '/v2/plan-preview' : '/v2/profiles/preview', 'POST');
       await page.getByRole('button', {name:'Review my plan', exact:true}).click();
       const previewBody = await (await preview).json();
       assert.deepEqual(targets(mode === 'onboarding' ? previewBody : previewBody.proposed),
         {global_equity:80, defensive:0, technology_tilt:10, crypto:10});
-      await page.getByRole('heading', {name:'Your plan', exact:true}).waitFor();
+      await page.getByRole('heading', {name:'Your plan is ready', exact:true}).waitFor();
       await capture('final-plan-80-10-10-390-light');
+      if(mode === 'onboarding') {
+        for(const width of [390,320]) for(const theme of ['light','dark']) {await appearance(width,theme);await capture(`final-plan-${width}-${theme}`);}
+        await appearance(390,'light');
+      }
       const saved = response(mode === 'onboarding' ? '/v2/profiles' : '/v2/profiles/me', mode === 'onboarding' ? 'POST' : 'PUT');
       await page.getByRole('button', {name:'Use this as my plan', exact:true}).click();
       assert.equal((await saved).status(), 200);

@@ -23,13 +23,11 @@ test("public navigation preserves real auth links without fake checkout or broke
   assert.doesNotMatch(html,/href="(?:#checkout|\/checkout|\/privacy|\/terms)"/);
   assert.doesNotMatch(html,/Connect broker|Buy now|Subscribe now|Start your trial/);
 });
-test("gated tracking and new product previews are distinct from hosted monthly check-ins", () => {
-  assert.match(html,/Live Portfolio is not enabled in the current public beta/);
+test("private beta copy reflects activated tracking without claiming broker sync", () => {
+  assert.match(html,/Arbor Plus tracking is available in private beta/);
   assert.match(html,/Monthly check-ins are available in private beta/);
-  assert.match(html,/available now with manual inputs/);
-  assert.match(html,/Portfolio tracking is a product preview/);
-  assert.match(html,/Saved implementation choices and this refined breakdown are part of the product preview/);
-  assert.doesNotMatch(html,/Monthly check-in recording is a preview|monthly check-ins are previews, not yet enabled/);
+  assert.match(html,/Your saved implementation choices organize the result/);
+  assert.doesNotMatch(html,/Live Portfolio is not enabled|upcoming customization|when tracking is released/i);
 });
 test("pricing is beta-free, future prices display only and Free explicitly at launch", () => {
   assert.match(html,/Arbor Free · At launch/); assert.match(html,/₱399\/month/); assert.match(html,/₱3,990\/year/);
@@ -38,15 +36,15 @@ test("pricing is beta-free, future prices display only and Free explicitly at la
   assert.doesNotMatch(html,/Unlimited AI|limited time|countdown|discount|ACT NOW/i);
 });
 test("actual local product images are optimized, accessible and labeled illustrative", () => {
-  assert.equal((html.match(/<picture>/g) ?? []).length,10);
+  assert.equal((html.match(/<picture>/g) ?? []).length,12);
   assert.match(html,/srcSet=/); assert.match(html,/loading="lazy"/); assert.match(html,/fetchPriority="high"/);
   assert.match(html,/loading="eager"/);
-  assert.match(html,/<source media="\(max-width: 600px\)" srcSet="\/product\/completion\/home-mobile.webp"/);
+  assert.match(html,/<source media="\(max-width: 600px\)" srcSet="\/product\/premium\/home-mobile.webp"/);
   assert.doesNotMatch(html,/<img[^>]+alt=""/);
   assert.match(html,/Actual Arbor interface · Illustrative data/);
   assert.doesNotMatch(html,/Codex|@example\.com|sb_secret_|service_role/);
-  assert.match(html,/product%2Fcompletion%2Fhome/);
-  for (const name of ['home','portfolio','ways','catalogue','holdings','allocation','ask','contribution','fund-value','settings','ask-desktop','customize']) assert.ok(statSync(`public/product/completion/${name}.webp`).size<150_000);
+  assert.match(html,/product%2Fpremium%2Fhome/);
+  for (const name of ['home','portfolio','ways','catalogue','holdings','allocation','ask','contribution','fund-value','settings','ask-desktop','customize','approaches','final-plan']) assert.ok(statSync(`public/product/premium/${name}.webp`).size<150_000);
 });
 test("public ways reuse canonical providers and the current recording journey",()=>{
   const source=readFileSync('components/entry/PublicWebsite.tsx','utf8');
@@ -91,7 +89,7 @@ test("scoped CSS honors reduced motion and does not restyle authenticated screen
   assert.doesNotMatch(css,/\.app-shell|\.arbor-sheet|\.app-destination/);
 });
 test("metadata is factual, includes social preview and public content renders before restore", () => {
-  assert.match(publicMetadata.description,/Philippines-first/); assert.match(publicMetadata.description,/preview/);
+  assert.match(publicMetadata.description,/Philippines-first/); assert.match(publicMetadata.description,/recorded investments/);
   const layout=readFileSync('app/layout.tsx','utf8');
   assert.match(layout,/canonical: "https:\/\/arbor.ph"/); assert.match(layout,/summary_large_image/);
   assert.ok(readdirSync('app').includes('opengraph-image.tsx'));

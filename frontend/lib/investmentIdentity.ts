@@ -1,21 +1,29 @@
 import type { PortfolioProduct } from "./livePortfolio";
 
 /** Display metadata only. The authenticated API catalog remains the product allowlist. */
-export type BrandIdentity = { name: string; fallback: string; tone: string; logo?: string; logoDark?: string; logoAlt?: string };
+export type IdentityGlyph = "globe" | "circuit" | "shield" | "coin" | "layers" | "market" | "facets" | "wallet" | "coins" | "exchange";
+export type BrandIdentity = { name: string; fallback: string; tone: string; icon: IdentityGlyph };
 export const ISSUERS: Record<string, BrandIdentity> = {
-  vanguard: { name: "Vanguard", fallback: "VG", tone: "vanguard", logo: "/brands/supplied/issuers/vanguard.png", logoAlt: "Vanguard" },
-  atram: { name: "ATRAM", fallback: "ATRAM", tone: "atram", logo: "/brands/supplied/issuers/atram.png", logoAlt: "ATRAM" },
-  bpi: { name: "BPI Wealth", fallback: "BPI", tone: "bpi", logo: "/brands/supplied/issuers/bpi.png", logoAlt: "BPI" },
-  bitcoin: { name: "Bitcoin", fallback: "₿", tone: "bitcoin", logo: "/brands/supplied/issuers/bitcoin.png", logoAlt: "Bitcoin" },
+  vanguard: { name: "Vanguard", fallback: "VG", tone: "equity", icon: "globe" },
+  atram: { name: "ATRAM", fallback: "ATRAM", tone: "equity", icon: "globe" },
+  bpi: { name: "BPI Wealth", fallback: "BPI", tone: "equity", icon: "globe" },
+  bitcoin: { name: "Bitcoin", fallback: "BTC", tone: "crypto", icon: "coin" },
 };
 export const PROVIDERS: Record<string, BrandIdentity> = {
-  gcash: { name: "GFunds", fallback: "GF", tone: "gfunds", logo: "/brands/supplied/providers/gcash.png", logoAlt: "GCash, home of GFunds" },
-  gotrade: { name: "Gotrade", fallback: "GT", tone: "gotrade", logo: "/brands/supplied/providers/gotrade.png", logoAlt: "Gotrade" },
-  dragonfi: { name: "DragonFi", fallback: "DF", tone: "dragonfi", logo: "/brands/supplied/providers/dragonfi.png", logoAlt: "DragonFi" },
-  gcrypto: { name: "GCrypto", fallback: "GC", tone: "gcrypto", logo: "/brands/supplied/providers/gcash.png", logoAlt: "GCash, home of GCrypto" },
-  coins_ph: { name: "Coins.ph", fallback: "CP", tone: "coins", logo: "/brands/supplied/providers/coinsph.png", logoAlt: "Coins.ph" },
-  pdax: { name: "PDAX", fallback: "PDAX", tone: "pdax", logo: "/brands/supplied/providers/pdax.png", logoAlt: "PDAX" },
+  gcash: { name: "GFunds", fallback: "GF", tone: "gfunds", icon: "layers" },
+  gotrade: { name: "Gotrade", fallback: "GT", tone: "gotrade", icon: "market" },
+  dragonfi: { name: "DragonFi", fallback: "DF", tone: "dragonfi", icon: "facets" },
+  gcrypto: { name: "GCrypto", fallback: "GC", tone: "gcrypto", icon: "wallet" },
+  coins_ph: { name: "Coins.ph", fallback: "CP", tone: "coins", icon: "coins" },
+  pdax: { name: "PDAX", fallback: "PDAX", tone: "pdax", icon: "exchange" },
 };
+/** Original Arbor category graphics, not corporate issuer or provider marks. */
+export function investmentMark(id: string): BrandIdentity {
+  const display = investmentIdentity(id);
+  const icon = display.category === "bitcoin" ? "coin" : /technology|_vgt$/.test(id) ? "circuit" : /defensive|_bnd$/.test(id) ? "shield" : "globe";
+  return { name: display.fullName, fallback: display.shortName.slice(0, 3), icon,
+    tone: ({globe:"equity",circuit:"technology",shield:"defensive",coin:"crypto"} as const)[icon] };
+}
 export const providerName = (id: string, fallback = id) => PROVIDERS[id]?.name ?? fallback;
 /** Display-only compatibility for canonical replies with legacy provider labels. */
 export const providerDisplayText = (text: string) => text.replace(/GCash \/ GFunds/g, "GFunds").replace(/GCash \/ GCrypto/g, "GCrypto");

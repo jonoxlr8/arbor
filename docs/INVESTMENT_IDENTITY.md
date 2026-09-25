@@ -1,4 +1,30 @@
-# Investment and provider identities — 3U-G.1
+# Investment and provider identities
+
+## Current premium pass — September 26, 2026
+
+The active app and website use original Arbor vector graphics from
+`ArborIdentityIcon.tsx`, not altered or imitated company logos. The existing
+`InvestmentIdentity` / `ProviderIdentity` abstraction and canonical IDs remain.
+Factual issuer, full fund/class, ticker and provider names remain visible.
+
+| Investment category | Original Arbor graphic | Identity color |
+| --- | --- | --- |
+| Global equity | Globe with meridians | Arbor green |
+| Technology | Connected circuit | Blue/violet |
+| Defensive | Shield | Teal |
+| Bitcoin | Coin with neutral facets | Warm gold |
+
+GFunds uses layered units; Gotrade a market window; DragonFi geometric facets;
+GCrypto a wallet; Coins.ph paired coins; PDAX an exchange motif. These six
+provider badges are separate from the four investment-category icons. They are
+Arbor recognition graphics, not official provider identities.
+
+All graphics are local inline SVGs with light/dark tokens and no image-load
+dependency. They are decorative beside text; standalone marks expose
+`Arbor icon for [name]`. Holdings, catalogue, Ways to Invest, monthly rows and
+public examples share these components. The supplied PNGs and earlier source
+notices remain unchanged historical artifacts, not active identity metadata.
+Asset-selection statements below are superseded by this original-vector system.
 
 Reviewed September 25, 2026. Display metadata only; no pricing, target, eligibility,
 provider-ranking or product-allowlist logic belongs in this layer.
@@ -26,7 +52,7 @@ A Unit Class for the ATRAM funds and Class P / PHP for the relevant BPI funds.
 The BPI Global Equity spelling follows the current backend catalogue
 (`BPI Global Equity Fund of Funds`), rather than inventing a different product.
 
-## Current assets: owner-supplied originals
+## Historical assets: owner-supplied originals
 
 The founder supplied nine PNG files and explicitly confirmed use **unchanged**.
 All four issuers and six provider identities now use those files from

@@ -72,7 +72,7 @@
 .m-fund-preview figcaption { text-align: center; color: #53647c; padding: 9px 0; font-size: 10px; }
 .m-provider-list { display: flex; justify-content: center; flex-wrap: wrap; gap: 18px 25px; margin: 48px 0 20px; }
 .marketing-site .provider-brand { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
-.marketing-site .identity-mark { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 9px; font-size: 9px; font-weight: 700; color: #214f99; background: light-dark(#dfeafe,#c7d5ef); }
+.marketing-site .identity-mark { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 9px; }
 .marketing-site [data-identity="gotrade"] { color: #096744; background: #d7f0e3; }
 .marketing-site [data-identity="dragonfi"] { color: #34398c; background: #e0e0fa; }
 .m-centered { text-align: center; max-width: 720px; margin: auto; }
@@ -85,8 +85,10 @@
 .m-supported-option strong {display:block;font-size:13px;line-height:1.4;margin-bottom:9px;}
 .m-supported-option > .identity-mark {width:42px;height:42px;flex-shrink:0;}
 .m-supported-option > a {display:grid;place-items:center;width:44px;min-height:44px;flex-shrink:0;color:var(--m-green);}
-.marketing-site .identity-mark[data-logo="true"][data-identity] {background:#fff;padding:3px;}
-.marketing-site .identity-mark[data-logo="true"][data-identity="dragonfi"] {background:#102c29;}
+.m-onboarding-sequence {display:grid;grid-template-columns:repeat(2,minmax(0,358px));gap:48px;justify-content:center;margin-top:70px;align-items:start;}
+.m-onboarding-sequence figure {border-radius:24px;overflow:hidden;background:var(--m-surface);padding:10px;box-shadow:0 14px 60px #1f37400a;}
+.m-onboarding-sequence figcaption {padding:14px;font-size:13px;}
+@media(max-width:600px) {.m-onboarding-sequence {grid-template-columns:minmax(0,358px);gap:24px;margin-top:36px;}}
 .m-record {background:linear-gradient(125deg,light-dark(#eaf3ef,#18372d),light-dark(#eeedfb,#29273c));}
 .m-record-layout {display:grid;grid-template-columns:1fr 1fr;gap:90px;align-items:center;}
 .m-record-layout > div > p:not(.m-eyebrow) {margin-top:24px;}

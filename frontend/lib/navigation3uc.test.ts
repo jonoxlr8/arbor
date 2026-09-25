@@ -47,7 +47,7 @@ test("Free Portfolio keeps plan and implementation education with calm Plus dest
 });
 test("provider logo preserves visible accessible text without remote logo URLs", () => {
   const html=render(createElement(ProviderBrand,{provider:"pdax",name:"PDAX"}));
-  assert.match(html,/>PDAX</);assert.match(html,/alt="PDAX"/);assert.match(html,/supplied%2Fproviders%2Fpdax.png/);assert.doesNotMatch(html,/https:/);
+  assert.match(html,/>PDAX</);assert.match(html,/aria-hidden="true"/);assert.match(html,/data-glyph="exchange"/);assert.doesNotMatch(html,/https:|<img/);
 });
 test("navigation preserves chat but saved plan changes reset context; Home never captures", () => {
   const shell=readFileSync("components/PlanV2View.tsx","utf8");

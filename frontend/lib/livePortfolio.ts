@@ -4,6 +4,27 @@ import { boundedRequest } from "./dashboardConsistency";
 import type { Sleeve, ContributionMode, ContributionRequest } from "./types/contributions";
 import { parseContributionResponse } from "./contributionApi";
 import type { PlanV2 } from "./types/planV2";
+import { InvalidSessionError } from "./accountRecovery";
+
+const portfolioMessages = {
+  portfolio_auth: "Your session has expired. Sign in again to continue.",
+  portfolio_entitlement: "Portfolio tracking is available with Arbor Plus. Explore plans in Settings.",
+  portfolio_unavailable: "Portfolio tracking is not available right now. Please try again later.",
+  portfolio_contract: "We couldn’t load your portfolio correctly. Please refresh and try again.",
+  portfolio_network: "We couldn’t reach Arbor. Check your connection and try again.",
+  portfolio_server: "Portfolio records are temporarily unavailable. Please retry.",
+} as const;
+export type PortfolioErrorCode = keyof typeof portfolioMessages;
+export class PortfolioError extends Error {
+  constructor(readonly code: PortfolioErrorCode) { super(portfolioMessages[code]); this.name = "PortfolioError"; }
+}
+// Only our bounded errors may supply display copy. Never forward transport/API text.
+export function portfolioReadError(error: unknown): PortfolioError {
+  if (error instanceof PortfolioError) return new PortfolioError(error.code);
+  if (error instanceof InvalidSessionError) return new PortfolioError("portfolio_auth");
+  if (error instanceof Error && error.message === "Request timed out. Please try again.") return new PortfolioError("portfolio_network");
+  return new PortfolioError("portfolio_server");
+}
 
 export type PortfolioProduct = { product_id: string; provider: string; provider_name: string; display_name: string; sleeve: Sleeve; price_kind: "nav" | "reference" };
 export type HoldingDraft = { provider: string; product_id: string; units: string | null; cost_basis_php: string | null; manual_value_php?: string | null };
@@ -73,20 +94,23 @@ export function createPortfolioApi(token = getAccessToken, request: typeof fetch
       const response = await request(`${apiBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL, process.env.NODE_ENV)}/v2/portfolio${path}`, {
         method, signal: active, cache: "no-store", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      });
-      if (response.status === 401) throw new Error("Your session has expired. Sign in again to continue.");
-      if (response.status === 403) throw new Error("Live Portfolio is part of Arbor Plus. Explore plans in Settings.");
+      }).catch(() => { throw new PortfolioError("portfolio_network"); });
+      if (response.status === 401) throw new PortfolioError("portfolio_auth");
+      if (response.status === 403) throw new PortfolioError("portfolio_entitlement");
+      if (response.status === 404) throw new PortfolioError("portfolio_unavailable");
       if (response.status === 409) throw new Error("Review your records and refresh prices. For an existing investment, edit its recorded units instead of adding it again.");
       if ([400, 422].includes(response.status)) throw new Error("Check the supported investment, positive units and PHP amounts (up to 2 decimal places).");
-      if (!response.ok) throw new Error("Portfolio records are temporarily unavailable. Please retry.");
-      return response.json();
+      if (!response.ok) throw new PortfolioError("portfolio_server");
+      return response.json().catch(() => { throw new PortfolioError("portfolio_contract"); });
     }, signal);
   }
   return {
     async read(userId: string, signal?: AbortSignal): Promise<LivePortfolioData> {
-      const body: unknown = await call(userId, "", "GET", undefined, signal);
-      if (!isPortfolio(body)) throw new Error("Your portfolio response is incomplete. Please retry.");
-      return body;
+      try {
+        const body: unknown = await call(userId, "", "GET", undefined, signal);
+        if (!isPortfolio(body)) throw new PortfolioError("portfolio_contract");
+        return body;
+      } catch (error) { throw portfolioReadError(error); }
     },
     save: (userId: string, draft: HoldingDraft, id?: string) => call(userId, `/holdings${id ? `/${encodeURIComponent(id)}` : ""}`, id ? "PUT" : "POST", draft),
     remove: (userId: string, id: string) => call(userId, `/holdings/${encodeURIComponent(id)}`, "DELETE"),

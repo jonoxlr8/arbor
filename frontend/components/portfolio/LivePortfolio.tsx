@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import type { PlanV2 } from "@/lib/types/planV2";
-import { portfolioApi, validHolding, freshnessText, supportsManualValue, validManualValue, type HoldingDraft, type LivePortfolioData, type PortfolioHolding } from "@/lib/livePortfolio";
+import { portfolioApi, portfolioReadError, validHolding, freshnessText, supportsManualValue, validManualValue, type HoldingDraft, type LivePortfolioData, type PortfolioHolding } from "@/lib/livePortfolio";
 import { decimalText, formatContributionMoney, SLEEVE_LABELS } from "@/lib/contributions";
 import PortfolioHistoryChart from "./PortfolioHistoryChart";
 import ProviderBrand from "../ProviderBrand";
@@ -21,6 +21,7 @@ export default function LivePortfolio({ value, userId, section = "", onPlanChang
   const [portfolio, setPortfolio] = useState<LivePortfolioData | null>(null);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
+  const [captureOnRead, setCaptureOnRead] = useState(true);
   const [busy, setBusy] = useState(false);
   const [historyError, setHistoryError] = useState(false);
   const [detail, setDetail] = useState<PortfolioHolding | null>(null);
@@ -39,16 +40,18 @@ export default function LivePortfolio({ value, userId, section = "", onPlanChang
     portfolioApi.read(userId, controller.signal).then(async data => {
       if (controller.signal.aborted) return;
       setPortfolio(data);
-      if (data.holdings.length && data.complete && !data.stale_count) {
+      if (captureOnRead && data.holdings.length && data.complete && !data.stale_count) {
         try {
           const result = await portfolioApi.capture(userId, controller.signal);
           if (!controller.signal.aborted && Array.isArray(result.history)) setPortfolio({ ...data, history: result.history });
         } catch { if (!controller.signal.aborted) setHistoryError(true); }
       }
-    }).catch(() => { if (!controller.signal.aborted) setError("Portfolio records are temporarily unavailable. Please retry."); });
+    }).catch(error => { if (!controller.signal.aborted) setError(portfolioReadError(error).message); });
     return () => controller.abort();
-  }, [userId, reload]);
-  function refresh() { setPortfolio(null); setError(""); setHistoryError(false); setReload(n => n + 1); }
+  }, [userId, reload, captureOnRead]);
+  function refresh() { setCaptureOnRead(true); setPortfolio(null); setError(""); setHistoryError(false); setReload(n => n + 1); }
+  // Error recovery is read-only. Normal entry and post-edit snapshot behavior remain unchanged.
+  function retryRead() { setCaptureOnRead(false); setPortfolio(null); setError(""); setHistoryError(false); setReload(n => n + 1); }
   async function mutate(work: () => Promise<unknown>) {
     if (pending.current) return;
     pending.current = true; setBusy(true); setError("");
@@ -58,7 +61,7 @@ export default function LivePortfolio({ value, userId, section = "", onPlanChang
   }
   return <div className="w-full min-w-0 space-y-6">
     <header className="portfolio-toolbar"><span className="portfolio-context">Your investments, together</span><div className="flex items-center gap-2"><button type="button" className="refresh-control" aria-label="Refresh portfolio" title="Refresh portfolio" onClick={refresh} disabled={busy}><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M20 7v5h-5M4 17v-5h5M19 12a7 7 0 0 0-12-5L4 10m16 4-3 3A7 7 0 0 1 5 12"/></svg></button><button className="entry-primary min-h-11" disabled={busy || !portfolio} onClick={() => { setDraft(blank()); setEditing(undefined); }}>+ Add Investment</button></div></header>
-    {error && <div role="alert" className="arbor-panel text-sm text-slate-700">{error}<button disabled={busy} className="entry-link ml-3 min-h-11" onClick={refresh}>Retry</button></div>}
+    {error && <div role="alert" className="arbor-panel text-sm text-slate-700">{error}<button disabled={busy} className="entry-link ml-3 min-h-11" onClick={retryRead}>Retry</button></div>}
     {!portfolio && !error && <div role="status" className="portfolio-skeleton"><span className="sr-only">Loading your portfolio…</span><div/><div/><div/></div>}
     {portfolio && <>
       {!!portfolio.holdings.length && <div className="portfolio-value"><PortfolioSummary portfolio={portfolio} /><PortfolioHistoryChart history={portfolio.history} /></div>}

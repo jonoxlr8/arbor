@@ -1,6 +1,17 @@
 # Arbor consumer experience — 3U-E
 
-> **Current status — full product completion pass, 25 September 2026:** see
+> **Current local premium pass — 26 September 2026:** see
+> [PREMIUM_UX_REVIEW.md](PREMIUM_UX_REVIEW.md). Original Arbor vector category and
+> provider icons replace the active supplied-logo presentation. Onboarding uses
+> a centered setup shell, backend-calculated customization preview and final
+> review. Portfolio errors use bounded safe categories and read-only Retry.
+> The smooth green graph has a labeled value axis; observations, filtering and
+> financial calculations are unchanged. Website screenshots use neutral local
+> fixtures and explicitly illustrative browser-only demo history. Activation
+> is founder-confirmed in the current brief; no hosted/configuration/financial
+> writes are part of this pass. Earlier statuses below are historical.
+
+> **Historical status — full product completion pass, 25 September 2026:** see
 > [FULL_PRODUCT_COMPLETION.md](FULL_PRODUCT_COMPLETION.md). The approved shell,
 > tokens and supplied-logo identity system are retained. The current local pass
 > adds explicit optional customization, saved implementation choices and a

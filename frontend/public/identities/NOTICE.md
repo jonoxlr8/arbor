@@ -1,8 +1,8 @@
 # Bitcoin symbol attribution
 
 This notice applies to the retained historical `bitcoin.svg` file only. The
-active UI now uses the separately owner-supplied PNG described in
-`../brands/NOTICE.md`; no license for that replacement is inferred here.
+active UI now uses an original Arbor coin-category vector, not this Bitcoin
+symbol or the later supplied PNG. Earlier source/license records are retained.
 
 Source: Bitcoin Design, “The visual language of bitcoin”
 https://bitcoin.design/guide/getting-started/visual-language/

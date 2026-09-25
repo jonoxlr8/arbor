@@ -1,11 +1,14 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { approachRequest, createV2Profile, isAccountPlan, isMatchingPlanPreview } from "@/lib/profileV2Api";
 import type { AccountPlan, ExplicitCustomization, PlanV2, ProfileV2Input, Strategy } from "@/lib/types/planV2";
 import { InvalidSessionError } from "@/lib/accountRecovery";
 import { HORIZON_OPTIONS } from "@/lib/onboardingV2";
 import { sleeveColors } from "./AssetIdentity";
 import { CORE_CUSTOMIZATION, FinalPlanReview, PlanCustomization } from "./PlanCustomization";
+import Allocation from "./portfolio/Allocation";
+import { planTargets } from "@/lib/planImplementation";
+import ArborIdentityIcon from "./ArborIdentityIcon";
 
 const PROFILE_DESCRIPTION: Record<Strategy, string> = {
   Conservative: "Your answers suggest you prefer smaller ups and downs and place more importance on stability.",
@@ -17,7 +20,7 @@ export function InvestingProfileSummary({ input, assessment }: { input: ProfileV
   return <section aria-labelledby="investing-profile-heading">
     <p className="choice-eyebrow">A little clarity about you</p>
     <h2 id="investing-profile-heading" className="choice-heading">Your investing profile</h2>
-    <div className="profile-assessment"><strong>{assessment.requested_strategy}</strong><p>{PROFILE_DESCRIPTION[assessment.requested_strategy]}</p></div>
+    <div className="profile-assessment"><span className="profile-orbit" aria-hidden="true"><ArborIdentityIcon glyph="globe"/></span><strong>{assessment.requested_strategy}</strong><p>{PROFILE_DESCRIPTION[assessment.requested_strategy]}</p></div>
     <p className="choice-intro">This summary is informational. No plan has been selected for you. You choose your approach next.</p>
     <ul className="profile-context"><li>{HORIZON_OPTIONS.find(([code]) => code === input.horizon)?.[1]}</li><li>₱{input.monthly_investment.toLocaleString("en-PH")} monthly plan</li><li>Goal: {input.goal_target == null ? "Not set yet" : `₱${input.goal_target.toLocaleString("en-PH")}`}</li></ul>
   </section>;
@@ -41,7 +44,7 @@ export function ApproachOptions({ options, selected, onSelect }: { options: Opti
     {options.assessment.is_short_term ? <><p className="choice-intro">For money needed in less than 3 years, Arbor offers a short-term planning path without a long-term allocation.</p><button type="button" aria-pressed={selected === "short_term"} onClick={() => onSelect("short_term")} className="approach-option mt-5 w-full"><strong>Short-term planning</strong><small>No long-term allocation</small></button></>
       : <><p className="choice-intro">Compare the same core approaches available to every long-term user. Your informational profile is not a plan selection.</p>
         <div className="approach-options">{options.approaches.map(option => <button type="button" key={option.strategy} aria-pressed={selected === option.strategy} onClick={() => onSelect(option.strategy)} className="approach-option">
-          <strong>{option.strategy}</strong>{selected === option.strategy && <span className="approach-selected" aria-hidden="true">✓</span>}
+          <strong>{option.strategy}</strong><span className="approach-description">{({Conservative:"More emphasis on stability",Balanced:"Growth and stability, together",Growth:"More room for market growth",Aggressive:"Equity-focused, larger swings"})[option.strategy]}</span>{selected === option.strategy && <span className="approach-selected" aria-hidden="true">✓</span>}
           <span className="approach-bar" aria-hidden="true">{option.allocation.map(w => <span key={w.role} style={{ width: `${w.percentage_points}%`, background: sleeveColors[w.role as "global_equity" | "defensive"] }} />)}</span>
           <small>{option.allocation.map(w => `${w.percentage_points}% ${w.role === "global_equity" ? "global equity" : "defensive"}`).join(" · ")}</small>
         </button>)}</div>
@@ -51,6 +54,19 @@ export function ApproachOptions({ options, selected, onSelect }: { options: Opti
 }
 
 type Stage = "profile" | "approach" | "customize" | "review";
+function CustomizationPreview({ input, userId }: { input: ProfileV2Input; userId: string }) {
+  const [preview, setPreview] = useState<PlanV2 | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    approachRequest("plan-preview", input, userId, controller.signal).then(result => {
+      if (!isMatchingPlanPreview(result, input)) throw new Error("Invalid preview");
+      if (!controller.signal.aborted) setPreview(result);
+    }).catch(() => { if (!controller.signal.aborted) setFailed(true); });
+    return () => controller.abort();
+  }, [input, userId]);
+  return <div className="customization-preview" aria-live="polite"><p className="choice-eyebrow">Your allocation preview</p>{preview ? <Allocation weights={planTargets(preview)}/> : <p role="status">{failed ? "Preview unavailable. Review my plan will try again." : "Updating your allocation…"}</p>}</div>;
+}
 export default function ApproachSelection({ input, userId, existing, onComplete, onBack }: {
   input: ProfileV2Input; userId: string; existing?: boolean; onComplete: (plan: AccountPlan) => void; onBack: () => void;
 }) {
@@ -63,6 +79,8 @@ export default function ApproachSelection({ input, userId, existing, onComplete,
   const [busy, setBusy] = useState(false);
   const [retry, setRetry] = useState(0);
   const owner = useRef<AbortController | null>(null), pending = useRef(false), panel = useRef<HTMLElement | null>(null);
+  // A stable request object prevents repeated previews on unrelated renders.
+  const previewInput = useMemo(() => ({...input, selected_approach: selected || null, explicit_customization: customization}), [input, selected, customization]);
   useEffect(() => {
     const controller = new AbortController(); owner.current = controller;
     approachRequest("approaches", input, userId, controller.signal).then(value => {
@@ -111,7 +129,7 @@ export default function ApproachSelection({ input, userId, existing, onComplete,
     {options && <fieldset disabled={busy} className="min-w-0">
       {stage === "profile" && <InvestingProfileSummary input={input} assessment={options.assessment} />}
       {stage === "approach" && <ApproachOptions options={options} selected={selected} onSelect={choice => { setSelected(choice); setPreview(null); setError(""); }} />}
-      {stage === "customize" && selected && selected !== "short_term" && <PlanCustomization approach={selected} value={customization} onChange={value => { setCustomization(value); setPreview(null); setError(""); }} disabled={busy} />}
+      {stage === "customize" && selected && selected !== "short_term" && <><PlanCustomization approach={selected} value={customization} onChange={value => { setCustomization(value); setPreview(null); setError(""); }} disabled={busy} /><CustomizationPreview key={`${selected}-${customization.technology_tilt}-${customization.bitcoin}`} input={previewInput} userId={userId}/></>}
       {stage === "review" && preview && <FinalPlanReview value={preview} />}
       <div className="choice-actions">
         {stage === "profile" && <button type="button" className="entry-primary" onClick={() => setStage("approach")}>Compare approaches</button>}

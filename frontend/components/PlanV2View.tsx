@@ -79,7 +79,7 @@ export function V2Destination({ value, active, userId, section = "", onPlanChang
       </dl>
       <p className="mt-4 text-sm text-slate-600">Use Edit investment profile to review assumptions and preview changes before saving.</p>
     </details>
-    <details><summary><SettingsIcon kind="help"/><span>Help &amp; disclosures</span></summary><p className="mt-2 text-sm text-slate-600">Ask Arbor can explain your plan and how existing tools work. You make your own investment decisions; projections are hypothetical. Arbor does not execute trades or hold your money.</p><a className="entry-link" href="#ask">Ask about Arbor →</a><p className="mt-3 text-xs text-slate-500">Provider and investment names and logos are shown for identification only. They belong to their respective owners and do not imply affiliation, sponsorship or endorsement.</p></details>
+    <details><summary><SettingsIcon kind="help"/><span>Help &amp; disclosures</span></summary><p className="mt-2 text-sm text-slate-600">Ask Arbor can explain your plan and how existing tools work. You make your own investment decisions; projections are hypothetical. Arbor does not execute trades or hold your money.</p><a className="entry-link" href="#ask">Ask about Arbor →</a><p className="mt-3 text-xs text-slate-500">Arbor’s category and provider icons are original graphics. Investment and provider names are shown for identification only and do not imply affiliation, sponsorship or endorsement.</p></details>
   </div>;
   return <V2PlanContent value={value} />;
 }

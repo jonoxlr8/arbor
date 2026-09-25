@@ -1,6 +1,29 @@
 # Arbor product previews
 
-## Current completion-pass captures — September 25, 2026
+## Current premium captures — September 26, 2026
+
+The active website uses `premium/`: optimized captures of the actual local app
+with original Arbor vector icons and neutral Alex identity. The explicit
+80/10/10 example has VT/Gotrade, VGT/Gotrade, Bitcoin/PDAX and a manual-value
+ATRAM/GFunds holding, totaling PHP 161,400. These are not customer data.
+
+Only the marketing browser substitutes eight demo history observations into
+GET/snapshot responses. No fake history is persisted to local or hosted data.
+The chart is recorded-value history, not performance or a forecast. Functional
+tests separately exercise real fixture snapshot behavior.
+
+Run `completion.mjs onboarding`, then `marketing-assets.mjs` using the existing
+isolated disposable-account authentication helper and guarded loopback fixture.
+All financial/profile storage is process-local; unknown hosted access fails
+closed. Holdings are removed through UI afterward; stopping the fixture discards
+its profile, history and monthly records. No production flags or data change.
+Public availability copy follows the founder-confirmed activated private beta.
+
+WebPs use responsive mobile crops and lazy loading below the hero.
+`home-social.png` is input only to the generated social preview. `sizes.json`
+records intrinsic dimensions. Earlier sets below are retained history only.
+
+## Historical completion-pass captures — September 25, 2026
 
 The active website now uses `completion/`: 17 WebPs totaling 381,032 bytes,
 plus a separate 211,350-byte PNG for the social-image renderer. They are actual

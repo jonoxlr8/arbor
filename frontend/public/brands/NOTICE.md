@@ -1,4 +1,9 @@
-# Brand artwork — current owner-supplied set
+# Brand artwork — historical owner-supplied set
+
+The September 26 premium pass replaces active investment/provider marks with
+original Arbor vectors. These files remain unchanged historical assets; the
+source/permission notes below no longer describe active UI selection.
+See `docs/INVESTMENT_IDENTITY.md` for the current presentation system.
 
 On 2026-09-25 the founder supplied `coinsph.png`, `vanguard.png`, `bitcoin.png`,
 `pdax.png`, `bpi.png`, `atram.png`, `dragonfi.png`, `gotrade.png` and `gcash.png`,

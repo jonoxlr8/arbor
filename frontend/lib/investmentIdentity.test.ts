@@ -4,7 +4,7 @@ import {createElement} from "react";
 import {renderToStaticMarkup as render} from "react-dom/server";
 import {readFileSync} from "node:fs";
 import {createHash} from "node:crypto";
-import {INVESTMENTS,ISSUERS,PROVIDERS,providerName,providerDisplayText,catalogueGroups} from "./investmentIdentity";
+import {INVESTMENTS,ISSUERS,PROVIDERS,investmentMark,providerName,providerDisplayText,catalogueGroups} from "./investmentIdentity";
 import type {PortfolioProduct} from "./livePortfolio";
 import InvestmentIdentity from "../components/InvestmentIdentity";
 import ProviderIdentity from "../components/ProviderIdentity";
@@ -33,15 +33,16 @@ test("issuer is distinct from holding provider for all asset categories",()=>{
   assert.equal(INVESTMENTS.gcash_defensive.issuer,"atram");assert.equal(INVESTMENTS.dragonfi_defensive.issuer,"bpi");assert.equal(INVESTMENTS.pdax_btc.issuer,"bitcoin");
   assert.doesNotMatch(render(createElement(ProviderIdentity,{provider:"pdax"})),/Coinranking|Bitcoin/);
 });
-test("all supplied logos are fixed local assets with optimized display and accessible names",()=>{
+test("original vector identity metadata replaces corporate artwork without remote requests",()=>{
   for(const identity of [...Object.values(ISSUERS),...Object.values(PROVIDERS)]){
-    assert.ok(identity.logo);
-    assert.match(identity.logo,/^\/brands\/supplied\/(?:providers|issuers)\/[a-z]+\.png$/);
-    assert.ok(readFileSync(`public${identity.logo}`).length < 150_000);
+    assert.ok(identity.icon);
+    assert.equal("logo" in identity,false);
   }
-  assert.match(render(createElement(InvestmentIdentity,{product:"pdax_btc"})),/issuers%2Fbitcoin.png/);
-  assert.match(render(createElement(InvestmentIdentity,{product:"gotrade_vt"})),/issuers%2Fvanguard.png/);
-  assert.match(render(createElement(InvestmentIdentity,{product:"gcash_global_equity"})),/alt="ATRAM"/);
+  for(const [id,glyph] of [["pdax_btc","coin"],["gotrade_vt","globe"],["gotrade_vgt","circuit"],["gotrade_bnd","shield"],["gcash_global_equity","globe"],["dragonfi_technology","circuit"]]) {
+    assert.equal(investmentMark(id).icon,glyph);
+    const html=render(createElement(InvestmentIdentity,{product:id}));
+    assert.match(html,/data-art="arbor-original"/);assert.match(html,/aria-hidden="true"/);assert.doesNotMatch(html,/<img|https:|brands\//);
+  }
 });
 test("supplied PNGs are byte-for-byte originals recorded in the provenance manifest",()=>{
   const manifest=JSON.parse(readFileSync('public/brands/supplied/manifest.json','utf8')) as {assets:{file:string;bytes:number;sha256:string}[]};
@@ -52,10 +53,13 @@ test("supplied PNGs are byte-for-byte originals recorded in the provenance manif
     assert.equal(createHash('sha256').update(data).digest('hex'),asset.sha256);
   }
 });
-test("GFunds and GCrypto share the supplied GCash mark while issuers remain separate",()=>{
-  assert.equal(PROVIDERS.gcash.logo,PROVIDERS.gcrypto.logo);
-  for(const id of Object.keys(PROVIDERS))assert.match(render(createElement(ProviderIdentity,{provider:id})),/brands%2Fsupplied%2Fproviders/);
-  assert.match(render(createElement(InvestmentIdentity,{product:'dragonfi_defensive'})),/issuers%2Fbpi.png/);
+test("six providers have distinct original icons and visible factual names",()=>{
+  assert.equal(new Set(Object.values(PROVIDERS).map(p=>p.icon)).size,6);
+  for(const id of Object.keys(PROVIDERS)) {
+    const html=render(createElement(ProviderIdentity,{provider:id}));
+    assert.ok(html.includes(PROVIDERS[id].name));assert.match(html,/data-art="arbor-original"/);
+  }
+  assert.match(render(createElement(InvestmentIdentity,{product:'dragonfi_defensive'})),/data-glyph="shield"/);
   assert.doesNotMatch(render(createElement(InvestmentIdentity,{product:'unknown',name:'Unknown investment'})),/<img/);
 });
 test("catalogue categories intersect with search and never expand server products",()=>{

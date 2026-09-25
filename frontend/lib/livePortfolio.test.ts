@@ -11,6 +11,7 @@ import { PlusFeature, AccountAccessContext } from "../components/AccountAccess";
 import type { Entitlements } from "./entitlements";
 import { isEntitlements } from "./entitlements";
 import { V2Destination } from "../components/PlanV2View";
+import { PortfolioError, portfolioReadError } from "./livePortfolio";
 
 export const portfolioFixture: LivePortfolioData = {
   currency:"PHP",complete:true,known_value_php:"5600.00",total_value_php:"5600.00",unavailable_count:0,stale_count:0,
@@ -23,6 +24,25 @@ export const portfolioFixture: LivePortfolioData = {
     {sleeve:"crypto",known_value_php:"0.00",current_percentage:"0",target_percentage:0,difference_pp:"0"}],
 };
 const html=(component: Parameters<typeof renderToStaticMarkup>[0])=>renderToStaticMarkup(component);
+for (const [status, code] of [[401,"portfolio_auth"],[403,"portfolio_entitlement"],[404,"portfolio_unavailable"],[500,"portfolio_server"],[503,"portfolio_server"]] as const) test(`read classifies ${status} without exposing body`, async () => {
+  const api = createPortfolioApi(async()=>"fixture",async()=>Response.json({detail:"private database URL and payload"},{status}));
+  await assert.rejects(api.read("A"), error => error instanceof PortfolioError && error.code === code && !error.message.includes("private"));
+});
+test("network and malformed successful responses have distinct bounded errors", async () => {
+  const responses = [async()=>{throw new TypeError("private API URL");},async()=>Response.json({private:"payload"}),async()=>new Response("invalid JSON")];
+  for (const [index, request] of responses.entries()) {
+    await assert.rejects(createPortfolioApi(async()=>"fixture",request).read("A"), error => error instanceof PortfolioError && error.code === (index === 0 ? "portfolio_network" : "portfolio_contract") && !error.message.includes("private"));
+  }
+  assert.equal(portfolioReadError(new Error("secret" )).code,"portfolio_server");
+  assert.equal(portfolioReadError(new Error("secret" )).message.includes("secret"),false);
+});
+test("successful read retry is a fresh GET with no financial mutation", async () => {
+  const calls: RequestInit[] = [];
+  const api = createPortfolioApi(async()=>"fixture",async(_,options)=>{calls.push(options!);return calls.length === 1 ? new Response(null,{status:503}) : Response.json({...portfolioFixture,data_sources:["toap"]});});
+  await assert.rejects(api.read("A"),PortfolioError);
+  assert.ok(isPortfolio(await api.read("A")));
+  assert.deepEqual(calls.map(c=>[c.method,c.cache,c.body]),[["GET","no-store",undefined],["GET","no-store",undefined]]);
+});
 test("manual value is limited to six funds and exact positive PHP amounts",()=>{
   for(const provider of ["gcash","dragonfi"])for(const sleeve of ["global_equity","technology","defensive"])assert.ok(supportsManualValue({product_id:`${provider}_${sleeve}`}));
   for(const product_id of ["gotrade_vt","pdax_btc","AAPL","gcash_arbitrary"])assert.equal(supportsManualValue({product_id}),false);
