@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { monthlyApi, monthLabel, checkinDate, type MonthlyState } from "@/lib/monthlyCheckin";
+import { monthlyApi, monthLabel, checkinDate, checkinAmountInput, type MonthlyState } from "@/lib/monthlyCheckin";
 import { formatContributionMoney } from "@/lib/contributions";
 import type { PlanV2 } from "@/lib/types/planV2";
 import { useAccountAccess } from "./AccountAccess";
@@ -47,7 +47,7 @@ function MonthlyActivity({userId,scenarioAmount}:{userId:string;scenarioAmount?:
   }
   return <section className="monthly-activity" aria-label="Monthly check-in">
     {state?<><MonthlySummary state={state}/>
-      {!confirm && (state.current?<button className="entry-link mt-3 min-h-11" onClick={()=>{setError("");setConfirm("undo");}}>Undo completion</button>:scenarioAmount&&<button className="entry-secondary mt-4 min-h-11" onClick={()=>{setError("");setAmount(/^\d+(\.\d{1,2})?$/.test(scenarioAmount)?scenarioAmount:"");setConfirm("complete");}}>Mark as invested</button>)}
+      {!confirm && (state.current?<button className="entry-link mt-3 min-h-11" onClick={()=>{setError("");setConfirm("undo");}}>Undo completion</button>:scenarioAmount&&<button className="entry-secondary mt-4 min-h-11" onClick={()=>{setError("");const prefill=checkinAmountInput(scenarioAmount);setAmount(prefill);if(!prefill)setError("Enter the PHP amount you actually invested, with at most two decimal places.");setConfirm("complete");}}>Mark as invested</button>)}
       {confirm && <form ref={confirmation} className="mt-4 space-y-3" onSubmit={e=>{e.preventDefault();void save();}}>
         <p>{confirm==="complete"?"Arbor does not place trades or move money. Confirm only after you invest through your provider.":"Undo this month’s completion? The record will be labeled undone; your holdings will not change."}</p>
         {confirm==="complete"&&<label className="block text-sm font-medium">Amount you invested outside Arbor (PHP)<input required inputMode="decimal" value={amount} onChange={e=>setAmount(e.target.value)} className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900" aria-describedby={error?"monthly-error":undefined}/></label>}

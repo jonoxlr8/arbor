@@ -13,6 +13,7 @@ from app.services.implementation.products import PRODUCTS
 from app.services.strategy_v2 import AssetRole
 from app.services.entitlements import Entitlements, subscription_explanation
 from .v2_context import V2ChatContext, build_v2_context
+from .portfolio_explanation import is_target_comparison
 
 
 class V2ChatReply(BaseModel):
@@ -73,6 +74,8 @@ def classify_v2_question(question: str) -> tuple[str, str]:
         return "investment", "overlap"
     if has(r"^what is my portfolio worth(?: now| today)?\??$|^how is my fund valued\??$"):
         return "investment", "actual_holdings"
+    if is_target_comparison(question):
+        return "investment", "actual_holdings"
     if has(r"overweight|underweight|(?:above|below).*target|furthest|largest gap|current.*(value|portfolio|holding|allocation)|how much.*(own|have|recorded)|which holding|my holdings|performance|how.*perform"):
         return "investment", "actual_holdings"
     if has(r"preferenc|earlier|historical|capped|\bcaps?\b"):
@@ -89,6 +92,8 @@ def classify_v2_question(question: str) -> tuple[str, str]:
         return "investment", "implementation"
     if has(r"goal|horizon|starting|monthly assumption"):
         return "investment", "assumptions"
+    if re.fullmatch(r"\s*why did i choose aggressive[?.!]*\s*", q):
+        return "investment", "plan"
     if has(r"plan|approach|strategy|target|allocation|portfolio|global equity|defensive|technology|bitcoin|btc|crypto|\bbonds?\b"):
         return "investment", "plan"
     if has(r"\b(hi|hello|help|arbor)\b"):

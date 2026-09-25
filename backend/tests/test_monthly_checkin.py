@@ -14,6 +14,17 @@ from app.services.entitlements import resolve_entitlements
 from app.services.next_action import get_next_action
 
 
+@pytest.mark.parametrize("amount", ["10000", "10000.0", "10000.00", "10000.000", "10000.5", "10000.500"])
+def test_checkin_accepts_two_meaningful_decimal_places_without_rounding(amount):
+    result = monthly.Completion(month="2026-09", amount_php=amount)
+    assert result.amount_php == Decimal(amount)
+
+
+def test_checkin_rejects_meaningful_subcent_precision():
+    with pytest.raises(ValidationError):
+        monthly.Completion(month="2026-09", amount_php="999.999")
+
+
 @pytest.fixture
 def scenario(harness, monkeypatch):
     client, state = harness

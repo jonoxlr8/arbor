@@ -7,10 +7,25 @@ LABELS = {"global_equity": "Global Equity", "defensive": "Defensive", "technolog
 PROVIDER_DISPLAY_OVERRIDES = {"gcash": "GFunds", "gcrypto": "GCrypto"}
 
 
+def is_target_comparison(question: str) -> bool:
+    """Bounded comparison wording, shared by routing and factual presentation."""
+    subject = r"(?:portfolio|(?:global equity|defensive|technology|tech|bitcoin|btc|crypto) allocation)"
+    return re.fullmatch(
+        rf"\s*(?:how does my {subject} compare (?:with|to) my (?:targets?|plan)"
+        r"|am i aligned with my targets?"
+        r"|how close is my portfolio to my plan"
+        r"|how is my portfolio allocated compared (?:with|to) my targets?"
+        r"|is my portfolio aligned with (?:my plan|the plan i chose))[?.!]*\s*",
+        question.casefold(),
+    ) is not None
+
+
 def explain_portfolio(question: str, portfolio: Portfolio | None) -> str:
     if portfolio is None:
         return "Your current portfolio records are temporarily unavailable. I won’t substitute plan targets for actual holdings. Please retry in Portfolio."
     if not portfolio.holdings:
+        if is_target_comparison(question):
+            return "No holdings are recorded yet. Add investments you already own in Portfolio before Arbor can compare your current portfolio with your chosen targets. Plan targets are not evidence of ownership."
         return "No holdings are recorded yet. Add investments you already own in Portfolio. Your plan targets are not evidence of ownership."
     if re.search(r"perform|worst|best|gain|loss", question, re.I):
         return "Arbor has reference valuations, not complete transaction or contribution history. I can’t separate investment growth from added holdings or rank performance."
@@ -39,6 +54,11 @@ def explain_portfolio(question: str, portfolio: Portfolio | None) -> str:
     matches = [s for s in portfolio.sleeves if any(word in q for word in
         {"global_equity": ("global", "equity"), "defensive": ("defensive", "bond"),
          "technology_tilt": ("technology", "tech"), "crypto": ("bitcoin", "btc", "crypto")}[s.sleeve.value])]
+    comparison = is_target_comparison(question)
+    if comparison and not matches:
+        matches = [s for s in portfolio.sleeves if s.current_percentage is not None and s.difference_pp is not None]
+        if not matches:
+            return prefix + "A current allocation comparison is unavailable until recorded holdings have a positive total value and saved targets."
     if "furthest" in q or "largest gap" in q:
         eligible = [s for s in portfolio.sleeves if s.difference_pp is not None]
         matches = sorted(eligible, key=lambda s: -abs(s.difference_pp))[:1]
@@ -47,6 +67,12 @@ def explain_portfolio(question: str, portfolio: Portfolio | None) -> str:
         if s.current_percentage is not None:
             prefix += f", {s.current_percentage:.2f}% current allocation"
         if s.difference_pp is not None:
-            prefix += f" versus {s.target_percentage}% plan target ({s.difference_pp:+.2f} percentage points)"
+            if comparison:
+                direction = "above" if s.difference_pp > 0 else "below"
+                difference = (f"{abs(s.difference_pp):.2f} percentage points {direction} your target"
+                              if s.difference_pp else "at your target")
+                prefix += f" versus {s.target_percentage}% plan target ({difference})"
+            else:
+                prefix += f" versus {s.target_percentage}% plan target ({s.difference_pp:+.2f} percentage points)"
         prefix += ". "
     return prefix + "These are recorded holdings and reference values, not execution quotes or instructions to trade."

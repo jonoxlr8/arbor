@@ -5,6 +5,17 @@ import { boundedRequest } from "./dashboardConsistency";
 export type CheckinRecord = { month: string; amount_php: string; completed_at: string; undone_at: string | null };
 export type MonthlyState = { month: string; current: CheckinRecord | null; history: CheckinRecord[] };
 const monthPattern = /^\d{4}-(0[1-9]|1[0-2])$/;
+// Form boundary only: preserve the API's two meaningful decimal-place policy.
+// Extra trailing zeros are lossless; sub-cent amounts require user confirmation,
+// not a newly invented rounding rule or a change to planner precision.
+export function checkinAmountInput(value: string): string {
+  if (!/^\d+(?:\.\d+)?$/.test(value)) return "";
+  const [integer, fraction = ""] = value.split(".");
+  const whole = integer.replace(/^0+(?=\d)/, "");
+  if (whole.length > 12 || /[1-9]/.test(fraction.slice(2))) return "";
+  const cents = fraction.slice(0, 2).padEnd(2, "0");
+  return whole === "0" && cents === "00" ? "" : `${whole}.${cents}`;
+}
 export function validMonthly(value: unknown): value is MonthlyState {
   if (!value || typeof value !== "object") return false;
   const s = value as MonthlyState;
