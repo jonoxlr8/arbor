@@ -12,16 +12,16 @@ import ContributionCard from "../components/contributions/ContributionCard";
 import { portfolioFixture } from "./livePortfolio.test";
 import { contributionFixture } from "./contributions.test";
 
-test("asset identities are category/ticker marks, never remote logos", () => {
+test("asset identities reuse locally sourced investment identities, never remote logos", () => {
   assert.equal(assetMonogram("gotrade_vt"), "VT");
   assert.equal(assetMonogram("gotrade_vgt"), "VGT");
   assert.equal(assetMonogram("bitcoin"), "₿");
   const html = render(createElement(AssetIdentity, {product:"gcash_technology", sleeve:"technology_tilt"}));
-  assert.match(html, /aria-hidden="true"/); assert.doesNotMatch(html, /<img|https:/);
+  assert.match(html, /aria-label="ATRAM"/); assert.match(html, /brands%2Fsupplied%2Fissuers%2Fatram.png/); assert.doesNotMatch(html, /https:/);
 });
-test("provider monograms preserve visible provider text", () => {
+test("provider logos preserve visible provider text", () => {
   const html = render(createElement(ProviderBrand, {provider:"pdax", name:"PDAX"}));
-  assert.match(html, /PDAX/); assert.match(html, /identity-small/); assert.doesNotMatch(html, /Coinranking|<img/);
+  assert.match(html, /PDAX/); assert.match(html, /identity-small/); assert.match(html, /alt="PDAX"/); assert.doesNotMatch(html, /Coinranking/);
 });
 test("allocation renders accessible canonical percentages without alignment score", () => {
   const html = render(createElement(Allocation, {weights:[{role:"global_equity",percentage_points:70},{role:"defensive",percentage_points:30}]}));

@@ -36,17 +36,30 @@ test("pricing is beta-free, future prices display only and Free explicitly at la
   assert.doesNotMatch(html,/Unlimited AI|limited time|countdown|discount|ACT NOW/i);
 });
 test("actual local product images are optimized, accessible and labeled illustrative", () => {
-  assert.equal((html.match(/<img /g) ?? []).length,6);
+  assert.equal((html.match(/<picture>/g) ?? []).length,9);
   assert.match(html,/srcSet=/); assert.match(html,/loading="lazy"/); assert.match(html,/fetchPriority="high"/);
+  assert.match(html,/loading="eager"/);
+  assert.match(html,/<source media="\(max-width: 600px\)" srcSet="\/product\/3ug1-supplied\/home-mobile.webp"/);
   assert.doesNotMatch(html,/<img[^>]+alt=""/);
   assert.match(html,/Actual Arbor interface · Illustrative data/);
   assert.doesNotMatch(html,/Codex|@example\.com|sb_secret_|service_role/);
-  for (const name of ['home','holdings','allocation','ask','contribution','fund-value']) assert.ok(statSync(`public/product/${name}.webp`).size<100_000);
+  assert.match(html,/product%2F3ug1-supplied%2Fhome/);
+  for (const name of ['home','portfolio','ways','catalogue','holdings','allocation','ask','contribution','fund-value','settings','ask-desktop']) assert.ok(statSync(`public/product/3ug1-supplied/${name}.webp`).size<150_000);
+});
+test("public ways reuse canonical providers and the current recording journey",()=>{
+  const source=readFileSync('components/entry/PublicWebsite.tsx','utf8');
+  assert.match(source,/providerDestination\(option.provider\)/);
+  assert.match(html,/Ways to invest &amp; official provider links/);
+  assert.match(html,/when public quota support launches/);
+  assert.match(html,/Invest through your provider. Record what you own in Arbor/);
+  assert.match(html,/holding record—not a purchase/);
+  assert.match(html,/target="_blank" rel="noopener noreferrer"/);
+  for(const id of ['ways-to-invest','record-investment'])assert.ok(html.includes(`id="${id}"`));
 });
 test("identity metadata is reused with clear provider names and non-endorsement", () => {
   for (const name of ['GFunds','Gotrade','DragonFi','GCrypto','Coins.ph','PDAX']) assert.ok(html.includes(name));
   assert.doesNotMatch(html,/GCash \/ GFunds|GCash \/ GCrypto/);
-  assert.match(html,/not partnerships/); assert.match(html,/not official logos/);
+  assert.match(html,/not partnerships/); assert.match(html,/identification only/);
 });
 test("FAQs explain choice, non-custody, no sync, AI limitations and Philippines scope", () => {
   assert.equal(publicFaqs.length,10);

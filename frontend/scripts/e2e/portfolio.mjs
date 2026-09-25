@@ -23,7 +23,7 @@ await withAuthenticatedBrowser(async ({page,reused})=>{
     await page.getByRole('button',{name:'Remove from Arbor',exact:true}).click();await clean;
     await page.getByRole('button',{name:'+ Add Investment',exact:true}).first().waitFor();
   }
-  await page.getByRole('heading',{name:'Start tracking your investments',exact:true}).waitFor();
+  await page.getByRole('heading',{name:'Ways to invest',exact:true}).waitFor();
   async function add(provider,product,units){
     stage=`add ${product}`;
     await page.getByRole('button',{name:'+ Add Investment',exact:true}).first().click();
@@ -100,7 +100,7 @@ await withAuthenticatedBrowser(async ({page,reused})=>{
     await page.getByRole('button',{name:'Remove from Arbor',exact:true}).click();
     await page.getByRole('button',{name:`Remove ${name}`,exact:true}).waitFor({state:'hidden'});
   }
-  await page.getByRole('heading',{name:'Start tracking your investments',exact:true}).waitFor();
+  await page.getByRole('heading',{name:'Ways to invest',exact:true}).waitFor();
   assert.equal(pageErrors,0);assert.equal(consoleErrors,0);
   assert.ok(network.every(x=>x[2]<400));
   console.log(JSON.stringify({reused,fixtureMode:true,hostedPortfolioWrites:0,finalFixtureHoldings:0,layouts,pageErrors,consoleErrors,network}));

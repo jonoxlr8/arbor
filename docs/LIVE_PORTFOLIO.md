@@ -3,6 +3,16 @@
 Manual records of investments already owned; reference valuation, not execution,
 custody, broker linking or a recommendation. V1 holdings remain unchanged.
 
+## Activation status — 2026-09-25 (3U-G)
+
+The product owner confirms **Marketstack Basic is now active** and commercial-use
+permission is confirmed. This UI milestone does not independently inspect the
+vendor account or change subscriptions. The tier/permission prerequisite is met;
+it is not permission to activate. Live Portfolio and Monthly Check-In remain OFF.
+See [the post-deploy activation sequence](PLAN_TO_PROVIDER.md#future-activation-sequence-not-performed)
+for the deliberate hosted refresh, approvals, smoke test and rollback steps.
+No hosted persistence was revalidated and no migrations were applied in 3U-G.
+
 ## Hosted rehearsal status — 2026-09-24 (3U-B.6)
 
 Arbor project `gnjjtlswwhkpiabyayvi` now has the manual-fund-value migration
@@ -18,8 +28,8 @@ private-beta activation. This is a subscription-tier gate, not pending permissio
 
 ### Next activation sequence (not performed)
 
-1. Upgrade Marketstack Free to Basic.
-2. Confirm Basic is active.
+1. Marketstack Basic upgrade: completed, per the 2026-09-25 owner confirmation above.
+2. Reconfirm Basic remains active at the future activation review.
 3. Run the trusted hosted market-data refresh.
 4. Verify VT/VGT/BND, USD/PHP and BTC/PHP freshness and attribution.
 5. Confirm the manual-value migration above is applied.

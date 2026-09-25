@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {createElement} from "react";
 import {renderToStaticMarkup as render} from "react-dom/server";
 import {readFileSync} from "node:fs";
-import {INVESTMENTS,ISSUERS,PROVIDERS,providerName,catalogueGroups} from "./investmentIdentity";
+import {createHash} from "node:crypto";
+import {INVESTMENTS,ISSUERS,PROVIDERS,providerName,providerDisplayText,catalogueGroups} from "./investmentIdentity";
 import type {PortfolioProduct} from "./livePortfolio";
 import InvestmentIdentity from "../components/InvestmentIdentity";
 import ProviderIdentity from "../components/ProviderIdentity";
@@ -15,6 +16,10 @@ const catalog:PortfolioProduct[]=Object.entries(INVESTMENTS).map(([product_id,p]
 test("display names simplify GFunds and GCrypto without changing IDs",()=>{
   assert.equal(providerName("gcash"),"GFunds");assert.equal(providerName("gcrypto"),"GCrypto");
   assert.deepEqual(Object.keys(PROVIDERS),["gcash","gotrade","dragonfi","gcrypto","coins_ph","pdax"]);
+});
+test("legacy reply labels are presentation-only and preserve values and source wording",()=>{
+  assert.equal(providerDisplayText('GCash / GFunds: PHP 8,000.00 entered by you. GCash / GCrypto: 0.001 BTC.'),'GFunds: PHP 8,000.00 entered by you. GCrypto: 0.001 BTC.');
+  assert.equal(providerDisplayText('GCash account; NAV unavailable'), 'GCash account; NAV unavailable');
 });
 test("exactly twelve supported provider/product choices have identity metadata",()=>{
   assert.equal(Object.keys(INVESTMENTS).length,12);
@@ -28,11 +33,37 @@ test("issuer is distinct from holding provider for all asset categories",()=>{
   assert.equal(INVESTMENTS.gcash_defensive.issuer,"atram");assert.equal(INVESTMENTS.dragonfi_defensive.issuer,"bpi");assert.equal(INVESTMENTS.pdax_btc.issuer,"bitcoin");
   assert.doesNotMatch(render(createElement(ProviderIdentity,{provider:"pdax"})),/Coinranking|Bitcoin/);
 });
-test("logos are fixed local assets and permission-pending companies have named fallbacks",()=>{
-  for(const identity of [...Object.values(ISSUERS),...Object.values(PROVIDERS)])if(identity.logo)assert.match(identity.logo,/^\/identities\/[a-z-]+\.svg$/);
-  assert.match(render(createElement(InvestmentIdentity,{product:"pdax_btc"})),/src="\/identities\/bitcoin.svg"/);
-  assert.doesNotMatch(render(createElement(InvestmentIdentity,{product:"gotrade_vt"})),/<img/);
-  assert.match(render(createElement(InvestmentIdentity,{product:"gcash_global_equity"})),/ATRAM/);
+test("all supplied logos are fixed local assets with optimized display and accessible names",()=>{
+  for(const identity of [...Object.values(ISSUERS),...Object.values(PROVIDERS)]){
+    assert.ok(identity.logo);
+    assert.match(identity.logo,/^\/brands\/supplied\/(?:providers|issuers)\/[a-z]+\.png$/);
+    assert.ok(readFileSync(`public${identity.logo}`).length < 150_000);
+  }
+  assert.match(render(createElement(InvestmentIdentity,{product:"pdax_btc"})),/issuers%2Fbitcoin.png/);
+  assert.match(render(createElement(InvestmentIdentity,{product:"gotrade_vt"})),/issuers%2Fvanguard.png/);
+  assert.match(render(createElement(InvestmentIdentity,{product:"gcash_global_equity"})),/alt="ATRAM"/);
+});
+test("supplied PNGs are byte-for-byte originals recorded in the provenance manifest",()=>{
+  const manifest=JSON.parse(readFileSync('public/brands/supplied/manifest.json','utf8')) as {assets:{file:string;bytes:number;sha256:string}[]};
+  assert.equal(manifest.assets.length,9);
+  for(const asset of manifest.assets){
+    const data=readFileSync(`public/brands/supplied/${asset.file}`);
+    assert.equal(data.length,asset.bytes);
+    assert.equal(createHash('sha256').update(data).digest('hex'),asset.sha256);
+  }
+});
+test("GFunds and GCrypto share the supplied GCash mark while issuers remain separate",()=>{
+  assert.equal(PROVIDERS.gcash.logo,PROVIDERS.gcrypto.logo);
+  for(const id of Object.keys(PROVIDERS))assert.match(render(createElement(ProviderIdentity,{provider:id})),/brands%2Fsupplied%2Fproviders/);
+  assert.match(render(createElement(InvestmentIdentity,{product:'dragonfi_defensive'})),/issuers%2Fbpi.png/);
+  assert.doesNotMatch(render(createElement(InvestmentIdentity,{product:'unknown',name:'Unknown investment'})),/<img/);
+});
+test("catalogue categories intersect with search and never expand server products",()=>{
+  assert.equal(catalogueGroups(catalog,'','fund').flatMap(g=>g.products).length,6);
+  assert.equal(catalogueGroups(catalog,'','etf').flatMap(g=>g.products).length,3);
+  assert.equal(catalogueGroups(catalog,'PDAX','bitcoin').flatMap(g=>g.products).length,1);
+  assert.deepEqual(catalogueGroups(catalog,'VT','fund'),[]);
+  assert.deepEqual(catalogueGroups([{...catalog[0],product_id:'arbitrary'}]),[]);
 });
 test("catalogue groups are neutral and preserve server allowlist only",()=>{
   assert.deepEqual(catalogueGroups(catalog).map(g=>g.name),["GFunds","DragonFi","Gotrade","Bitcoin"]);

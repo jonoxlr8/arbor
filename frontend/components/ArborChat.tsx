@@ -7,6 +7,7 @@ import type { AccountPlan } from "@/lib/types/planV2";
 import { ArborMark } from "@/components/Logo";
 import { useAccountAccess } from "./AccountAccess";
 import { FREE_LIMIT_MESSAGE, type AskUsage } from "@/lib/entitlements";
+import { providerDisplayText } from "@/lib/investmentIdentity";
 
 type ArborChatProps = {
   plan: AccountPlan;
@@ -150,7 +151,7 @@ function ArborMessage({ text }: { text: string }) {
         </div>
       </div>
 
-      <ArborResponse text={text} />
+      <ArborResponse text={providerDisplayText(text)} />
     </div>
   );
 }
@@ -209,6 +210,7 @@ function PlanChat({ v2 }: { v2: boolean }) {
       {/* Intro */}
       <div className="text-sm">
         {access?.value?.effective_tier === "plus" && <p className="mb-2 text-xs font-medium text-slate-500">Arbor Plus · Full Ask Arbor access</p>}
+        {access?.value?.effective_tier === "free" && <p className="mb-2 text-xs font-medium text-slate-500">Arbor Free · Ask about your plan</p>}
         {currentUsage && !limited && <p role="status" className="mb-2 text-sm text-slate-600">{currentUsage.remaining} Free questions remaining this month.</p>}
         {limited && <div role="status" className="mb-4 rounded-xl border border-slate-200 p-4"><p className="text-slate-700">{FREE_LIMIT_MESSAGE}</p><a className="entry-link mt-2 inline-flex min-h-11 items-center" href="#settings/plus">Explore Arbor Plus</a></div>}
         {access?.value?.ask_usage_available === false && <p role="status" className="mb-3 text-sm text-slate-600">Ask Arbor usage is temporarily unavailable. Your saved plan remains accessible.</p>}

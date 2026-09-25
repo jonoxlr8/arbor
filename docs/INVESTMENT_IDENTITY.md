@@ -1,4 +1,4 @@
-# Investment and provider identities — 3U-E.1
+# Investment and provider identities — 3U-G.1
 
 Reviewed September 25, 2026. Display metadata only; no pricing, target, eligibility,
 provider-ranking or product-allowlist logic belongs in this layer.
@@ -26,7 +26,31 @@ A Unit Class for the ATRAM funds and Class P / PHP for the relevant BPI funds.
 The BPI Global Equity spelling follows the current backend catalogue
 (`BPI Global Equity Fund of Funds`), rather than inventing a different product.
 
-## Asset provenance and permission status
+## Current assets: owner-supplied originals
+
+The founder supplied nine PNG files and explicitly confirmed use **unchanged**.
+All four issuers and six provider identities now use those files from
+`frontend/public/brands/supplied/`. GFunds and GCrypto share `gcash.png`.
+Vanguard, Coins.ph and PDAX now have supplied artwork, not default monograms.
+The originals are byte-for-byte copies, checked by SHA-256 in `manifest.json`.
+Next Image generates appropriately sized delivery versions; no logo geometry,
+colors or embedded backgrounds were edited. Names remain visible; image-load
+failure and unknown identities still have text fallbacks.
+
+This is a source/implementation record, not confirmation of a trademark license.
+No permission, endorsement or copyright workaround is asserted. The previous
+permission research below remains relevant for owner review before publication.
+The supplied Bitcoin PNG has user-provided provenance; the retained older SVG's
+separate license is not automatically attributed to this replacement.
+
+## Historical first-party asset investigation (superseded selection)
+
+The founder subsequently requested first-party logo reuse for identification
+despite not holding separate provider permissions. Corporate assets below are
+**first-party identification artwork, not licensed/approved partnerships**.
+Exact downloaded URLs, conversion details and residual permission uncertainty
+are recorded in `frontend/public/brands/NOTICE.md`. No legal conclusion about
+nominative use is made here. Explicit logo-copy restrictions still use fallbacks.
 
 Arbor's existing approved mark is unchanged. The decorative Home landscape is
 an original geometric illustration, not a trademark or a financial chart.
@@ -35,19 +59,25 @@ an original geometric illustration, not a trademark or a financial chart.
 | --- | --- | --- |
 | Bitcoin | Locally stored supplied SVG | [Bitcoin Design symbol download](https://bitcoin.design/guide/getting-started/visual-language/); artwork unchanged, credited to Bitcoin Design / bitboy. [Project license](https://bitcoin.design/LICENSE) permits asset images under CC BY 4.0. Attribution appears in Settings → Help & disclosures and the distributed `public/identities/NOTICE.md`. Bitcoin has no central company issuing an “official” logo. |
 | Vanguard | VG typographic tile + full Vanguard name | [Vanguard terms](https://investor.vanguard.com/terms-conditions) require permission for logo reproduction. Obtain approved asset/permission before replacing the fallback. |
-| ATRAM | ATRAM typographic tile + full fund name | [ATRAM](https://www.atram.com.ph/) / [published agreements](https://openfinance.atram.com.ph/agreements) inspected; no reusable logo grant established. Approved asset/usage confirmation needed. |
-| BPI Wealth | BPI typographic tile + full fund name | [BPI official site](https://www.bpi.com.ph/); no reusable asset grant established in this review. Approved asset/usage confirmation needed. |
-| GFunds / GCrypto | GF / GC text tiles + full provider name | [GCash terms](https://gcash.com/terms-and-conditions); no reusable asset grant established. Do not imply affiliation. |
-| Gotrade | GT text tile + Gotrade | [Gotrade legal](https://www.heygotrade.com/legal/); approved asset/usage confirmation needed. |
-| DragonFi | DF text tile + DragonFi | [DragonFi agreement](https://www.dragonfi.ph/ostma); approved asset/usage confirmation needed. |
-| Coins.ph | CP text tile + Coins.ph | [Coins.ph legal](https://www.coins.ph/fil-ph/legal); approved asset/usage confirmation needed. |
+| ATRAM | Official website icon, local lossless WebP + full fund name | [ATRAM](https://www.atram.com.ph/) links the source storage image in its public HTML. [Agreement](https://openfinance.atram.com.ph/agreements) retains IP ownership; no open license claimed. |
+| BPI Wealth | Unchanged BPI official header SVG + full fund name | [BPI official site](https://www.bpi.com.ph/). Identity only; no general reuse grant established. |
+| GFunds / GCrypto | Shared official GCash website icon + GFunds / GCrypto text | [GCash terms](https://gcash.com/terms-and-conditions). Product names remain simplified; no merchant acceptance, integration or partnership claim. No separate permission established. |
+| Gotrade | Official website app icon + Gotrade | [Gotrade legal](https://www.heygotrade.com/legal/); its service license is not a trademark license. Identification use per founder instruction, not a claim of permission. |
+| DragonFi | Official website icon + DragonFi | [DragonFi](https://www.dragonfi.ph/) and [contact](https://www.dragonfi.ph/contact-us). No reuse grant established; media@dragonfi.ph is a published inquiry channel, not contacted. |
+| Coins.ph | CP text tile + Coins.ph | [Coins.ph legal](https://www.coins.ph/en-ph/legal) section 11 restricts copying/publishing IP. [Press](https://www.coins.ph/en-ph/press) provides press@coins.ph but no applicable grant; not contacted. |
 | PDAX | PDAX text tile + PDAX | [PDAX terms](https://pdax.ph/rule/terms-and-conditions/) restrict use without written consent; obtain approval first. |
 
 These are asset-selection decisions, not legal conclusions about nominative use.
 No company logos were copied from image search, guessed, redrawn or hotlinked.
-The remaining corporate-logo gap is explicit: names are recognizable, but the
-fallbacks are not official brand marks. Replace them centrally when approved
-local assets become available; financial logic and IDs need not change.
+Vanguard, Coins.ph and PDAX were permission-dependent fallbacks in that pass;
+the later owner-supplied originals above supersede that asset selection.
+Names remain visible even if an image fails; the shared component switches to
+its text fallback on image error. Metadata supports accessible names and optional
+Light/Dark variants; current marks use neutral containers rather than recoloring.
+Future approved replacements only require central metadata/local files.
+
+Catalogue filters All / Funds / ETFs / Bitcoin intersect with both search and
+the authenticated API's returned supported products. They do not introduce assets.
 
 ## Data-source attribution
 

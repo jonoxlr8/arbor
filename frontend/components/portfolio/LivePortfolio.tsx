@@ -12,6 +12,7 @@ import Allocation from "./Allocation";
 import InvestmentCatalogue from "./InvestmentCatalogue";
 import { investmentIdentity, providerName } from "@/lib/investmentIdentity";
 import { ArborMark } from "../Logo";
+import PlanImplementation from "./PlanImplementation";
 
 const inputClass = "mt-1 min-h-12 w-full min-w-0 rounded-xl border border-slate-300 bg-white p-3 text-slate-900";
 const blank = (): HoldingDraft => ({ provider: "", product_id: "", units: null, cost_basis_php: null, manual_value_php: null });
@@ -27,7 +28,7 @@ export default function LivePortfolio({ value, userId, section = "" }: { value: 
   const [tab, setTab] = useState("holdings");
   const [showContribution, setShowContribution] = useState(section === "contribution");
   const pending = useRef(false);
-  const [draft, setDraft] = useState<HoldingDraft | null>(null);
+  const [draft, setDraft] = useState<HoldingDraft | null>(() => section === "add" ? blank() : null);
   const [editing, setEditing] = useState<string>();
   const [deleting, setDeleting] = useState<PortfolioHolding | null>(null);
   const [manual, setManual] = useState<{ holding: PortfolioHolding; value: string } | null>(null);
@@ -64,10 +65,13 @@ export default function LivePortfolio({ value, userId, section = "" }: { value: 
     {!portfolio && !error && <div role="status" className="portfolio-skeleton"><span className="sr-only">Loading your portfolio…</span><div/><div/><div/></div>}
     {portfolio && <>
       {!!portfolio.holdings.length && !showContribution && <div className="portfolio-value"><PortfolioSummary portfolio={portfolio} /><PortfolioHistoryChart history={portfolio.history} /></div>}
-      <div className="portfolio-tabs" role="group" aria-label="Portfolio sections">{["holdings", "allocation", "contribution", "activity"].map(item => <button key={item} className="min-h-11" aria-label={item === "contribution" ? "Monthly contribution" : undefined} aria-pressed={showContribution ? item === "contribution" : tab === item} onClick={() => { setTab(item); setShowContribution(item === "contribution"); }}>{({holdings:"Holdings",allocation:"Allocation",contribution:"Monthly",activity:"Activity"} as Record<string,string>)[item]}</button>)}</div>
+      {!!portfolio.holdings.length && <div className="portfolio-tabs" role="group" aria-label="Portfolio sections">{["holdings", "allocation", "contribution", "activity"].map(item => <button key={item} className="min-h-11" aria-label={item === "contribution" ? "Monthly contribution" : undefined} aria-pressed={showContribution ? item === "contribution" : tab === item} onClick={() => { setTab(item); setShowContribution(item === "contribution"); }}>{({holdings:"Holdings",allocation:"Allocation",contribution:"Monthly",activity:"Activity"} as Record<string,string>)[item]}</button>)}</div>}
       {historyError && <p role="status" className="text-sm text-slate-600">Current values are available, but today’s history could not be recorded. Please retry later.</p>}
       {!showContribution && tab === "holdings" && <section id="section-holdings" aria-label="Holdings">
-        {!portfolio.holdings.length ? <div className="portfolio-empty"><span className="companion-mark mx-auto mb-5"><ArborMark className="h-8 w-8"/></span><h3>Start tracking your investments</h3><p>Add what you already own. See it together and compare it with the plan you chose.</p><button className="entry-primary min-h-11" onClick={() => { setDraft(blank()); setEditing(undefined); }}>+ Add Investment</button><p className="text-xs">Arbor records holdings. It does not place trades or move money.</p></div> : <div className="holdings-list">{portfolio.holdings.map(h => <button type="button" className="holding-row" key={h.id} aria-label={`View ${h.display_name}`} onClick={() => setDetail(h)}>
+        {!portfolio.holdings.length ? <>
+          {value.plan.path === "long_term" && value.plan.readiness.actionable_contribution_guidance_allowed ? <PlanImplementation value={value} onRecord={() => { setDraft(blank()); setEditing(undefined); }}/>
+          : <div className="portfolio-empty"><span className="companion-mark mx-auto mb-5"><ArborMark className="h-8 w-8"/></span><h3>No investments recorded yet</h3><p>You can record investments you already own. Your plan’s current readiness and horizon guidance remain unchanged.</p></div>}
+        </> : <div className="holdings-list">{portfolio.holdings.map(h => <button type="button" className="holding-row" key={h.id} aria-label={`View ${h.display_name}`} onClick={() => setDetail(h)}>
           <AssetIdentity product={h.product_id} sleeve={h.sleeve}/><span className="holding-copy"><strong>{investmentIdentity(h.product_id,h.display_name).shortName}</strong>{investmentIdentity(h.product_id).category === "etf" && <span className="holding-full-name">{investmentIdentity(h.product_id).fullName}</span>}<span className="mt-1 block"><ProviderBrand provider={h.provider} name={h.provider_name}/></span><small>{h.units !== null && !supportsManualValue(h) ? `${decimalText(h.units)} ${h.sleeve === "crypto" ? "BTC" : "shares"} · ` : ""}{freshnessText(h)}</small></span><span className="holding-money">{h.value_php === null ? "Value unavailable" : money(h.value_php)}<span className="row-chevron" aria-hidden="true"> ›</span></span>
         </button>)}</div>}
         {!!portfolio.holdings.length && <details className="provider-totals"><summary className="min-h-11 cursor-pointer text-sm text-slate-600">Value by provider</summary><dl className="detail-facts">{Object.entries(portfolio.provider_values_php).map(([provider, value]) => <div key={provider}><dt>{providerName(provider)}</dt><dd>{money(value)}{portfolio.holdings.some(h => h.provider === provider && h.value_php === null) ? " · incomplete" : ""}</dd></div>)}</dl></details>}
@@ -107,6 +111,8 @@ export default function LivePortfolio({ value, userId, section = "" }: { value: 
         scenarioAvailability(value, portfolio) === "prices_required" ? <p className="arbor-panel text-sm text-slate-600">Contribution previews are paused until complete, up-to-date values are available. Update any fund values that need attention. Your records remain editable.</p> :
         showContribution ? <div id="section-contribution"><ContributionCard key={`${reload}:${portfolio.valued_at}`} value={value} userId={userId} portfolio={portfolio.holdings.length ? portfolio : undefined} /></div> : null
       ) : <p className="arbor-panel text-sm text-slate-600">Your holdings can be tracked independently. Monthly contributions need an explicitly selected active long-term plan. Review your plan for the current path.</p>)}
+      {!portfolio.holdings.length && value.plan.path === "long_term" && value.plan.plan_basis === "user_selected" && value.plan.readiness.actionable_contribution_guidance_allowed && <div className="contribution-secondary"><button type="button" className="entry-link" aria-expanded={showContribution} onClick={() => setShowContribution(!showContribution)}>{showContribution ? "Back to ways to invest" : "Review this month’s contribution"} <span aria-hidden="true">{showContribution ? "−" : "+"}</span></button></div>}
+      {!!portfolio.holdings.length && value.plan.path === "long_term" && value.plan.readiness.actionable_contribution_guidance_allowed && <details className="portfolio-ways-details"><summary>Ways to invest your plan</summary><PlanImplementation value={value} intro={false} onRecord={() => { setDraft(blank()); setEditing(undefined); }}/></details>}
       <footer className="portfolio-data"><details><summary>About prices &amp; data</summary><p>Reference values may exclude fees or spreads. A value entered by you is not an official fund NAV. Provider names belong to their owners; Arbor is not affiliated with or endorsed by them.</p></details><DataAttribution sources={portfolio.data_sources ?? []} /></footer>
     </>}
   </div>;

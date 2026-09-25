@@ -1,0 +1,59 @@
+{
+  "note": "User-supplied PNG originals, copied unchanged on 2026-09-25. No license or endorsement asserted.",
+  "assets": [
+    {
+      "file": "providers/coinsph.png",
+      "source": "coinsph.png",
+      "bytes": 148986,
+      "sha256": "a25c7418118ba8ecfb34379d84ec3cbb737d2f2d2972840ccf4701868e772fe7"
+    },
+    {
+      "file": "providers/pdax.png",
+      "source": "pdax.png",
+      "bytes": 3909,
+      "sha256": "af46feeb72439fa58a1c33b502ac4477405eaa5557571b52f02f12b95b21b88f"
+    },
+    {
+      "file": "providers/dragonfi.png",
+      "source": "dragonfi.png",
+      "bytes": 31771,
+      "sha256": "0e5bc556803e047136eca53a835fae7d5bd079d29ca88096a603ec47f2de5e65"
+    },
+    {
+      "file": "providers/gotrade.png",
+      "source": "gotrade.png",
+      "bytes": 13268,
+      "sha256": "22dfa1c8b73487425ed17564ed84b1243a434221047fbbaee478e5506427076e"
+    },
+    {
+      "file": "providers/gcash.png",
+      "source": "gcash.png",
+      "bytes": 18982,
+      "sha256": "223698757c77347f1711f69bcf4940b54dbd64d4b0e9f37134b2543aa731bf52"
+    },
+    {
+      "file": "issuers/vanguard.png",
+      "source": "vanguard.png",
+      "bytes": 7281,
+      "sha256": "375baf2cc816ac3e7a27e4e7e5fc81cfc117fcbc982041d59e6c2c652d032530"
+    },
+    {
+      "file": "issuers/bitcoin.png",
+      "source": "bitcoin.png",
+      "bytes": 95025,
+      "sha256": "ee54ba6d1d2005e73ea97fc4d935c709245c4aae22cc9eb6e05963811213030d"
+    },
+    {
+      "file": "issuers/bpi.png",
+      "source": "bpi.png",
+      "bytes": 52077,
+      "sha256": "9aa0a8d3a464104fb5304de34d56f875d8e0ddcaf241ef9f7258a256a4bfbe68"
+    },
+    {
+      "file": "issuers/atram.png",
+      "source": "atram.png",
+      "bytes": 85594,
+      "sha256": "18378933cd5b5dba34e3d1e6832ff0eaa006b2b45f16e1e912f3872ca711d20a"
+    }
+  ]
+}

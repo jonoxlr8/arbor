@@ -45,9 +45,9 @@ test("Free Portfolio keeps plan and implementation education with calm Plus dest
   assert.match(html,/Your model targets|Where can I invest\?|Explore Arbor Plus/);
   assert.doesNotMatch(html,/Calculate scenario|Add holding/);
 });
-test("provider fallback is visible accessible text without remote or invented logos", () => {
+test("provider logo preserves visible accessible text without remote logo URLs", () => {
   const html=render(createElement(ProviderBrand,{provider:"pdax",name:"PDAX"}));
-  assert.match(html,/>PDAX</);assert.doesNotMatch(html,/<img|https:/);
+  assert.match(html,/>PDAX</);assert.match(html,/alt="PDAX"/);assert.match(html,/supplied%2Fproviders%2Fpdax.png/);assert.doesNotMatch(html,/https:/);
 });
 test("navigation preserves chat but saved plan changes reset context; Home never captures", () => {
   const shell=readFileSync("components/PlanV2View.tsx","utf8");

@@ -34,8 +34,11 @@ plan-created state and onboarding. Public marketing retains its layout.
   approved Arbor mark is retained. No remote image requests.
 - 3U-E.1 introduces separate InvestmentIdentity and ProviderIdentity components
   with centralized display metadata and an API-allowlisted investment catalogue.
-  The Bitcoin symbol is sourced and stored locally. Other issuer/provider tiles
-  are named typographic fallbacks, not corporate logos. See
+  3U-G.1 adds locally stored first-party ATRAM, BPI, GCash, Gotrade and DragonFi
+  artwork alongside Bitcoin. A later owner-supplied nine-PNG set now replaces
+  all primary brand assets, including Vanguard, Coins.ph and PDAX; artwork is
+  unchanged and identities still fall back to names if loading fails.
+  No partnership or reuse license is implied. See
   [identity provenance](INVESTMENT_IDENTITY.md) for permissions and missing assets.
 - Native dialog sheets provide modal focus/inert background, Escape, accessible
   title, busy-state dismissal protection and focus restoration. Mobile sheets
@@ -46,7 +49,9 @@ plan-created state and onboarding. Public marketing retains its layout.
 **Home:** deterministic one-action hero, compact recorded-value summary when
 available, planned contribution (explicitly an assumption), investment-profile
 link, labeled target mix and a concise existing monthly-activity summary when
-available. No duplicated history graph. Foundation/short-term
+available. 3U-G adds a compact real-snapshot chart in the Portfolio summary;
+OFF/Free and empty tracking states retain an intentional visual footprint without
+invented values or lines. Reading Home does not capture history. Foundation/short-term
 routes remain canonical, not inferred from colors or assessment scores.
 
 **Portfolio:** Add Investment at the top, dominant known/complete PHP value,
@@ -55,9 +60,11 @@ activity. Short/incomplete history has an intentional empty state, never fake
 returns. Source details stay accessible but secondary. Allocation percentages
 are withheld when incomplete; backend totals/targets/differences remain authority.
 
-With Live Portfolio OFF, the selected plan and target mix lead instead. The
-existing manual/hypothetical contribution path and implementation education
-remain. No client flag enables a hidden API or causes portfolio requests.
+With Live Portfolio OFF, the selected plan, nonzero targets and visible ways to
+invest lead instead. The manual/hypothetical contribution path is secondary.
+The same implementation rows lead the available-but-empty Plus portfolio, with
+Add Investment and a provider-return Record investment CTA. No client flag enables
+a hidden API or causes portfolio requests. See [3U-G details](PLAN_TO_PROVIDER.md).
 
 **Ask Arbor:** Arbor-branded conversational canvas, contextual questions,
 readable bubbles and compact composer. Navigation links only open plan/portfolio;

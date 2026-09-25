@@ -18,7 +18,9 @@ place; this is not a Next.js routing or financial-engine migration.
   account details, help/disclosures and sign out.
 
 Section links include `#portfolio/plan`, `#portfolio/holdings`,
-`#portfolio/contribution`, `#settings/investment` and `#settings/plus`.
+`#portfolio/add`, `#portfolio/contribution`, `#settings/investment` and `#settings/plus`.
+The add section opens the existing catalogue only after server availability and
+entitlement permit tracking. The deterministic `add_first_holding` CTA uses it.
 The old `#plan` link resolves to Portfolio's plan section. Browser back/forward
 uses native hash history. Next Action keys map to sections without duplicating
 the backend decision tree.
@@ -34,9 +36,11 @@ Portfolio's existing real snapshot capture behavior is unchanged.
 
 Live Portfolio availability and Plus entitlement are separate server-derived
 requirements. When unavailable there are no portfolio data requests or dead
-holdings controls: Home shows plan context and Portfolio offers the existing
-manual/hypothetical contribution workflow. Free users retain their plan and
-implementation education; Plus gates link to Compare Plans.
+holdings controls: Home retains an intentional Portfolio preview. Portfolio leads
+with the chosen targets and factual, non-ranked ways to invest, with fixed official
+provider links. The manual/hypothetical contribution workflow is secondary. Free
+users retain their plan and implementation education; Plus gates link to Compare
+Plans. See [3U-G plan-to-provider behavior](PLAN_TO_PROVIDER.md).
 
 V2 has canonical horizon buckets and planning assumptions, not an exact-duration
 projection/What-If service. No new balances, goal completion percentages, return

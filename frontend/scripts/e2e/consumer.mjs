@@ -27,7 +27,7 @@ await withAuthenticatedBrowser(async({page,reused})=>{
   await go('settings');await page.getByRole('radio',{name:'System',exact:true}).check();
   stage='empty and add sheet';
   for(const width of [1440,768,390,320])for(const theme of ['light','dark']){
-   await page.setViewportSize({width,height:950});await page.emulateMedia({colorScheme:theme});await go('portfolio');await page.getByRole('heading',{name:'Start tracking your investments'}).waitFor();await capture(`empty-${width}-${theme}`);
+   await page.setViewportSize({width,height:950});await page.emulateMedia({colorScheme:theme});await go('portfolio');await page.getByRole('heading',{name:'Ways to invest',exact:true}).waitFor();await capture(`empty-${width}-${theme}`);
    await add().click();assert.ok(await dialog().isVisible());await capture(`add-${width}-${theme}`,false);
    await page.locator('.catalogue-row[data-product="gcash_global_equity"]').click();await page.getByLabel('Current value (PHP)',{exact:true}).fill('8000');
    assert.equal(await page.getByLabel('Units (optional)',{exact:true}).isVisible(),false);await capture(`fund-value-${width}-${theme}`,false);
@@ -64,9 +64,9 @@ await withAuthenticatedBrowser(async({page,reused})=>{
   while(await page.locator('.holding-row').count()){
    await page.locator('.holding-row').first().click();await dialog().getByRole('button',{name:/^Remove /}).click();const clean=read();await page.getByRole('button',{name:'Remove from Arbor',exact:true}).click();await clean;await add().waitFor();
   }
-  await page.getByRole('heading',{name:'Start tracking your investments'}).waitFor();
+  await page.getByRole('heading',{name:'Ways to invest',exact:true}).waitFor();
   stage='safe error';await go('home');await page.getByRole('region',{name:'What should I do next?'}).getByRole('button').waitFor();expectedFailure=true;
-  await page.route('**/v2/portfolio',route=>route.fulfill({status:503,body:'fixture failure'}));await go('portfolio');await page.getByRole('alert').filter({hasText:'Portfolio records are temporarily unavailable'}).waitFor();await capture('portfolio-error');await page.unroute('**/v2/portfolio');await page.getByRole('button',{name:'Retry',exact:true}).click();await page.getByRole('heading',{name:'Start tracking your investments'}).waitFor();expectedFailure=false;
+  await page.route('**/v2/portfolio',route=>route.fulfill({status:503,body:'fixture failure'}));await go('portfolio');await page.getByRole('alert').filter({hasText:'Portfolio records are temporarily unavailable'}).waitFor();await capture('portfolio-error');await page.unroute('**/v2/portfolio');await page.getByRole('button',{name:'Retry',exact:true}).click();await page.getByRole('heading',{name:'Ways to invest',exact:true}).waitFor();expectedFailure=false;
   assert.equal(pageErrors,0);assert.equal(consoleErrors,0);
   console.log(JSON.stringify({reused,shots,layouts:'1440/768/390/320, Light/Dark',pageErrors,consoleErrors,manualFund:true,monthlyPreview:true,completed:true,undo:true,keyboardDialog:true,errorRetry:true,finalHoldings:0,hostedWrites:0}));
  }catch(error){await page.screenshot({path:`${output}/failure.png`,fullPage:true});console.error(`Consumer QA stopped at ${stage}: ${error.name}`);throw new Error('Consumer QA failed; sensitive output omitted');}

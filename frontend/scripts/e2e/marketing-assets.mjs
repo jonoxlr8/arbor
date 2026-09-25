@@ -1,11 +1,12 @@
-// Capture actual, unchanged app UI for the public website. Local fixtures only.
+// Capture current 3U-G UI for the public website. Local fixtures only.
 // No customer data, raw network logs, fabricated performance or hosted writes.
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 import sharp from 'sharp';
 import {withAuthenticatedBrowser} from './auth.mjs';
 
-const output = 'public/product';
+// Version the output path so Next's image cache cannot serve an older milestone.
+const output = 'public/product/3ug1-supplied';
 await mkdir(output, {recursive:true});
 await withAuthenticatedBrowser(async ({page}) => {
   let stage = 'local fixture';
@@ -13,11 +14,24 @@ await withAuthenticatedBrowser(async ({page}) => {
   const read = () => page.waitForResponse(r => new URL(r.url()).pathname === '/v2/portfolio' && r.request().method() === 'GET');
   const add = () => page.getByRole('button', {name:'+ Add Investment',exact:true}).first();
   const capture = async (name, locator) => {
-    const png = await locator.screenshot({animations:'disabled'});
+    stage = `capture ${name}`;
+    await page.waitForFunction(()=>document.documentElement.scrollWidth<=innerWidth);
+    assert.doesNotMatch(await locator.innerText(), /Codex|@|sb_secret_/i, 'Public artwork must not contain account identifiers');
+    for(const img of await locator.locator('img').all()) await img.evaluate(e=>e.decode());
+    const png = await locator.screenshot({animations:'disabled',style:'.app-shell nav[aria-label="Mobile navigation"]{visibility:hidden!important}'});
     const {width,height} = await sharp(png).metadata();
     await sharp(png).webp({quality:85}).toFile(`${output}/${name}.webp`);
     if(name==='home')await sharp(png).png({compressionLevel:9}).toFile(`${output}/home-social.png`);
     console.log(JSON.stringify({asset:name,width,height}));
+  };
+  const viewport = async name => {
+    await page.evaluate(()=>scrollTo(0,0));
+    assert.doesNotMatch(await page.locator('.app-shell').innerText(),/Codex|@|sb_secret_/i);
+    for(const img of await page.locator('.app-shell img').all()) await img.evaluate(e=>e.decode());
+    const png=await page.screenshot({animations:'disabled'});
+    await sharp(png).webp({quality:85}).toFile(`${output}/${name}.webp`);
+    if(name==='home')await sharp(png).png({compressionLevel:9}).toFile(`${output}/home-social.png`);
+    console.log(JSON.stringify({asset:name,...page.viewportSize()}));
   };
   try {
     await page.route('**/profiles/me', async route => {
@@ -35,6 +49,9 @@ await withAuthenticatedBrowser(async ({page}) => {
     const initial = read(); await go('portfolio'); const response = await initial;
     assert.equal(response.headers()['x-arbor-portfolio-fixture'],'isolated');
     assert.equal((await response.json()).holdings.length,0,'Do not overwrite existing fixture data');
+    await page.getByRole('heading',{name:'Ways to invest',exact:true}).waitFor();
+    await page.setViewportSize({width:1280,height:950}); await viewport('ways');
+    await page.setViewportSize({width:390,height:950}); await viewport('ways-mobile');
     stage = 'create local examples';
     for (const [id,label,value] of [['gcash_global_equity','Current value (PHP)','8000'],['gotrade_vt','Shares','1'],['pdax_btc','Bitcoin amount (BTC)','0.001']]) {
       await add().click(); await page.locator(`.catalogue-row[data-product="${id}"]`).click();
@@ -44,15 +61,16 @@ await withAuthenticatedBrowser(async ({page}) => {
     stage = 'home'; await page.setViewportSize({width:1280,height:900}); await go('home');
     await page.getByText('₱16,600',{exact:true}).waitFor();
     await page.getByRole('region',{name:'What should I do next?'}).getByRole('button').waitFor();
-    await capture('home', page.locator('.app-shell'));
+    await viewport('home');
     await page.setViewportSize({width:390,height:844});
-    await page.screenshot({path:'/tmp/arbor-3uf/home-mobile-source.png',animations:'disabled'});
-    await sharp('/tmp/arbor-3uf/home-mobile-source.png').webp({quality:85}).toFile(`${output}/home-mobile.webp`);
-    await page.setViewportSize({width:1280,height:900});
+    await viewport('home-mobile');
+    await page.setViewportSize({width:1280,height:950});
     stage = 'portfolio'; await go('portfolio'); await page.locator('.holding-row').first().waitFor();
+    await viewport('portfolio');
     // Element screenshots preserve actual UI; no synthetic chart history.
     await capture('holdings', page.locator('#section-holdings'));
     await page.setViewportSize({width:390,height:950});
+    await viewport('portfolio-mobile');
     await capture('holdings-mobile',page.locator('#section-holdings'));
     await page.setViewportSize({width:1280,height:900});
     await page.getByRole('button',{name:'Allocation',exact:true}).click();
@@ -74,7 +92,16 @@ await withAuthenticatedBrowser(async ({page}) => {
     await page.getByRole('button',{name:'Ask Arbor',exact:true}).click();
     await page.getByText(/16,600.00/).waitFor();
     await capture('ask',page.locator('#app-content'));
+    await page.setViewportSize({width:1440,height:950});await viewport('ask-desktop');
+    stage = 'settings';await page.setViewportSize({width:390,height:844});await go('settings');
+    await page.getByRole('button',{name:'Sign out',exact:true}).waitFor();await viewport('settings');
     stage = 'catalogue'; await go('portfolio'); await add().click();
+    const categories=page.getByRole('group',{name:'Investment categories'});
+    for(const [label,count] of [['Funds',6],['ETFs',3],['Bitcoin',3],['All',12]]){
+      await categories.getByRole('button',{name:label,exact:true}).click();
+      assert.equal(await page.locator('.catalogue-row').count(),count);
+    }
+    await capture('catalogue',page.getByRole('dialog'));
     await page.locator('.catalogue-row[data-product="gcash_global_equity"]').click();
     await page.getByLabel('Current value (PHP)',{exact:true}).fill('8000');
     await capture('fund-value',page.getByRole('dialog')); await page.keyboard.press('Escape');
@@ -84,9 +111,10 @@ await withAuthenticatedBrowser(async ({page}) => {
       const removed=read(); await page.getByRole('button',{name:'Remove from Arbor',exact:true}).click(); await removed; await add().waitFor();
     }
     assert.equal(await page.locator('.holding-row').count(),0);
-    console.log('Neutral local screenshots captured; zero remaining fixture holdings; no hosted writes.');
-  } catch {
-    console.error(`Marketing capture stopped at ${stage}; sensitive details omitted.`);
+    console.log('Current 3U-G neutral screenshots captured; catalogue filters verified; zero remaining fixture holdings; no hosted writes.');
+  } catch(error) {
+    await page.screenshot({path:'/tmp/arbor-brand-review/capture-failure.png',animations:'disabled'});
+    console.error(`Marketing capture stopped at ${stage} (${error.name}); sensitive details omitted.`);
     throw new Error('Capture failed');
   }
 });

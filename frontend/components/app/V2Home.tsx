@@ -7,10 +7,14 @@ import { formatContributionMoney } from "@/lib/contributions";
 import { useAccountAccess } from "../AccountAccess";
 import Allocation from "../portfolio/Allocation";
 import { monthlyApi, monthLabel, checkinDate, type MonthlyState } from "@/lib/monthlyCheckin";
+import PortfolioHistoryChart from "../portfolio/PortfolioHistoryChart";
+import { DataAttribution } from "../portfolio/LivePortfolio";
+import { planTargets } from "@/lib/planImplementation";
 
 export default function V2Home({ value, userId, nextAction }: { value: PlanV2; userId?: string; nextAction?: ReactNode }) {
   const access = useAccountAccess();
   const available = access?.value?.availability?.live_portfolio === true && access.value.features.includes("live_portfolio");
+  const implementationAllowed = value.plan.path === "long_term" && value.plan.readiness.actionable_contribution_guidance_allowed;
   const monthlyAllowed = access?.value?.availability?.monthly_checkin === true && access.value.features.includes("monthly_contribution_planner") && value.plan.path === "long_term" && value.plan.plan_basis === "user_selected" && value.plan.readiness.actionable_contribution_guidance_allowed;
   const [monthly, setMonthly] = useState<MonthlyState | null>(null);
   const [monthlyError, setMonthlyError] = useState(false);
@@ -32,7 +36,10 @@ export default function V2Home({ value, userId, nextAction }: { value: PlanV2; u
   return <div className="space-y-6">
     {nextAction}
     <div className="home-grid">
-      {available && userId ? <HomePortfolio userId={userId} /> : <a className="home-metric" href="#portfolio/plan"><p>Time horizon</p><strong>{HORIZON_OPTIONS.find(([id])=>id===value.profile.horizon)?.[1]}</strong><small>View your saved plan →</small></a>}
+      {available && userId ? <HomePortfolio userId={userId} /> : <section className="home-metric home-portfolio" aria-label="Portfolio overview"><header><h2>Portfolio</h2><span className="access-badge">{access?.value?.effective_tier === "free" ? "Plus" : "Preview"}</span></header>
+        <div className="home-history-empty"><span aria-hidden="true">◷</span><strong>Your investments.<br/>One clear view.</strong><p>{!implementationAllowed ? "Your saved profile and current path are ready to review. Tracking stays separate from your plan." : access?.value?.effective_tier === "free" ? "Tracking is part of Arbor Plus. Explore ways to invest your plan on Free." : "Tracking isn’t available yet. Your chosen plan and ways to invest are ready to explore."}</p></div>
+        <a className="entry-link" href="#portfolio">Explore your portfolio →</a>
+      </section>}
       <a className="home-metric" href={value.plan.path === "short_term" || !value.plan.readiness.actionable_contribution_guidance_allowed ? "#portfolio/plan" : "#portfolio/contribution"}><p>Monthly contribution</p><strong>{formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP")}</strong><small className={currentMonthly?.current ? "completed-label" : ""}>{currentMonthly?.current ? `✓ Recorded for ${monthLabel(currentMonthly.month).split(" ")[0]}` : "Your planned amount · Review →"}</small></a>
       <a className="home-metric" href="#settings/investment"><p>Investment profile</p><strong>{value.plan.path === "short_term" ? "Short term" : value.plan.selected_strategy}</strong><small>{value.plan.path === "short_term" ? "Long-term selection stays saved" : value.plan.plan_basis === "user_selected" ? "Your selected approach →" : "Historical plan →"}</small></a>
     </div>
@@ -45,7 +52,7 @@ export function HomePlanContext({ value }: { value: PlanV2 }) {
   const status = plan.readiness.readiness === "foundation_first" ? "Financial foundation first" : plan.path === "short_term" ? "Your short-term path is active" : plan.readiness.readiness === "getting_ready" ? "Getting ready" : "Your plan is ready to review";
   return <section className="home-plan">
     <header><h2 className="text-lg font-semibold">Your plan</h2><a href="#portfolio/plan" className="entry-link">View plan →</a></header>
-    {plan.path === "long_term" && <Allocation weights={plan.plan_basis === "user_selected" ? plan.base_allocation : plan.preference_result?.effective_target?.allocation.weights ?? plan.base_allocation}/>}
+    {plan.path === "long_term" && <Allocation weights={planTargets(value)}/>}
     {(plan.path === "short_term" || plan.readiness.readiness !== "ready") && <p className="text-sm font-medium">{status}</p>}
     <details><summary className="text-sm">About your plan</summary><p className="mt-2 text-sm text-slate-600">{plan.readiness.readiness === "foundation_first" ? "Contribution previews are paused while your profile indicates difficult-to-manage high-interest debt." : "Your assessment is informational. Your saved plan changes only when you confirm a choice."}</p><dl className="mt-5 grid gap-5 sm:grid-cols-2 text-sm">
       <div><dt className="text-slate-500">Time horizon</dt><dd className="mt-1 font-medium">{HORIZON_OPTIONS.find(([id]) => id === profile.horizon)?.[1]}</dd></div>
@@ -74,7 +81,17 @@ function HomePortfolio({ userId }: { userId: string }) {
     portfolioApi.read(userId, controller.signal).then(p => { if (!controller.signal.aborted) setPortfolio(p); }).catch(() => { if (!controller.signal.aborted) setError(true); });
     return () => controller.abort();
   }, [userId, attempt]);
-  if (error) return <section className="arbor-panel"><p role="alert">We couldn’t load your portfolio.</p><button className="entry-secondary mt-3" onClick={() => { setError(false); setAttempt(n => n + 1); }}>Try again</button></section>;
-  if (!portfolio) return <section className="home-metric arbor-skeleton" role="status"><span className="sr-only">Checking your recorded portfolio…</span><i/><i/></section>;
-  return <a className="home-metric" href="#portfolio"><p>{portfolio.complete ? "Portfolio value" : "Known portfolio value"}</p><strong>{portfolio.holdings.length ? formatContributionMoney(portfolio.known_value_php,"PHP") : "Start tracking"}</strong><small>{!portfolio.holdings.length ? "Add what you already own →" : !portfolio.complete ? "Some values are unavailable · Review →" : portfolio.stale_count ? "Cached values · Check dates →" : "View your investments →"}</small></a>;
+  if (error) return <section className="home-metric home-portfolio" aria-label="Portfolio overview"><p role="alert">We couldn’t load your portfolio.</p><button className="entry-secondary mt-3" onClick={() => { setError(false); setAttempt(n => n + 1); }}>Try again</button></section>;
+  if (!portfolio) return <section className="home-metric home-portfolio arbor-skeleton" role="status"><span className="sr-only">Checking your recorded portfolio…</span><i/><i/></section>;
+  return <section className="home-metric home-portfolio" aria-label="Portfolio overview"><header><h2>{portfolio.holdings.length ? portfolio.complete ? "Portfolio value" : "Known portfolio value" : "Portfolio"}</h2><a className="entry-link" href="#portfolio" aria-label="View portfolio">↗</a></header>
+    {portfolio.holdings.length ? <>
+      <strong>{formatContributionMoney(portfolio.known_value_php,"PHP")}</strong>
+      <PortfolioHistoryChart history={portfolio.history} compact/>
+      <a className="entry-link" href="#portfolio">{!portfolio.complete ? "Some values are unavailable · Review →" : portfolio.stale_count ? "Cached values · Check dates →" : "View portfolio →"}</a>
+      <div className="home-data-attribution"><DataAttribution sources={portfolio.data_sources ?? []}/></div>
+    </> : <>
+      <div className="home-history-empty"><span aria-hidden="true">◷</span><strong>No investments<br/>recorded yet.</strong><p>Record your first investment to start building your portfolio history.</p></div>
+      <a className="entry-primary" href="#portfolio/add">+ Add Investment</a>
+    </>}
+  </section>;
 }

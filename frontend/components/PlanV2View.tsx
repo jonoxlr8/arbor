@@ -12,7 +12,8 @@ import InvestmentProfileEditor from "./InvestmentProfileEditor";
 import ChatSection from "./dashboard/ChatSection";
 import NextActionCard from "./NextActionCard";
 import { AccountAccessProvider, AccountPlans, PlusFeature, AccessLoading, useAccountAccess } from "./AccountAccess";
-import { ImplementationEducation } from "./contributions/ImplementationChoices";
+import PlanImplementation, { TrackingAvailability } from "./portfolio/PlanImplementation";
+import { implementationGroups } from "@/lib/planImplementation";
 import V2Home from "./app/V2Home";
 import Allocation from "./portfolio/Allocation";
 import SettingsIcon from "./app/SettingsIcon";
@@ -41,7 +42,7 @@ function PlanV2Shell({ value, userId, onSignOut, signingOut, logoutError, onPlan
   return <AppShell active={active} name={value.profile.full_name} onSignOut={onSignOut} signingOut={signingOut} logoutError={logoutError}>
     {choosing && userId && onPlanChange ? <PlusFeature feature="profile_rebuild" title="Review and rebuild your investment profile" onBack={() => setChoosing(false)}><InvestmentProfileEditor value={value} userId={userId} onCancel={() => setChoosing(false)} onSaved={plan => { onPlanChange(plan); setChoosing(false); }} /></PlusFeature> : <>
       {active === "home" && <V2Home value={value} userId={userId} nextAction={userId && <NextActionCard key={`${userId}:${JSON.stringify(value)}`} userId={userId} onAction={(destination,action)=>{
-        window.location.hash = destination === "investment_profile" || destination === "onboarding" ? "settings/investment" : destination === "settings" ? "settings/plus" : destination === "plan" ? "portfolio/plan" : action.key === "monthly_complete" ? "portfolio" : action.key === "review_monthly_contribution" ? "portfolio/contribution" : "portfolio/holdings";
+        window.location.hash = destination === "investment_profile" || destination === "onboarding" ? "settings/investment" : destination === "settings" ? "settings/plus" : destination === "plan" ? "portfolio/plan" : action.key === "monthly_complete" ? "portfolio" : action.key === "review_monthly_contribution" ? "portfolio/contribution" : action.key === "add_first_holding" ? "portfolio/add" : "portfolio/holdings";
       }}/>}/>}
       {active === "settings" && userId && onPlanChange && <section id="section-investment" className="settings-list" aria-label="Investment profile"><div className="settings-account-header"><span aria-hidden="true">{value.profile.full_name.trim().slice(0,1)}</span><div><strong>{value.profile.full_name}</strong><small>Your Arbor account</small></div></div><p className="settings-group-label">Investment</p><button className="settings-row" aria-label="Edit investment profile" onClick={() => setChoosing(true)}><SettingsIcon kind="plan"/><span>Investment Profile<small className="block mt-1">Review or change your plan</small></span><span className="text-sm text-slate-500">{value.plan.path === "short_term" ? "Short term" : value.plan.selected_strategy} ›</span></button></section>}
       {active !== "home" && active !== "ask" && <V2Destination key={`${active}:${JSON.stringify(value)}`} value={value} active={active} userId={userId} section={section} />}
@@ -54,14 +55,19 @@ export function V2Destination({ value, active, userId, section = "" }: { value: 
   const access = useAccountAccess();
   if (active === "ask") return <ChatSection key={userId} plan={value} />;
   if (active === "portfolio" && userId && !access?.value) return <AccessLoading />;
+  const tracking = access?.value?.availability?.live_portfolio === true && access.value.features.includes("live_portfolio");
+  const hasOptions = implementationGroups(value).length > 0;
   if (active === "portfolio") return <div className="space-y-5">
-    {userId && access?.value?.availability?.live_portfolio === true && <PlusFeature feature="live_portfolio" title="Live Portfolio"><LivePortfolio key={section} value={value} userId={userId} section={section} /></PlusFeature>}
-    {access?.value?.availability?.live_portfolio === true ? <details open={section === "plan"}><summary className="font-semibold">Your chosen plan · {value.plan.selected_strategy}</summary><V2PlanContent value={value}/></details> : <V2PlanContent value={value} />}
-    {value.plan.path === "short_term" || value.plan.plan_basis !== "user_selected" ? <p className="text-sm leading-6 text-slate-600">{value.plan.path === "short_term" ? "Long-term contribution previews are paused on your short-term path." : "Your historical plan remains saved. Explicitly choose a standard approach before exploring new contribution previews."} <a className="entry-link" href="#settings/investment">Review investment profile</a></p> : userId && access?.value?.availability?.live_portfolio !== true && <ContributionDisclosure key={section} open={section === "contribution"} value={value} userId={userId} />}
-    <ImplementationEducation />
+    {!hasOptions && <V2PlanContent value={value} />}
+    {tracking && userId ? <LivePortfolio key={section} value={value} userId={userId} section={section} /> : <>
+      <PlanImplementation value={value}/>
+      <TrackingAvailability plus={access?.value?.features.includes("live_portfolio") === true}/>
+    </>}
+    {hasOptions && <details className="portfolio-plan-details" open={section === "plan"}><summary className="font-semibold">Your plan details · {value.plan.selected_strategy}</summary><V2PlanContent value={value}/></details>}
+    {value.plan.path === "short_term" || value.plan.plan_basis !== "user_selected" ? <p className="text-sm leading-6 text-slate-600">{value.plan.path === "short_term" ? "Long-term contribution previews are paused on your short-term path." : "Your historical plan remains saved. Explicitly choose a standard approach before exploring new contribution previews."} <a className="entry-link" href="#settings/investment">Review investment profile</a></p> : userId && !tracking && value.plan.readiness.actionable_contribution_guidance_allowed && <ContributionDisclosure key={section} open={section === "contribution"} value={value} userId={userId} />}
   </div>;
   if (active === "settings") return <div className="settings-list">
-    <details id="section-plus" open={section === "plus"}><summary><SettingsIcon kind="plus"/><span>Arbor Plus<small className="block mt-1">{access?.value?.private_beta ? "Private Beta · Included for now" : "Compare plans and access"}</small></span></summary><AccountPlans /></details>
+    <details id="section-plus" open={section === "plus"}><summary><SettingsIcon kind="plus"/><span>Arbor Plus<small className="block mt-1">{access?.value?.private_beta ? "Private Beta · Included for now" : access?.value?.effective_tier === "free" ? "Arbor Free · Explore Plus" : "Arbor Plus · Your access"}</small></span></summary><AccountPlans /></details>
     <p className="settings-group-label">Preferences</p>
     <AppearanceSettings />
     <details><summary><SettingsIcon kind="account"/><span>Account details</span></summary>
@@ -72,14 +78,14 @@ export function V2Destination({ value, active, userId, section = "" }: { value: 
       </dl>
       <p className="mt-4 text-sm text-slate-600">Use Edit investment profile to review assumptions and preview changes before saving.</p>
     </details>
-    <details><summary><SettingsIcon kind="help"/><span>Help &amp; disclosures</span></summary><p className="mt-2 text-sm text-slate-600">Ask Arbor can explain your plan and how existing tools work. You make your own investment decisions; projections are hypothetical. Arbor does not execute trades or hold your money.</p><a className="entry-link" href="#ask">Ask about Arbor →</a><p className="mt-3 text-xs text-slate-500">Bitcoin symbol from <a className="underline" href="https://bitcoin.design/guide/getting-started/visual-language/" target="_blank" rel="noreferrer">Bitcoin Design</a>, used under <a className="underline" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>. Artwork unchanged. Other identity tiles are text labels, not official logos or endorsements.</p></details>
+    <details><summary><SettingsIcon kind="help"/><span>Help &amp; disclosures</span></summary><p className="mt-2 text-sm text-slate-600">Ask Arbor can explain your plan and how existing tools work. You make your own investment decisions; projections are hypothetical. Arbor does not execute trades or hold your money.</p><a className="entry-link" href="#ask">Ask about Arbor →</a><p className="mt-3 text-xs text-slate-500">Provider and investment names and logos are shown for identification only. They belong to their respective owners and do not imply affiliation, sponsorship or endorsement.</p></details>
   </div>;
   return <V2PlanContent value={value} />;
 }
 
 function ContributionDisclosure({ value, userId, open }: { value: PlanV2; userId: string; open: boolean }) {
   const [expanded, setExpanded] = useState(open);
-  return <section id="section-contribution"><button className="entry-primary" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>Review this month’s contribution</button>{expanded && <div className="mt-5"><PlusFeature feature="monthly_contribution_planner" title="Monthly Contribution Planner"><ContributionCard value={value} userId={userId} /></PlusFeature></div>}</section>;
+  return <section id="section-contribution" className="contribution-secondary"><button className="entry-link" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>Review this month’s contribution <span aria-hidden="true">{expanded ? "−" : "+"}</span></button>{expanded && <div className="mt-5"><PlusFeature feature="monthly_contribution_planner" title="Monthly Contribution Planner"><ContributionCard value={value} userId={userId} /></PlusFeature></div>}</section>;
 }
 
 export function V2PlanContent({ value }: { value: PlanV2 }) {

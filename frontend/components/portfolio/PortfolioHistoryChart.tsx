@@ -4,15 +4,15 @@ import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip } from "rec
 import { formatContributionMoney } from "@/lib/contributions";
 import type { PortfolioHistory } from "@/lib/livePortfolio";
 
-export default function PortfolioHistoryChart({ history }: { history: PortfolioHistory[] }) {
+export default function PortfolioHistoryChart({ history, compact = false }: { history: PortfolioHistory[]; compact?: boolean }) {
   const gradient = useId();
   const [range, setRange] = useState(0);
   const newest = history.length ? Date.parse(history[history.length - 1].day) : 0;
   const spanDays = history.length ? (newest - Date.parse(history[0].day)) / 86400000 : 0;
   const points = history.filter(p => !range || Date.parse(p.day) >= newest - range * 86400000);
-  return <section aria-label="Portfolio value history" className="portfolio-chart min-w-0">
+  return <section aria-label="Portfolio value history" className={`portfolio-chart min-w-0${compact ? " compact-chart" : ""}`}>
     <div className="chart-heading"><h3 className="text-sm font-medium text-slate-600">Portfolio value over time</h3>
-      {spanDays >= 30 && <div className="chart-range" aria-label="History range">{[[30, "1M"], [90, "3M"], [365, "1Y"], [0, "All"]].filter(([days]) => Number(days) <= spanDays).map(([days, label]) => <button type="button" key={label} aria-pressed={range === days} className="entry-secondary min-h-11 px-3" onClick={() => setRange(Number(days))}>{label}</button>)}</div>}
+      {!compact && spanDays >= 30 && <div className="chart-range" aria-label="History range">{[[30, "1M"], [90, "3M"], [365, "1Y"], [0, "All"]].filter(([days]) => Number(days) <= spanDays).map(([days, label]) => <button type="button" key={label} aria-pressed={range === days} className="entry-secondary min-h-11 px-3" onClick={() => setRange(Number(days))}>{label}</button>)}</div>}
     </div>
     {!history.length ? <div className="chart-empty"><span className="chart-empty-symbol" aria-hidden="true">◷</span><strong>A clearer picture, over time</strong><p>Your portfolio graph will appear as Arbor starts recording your portfolio value.</p></div> : <>
       {points.length === 1 && <div className="chart-empty"><span className="chart-empty-symbol" aria-hidden="true">◷</span><strong>{formatContributionMoney(points[0].value_php, "PHP")} recorded {new Date(`${points[0].day}T00:00:00Z`).toLocaleDateString("en-PH",{month:"short",day:"numeric",timeZone:"UTC"})}</strong><p>More observations will build your chart.</p></div>}

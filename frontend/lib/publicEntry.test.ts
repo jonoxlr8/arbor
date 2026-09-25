@@ -20,7 +20,7 @@ test("landing has clear start/login paths without invented financial data or app
   const html = render("landing");
   assert.match(html, /Invest with clarity/); assert.match(html, /Keep the longer view/);
   assert.match(html, /href="#signup"/); assert.match(html, /href="#login"/);
-  assert.match(html, /Your investments stay right where they are/);
+  assert.match(html, /Your holdings stay with your provider/);
   assert.doesNotMatch(html, /Mobile navigation|Primary navigation|Sign out|Projected wealth/);
 });
 test("public entry has no country question", () => {

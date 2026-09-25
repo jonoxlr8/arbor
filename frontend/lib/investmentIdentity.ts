@@ -1,22 +1,24 @@
 import type { PortfolioProduct } from "./livePortfolio";
 
 /** Display metadata only. The authenticated API catalog remains the product allowlist. */
-export type BrandIdentity = { name: string; fallback: string; tone: string; logo?: string };
+export type BrandIdentity = { name: string; fallback: string; tone: string; logo?: string; logoDark?: string; logoAlt?: string };
 export const ISSUERS: Record<string, BrandIdentity> = {
-  vanguard: { name: "Vanguard", fallback: "VG", tone: "vanguard" },
-  atram: { name: "ATRAM", fallback: "ATRAM", tone: "atram" },
-  bpi: { name: "BPI Wealth", fallback: "BPI", tone: "bpi" },
-  bitcoin: { name: "Bitcoin", fallback: "₿", tone: "bitcoin", logo: "/identities/bitcoin.svg" },
+  vanguard: { name: "Vanguard", fallback: "VG", tone: "vanguard", logo: "/brands/supplied/issuers/vanguard.png", logoAlt: "Vanguard" },
+  atram: { name: "ATRAM", fallback: "ATRAM", tone: "atram", logo: "/brands/supplied/issuers/atram.png", logoAlt: "ATRAM" },
+  bpi: { name: "BPI Wealth", fallback: "BPI", tone: "bpi", logo: "/brands/supplied/issuers/bpi.png", logoAlt: "BPI" },
+  bitcoin: { name: "Bitcoin", fallback: "₿", tone: "bitcoin", logo: "/brands/supplied/issuers/bitcoin.png", logoAlt: "Bitcoin" },
 };
 export const PROVIDERS: Record<string, BrandIdentity> = {
-  gcash: { name: "GFunds", fallback: "GF", tone: "gfunds" },
-  gotrade: { name: "Gotrade", fallback: "GT", tone: "gotrade" },
-  dragonfi: { name: "DragonFi", fallback: "DF", tone: "dragonfi" },
-  gcrypto: { name: "GCrypto", fallback: "GC", tone: "gcrypto" },
-  coins_ph: { name: "Coins.ph", fallback: "CP", tone: "coins" },
-  pdax: { name: "PDAX", fallback: "PDAX", tone: "pdax" },
+  gcash: { name: "GFunds", fallback: "GF", tone: "gfunds", logo: "/brands/supplied/providers/gcash.png", logoAlt: "GCash, home of GFunds" },
+  gotrade: { name: "Gotrade", fallback: "GT", tone: "gotrade", logo: "/brands/supplied/providers/gotrade.png", logoAlt: "Gotrade" },
+  dragonfi: { name: "DragonFi", fallback: "DF", tone: "dragonfi", logo: "/brands/supplied/providers/dragonfi.png", logoAlt: "DragonFi" },
+  gcrypto: { name: "GCrypto", fallback: "GC", tone: "gcrypto", logo: "/brands/supplied/providers/gcash.png", logoAlt: "GCash, home of GCrypto" },
+  coins_ph: { name: "Coins.ph", fallback: "CP", tone: "coins", logo: "/brands/supplied/providers/coinsph.png", logoAlt: "Coins.ph" },
+  pdax: { name: "PDAX", fallback: "PDAX", tone: "pdax", logo: "/brands/supplied/providers/pdax.png", logoAlt: "PDAX" },
 };
 export const providerName = (id: string, fallback = id) => PROVIDERS[id]?.name ?? fallback;
+/** Display-only compatibility for canonical replies with legacy provider labels. */
+export const providerDisplayText = (text: string) => text.replace(/GCash \/ GFunds/g, "GFunds").replace(/GCash \/ GCrypto/g, "GCrypto");
 type InvestmentDisplay = { shortName: string; fullName: string; issuer: string; category: "fund" | "etf" | "bitcoin"; description: string; unitClass?: string };
 export const INVESTMENTS: Record<string, InvestmentDisplay> = {
   gcash_global_equity: { shortName: "ATRAM Global Equity Opportunity", fullName: "ATRAM Global Equity Opportunity Feeder Fund", issuer: "atram", category: "fund", description: "Global equity exposure", unitClass: "PHP Unit Class" },
@@ -31,11 +33,13 @@ export const INVESTMENTS: Record<string, InvestmentDisplay> = {
   ...Object.fromEntries(["gcrypto_btc", "coins_btc", "pdax_btc"].map(id => [id, { shortName: "Bitcoin", fullName: "Bitcoin", issuer: "bitcoin", category: "bitcoin" as const, description: "Bitcoin · BTC" }])),
 };
 export const investmentIdentity = (id: string, fallback = id): InvestmentDisplay => INVESTMENTS[id] ?? { shortName: fallback, fullName: fallback, issuer: "", category: "fund", description: "" };
-export function catalogueGroups(catalog: PortfolioProduct[], query = "") {
+export type CatalogueCategory = "all" | "fund" | "etf" | "bitcoin";
+export function catalogueGroups(catalog: PortfolioProduct[], query = "", category: CatalogueCategory = "all") {
   const search = query.trim().toLocaleLowerCase();
   return ["gcash", "dragonfi", "gotrade", "bitcoin"].map(group => ({
     id: group, name: group === "bitcoin" ? "Bitcoin" : providerName(group),
-    products: catalog.filter(p => (group === "bitcoin" ? INVESTMENTS[p.product_id]?.category === "bitcoin" : p.provider === group) &&
+    products: catalog.filter(p => INVESTMENTS[p.product_id] && (category === "all" || INVESTMENTS[p.product_id].category === category) &&
+      (group === "bitcoin" ? INVESTMENTS[p.product_id]?.category === "bitcoin" : p.provider === group) &&
       `${p.display_name} ${investmentIdentity(p.product_id).shortName} ${investmentIdentity(p.product_id).fullName} ${providerName(p.provider)} ${INVESTMENTS[p.product_id]?.unitClass ?? ""}`.toLocaleLowerCase().includes(search)),
   })).filter(group => group.products.length);
 }

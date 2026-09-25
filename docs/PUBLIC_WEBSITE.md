@@ -1,4 +1,97 @@
-# 3U-F — Public website and brand experience
+# Public website and brand experience
+
+## Supplied-logo follow-up (2026-09-25)
+
+The founder supplied nine PNGs and confirmed use unchanged. All primary provider
+and issuer identities now use these files, including Vanguard, Coins.ph and
+PDAX. Originals are byte-for-byte copies with SHA-256 integrity tests; Next Image
+serves display-sized versions. Total original logo size is 456,893 bytes.
+See `frontend/public/brands/supplied/manifest.json` and the brand NOTICE for
+provenance. This is not a claim of licensing, endorsement or a rights workaround.
+
+The active website/social preview now uses freshly captured
+`public/product/3ug1-supplied/` imagery (16 WebPs, 365,232 bytes; separate social
+PNG 211,312 bytes). Earlier `3ug1/` images are retained but no longer selected.
+Component-only captures hide the floating mobile navigation so it cannot cover
+holdings; full-screen captures preserve the real app navigation. Public identity
+rows and website screenshots share the same central identity mapping.
+
+The earlier report below describes the previous asset-selection stage; its
+fallback and first-party-download selections are superseded by this follow-up.
+
+Follow-up validation: 470 frontend tests, 25 auth-harness tests, 16 catalogue
+Light/Dark captures and 50 public responsive captures passed. Zero browser page
+or console errors. Dedicated authentication, lint, production build and
+production dependency audit passed (0 vulnerabilities). No hosted financial
+writes; fixture holdings were deleted and local fixture servers stopped.
+
+## 3U-G.1 synchronization (2026-09-25)
+
+Continues the uncommitted 3U-G app on `main` / `1b70d01`; does not replace the
+approved 3U-F layout. The older report below is historical.
+
+- Hero now shows current Home with its larger Portfolio surface. Current
+  populated Portfolio, empty Portfolio / Ways to invest, catalogue and Ask Arbor
+  captures replace the previous milestone's images. No test-account identity or
+  email appears: the local screenshot-only profile label is Alex.
+- Story: chosen plan → supported options → official provider → invest externally
+  → record what you own → track in Arbor. The site explicitly labels tracking
+  and monthly check-ins as unavailable previews. No account sync is implied.
+- Public Ways examples consume `PLAN_OPTIONS`, `providerDestination`,
+  `InvestmentIdentity` and `ProviderIdentity` from the app. No duplicated URLs,
+  provider ranking, affiliate parameters or independent asset universe.
+- Free includes chosen plan/targets, Ways to invest and official links, basic
+  planning, and limited Ask Arbor **when public quota support launches**. Plus
+  includes planning/editing/full Ask Arbor and separately labeled previews for
+  holdings/history/Plan Alignment/monthly check-ins. Beta remains free; no checkout.
+- First-party corporate artwork is locally stored for identification under the
+  founder's requested reuse, not a claim of provider permission or endorsement.
+  Vanguard, Coins.ph and PDAX remain permission-dependent fallbacks. See
+  `INVESTMENT_IDENTITY.md` and `frontend/public/brands/NOTICE.md` for exact sources.
+- `public/product/3ug1/` is versioned because visual QA caught Next's optimizer
+  serving older images after an in-place source replacement. New paths prevent
+  that stale-image cache issue without changing framework cache configuration.
+- Sixteen optimized WebPs total 372,448 bytes; five new corporate asset files
+  total 18,152 bytes. Desktop screenshots retain responsive Next Image sizing;
+  native-width mobile WebP crops use picture sources without redundant
+  upscaling/recompression. This also resolved a verified Chrome mobile source
+  loading failure. The hero loads eagerly; below-fold images remain lazy.
+  The separate social PNG is 211,312 bytes and is used only by
+  the social-image renderer, not delivered as a full-size homepage PNG.
+
+### Reproducible captures / browser validation
+
+Use the existing local-only `e2e_portfolio_app` and disposable-account auth helper.
+`marketing-assets.mjs` asserts fixture headers and no existing holdings before
+creating neutral examples, captures the current UI, and deletes all examples.
+No hosted financial writes. It does not fabricate graph history. `brand-review.mjs`
+checks filters/search, source-image failure fallback, themes and Escape focus.
+`marketing.mjs` checks responsive public navigation, FAQ keyboard controls,
+image decoding, no overflow, auth entry, metadata and no hidden-feature requests.
+`plan-provider.mjs` remains the OFF / Plus / Free regression.
+
+New screenshot inventory: Home desktop/mobile; Portfolio desktop/mobile;
+empty Portfolio/Ways desktop/mobile; catalogue mobile; fund form mobile;
+holdings desktop/mobile; allocation desktop/mobile; contribution result;
+Ask Arbor desktop/mobile; Settings mobile; social-source PNG.
+
+Final validation: 469 frontend tests; 25 auth-harness tests; lint, production
+build and dedicated `e2e:auth` passed; production audit found 0 vulnerabilities.
+Browser checks passed for Plus (56 captures), feature OFF (33), Free (32),
+identity/filter/fallback interaction (16), and the public site (50 captures
+across 1440/1024/768/390/320, Light/Dark). The public suite also passed against
+the production build. All runs reported zero page/console errors; feature-OFF
+and Free generated no portfolio reads. A genuine disposable-account UI sign-in
+restored the saved plan and all four destinations. No hosted financial writes.
+Normal authenticated financial state and both production flags were untouched.
+
+No backend, schema, calculation, product-flag, deployment, payment or analytics
+changes. Marketstack Basic activation is owner-reported complete, but Live
+Portfolio activation remains a separate task; this pass does not perform it.
+
+---
+
+# Historical 3U-F implementation report
 
 Validated September 25, 2026. Implementation is local and uncommitted.
 

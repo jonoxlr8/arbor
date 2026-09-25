@@ -76,6 +76,23 @@
 .marketing-site [data-identity="gotrade"] { color: #096744; background: #d7f0e3; }
 .marketing-site [data-identity="dragonfi"] { color: #34398c; background: #e0e0fa; }
 .m-centered { text-align: center; max-width: 720px; margin: auto; }
+.m-current-portfolio, .m-ways-screen {overflow:hidden;border-radius:22px;background:#f5f7fb;box-shadow:0 25px 65px -35px #224d5b55;}
+.m-current-portfolio {margin-bottom:42px;}
+.m-current-portfolio figcaption, .m-ways-screen figcaption {padding:18px 24px;color:#53647c;text-align:center;}
+.m-supported-options {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 30px;margin:32px 0 24px;}
+.m-supported-option {display:flex;align-items:center;gap:12px;padding:22px 0;border-bottom:1px solid var(--m-line);}
+.m-supported-option > div {flex:1;}
+.m-supported-option strong {display:block;font-size:13px;line-height:1.4;margin-bottom:9px;}
+.m-supported-option > .identity-mark {width:42px;height:42px;flex-shrink:0;}
+.m-supported-option > a {display:grid;place-items:center;width:44px;min-height:44px;flex-shrink:0;color:var(--m-green);}
+.marketing-site .identity-mark[data-logo="true"][data-identity] {background:#fff;padding:3px;}
+.marketing-site .identity-mark[data-logo="true"][data-identity="dragonfi"] {background:#102c29;}
+.m-record {background:linear-gradient(125deg,light-dark(#eaf3ef,#18372d),light-dark(#eeedfb,#29273c));}
+.m-record-layout {display:grid;grid-template-columns:1fr 1fr;gap:90px;align-items:center;}
+.m-record-layout > div > p:not(.m-eyebrow) {margin-top:24px;}
+.m-record-layout .m-text-link {margin-top:18px;}
+@media (max-width:900px) {.m-supported-options {grid-template-columns:repeat(2,minmax(0,1fr));}.m-record-layout {gap:35px;}}
+@media (max-width:600px) {.m-supported-options {grid-template-columns:1fr;}.m-record-layout {grid-template-columns:1fr;gap:32px;}.m-current-portfolio,.m-ways-screen {border-radius:16px;}.m-current-portfolio figcaption,.m-ways-screen figcaption {font-size:10px;padding:14px;}}
 .m-alignment { display: grid; grid-template-columns: .8fr 1.2fr; gap: 65px; align-items: center; padding-top: 90px; }
 .m-alignment p:not(.m-eyebrow) { margin-top: 22px; }
 .m-alignment figure { background: #fff; padding: 36px 24px; border-radius: 22px; }

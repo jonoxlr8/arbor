@@ -16,7 +16,13 @@ await withAuthenticatedBrowser(async({page})=>{
   stage='graph matrix';await go('settings');await page.getByRole('radio',{name:'System',exact:true}).check();await go('portfolio');await page.locator('.recharts-area').waitFor();await page.mouse.move(0,0);
   await page.addStyleTag({content:'nextjs-portal{display:none!important}'});
   for(const width of [1440,768,390,320])for(const theme of ['light','dark']){
-   await page.setViewportSize({width,height:950});await page.emulateMedia({colorScheme:theme});await page.waitForFunction(()=>{const chart=document.querySelector('.recharts-wrapper');return chart?.getBoundingClientRect().width>0&&chart.getBoundingClientRect().width<=chart.parentElement.parentElement.clientWidth;});await page.waitForFunction(()=>document.documentElement.scrollWidth<=innerWidth);await page.screenshot({path:`/tmp/arbor-3ue1/graph-layout-fixture-${width}-${theme}.png`,fullPage:true,animations:'disabled'});
+   await page.setViewportSize({width,height:950});await page.emulateMedia({colorScheme:theme});
+   for(const view of ['home','portfolio']){
+    await go(view);await page.locator('.recharts-area').waitFor();
+    if(view==='home')await page.getByRole('region',{name:'What should I do next?'}).getByRole('button').waitFor();
+    await page.waitForFunction(()=>getComputedStyle(document.documentElement).colorScheme===(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));
+    await page.waitForFunction(()=>{const chart=document.querySelector('.recharts-wrapper');return chart?.getBoundingClientRect().width>0&&chart.getBoundingClientRect().width<=chart.parentElement.parentElement.clientWidth;});await page.waitForFunction(()=>document.documentElement.scrollWidth<=innerWidth);await page.screenshot({path:`/tmp/arbor-3ue1/graph-layout-fixture-${view}-${width}-${theme}.png`,fullPage:true,animations:'disabled'});
+   }
   }
   await page.getByRole('button',{name:'1M',exact:true}).click();assert.equal(await page.getByRole('button',{name:'1M',exact:true}).getAttribute('aria-pressed'),'true');
   await page.getByText(/Portfolio history/).click();assert.ok(await page.getByText('₱5,600',{exact:true}).count()>0);
@@ -29,6 +35,6 @@ await withAuthenticatedBrowser(async({page})=>{
   assert.ok(await page.evaluate(()=>{const title=document.querySelector('.chart-heading h3').getBoundingClientRect(),range=document.querySelector('.chart-range').getBoundingClientRect();return range.top>=title.bottom||range.left>=title.right;}));
   await page.unroute('**/v2/portfolio');await page.unroute('**/v2/portfolio/snapshot');
   stage='cleanup';await go('home');await go('portfolio');await page.locator('.holding-row').first().click();await page.getByRole('dialog').getByRole('button',{name:/^Remove /}).click();const clean=read();await page.getByRole('button',{name:'Remove from Arbor',exact:true}).click();assert.equal((await(await clean).json()).holdings.length,0);assert.equal(errors,0);
-  console.log(JSON.stringify({chartLayoutFixture:true,syntheticHistoryPersisted:false,shots:8,pageErrors:errors,hostedWrites:0,finalHoldings:0}));
+  console.log(JSON.stringify({chartLayoutFixture:true,syntheticHistoryPersisted:false,shots:16,pageErrors:errors,hostedWrites:0,finalHoldings:0}));
  }catch(e){await page.screenshot({path:'/tmp/arbor-3ue1/graph-failure.png',fullPage:true});console.error(`Graph layout fixture failed at ${stage}: ${e.name}`);throw new Error('Graph fixture failed; sensitive output omitted');}
 });
