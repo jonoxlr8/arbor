@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppearanceProvider } from "@/components/app/Appearance";
 import { appearanceInitScript } from "@/lib/appearance";
+import { publicMetadata } from "@/lib/publicWebsite";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,8 +17,12 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   icons: { icon: { url: "/icon.svg", type: "image/svg+xml" } },
-  title: "Arbor — AI Investment Companion",
-  description: "Build long-term wealth through intelligent global investing.",
+  metadataBase: new URL("https://arbor.ph"),
+  title: publicMetadata.title,
+  description: publicMetadata.description,
+  alternates: { canonical: "https://arbor.ph" },
+  openGraph: { type: "website", siteName: "Arbor", locale: "en_PH", url: "https://arbor.ph", ...publicMetadata },
+  twitter: { card: "summary_large_image", ...publicMetadata },
 };
 
 export default function RootLayout({

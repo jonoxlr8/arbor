@@ -72,23 +72,9 @@ export default function Home() {
     );
   }
 
-  if (account.status === "checking") {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-background px-6">
-        <Card>
-          <Logo />
-
-          <div className="mt-12 text-center">
-            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-green-200 border-t-green-600" />
-
-            <p className="mt-6 text-slate-600">Loading Arbor...</p>
-          </div>
-        </Card>
-      </main>
-    );
-  }
-
-  if (account.status === "unauthenticated") {
+  // Render the public story in initial HTML, not a crawler-only loading spinner.
+  // Existing session/profile restoration still decides the authenticated handoff.
+  if (account.status === "checking" || account.status === "unauthenticated") {
     return <PublicEntry onAuthenticated={(session) => void recovery.current?.authenticated(session)} />;
   }
 
