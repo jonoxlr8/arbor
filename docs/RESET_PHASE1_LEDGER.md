@@ -1,0 +1,31 @@
+# Dated investment records (Phase 1)
+
+This is a prepared local change, not a hosted rollout. The one-position-per-owner/product constraint remains. Product IDs already include the provider, so GCrypto, Coins.ph and PDAX Bitcoin positions remain distinct. Dated additions use actual units received; optional PHP paid is recorded cost, never inferred from a reference price.
+
+## Rollout order
+
+1. Review and apply only `backend/migrations/20260926111500_dated_investment_entries.sql` using normal migration tooling. Do not deploy the new API or UI before it succeeds. The migration backfills existing units/cost as an opening recorded position, with no invented investment date; existing snapshots are untouched.
+2. Before deploying code, verify the currently deployed Portfolio still reads normally. The existing `arbor_portfolio_holding_values` view retains its exact ten-column `SELECT *` contract and security-invoker behavior; the current strict Holding model therefore sees no new fields. The new `arbor_portfolio_holding_ledger_values` view exposes only owner-scoped opening units/cost and activity presence for Phase 1.
+3. Deploy the backend supporting `/v2/portfolio/entries`, entry edit/void, opening correction, and paginated activity. Smoke-test its ledger API. Ordinary valuation continues to read the legacy view; the new Portfolio response attaches ledger metadata from the separate view. Verify authenticated owner scoping and read-only shared market-data permissions.
+4. Deploy the frontend after the backend is healthy. Its new Add Investment action uses the dated-entry RPC; the previous manual current-value path remains for supported PHP funds.
+5. Validate with disposable local/hosted QA data under a separate rollout authorization before broad use. A temporary application rollback keeps basic Portfolio reads compatible with the migrated database. It does **not** make legacy absolute-unit writes valid for ledger-managed positions: those remain intentionally guarded. Do not force a schema rollback or delete their history.
+
+## Truth and atomicity
+
+- The PostgreSQL RPC owns the transaction: idempotency claim, per-product serialization, entry insert, aggregate units/cost reconciliation, and edit/void all commit or roll back together. Normal callers use their verified JWT; the function scopes every lookup to `auth.uid()`. No service-role key is in user requests. Only `SELECT` is granted on entries; direct entry writes are denied.
+- User-entered investment dates are bounded by the Asia/Manila calendar date; recorded timestamps remain UTC. A composite `(holding_id, user_id)` foreign key prevents even privileged cross-owner entry linkage. Zero-unit positions must be archived; active manual-value-only funds may retain null units.
+- A repeated idempotency key with the same payload returns the original entry. Reuse with different data conflicts. Edit/void use an expected revision. Zero active units archives the position from current holdings but keeps its activity discoverable in Portfolio History. Voiding corrects an Arbor record; it is not a sale.
+- Pre-ledger units are an undated opening balance. If any opening units or active addition have unknown cost, complete position cost and gain remain unknown. Manual current fund values are not investment additions. Converting a manual-only fund position to units requires explicit existing-unit confirmation; its previous whole-position PHP value clears because it could not include the new addition. The user may enter a fresh whole-position value if NAV is unavailable.
+- Snapshot history remains separate and is not rewritten by entries. The capture function keeps its prior arithmetic/provenance rules and excludes archived zero-unit positions. A displayed value-vs-recorded-cost difference is not an investment-return calculation.
+
+## Later integration points, not implemented here
+
+Monthly contribution completion does not create holdings or dated entries. A future explicit batch-recording flow may call the same entry RPC once per actual executed addition with stable keys; it must never infer units from planned PHP. Any future performance/return work must distinguish added capital from market movement using dated cash flows and real historical observations, not reinterpret snapshot differences as returns.
+
+## Local database qualification
+
+The isolated PGlite contract tests remain useful for SQL/RLS regressions, but they are single-connection. A separate real PostgreSQL 17 qualification applies the actual baseline and ledger migration files to the disposable `arbor_ledger_test` database, then runs `backend/tests/sql/local_postgres_concurrency.test.mjs` through independent `psql` sessions. It covers repeated first-position and repeat-addition races, same-key retries/conflicts, edit/void/add races, forced post-ledger failures, exact aggregate invariants, and direct role/RLS denial. The test refuses any host, port, database or user other than the configured localhost fixture. Use local `.pgpass` authentication; do not put a password in a tracked file or command.
+
+For a fresh disposable database, run `backend/tests/sql/local_postgres_bootstrap.sql` as the local PostgreSQL administrator, then apply the repository files in this order as `arbor_test`: `3u_b_live_portfolio.sql`, `20260924070525_3u_b_5_manual_fund_values.sql`, `20260925114901_toap_nav_ingestion.sql`, `20260925204248_allow_coinranking_540s_refresh.sql`, and `20260926111500_dated_investment_entries.sql`. Run the test with `ARBOR_LOCAL_LEDGER_TEST=1`, `PGHOST=127.0.0.1`, `PGPORT=5432`, `PGDATABASE=arbor_ledger_test`, and `PGUSER=arbor_test`. This never applies a hosted migration.
+
+The current app exposes no self-service account-deletion action or backend delete-account route. Ordinary holding deletion is blocked once dated activity exists, and void retains the entries. Both entry-to-holding and entry-to-auth-user foreign keys fail closed on deletion; an auth user with ledger history cannot be deleted by the current schema. Whole-account deletion and any required deletion/retention/anonymization policy remain an explicit future account-lifecycle decision requiring a separate migration. Do not infer a legal policy or silently cascade-delete ledger history merely for this milestone.

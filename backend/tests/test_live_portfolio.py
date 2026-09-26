@@ -1,7 +1,9 @@
-from datetime import datetime, timedelta, timezone
+from copy import deepcopy
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import uuid4
-from copy import deepcopy
+from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi import FastAPI, HTTPException
@@ -11,7 +13,7 @@ from pydantic import ValidationError
 from app.auth import get_current_user_id
 from app.routes import live_portfolio as api
 from app.services.live_portfolio import (
-    UNIVERSE, Holding, HoldingInput, Price, FixtureMarketData, value_portfolio, current_values, price_key, catalog,
+    UNIVERSE, Holding, HoldingInput, InvestmentEntryInput, Price, FixtureMarketData, value_portfolio, current_values, price_key, catalog,
 )
 from app.services.strategy_v2 import get_base_strategy
 from app.services.entitlements import resolve_entitlements
@@ -24,6 +26,16 @@ from test_profile_v2 import BASE
 
 NOW = datetime(2026, 9, 24, 0, 0, tzinfo=timezone.utc)
 TARGET = get_base_strategy("Growth").allocation
+
+
+def test_entry_date_uses_manila_today_during_previous_utc_day():
+    with patch("app.services.live_portfolio.datetime") as clock:
+        clock.now.return_value = datetime(2026, 9, 27, 0, 5, tzinfo=ZoneInfo("Asia/Manila"))
+        entry = dict(provider="gotrade", product_id="gotrade_vt", units="1", idempotency_key=uuid4())
+        assert InvestmentEntryInput(**entry, investment_date=date(2026, 9, 27)).investment_date == date(2026, 9, 27)
+        with pytest.raises(ValidationError, match="Investment date cannot be in the future"):
+            InvestmentEntryInput(**entry, investment_date=date(2026, 9, 28))
+        assert clock.now.call_args.args[0].key == "Asia/Manila"
 
 
 def holding(product="gotrade_vt", units="7.42"):
@@ -123,6 +135,19 @@ def test_totals_grouping_target_difference_and_owned_products():
     assert not any(s.target_percentage for s in valued(rows,[],None).sleeves)
 
 
+def test_added_capital_is_not_profit_and_unknown_cost_stays_unknown():
+    complete = holding("gotrade_vt", "20").model_copy(update={"cost_basis_php": Decimal("2000")})
+    result = valued([complete], [price("gotrade_vt", "100"), price("usd_php", "1")])
+    row = result.holdings[0]
+    assert row.value_php == Decimal("2000.00")
+    assert row.recorded_gain_php == Decimal("0.00")
+    assert row.recorded_gain_percentage == Decimal("0")
+    assert row.unit_price == Decimal("100") and row.unit_price_currency == "USD"
+    unknown = valued([complete.model_copy(update={"cost_basis_php": None})],
+                     [price("gotrade_vt", "100"), price("usd_php", "1")]).holdings[0]
+    assert unknown.recorded_gain_php is None and unknown.recorded_gain_percentage is None
+
+
 def test_empty_and_round_to_zero_have_no_actual_percentages():
     for result in [valued([],[]),valued([holding("coins_btc",".000000000001")],[price("btc_php","1")])]:
         assert result.total_value_php == 0
@@ -162,6 +187,10 @@ def endpoint(monkeypatch):
     class Store:
         def __init__(self, owner, auth): self.owner = owner
         def holdings(self): return list(state["rows"].get(self.owner,{}).values())
+        def ledger_metadata(self):
+            return {str(h.id): {"opening_units": str(h.opening_units or 0),
+                                "opening_cost_php": str(h.opening_cost_php) if h.opening_cost_php is not None else None,
+                                "has_entries": h.has_entries} for h in self.holdings()}
         def prices(self, keys): return {k:price(k,"50" if k=="usd_php" else "100").model_copy(update={"as_of":datetime.now(timezone.utc)-timedelta(seconds=state["age"])}) for k in keys if k not in state["missing"]}
         def history(self): return state["history"].get(self.owner,[])
         def capture(self): return False
@@ -183,6 +212,20 @@ def endpoint(monkeypatch):
     app=FastAPI(); app.include_router(api.router); app.include_router(chat.router)
     app.dependency_overrides[get_current_user_id]=lambda:state["user"]
     with TestClient(app) as client: yield client,state
+
+
+def test_phase1_portfolio_merges_ledger_metadata_without_changing_valuation(endpoint):
+    client, state = endpoint
+    row = holding("gotrade_vt", "2")
+    state["rows"]["A"] = {str(row.id): row.model_copy(update={"opening_units": Decimal("1"),
+                                                           "opening_cost_php": Decimal("100"), "has_entries": True})}
+    result = client.get("/v2/portfolio")
+    assert result.status_code == 200
+    saved = result.json()["holdings"][0]
+    assert saved["units"] == "2"
+    assert saved["opening_units"] == "1"
+    assert saved["opening_cost_php"] == "100"
+    assert saved["has_entries"] is True
 
 
 def test_api_crud_owner_no_client_identity_and_decimals(endpoint):

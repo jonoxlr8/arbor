@@ -3,10 +3,11 @@
 The database is the shared price cache. Only the server-side operator ingestion
 tool may write it; the application never substitutes fixture prices in production.
 """
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP, localcontext
 from typing import Annotated, Literal, Protocol
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from pydantic import Field, model_validator
 
@@ -57,6 +58,9 @@ class Holding(HoldingInput):
     created_at: datetime
     updated_at: datetime
     manual_value_updated_at: datetime | None = None
+    opening_units: Decimal | None = None
+    opening_cost_php: Decimal | None = None
+    has_entries: bool = False
 
     @model_validator(mode="after")
     def manual_record(self):
@@ -65,6 +69,13 @@ class Holding(HoldingInput):
         if self.manual_value_php is not None and (self.product_id not in MANUAL_FUNDS or self.manual_value_updated_at.tzinfo is None):
             raise ValueError("Manual values are only supported for PHP fund holdings")
         return self
+
+
+class HoldingLedgerMetadata(DomainModel):
+    id: UUID
+    opening_units: Decimal
+    opening_cost_php: Decimal | None
+    has_entries: bool
 
 
 class Price(DomainModel):
@@ -122,6 +133,49 @@ class ValuedHolding(Holding):
     price_kind: Literal["nav", "reference"]
     as_of: datetime | None
     valuation_source: Literal["nav", "market_reference", "manual_user", "unavailable"]
+    unit_price: Decimal | None = None
+    unit_price_currency: Literal["PHP", "USD"] | None = None
+    recorded_gain_php: Decimal | None = None
+    recorded_gain_percentage: Decimal | None = None
+
+
+class InvestmentEntryInput(DomainModel):
+    provider: Literal["gcash", "dragonfi", "gotrade", "gcrypto", "coins_ph", "pdax"]
+    product_id: str
+    investment_date: date
+    units: Units
+    amount_paid_php: Cost | None = None
+    idempotency_key: UUID
+    opening_units: Units | None = None
+    opening_cost_php: Cost | None = None
+    confirm_conversion: bool = False
+
+    @model_validator(mode="after")
+    def valid_entry(self):
+        if UNIVERSE.get(self.product_id) != self.provider:
+            raise ValueError("Choose a supported investment for this provider")
+        if self.investment_date > datetime.now(ZoneInfo("Asia/Manila")).date():
+            raise ValueError("Investment date cannot be in the future")
+        if self.opening_cost_php is not None and self.opening_units is None:
+            raise ValueError("Opening cost requires confirmed opening units")
+        return self
+
+
+class InvestmentRevisionInput(DomainModel):
+    expected_revision: int = Field(gt=0)
+    investment_date: date
+    units: Units
+    amount_paid_php: Cost | None = None
+
+
+class InvestmentVoidInput(DomainModel):
+    expected_revision: int = Field(gt=0)
+
+
+class OpeningPositionCorrection(DomainModel):
+    expected_updated_at: datetime
+    opening_units: Annotated[Decimal, Field(ge=0, lt=10**12, max_digits=24, decimal_places=12, allow_inf_nan=False)]
+    opening_cost_php: Cost | None = None
 
 
 class SleeveValue(DomainModel):
@@ -188,11 +242,17 @@ def _value_portfolio(holdings, market, target, now):
         if amount is not None:
             providers[holding.provider] = providers.get(holding.provider, Decimal(0)) + amount
             sleeves[product.sleeve] += amount
+        unit_price = prices.get(price_key(holding.product_id)) if valid and source != "manual_user" else None
+        gain = amount - holding.cost_basis_php if amount is not None and holding.cost_basis_php is not None else None
+        gain_percentage = (gain / holding.cost_basis_php * 100 if gain is not None and holding.cost_basis_php else None)
         rows.append(ValuedHolding(**holding.model_dump(), display_name=product.display_name,
             provider_name=PROVIDERS[holding.provider], sleeve=product.sleeve, value_php=amount,
             freshness="stale" if stale else "fresh" if valid else "unavailable",
             price_kind="nav" if holding.provider in ("gcash", "dragonfi") else "reference",
-            as_of=as_of, valuation_source=source))
+            as_of=as_of, valuation_source=source,
+            unit_price=unit_price.value if unit_price else None,
+            unit_price_currency=("USD" if holding.provider == "gotrade" else "PHP") if unit_price else None,
+            recorded_gain_php=gain, recorded_gain_percentage=gain_percentage))
     total = sum(sleeves.values(), Decimal(0))
     missing = sum(r.value_php is None for r in rows)
     complete = missing == 0

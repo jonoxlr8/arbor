@@ -2,13 +2,13 @@
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Response, Query
 from app.auth import get_current_user_id
 from app.config import live_portfolio_enabled
 from app.routes.profiles import get_my_profile
 from app.services.entitlements import require_feature
 from app.services.arbor.v2_context import build_v2_context
-from app.services.live_portfolio import HoldingInput, ManualValueInput, Portfolio, catalog, value_portfolio, current_values
+from app.services.live_portfolio import HoldingInput, ManualValueInput, Portfolio, InvestmentEntryInput, InvestmentRevisionInput, InvestmentVoidInput, OpeningPositionCorrection, catalog, value_portfolio, current_values
 from app.services.portfolio_store import PortfolioStore
 from app.services.strategy_v2 import DomainModel
 from app.services.implementation.models import NonNegative, BitcoinProvider
@@ -56,7 +56,13 @@ def get_portfolio(response: Response, user_id: str = Depends(get_current_user_id
     response.headers["Cache-Control"] = "no-store"
     portfolio, store = load_portfolio(user_id, authorization)
     # Daily snapshot capture is explicit POST, not a write hidden in GET.
-    return {**portfolio.model_dump(mode="json"), "catalog": catalog(), "history": store.history()}
+    result = portfolio.model_dump(mode="json")
+    metadata = store.ledger_metadata()
+    for holding in result["holdings"]:
+        if holding["id"] not in metadata:
+            raise HTTPException(503, "Portfolio records are temporarily unavailable. Please retry.")
+        holding.update(metadata[holding["id"]])
+    return {**result, "catalog": catalog(), "history": store.history()}
 
 
 @router.post("/holdings", status_code=201)
@@ -87,6 +93,42 @@ def update_manual_value(holding_id: UUID, request: ManualValueInput,
                         user_id: str = Depends(get_current_user_id), authorization: str | None = Header(default=None)):
     PortfolioStore(user_id, authorization).save_manual_value(holding_id, request)
     return {"saved": True}
+
+
+@router.post("/entries", status_code=201)
+def record_investment(request: InvestmentEntryInput, user_id: str = Depends(get_current_user_id),
+                      authorization: str | None = Header(default=None)):
+    saved = get_my_profile(user_id=user_id, authorization=authorization)
+    try:
+        build_v2_context(saved)
+    except (KeyError, ValueError, TypeError):
+        raise HTTPException(409, "A valid saved V2 plan is required.") from None
+    return PortfolioStore(user_id, authorization).record_entry(request)
+
+
+@router.get("/entries")
+def investment_activity(holding_id: UUID | None = None, page: int = Query(default=0, ge=0, le=10000),
+                        user_id: str = Depends(get_current_user_id), authorization: str | None = Header(default=None)):
+    rows = PortfolioStore(user_id, authorization).activity(holding_id, page)
+    return {"entries": rows, "page": page, "has_more": len(rows) == 20}
+
+
+@router.put("/entries/{entry_id}")
+def revise_investment(entry_id: UUID, request: InvestmentRevisionInput,
+                      user_id: str = Depends(get_current_user_id), authorization: str | None = Header(default=None)):
+    return PortfolioStore(user_id, authorization).revise_entry(entry_id, request, request.expected_revision, False)
+
+
+@router.post("/entries/{entry_id}/void")
+def void_investment(entry_id: UUID, request: InvestmentVoidInput,
+                    user_id: str = Depends(get_current_user_id), authorization: str | None = Header(default=None)):
+    return PortfolioStore(user_id, authorization).revise_entry(entry_id, None, request.expected_revision, True)
+
+
+@router.put("/holdings/{holding_id}/opening-position")
+def correct_opening_position(holding_id: UUID, request: OpeningPositionCorrection,
+                             user_id: str = Depends(get_current_user_id), authorization: str | None = Header(default=None)):
+    return PortfolioStore(user_id, authorization).correct_opening(holding_id, request)
 
 
 @router.post("/snapshot")

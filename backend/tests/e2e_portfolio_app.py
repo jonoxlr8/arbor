@@ -33,6 +33,15 @@ class LocalFixtureStore:
     def holdings(self):
         with lock: return list(rows.values())
 
+    def ledger_metadata(self):
+        with lock:
+            return {str(h.id): {
+                "opening_units": str(h.opening_units if h.opening_units is not None else h.units or 0),
+                "opening_cost_php": str(h.opening_cost_php if h.opening_cost_php is not None else h.cost_basis_php)
+                if (h.opening_cost_php is not None or h.cost_basis_php is not None) else None,
+                "has_entries": h.has_entries,
+            } for h in rows.values()}
+
     def prices(self, keys):
         return {key: Price(price_key=key, value="56" if key == "usd_php" else
                           "3000000" if key == "btc_php" else "100", as_of=datetime.now(timezone.utc),

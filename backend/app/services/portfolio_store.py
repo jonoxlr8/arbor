@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from postgrest.exceptions import APIError
 from httpx import TransportError
 from app.database import get_authenticated_client
-from app.services.live_portfolio import Holding, HoldingInput, MANUAL_FUNDS, ManualValueInput
+from app.services.live_portfolio import Holding, HoldingInput, HoldingLedgerMetadata, MANUAL_FUNDS, ManualValueInput, InvestmentEntryInput, InvestmentRevisionInput, OpeningPositionCorrection
 
 
 def storage_errors(fn):
@@ -15,8 +15,17 @@ def storage_errors(fn):
         try:
             return fn(*args, **kwargs)
         except APIError as exc:
+            if exc.code == "P0001":
+                if exc.message in ("idempotency_conflict", "stale_entry_revision", "ledger_managed_holding"):
+                    raise HTTPException(409, "This record changed. Reload its activity before trying again.") from None
+                if exc.message == "opening_position_confirmation_required":
+                    raise HTTPException(409, "Confirm the units you already owned before adding this fund investment.") from None
+                if exc.message in ("entry_not_found", "holding_not_found"):
+                    raise HTTPException(404, "Investment entry not found.") from None
+                if exc.message in ("invalid_investment_entry", "opening_position_not_applicable", "position_limit"):
+                    raise HTTPException(422, "Check the investment date, units, and optional PHP amount.") from None
             if exc.code == "23505":
-                raise HTTPException(409, "This investment is already recorded. Edit its units instead.") from None
+                raise HTTPException(409, "This investment already has a position. Open it and choose Add more.") from None
             if exc.code == "23514":
                 raise HTTPException(422, "Keep a current fund value or positive units. Otherwise remove the holding.") from None
             raise HTTPException(503, "Portfolio records are temporarily unavailable. Please retry.") from None
@@ -36,6 +45,13 @@ class PortfolioStore:
     def holdings(self):
         rows = self.client.table("arbor_portfolio_holding_values").select("*").eq("user_id", self.owner).order("created_at").execute().data
         return [Holding.model_validate({k: v for k, v in row.items() if k != "user_id"}) for row in rows]
+
+    @storage_errors
+    def ledger_metadata(self):
+        rows = (self.client.table("arbor_portfolio_holding_ledger_values")
+                .select("id,opening_units,opening_cost_php,has_entries").eq("user_id", self.owner).execute().data)
+        return {str(item.id): item.model_dump(mode="json", exclude={"id"})
+                for item in (HoldingLedgerMetadata.model_validate(row) for row in rows)}
 
     @storage_errors
     def save(self, value: HoldingInput, holding_id=None):
@@ -76,6 +92,42 @@ class PortfolioStore:
         if not any(str(h.id) == str(holding_id) for h in self.holdings()):
             raise HTTPException(404, "Holding not found.")
         self.client.table("arbor_portfolio_holdings").delete(returning="minimal").eq("user_id", self.owner).eq("id", str(holding_id)).execute()
+
+    @storage_errors
+    def record_entry(self, request: InvestmentEntryInput):
+        payload = request.model_dump(mode="json")
+        return self.client.rpc("arbor_record_investment", {
+            "p_product_id": payload["product_id"], "p_provider": payload["provider"],
+            "p_investment_date": payload["investment_date"], "p_units": payload["units"],
+            "p_amount_paid_php": payload["amount_paid_php"], "p_idempotency_key": payload["idempotency_key"],
+            "p_opening_units": payload["opening_units"], "p_opening_cost_php": payload["opening_cost_php"],
+            "p_confirm_conversion": payload["confirm_conversion"],
+        }).execute().data
+
+    @storage_errors
+    def revise_entry(self, entry_id, request: InvestmentRevisionInput | None, revision: int, void: bool):
+        payload = request.model_dump(mode="json") if request else {}
+        return self.client.rpc("arbor_revise_investment", {
+            "p_entry_id": str(entry_id), "p_expected_revision": revision,
+            "p_investment_date": payload.get("investment_date"), "p_units": payload.get("units"),
+            "p_amount_paid_php": payload.get("amount_paid_php"), "p_void": void,
+        }).execute().data
+
+    @storage_errors
+    def activity(self, holding_id=None, page=0):
+        query = self.client.table("arbor_investment_entry_values").select("*").eq("user_id", self.owner)
+        if holding_id is not None:
+            query = query.eq("holding_id", str(holding_id))
+        return (query.order("investment_date", desc=True).order("recorded_at", desc=True).order("id", desc=True)
+                .range(page * 20, page * 20 + 19).execute().data)
+
+    @storage_errors
+    def correct_opening(self, holding_id, request: OpeningPositionCorrection):
+        payload = request.model_dump(mode="json")
+        return self.client.rpc("arbor_correct_opening_position", {
+            "p_holding_id": str(holding_id), "p_expected_updated_at": payload["expected_updated_at"],
+            "p_opening_units": payload["opening_units"], "p_opening_cost_php": payload["opening_cost_php"],
+        }).execute().data
 
     @storage_errors
     def prices(self, keys):
