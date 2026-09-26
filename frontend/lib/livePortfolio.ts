@@ -5,6 +5,7 @@ import type { Sleeve, ContributionMode, ContributionRequest } from "./types/cont
 import { parseContributionResponse } from "./contributionApi";
 import type { PlanV2 } from "./types/planV2";
 import { InvalidSessionError } from "./accountRecovery";
+import { manilaInvestmentToday } from "./investmentEntries";
 
 const portfolioMessages = {
   portfolio_auth: "Your session has expired. Sign in again to continue.",
@@ -29,7 +30,13 @@ export function portfolioReadError(error: unknown): PortfolioError {
 export type PortfolioProduct = { product_id: string; provider: string; provider_name: string; display_name: string; sleeve: Sleeve; price_kind: "nav" | "reference" };
 export type HoldingDraft = { provider: string; product_id: string; units: string | null; cost_basis_php: string | null; manual_value_php?: string | null };
 export type PortfolioHolding = PortfolioProduct & HoldingDraft & { id: string; value_php: string | null; freshness: "fresh" | "stale" | "unavailable"; as_of: string | null; updated_at: string; created_at?: string;
-  valuation_source?: "nav" | "market_reference" | "manual_user" | "unavailable"; manual_value_php?: string | null; manual_value_updated_at?: string | null };
+  valuation_source?: "nav" | "market_reference" | "manual_user" | "unavailable"; manual_value_php?: string | null; manual_value_updated_at?: string | null;
+  opening_units?: string | null; opening_cost_php?: string | null; has_entries?: boolean; unit_price?: string | null; unit_price_currency?: "PHP" | "USD" | null;
+  recorded_gain_php?: string | null; recorded_gain_percentage?: string | null };
+export type InvestmentEntry = { id: string; holding_id: string; product_id: string; provider: string; investment_date: string; units: string;
+  amount_paid_php: string | null; recorded_at: string; updated_at: string; revision: number; voided_at: string | null };
+export type InvestmentEntryDraft = { provider: string; product_id: string; investment_date: string; units: string; amount_paid_php: string | null;
+  idempotency_key: string; opening_units?: string | null; opening_cost_php?: string | null; confirm_conversion?: boolean };
 export const supportsManualValue = (h: { product_id: string }) => ["gcash_global_equity", "gcash_technology", "gcash_defensive", "dragonfi_global_equity", "dragonfi_technology", "dragonfi_defensive"].includes(h.product_id);
 export const validManualValue = (v: string) => /^\d{1,16}(?:\.\d{1,2})?$/.test(v) && /[1-9]/.test(v);
 export type PortfolioHistory = { day: string; value_php: string; captured_at: string };
@@ -44,6 +51,22 @@ const money = (v: unknown) => typeof v === "string" && /^\d+(?:\.\d+)?$/.test(v)
 const decimal = (v: unknown) => typeof v === "string" && /^-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(v);
 const roles = ["global_equity", "defensive", "technology_tilt", "crypto"];
 const timestamp = (v: unknown) => typeof v === "string" && Number.isFinite(Date.parse(v));
+const day = (v: unknown) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`));
+export function validEntryDraft(d: InvestmentEntryDraft, catalog: PortfolioProduct[]) {
+  return catalog.some(p => p.product_id === d.product_id && p.provider === d.provider) && day(d.investment_date) &&
+    d.investment_date <= manilaInvestmentToday() && /^\d{1,12}(?:\.\d{1,12})?$/.test(d.units) && /[1-9]/.test(d.units) &&
+    (d.amount_paid_php === null || /^\d{1,16}(?:\.\d{1,2})?$/.test(d.amount_paid_php)) &&
+    (!d.opening_units || /^\d{1,12}(?:\.\d{1,12})?$/.test(d.opening_units) && /[1-9]/.test(d.opening_units)) &&
+    (!d.opening_cost_php || d.opening_units != null && /^\d{1,16}(?:\.\d{1,2})?$/.test(d.opening_cost_php));
+}
+export function isInvestmentActivity(v: unknown): v is { entries: InvestmentEntry[]; page: number; has_more: boolean } {
+  if (!v || typeof v !== "object") return false;
+  const result = v as { entries: InvestmentEntry[]; page: number; has_more: boolean };
+  return Number.isInteger(result.page) && result.page >= 0 && typeof result.has_more === "boolean" && Array.isArray(result.entries) &&
+    result.entries.every(e => e && typeof e.id === "string" && typeof e.holding_id === "string" && day(e.investment_date) && decimal(e.units) &&
+      (e.amount_paid_php === null || money(e.amount_paid_php)) && timestamp(e.recorded_at) && timestamp(e.updated_at) && Number.isInteger(e.revision) && e.revision > 0 &&
+      (e.voided_at === null || timestamp(e.voided_at)));
+}
 export const isHistory = (v: unknown): v is PortfolioHistory[] => Array.isArray(v) && v.every(h => h && /^\d{4}-\d{2}-\d{2}$/.test(h.day) && money(h.value_php) && timestamp(h.captured_at));
 export function isPortfolio(value: unknown): value is LivePortfolioData {
   if (!value || typeof value !== "object") return false;
@@ -58,6 +81,10 @@ export function isPortfolio(value: unknown): value is LivePortfolioData {
       (h.created_at === undefined || timestamp(h.created_at)) && p.catalog.some(c => c.product_id === h.product_id && c.provider === h.provider) && ["fresh", "stale", "unavailable"].includes(h.freshness) &&
       (h.valuation_source === undefined || ["nav", "market_reference", "manual_user", "unavailable"].includes(h.valuation_source)) &&
       (h.manual_value_php == null ? h.manual_value_updated_at == null : supportsManualValue(h) && validManualValue(h.manual_value_php) && timestamp(h.manual_value_updated_at)) &&
+      (h.unit_price === undefined || h.unit_price === null || decimal(h.unit_price) && ["PHP", "USD"].includes(h.unit_price_currency ?? "")) &&
+      (h.has_entries === undefined || typeof h.has_entries === "boolean") &&
+      (h.recorded_gain_php === undefined || h.recorded_gain_php === null || decimal(h.recorded_gain_php)) &&
+      (h.recorded_gain_percentage === undefined || h.recorded_gain_percentage === null || decimal(h.recorded_gain_percentage)) &&
       (h.valuation_source !== "manual_user" || supportsManualValue(h) && h.freshness === "fresh" && h.manual_value_php != null && h.as_of === h.manual_value_updated_at) &&
       (h.freshness === "unavailable" ? h.value_php === null : money(h.value_php) && timestamp(h.as_of))) &&
     p.unavailable_count === p.holdings.filter(h => h.value_php === null).length && p.complete === (p.unavailable_count === 0) &&
@@ -98,7 +125,7 @@ export function createPortfolioApi(token = getAccessToken, request: typeof fetch
       if (response.status === 401) throw new PortfolioError("portfolio_auth");
       if (response.status === 403) throw new PortfolioError("portfolio_entitlement");
       if (response.status === 404) throw new PortfolioError("portfolio_unavailable");
-      if (response.status === 409) throw new Error("Review your records and refresh prices. For an existing investment, edit its recorded units instead of adding it again.");
+      if (response.status === 409) throw new Error("This record changed or needs opening-position confirmation. Reload the holding and try again.");
       if ([400, 422].includes(response.status)) throw new Error("Check the supported investment, positive units and PHP amounts (up to 2 decimal places).");
       if (!response.ok) throw new PortfolioError("portfolio_server");
       return response.json().catch(() => { throw new PortfolioError("portfolio_contract"); });
@@ -115,6 +142,21 @@ export function createPortfolioApi(token = getAccessToken, request: typeof fetch
     save: (userId: string, draft: HoldingDraft, id?: string) => call(userId, `/holdings${id ? `/${encodeURIComponent(id)}` : ""}`, id ? "PUT" : "POST", draft),
     remove: (userId: string, id: string) => call(userId, `/holdings/${encodeURIComponent(id)}`, "DELETE"),
     manualValue: (userId: string, id: string, value: string | null) => call(userId, `/holdings/${encodeURIComponent(id)}/manual-value`, "PUT", { manual_value_php: value }),
+    recordEntry: (userId: string, draft: InvestmentEntryDraft) => call(userId, "/entries", "POST", draft),
+    reviseEntry: (userId: string, id: string, revision: number, draft: Pick<InvestmentEntryDraft, "investment_date" | "units" | "amount_paid_php">) =>
+      call(userId, `/entries/${encodeURIComponent(id)}`, "PUT", { ...draft, expected_revision: revision }),
+    voidEntry: (userId: string, id: string, revision: number) => call(userId, `/entries/${encodeURIComponent(id)}/void`, "POST", { expected_revision: revision }),
+    correctOpening: (userId: string, id: string, updatedAt: string, units: string, cost: string | null) =>
+      call(userId, `/holdings/${encodeURIComponent(id)}/opening-position`, "PUT", {
+        expected_updated_at: updatedAt, opening_units: units, opening_cost_php: cost,
+      }),
+    async activity(userId: string, holdingId?: string, page = 0, signal?: AbortSignal) {
+      const params = new URLSearchParams({ page: String(page) });
+      if (holdingId) params.set("holding_id", holdingId);
+      const body: unknown = await call(userId, `/entries?${params}`, "GET", undefined, signal);
+      if (!isInvestmentActivity(body)) throw new PortfolioError("portfolio_contract");
+      return body;
+    },
     async capture(userId: string, signal?: AbortSignal): Promise<{ recorded: boolean; history: PortfolioHistory[] }> {
       const body = await call(userId, "/snapshot", "POST", undefined, signal);
       if (!body || typeof body.recorded !== "boolean" || !isHistory(body.history)) throw new Error("Portfolio history is temporarily unavailable.");

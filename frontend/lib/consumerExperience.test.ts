@@ -65,8 +65,8 @@ test("sheets rely on native modal focus/inert behavior and restore focus", () =>
   const source=readFileSync("components/ui/Sheet.tsx","utf8");
   assert.match(source,/showModal\(\)/);assert.match(source,/previous.focus\(\)/);assert.match(source,/onCancel/);assert.match(source,/aria-labelledby/);
 });
-test("redesign includes no placeholder transaction action or client feature override", () => {
+test("dated investment action is present without a client feature override", () => {
   const source=readFileSync("components/portfolio/LivePortfolio.tsx","utf8");
-  assert.match(source,/\+ Add Investment/);assert.match(source,/This records a holding, not a transaction/);
-  assert.doesNotMatch(source,/Record transaction|localStorage|LIVE_PORTFOLIO_ENABLED/);
+  assert.match(source,/\+ Add Investment/);assert.match(source,/DatedInvestmentFlow/);
+  assert.doesNotMatch(source,/localStorage|LIVE_PORTFOLIO_ENABLED/);
 });

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createPortfolioApi, isPortfolio, validHolding, freshnessText, portfolioValues, scenarioAvailability, supportsManualValue, validManualValue, type LivePortfolioData } from "./livePortfolio";
+import { createPortfolioApi, isPortfolio, validHolding, validEntryDraft, isInvestmentActivity, freshnessText, portfolioValues, scenarioAvailability, supportsManualValue, validManualValue, type LivePortfolioData } from "./livePortfolio";
 import LivePortfolio, { PortfolioSummary, PlanAlignment, DataAttribution } from "../components/portfolio/LivePortfolio";
 import PortfolioHistoryChart from "../components/portfolio/PortfolioHistoryChart";
 import ContributionCard from "../components/contributions/ContributionCard";
@@ -131,6 +131,26 @@ test("holdings entry validates supported pairs and sensible decimal precision",(
   assert.equal(validHolding({...draft,provider:"pdax"},portfolioFixture.catalog),false);
   assert.equal(validHolding({...draft,product_id:"AAPL"},portfolioFixture.catalog),false);
   assert.equal(validHolding({...draft,cost_basis_php:"1.001"},portfolioFixture.catalog),false);
+});
+test("dated addition requires actual units, date, supported pair and optional two-decimal PHP paid",()=>{
+  const draft={provider:"gotrade",product_id:"gotrade_vt",investment_date:"2026-09-24",units:"0.52314",amount_paid_php:"1000.00",idempotency_key:"fixed"};
+  assert.ok(validEntryDraft(draft,portfolioFixture.catalog));
+  for(const units of ["", "0", "-1", "1.0000000000001", "NaN"])assert.equal(validEntryDraft({...draft,units},portfolioFixture.catalog),false);
+  assert.equal(validEntryDraft({...draft,amount_paid_php:"999.999"},portfolioFixture.catalog),false);
+  assert.equal(validEntryDraft({...draft,product_id:"other"},portfolioFixture.catalog),false);
+  assert.equal(validEntryDraft({...draft,investment_date:"2099-01-01"},portfolioFixture.catalog),false);
+});
+test("dated-entry API uses one authenticated write, preserves retry key and validates activity",async()=>{
+  const calls:{url:string;options:RequestInit}[]=[];
+  const api=createPortfolioApi(async()=>"fixture",async(url,options)=>{calls.push({url:String(url),options:options!});
+    return Response.json(calls.length===1?{entry_id:"entry",holding_id:"holding",replayed:false}:
+      {entries:[{id:"entry",holding_id:"holding",product_id:"gotrade_vt",provider:"gotrade",investment_date:"2026-09-24",units:"0.5",amount_paid_php:null,recorded_at:"2026-09-25T00:00:00Z",updated_at:"2026-09-25T00:00:00Z",revision:1,voided_at:null}],page:0,has_more:false});});
+  const draft={provider:"gotrade",product_id:"gotrade_vt",investment_date:"2026-09-24",units:"0.5",amount_paid_php:null,idempotency_key:"fixed"};
+  await api.recordEntry("A",draft);const activity=await api.activity("A","holding");
+  assert.equal(calls[0].options.method,"POST");assert.match(calls[0].url,/\/v2\/portfolio\/entries$/);
+  assert.deepEqual(JSON.parse(String(calls[0].options.body)),draft);
+  assert.match(calls[1].url,/holding_id=holding/);assert.ok(isInvestmentActivity(activity));
+  assert.equal(isInvestmentActivity({...activity,entries:[{...activity.entries[0],units:5}]}),false);
 });
 test("summary uses PHP grouping and distinguishes partial/stale totals",()=>{
   const markup=html(createElement(PortfolioSummary,{portfolio:{...portfolioFixture,complete:false,unavailable_count:1,stale_count:1}}));

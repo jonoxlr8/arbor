@@ -119,6 +119,7 @@ test("next action routes add-first-holding into existing catalogue; no backend p
   const source=readFileSync("components/PlanV2View.tsx","utf8");
   assert.match(source,/action.key === "add_first_holding" \? "portfolio\/add"/);
   const live=readFileSync("components/portfolio/LivePortfolio.tsx","utf8");
-  assert.match(live,/section === "add" \? blank\(\) : null/);
+  assert.match(live,/section === "add" \? null : undefined/);
+  assert.match(live,/DatedInvestmentFlow/);
   assert.doesNotMatch(readFileSync("components/app/V2Home.tsx","utf8"),/portfolioApi\.(save|capture|remove)/);
 });
