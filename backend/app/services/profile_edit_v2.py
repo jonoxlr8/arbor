@@ -24,7 +24,8 @@ def prepare_profile_edit(row: dict, edit: ProfileV2Edit, user_id: str) -> tuple[
     profile = ProfileV2Data(**edit.inputs.model_dump(), selected_approach=selected,
                            saved_preferences=original["saved_preferences"],
                            explicit_customization=customization,
-                           implementation_choices=original.get("implementation_choices", {}))
+                           implementation_choices=original.get("implementation_choices", {}),
+                           goal_name=original.get("goal_name"), goal_date=original.get("goal_date"))
     historical = current.get("historical_plan")
     if historical is None and current["plan"]["plan_basis"] == "historical_assessment":
         historical = current["plan"]

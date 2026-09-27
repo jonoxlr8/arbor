@@ -34,11 +34,22 @@ test("current allocation is identified separately from plan targets", () => {
 });
 test("empty history does not fabricate returns or chart points", () => {
   const html = render(createElement(PortfolioHistoryChart,{history:[]}));
-  assert.match(html,/graph will appear/); assert.doesNotMatch(html, /recharts|12.4%|performance/i);
+  assert.match(html,/No investments recorded yet/); assert.match(html,/chart-plot/); assert.doesNotMatch(html, /12.4%|performance return/i);
 });
 test("single observation has exact recorded amount, not a synthetic graph", () => {
   const html = render(createElement(PortfolioHistoryChart,{history:[{day:"2026-09-24",value_php:"8000",captured_at:"2026-09-24T00:00:00Z"}]}));
-  assert.match(html,/₱8,000/); assert.match(html,/More observations/); assert.doesNotMatch(html,/recharts-area/);
+  assert.match(html,/₱8,000/); assert.match(html,/one recorded portfolio value/); assert.match(html,/chart-plot/); assert.doesNotMatch(html,/Portfolio value change/);
+});
+test("history ranges require two real observations within the selected range", () => {
+  const history = [
+    {day:"2026-01-01",value_php:"100",captured_at:"2026-01-01T00:00:00Z"},
+    {day:"2026-09-26",value_php:"120",captured_at:"2026-09-26T00:00:00Z"},
+  ];
+  const html = render(createElement(PortfolioHistoryChart,{history,knownValue:"120",holdingsCount:1}));
+  assert.match(html,/>All</);
+  assert.doesNotMatch(html,/>1M</); assert.doesNotMatch(html,/>3M</); assert.doesNotMatch(html,/>1Y</);
+  const supported = render(createElement(PortfolioHistoryChart,{history:[...history,{day:"2026-09-20",value_php:"110",captured_at:"2026-09-20T00:00:00Z"}],knownValue:"120",holdingsCount:1}));
+  assert.match(supported,/>1M</);
 });
 test("partial portfolio still discloses known value and missing holdings", () => {
   const html = render(createElement(PortfolioSummary,{portfolio:{...portfolioFixture,complete:false,unavailable_count:1}}));

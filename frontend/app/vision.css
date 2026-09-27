@@ -34,3 +34,23 @@
 @media(max-width:767px){.home-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.home-portfolio{grid-column:1/-1;}.home-metric{min-height:140px;}.home-portfolio .compact-chart .chart-plot{height:105px;}.home-update-followup{flex-wrap:wrap;gap:4px;}.chat-canvas{padding:0;border:0;background:none;}.chat-canvas > .chat-thread{min-height:calc(100dvh - 295px);}.chat-canvas .chat-composer{bottom:80px;margin-top:28px;}.chat-answer-row{max-width:100%;gap:8px;}.chat-avatar{width:30px;height:30px;}.chat-canvas .chat-reply{padding:14px;}.chat-canvas .chat-user{max-width:88%;}.chat-canvas .chat-intro-bubble{max-width:100%;}}
 @media(max-width:480px){.next-action-hero{min-height:180px;padding:22px;}.next-action-hero h2{font-size:22px;max-width:90%;}.next-action-hero p:not(.eyebrow){max-width:83%;}.next-action-hero .hero-landscape{opacity:.5;}.performance-facts dd{font-size:18px;}.portfolio-change > p{font-size:13px;}.portfolio-change > p > span:last-child{font-size:12px;}}
 @media(prefers-reduced-motion:reduce){.chat-thread * {scroll-behavior:auto;}}
+
+/* Phase 2A: let the shared graph lead Home, with goal and planning alongside it. */
+.home-grid{grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);grid-template-rows:auto;}
+.home-portfolio{grid-row:span 3;min-height:420px;}
+.home-portfolio>strong{font-size:clamp(38px,4vw,50px);line-height:1.1;}
+.home-portfolio .compact-chart .chart-plot{height:480px;}
+.home-grid>a.home-metric{grid-column:2;min-height:78px;display:flex;flex-direction:row;align-items:center;gap:10px;padding:15px 20px;}
+.home-grid>a.home-metric>p{flex:1;min-width:0;}
+.home-grid>a.home-metric>strong{font-size:21px;white-space:nowrap;}
+.home-grid>a.home-metric>small{margin-top:0;padding-top:0;}
+.home-monthly>span{font-size:22px;color:light-dark(#66788d,#b5c5d4);}
+.projection-basis{margin-top:13px;font-size:11px!important;}
+.home-projection .projection-facts{grid-template-columns:repeat(2,minmax(0,1fr));margin:16px 0;}
+.home-plan{padding:20px 22px;}
+.home-plan>strong{display:block;margin-top:14px;font-size:20px;line-height:1.25;}
+.home-plan-targets,.home-plan-caution{margin-top:8px;font-size:12px;line-height:1.6;color:light-dark(#66788d,#b5c5d4);}
+.home-activity .activity-empty{padding:20px 0;text-align:left;}
+.home-activity .activity-empty p{margin:0;font-size:13px;}
+@media(max-width:767px){.home-grid{grid-template-columns:minmax(0,1fr);}.home-portfolio{grid-row:auto;grid-column:1;min-height:350px;}.home-portfolio .compact-chart .chart-plot{height:240px;}.home-grid>a.home-metric{grid-column:1;}}
+@media(max-width:480px){.app-shell main{padding-bottom:calc(100px + env(safe-area-inset-bottom));}.home-portfolio{min-height:270px;}.home-portfolio>strong{font-size:36px;}.home-portfolio .compact-chart .chart-plot{height:190px;}.home-portfolio .compact-chart .chart-plot:has(.chart-flat-line){height:155px;}.home-grid>a.home-metric{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 8px;min-height:76px;}.home-grid>a.home-metric>p{grid-column:1;}.home-grid>a.home-metric>strong{grid-column:2;grid-row:1;}.home-grid>a.home-metric>span{grid-column:3;grid-row:1;}.home-grid>a.home-metric>small{grid-column:1/-1;}}

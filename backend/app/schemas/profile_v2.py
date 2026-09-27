@@ -1,5 +1,6 @@
 """Explicit v2 onboarding boundary; no legacy request reinterpretation."""
 from typing import Annotated, Literal
+from datetime import date
 from pydantic import Field, StringConstraints, field_validator, model_validator
 
 from app.schemas.validation import Money, Goal
@@ -25,6 +26,8 @@ class ProfileV2Answers(DomainModel):
 
 
 class ProfileV2Data(ProfileV2Answers):
+    goal_name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)] | None = None
+    goal_date: date | None = None
     saved_preferences: SavedPreferences = Field(default_factory=SavedPreferences)
     selected_approach: StrategyType | Literal["short_term"] | None = None
     explicit_customization: ExplicitCustomization | None = None

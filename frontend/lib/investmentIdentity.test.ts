@@ -94,14 +94,15 @@ test("primary holding flow keeps units optional for funds and required for ETFs/
   assert.match(source,/InvestmentCatalogue/);assert.match(source,/I know my fund units/);assert.match(source,/Bitcoin amount \(BTC\)/);assert.match(source,/Shares/);assert.match(source,/inputMode="decimal" required/);assert.doesNotMatch(source,/>Provider<select|Save holding record/);
 });
 test("Home empty activity makes no invented completion claims",()=>{
-  const html=render(createElement(HomeActivity,{state:null,available:false}));
-  assert.match(html,/Monthly history isn’t available yet/);assert.doesNotMatch(html,/Contribution recorded|₱/);
+  const html=render(createElement(HomeActivity,{state:null}));
+  assert.match(html,/Your investment activity will appear here/);assert.doesNotMatch(html,/Contribution recorded|₱/);
+  assert.match(render(createElement(HomeActivity,{state:null,error:true})),/Activity is temporarily unavailable/);
 });
 test("Home shows only supplied history and labels undone records distinctly",()=>{
   const row={month:"2026-09",amount_php:"5000.00",completed_at:"2026-09-24T08:00:00Z",undone_at:null};
-  const html=render(createElement(HomeActivity,{available:true,state:{month:"2026-09",current:row,history:[row]}}));
+  const html=render(createElement(HomeActivity,{state:{month:"2026-09",current:row,history:[row]}}));
   assert.match(html,/₱5,000/);assert.match(html,/Holdings are tracked separately/);
-  const undone=render(createElement(HomeActivity,{available:true,state:{month:"2026-09",current:null,history:[{...row,undone_at:"2026-09-25T08:00:00Z"}]}}));
+  const undone=render(createElement(HomeActivity,{state:{month:"2026-09",current:null,history:[{...row,undone_at:"2026-09-25T08:00:00Z"}]}}));
   assert.match(undone,/Contribution undone/);assert.doesNotMatch(undone,/Contribution recorded/);
 });
 test("price attribution stays visible while source explanation is disclosed",()=>{

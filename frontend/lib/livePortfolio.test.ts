@@ -167,7 +167,7 @@ test("unavailable alignment is not displayed as zero",()=>{
   assert.match(markup,/Not applicable/);assert.match(markup,/Unavailable/);assert.doesNotMatch(markup,/0.00%/);
 });
 test("history has no fake points and one observed value is readable",()=>{
-  assert.match(html(createElement(PortfolioHistoryChart,{history:[]})),/graph will appear/);
+  assert.match(html(createElement(PortfolioHistoryChart,{history:[]})),/No investments recorded yet/);
   const markup=html(createElement(PortfolioHistoryChart,{history:[{day:"2026-09-24",value_php:"5600.00",captured_at:"2026-09-24T00:00:00Z"}]}));
   assert.match(markup,/₱5,600/);assert.match(markup,/not an investment-return chart/);assert.match(markup,/Portfolio history/);
 });

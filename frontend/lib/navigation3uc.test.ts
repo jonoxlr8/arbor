@@ -22,16 +22,17 @@ test("four destinations include fully labeled mobile Ask Arbor and legacy bookma
   assert.equal(destinationFromHash("#settings/plus"),"settings");
 });
 test("Home uses planning inputs without inventing projections or current balances", () => {
-  const html = render(createElement(V2Home,{value,nextAction:createElement("button",null,"Next step")}));
-  assert.match(html,/Your saved plan|Planned monthly contribution|Planning assumptions/);
+  const html = render(createElement(V2Home,{value}));
+  assert.match(html,/Your saved plan|Monthly contribution|Your plan/);
   assert.doesNotMatch(html,/Planning return:|Plan Alignment|Current portfolio value|<form/);
-  assert.equal((html.match(/<button/g) ?? []).length,1);
+  assert.match(html,/Set a goal/);
+  assert.doesNotMatch(html,/YOUR NEXT STEP|Keep your plan in view/);
 });
 test("Home respects readiness and short-term state without manufacturing progress", () => {
   const foundation=structuredClone(value);foundation.plan.readiness.readiness="foundation_first";
   assert.match(render(createElement(HomePlanContext,{value:foundation})),/Contribution previews are paused/);
   const short=structuredClone(value);short.plan={...short.plan,path:"short_term",selected_strategy:null,base_allocation:null,planning_return_pct:null};
-  assert.match(render(createElement(HomePlanContext,{value:short})),/short-term path is active/);
+  assert.match(render(createElement(HomePlanContext,{value:short})),/Short-term path/);
 });
 test("Home only mounts holdings reader for server availability AND entitlement", () => {
   for (const enabled of [false,true]) for (const entitled of [false,true]) {

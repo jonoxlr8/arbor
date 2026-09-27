@@ -1,11 +1,18 @@
 from fastapi import APIRouter, Depends, Header, HTTPException
 import json
+from datetime import date
+from typing import Annotated
+from pydantic import Field, StringConstraints
+from decimal import Decimal
+from uuid import uuid4
 
 from app.auth import get_current_user_id
 from app.config import live_portfolio_enabled
 from app.database import get_authenticated_client
 from app.schemas.profile import ProfileCreate
 from app.schemas.profile_v2 import ProfileV2Create, ProfileV2Edit, ProfileV2Answers
+from app.schemas.validation import Goal, MAX_MONEY
+from app.services.strategy_v2 import DomainModel
 from app.services.profile_edit_v2 import prepare_profile_edit
 from app.services.profile_v2 import profile_v2_row, restore_profile_v2
 from app.services.next_action import NextAction, get_next_action
@@ -17,6 +24,89 @@ from app.services.investment_plan_service import build_investment_plan
 from app.services.projection_engine import calculate_projection
 
 router = APIRouter()
+
+
+class GoalUpdate(DomainModel):
+    goal_target: Goal
+    goal_name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)] | None = None
+    goal_date: date | None = None
+    expected_revision: Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{64}$")]
+
+
+class FutureProjectionRequest(DomainModel):
+    monthly_contribution_php: Annotated[Decimal, Field(ge=0, le=MAX_MONEY, max_digits=15, decimal_places=2, allow_inf_nan=False)] | None = None
+    target_date: date | None = None
+
+
+@router.post("/v2/future-projection")
+def preview_future_projection(request: FutureProjectionRequest,
+                              user_id: str = Depends(get_current_user_id),
+                              authorization: str | None = Header(default=None)):
+    """Ephemeral Plus scenario. Read-only; no scenario or synthetic history saved."""
+    require_feature(user_id, "future_projection")
+    saved = get_my_profile(user_id=user_id, authorization=authorization)
+    if saved.get("strategy_engine_version") != "2.0":
+        raise HTTPException(409, "A V2 plan is required.")
+    plan = saved["plan"]
+    if (plan["path"] != "long_term" or plan["plan_basis"] != "user_selected"
+            or not plan["readiness"]["actionable_contribution_guidance_allowed"]):
+        raise HTTPException(409, "A ready, explicitly selected long-term plan is required.")
+    target = request.target_date or saved["profile"].get("goal_date")
+    if not target:
+        raise HTTPException(422, "Add an exact target date to see a projection.")
+    from app.routes.live_portfolio import load_portfolio
+    from app.services.future_projection_v2 import future_value, manila_today
+    portfolio, _ = load_portfolio(user_id, authorization, saved)
+    if not portfolio.complete:
+        raise HTTPException(409, "Update unavailable investment values before projecting your complete portfolio.")
+    monthly = request.monthly_contribution_php
+    if monthly is None:
+        monthly = saved["profile"]["monthly_investment"]
+    try:
+        return future_value(Decimal(str(portfolio.known_value_php)), Decimal(str(monthly)),
+                            plan["selected_strategy"], manila_today(),
+                            target if isinstance(target, date) else date.fromisoformat(target),
+                            Decimal(str(saved["profile"]["goal_target"])) if saved["profile"]["goal_target"] else None)
+    except ValueError:
+        raise HTTPException(422, "Choose a future date with at least one whole contribution month.") from None
+
+
+@router.put("/v2/goal")
+def update_primary_goal(request: GoalUpdate, user_id: str = Depends(get_current_user_id),
+                        authorization: str | None = Header(default=None)):
+    """One owner-scoped goal. The existing profile goal_target remains authoritative."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(401, "Sign in to edit your goal.")
+    client = get_authenticated_client(authorization.split(" ", 1)[1])
+    try:
+        found = client.table("profiles").select("*").eq("user_id", user_id).limit(1).execute().data
+        if not found:
+            raise HTTPException(404, "Profile not found")
+        original = found[0]
+        if original.get("strategy_engine_version") != "2.0":
+            raise HTTPException(409, "A V2 profile is required.")
+        current = restore_profile_v2(original)
+        if request.expected_revision != current["revision"]:
+            raise HTTPException(409, "Your goal changed. Reload and try again.")
+        inputs = dict(original["v2_inputs"])
+        inputs.pop("goal_name", None)
+        inputs.pop("goal_date", None)
+        if request.goal_name is not None:
+            inputs["goal_name"] = request.goal_name
+        if request.goal_date is not None:
+            inputs["goal_date"] = request.goal_date.isoformat()
+        state = dict(inputs.get("plan_state") or {})
+        state["revision_nonce"] = uuid4().hex
+        inputs["plan_state"] = state
+        updated = client.table("profiles").update({"goal_target": request.goal_target, "v2_inputs": inputs}).eq(
+            "user_id", user_id).eq("v2_inputs", json.dumps(original["v2_inputs"])).execute().data
+        if not updated:
+            raise HTTPException(409, "Your goal changed. Reload and try again.")
+        return restore_profile_v2(updated[0])
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(503, "We couldn’t save your goal. Please retry.") from None
 
 
 @router.get("/profiles/me")

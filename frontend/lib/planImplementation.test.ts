@@ -109,15 +109,15 @@ test("Home always includes Portfolio while off and Free never reads holdings",()
   const freeOn=withAccess(false,true,createElement(V2Home,{value:plan(),userId:"test"}));
   assert.match(freeOn,/Tracking is part of Arbor Plus/);assert.doesNotMatch(freeOn,/Checking your recorded portfolio/);
 });
-test("compact Home chart preserves zero/one-point footprint, not artificial returns",()=>{
+test("compact Home chart keeps a visible flat-line frame without artificial returns",()=>{
   for(const history of [[],[{day:"2026-09-25",value_php:"8000",captured_at:"2026-09-25T12:00:00Z"}]]){
     const html=render(createElement(PortfolioHistoryChart,{history,compact:true}));
-    assert.match(html,/compact-chart/);assert.match(html,/chart-empty/);assert.doesNotMatch(html,/recharts-area|\+12|return percentage/);
+    assert.match(html,/compact-chart/);assert.match(html,/chart-plot/);assert.doesNotMatch(html,/Portfolio value change|\+12|return percentage/);
   }
 });
-test("next action routes add-first-holding into existing catalogue; no backend priority rewrite",()=>{
+test("Home omits the duplicate next-step banner; Portfolio still opens the existing catalogue",()=>{
   const source=readFileSync("components/PlanV2View.tsx","utf8");
-  assert.match(source,/action.key === "add_first_holding" \? "portfolio\/add"/);
+  assert.doesNotMatch(source,/<NextActionCard/);
   const live=readFileSync("components/portfolio/LivePortfolio.tsx","utf8");
   assert.match(live,/section === "add" \? null : undefined/);
   assert.match(live,/DatedInvestmentFlow/);

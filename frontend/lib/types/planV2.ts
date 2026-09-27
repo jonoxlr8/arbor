@@ -23,6 +23,7 @@ export type ProfileV2Input = {
   strategy_engine_version: "2.0"; full_name: string; country: "Philippines"; currency: "PHP";
   emergency_savings: EmergencySavings; high_interest_debt: HighInterestDebt;
   goal_target: number | null; current_portfolio_value: number; monthly_investment: number;
+  goal_name?: string | null; goal_date?: string | null;
   horizon: Horizon; risk_response: RiskResponse;
   saved_preferences?: SavedPreferences;
   selected_approach?: Strategy | "short_term" | null;

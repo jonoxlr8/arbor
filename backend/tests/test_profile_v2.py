@@ -20,6 +20,22 @@ LEGACY = dict(full_name="Existing user", country="Philippines", currency="PHP", 
 HEADERS = {"Authorization": "Bearer test"}
 
 
+def test_optional_goal_metadata_persists_without_second_goal_amount(harness):
+    client, state = harness
+    created = client.post("/v2/profiles", json=BASE, headers=HEADERS).json()
+    response = client.put("/v2/goal", json={"goal_target": 500000, "goal_name": "Home",
+        "goal_date": "2036-09-28", "expected_revision": created["revision"]}, headers=HEADERS)
+    assert response.status_code == 200
+    profile = response.json()["profile"]
+    assert profile["goal_target"] == 500000
+    assert profile["goal_name"] == "Home" and profile["goal_date"] == "2036-09-28"
+    assert state["rows"]["A"]["goal_target"] == 500000
+    assert state["rows"]["A"]["v2_inputs"]["goal_name"] == "Home"
+    assert client.put("/v2/goal", json={"goal_target": 600000, "expected_revision": created["revision"]}, headers=HEADERS).status_code == 409
+    assert client.put("/v2/goal", json={"goal_target": 600000,
+        "expected_revision": response.json()["revision"], "user_id": "someone-else"}, headers=HEADERS).status_code == 422
+
+
 def test_preferences_persist_requests_and_restore_effective_target(harness):
     client, state = harness
     payload = {**BASE, "horizon": "three_to_five_years", "risk_response": "invest_more",
@@ -158,7 +174,8 @@ def test_create_and_restore_paths_and_readiness(harness, horizon, risk, strategy
     result = response.json()
     assert result == client.get("/profiles/me", headers=HEADERS).json()
     assert result["profile"] == {**payload, "saved_preferences": {"technology_tilt": 0, "bitcoin": 0},
-                                "explicit_customization": None, "implementation_choices": {}}
+                                "explicit_customization": None, "implementation_choices": {},
+                                "goal_name": None, "goal_date": None}
     assert result["strategy_engine_version"] == state["rows"]["A"]["strategy_engine_version"] == "2.0"
     assert result["plan"]["selected_strategy"] == strategy
     assert result["plan"]["readiness"]["readiness"] == state_name

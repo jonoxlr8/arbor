@@ -65,6 +65,8 @@ export function isPlanV2(value: unknown): value is PlanV2 {
   if (!validCustomization(p, plan)) return false;
   if (p.implementation_choices !== undefined && (!object(p.implementation_choices) || Object.entries(p.implementation_choices).some(([role, product]) =>
     !Object.hasOwn(PLAN_OPTIONS, role) || typeof product !== "string" || !PLAN_OPTIONS[role as PlanRole].some(option => option.product === product)))) return false;
+  if (p.goal_name != null && (typeof p.goal_name !== "string" || !p.goal_name.trim() || p.goal_name.length > 80)) return false;
+  if (p.goal_date != null && (typeof p.goal_date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(p.goal_date) || Number.isNaN(Date.parse(`${p.goal_date}T00:00:00Z`)))) return false;
   if (p.strategy_engine_version !== "2.0" || typeof p.full_name !== "string" || !p.full_name.trim() || p.full_name.length > 120 || p.country !== "Philippines" || p.currency !== "PHP" ||
       !money(p.current_portfolio_value) || !money(p.monthly_investment) ||
       !(p.goal_target === null || (money(p.goal_target) && p.goal_target > 0)) ||

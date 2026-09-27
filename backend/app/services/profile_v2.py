@@ -32,6 +32,10 @@ def profile_v2_row(profile: ProfileV2Data, user_id: str) -> dict:
             explicit_target=target, customization_provenance="user_selected").model_dump(mode="json", exclude_computed_fields=True)
     if profile.implementation_choices or "implementation_choices" in profile.model_fields_set:
         inputs["implementation_choices"] = data["implementation_choices"]
+    if profile.goal_name is not None:
+        inputs["goal_name"] = data["goal_name"]
+    if profile.goal_date is not None:
+        inputs["goal_date"] = data["goal_date"]
     return {"user_id": user_id, "strategy_engine_version": "2.0",
             **{key: data[key] for key in SHARED_FIELDS},
             "v2_inputs": inputs,
@@ -44,7 +48,7 @@ def restore_profile_v2(row: dict) -> dict:
     inputs = row.get("v2_inputs")
     if (not isinstance(inputs, dict) or not set(V2_ANSWER_FIELDS).issubset(inputs)
             or set(inputs) - set(V2_ANSWER_FIELDS) - {"saved_preferences", "selected_approach", "plan_state",
-                                                    "explicit_customization", "implementation_choices"}
+                                                    "explicit_customization", "implementation_choices", "goal_name", "goal_date"}
             or ("selected_approach" in inputs and inputs["selected_approach"] is None)):
         raise ValueError("Invalid saved v2 input shape")
     state = ProfilePlanState.model_validate(inputs["plan_state"]) if "plan_state" in inputs else None

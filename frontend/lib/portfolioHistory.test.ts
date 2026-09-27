@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {historyRange,portfolioValueChange,valueChangeDisclosure} from "./portfolioHistory";
-import {recentPortfolioActivity,holdingsUpdatedAfter} from "./portfolioActivity";
-import type {PortfolioHistory,PortfolioHolding} from "./livePortfolio";
+import {recentPortfolioActivity,recentLedgerActivity,holdingsUpdatedAfter} from "./portfolioActivity";
+import type {PortfolioHistory,PortfolioHolding,InvestmentEntry} from "./livePortfolio";
 
 const point=(day:string,value_php:string):PortfolioHistory=>({day,value_php,captured_at:`${day}T12:00:00Z`});
 for(const [first,last,amount,percentage] of [["100.00","112.34","12.34","12.34"],["100.00","87.66","-12.34","-12.34"],["3.00","4.00","1.00","33.33"],["200.00","200.01","0.01","0.01"],["0.00","50.00","50.00",null],["9999999999999999.98","9999999999999999.99","0.01","0.00"]])test(`exact recorded value change ${first} to ${last}`,()=>{
@@ -30,4 +30,11 @@ test("activity distinguishes additions, updates and unknown creation; never inve
 test("monthly completion follow-up uses timestamps, never increases a holding value",()=>{
   assert.equal(holdingsUpdatedAfter([holding],"2026-09-25T00:00:00Z"),false);
   assert.equal(holdingsUpdatedAfter([{...holding,updated_at:"2026-09-26T00:00:00Z"}],"2026-09-25T00:00:00Z"),true);
+});
+test("Bitcoin ledger activity uses BTC units and corrections are not new purchases",()=>{
+  const entry={id:"one",holding_id:"holding",product_id:"pdax_btc",provider:"pdax",investment_date:"2026-09-25",units:"0.01",amount_paid_php:null,recorded_at:"2026-09-26T00:00:00Z",updated_at:"2026-09-27T00:00:00Z",revision:2,voided_at:null} satisfies InvestmentEntry;
+  const events=recentLedgerActivity([entry],[],null);
+  assert.match(events[0].title,/Corrected Bitcoin/);
+  assert.match(events[0].detail,/0\.01 BTC/);
+  assert.equal(events[0].amount,null);
 });

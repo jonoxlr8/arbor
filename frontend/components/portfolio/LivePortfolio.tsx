@@ -23,8 +23,8 @@ const recordedGain = (h: PortfolioHolding) => {
   if (h.recorded_gain_php == null) return "Recorded cost needed";
   const negative = h.recorded_gain_php.startsWith("-");
   const amount = money(negative ? h.recorded_gain_php.slice(1) : h.recorded_gain_php);
-  const percentage = h.recorded_gain_percentage == null ? "" : ` · ${Number(h.recorded_gain_percentage).toFixed(1)}%`;
-  return `${negative ? "−" : "+"}${amount}${percentage} vs recorded cost`;
+  const percentage = h.recorded_gain_percentage == null ? "" : ` | ${negative ? "−" : "+"}${Math.abs(Number(h.recorded_gain_percentage)).toFixed(1)}%`;
+  return `${negative ? "−" : "+"}${amount}${percentage}`;
 };
 
 export default function LivePortfolio({ value, userId, section = "", onPlanChange }: { value: PlanV2; userId: string; section?: string; onPlanChange?: (value:PlanV2)=>void }) {
@@ -76,6 +76,7 @@ export default function LivePortfolio({ value, userId, section = "", onPlanChang
     {error && <div role="alert" className="arbor-panel text-sm text-slate-700">{error}<button disabled={busy} className="entry-link ml-3 min-h-11" onClick={retryRead}>Retry</button></div>}
     {!portfolio && !error && <div role="status" className="portfolio-skeleton"><span className="sr-only">Loading your portfolio…</span><div/><div/><div/></div>}
     {portfolio && <>
+      <div className="portfolio-value"><PortfolioSummary portfolio={portfolio} /><PortfolioHistoryChart history={portfolio.history} knownValue={portfolio.known_value_php} complete={portfolio.complete} holdingsCount={portfolio.holdings.length} performance={tab === "performance"}/></div>
       <div className="portfolio-tabs" role="group" aria-label="Portfolio sections">{["holdings", "performance", "allocation", "history"].map(item => <button key={item} className="min-h-11" aria-pressed={tab === item} onClick={() => setTab(item)}>{({holdings:"Holdings",performance:"Performance",allocation:"Allocation",history:"History"} as Record<string,string>)[item]}</button>)}</div>
       {historyError && <p role="status" className="text-sm text-slate-600">Current values are available, but today’s history could not be recorded. Please retry later.</p>}
       {tab === "holdings" && <section id="section-holdings" aria-label="Holdings">
@@ -87,7 +88,6 @@ export default function LivePortfolio({ value, userId, section = "", onPlanChang
         </button>)}</div>}
         {!!portfolio.holdings.length && <details className="provider-totals"><summary className="min-h-11 cursor-pointer text-sm text-slate-600">Value by provider</summary><dl className="detail-facts">{Object.entries(portfolio.provider_values_php).map(([provider, value]) => <div key={provider}><dt>{providerName(provider)}</dt><dd>{money(value)}{portfolio.holdings.some(h => h.provider === provider && h.value_php === null) ? " · incomplete" : ""}</dd></div>)}</dl></details>}
       </section>}
-      {!!portfolio.holdings.length && <div className="portfolio-value"><PortfolioSummary portfolio={portfolio} /><PortfolioHistoryChart key={tab === "performance" ? "performance" : "overview"} history={portfolio.history} performance={tab === "performance"}/></div>}
       {tab === "allocation" && <>{portfolio.complete && portfolio.sleeves.some(s => s.current_percentage !== null) && <Allocation weights={portfolio.sleeves.filter(s => s.current_percentage !== null).map(s => ({role:s.sleeve, percentage_points:Number(s.current_percentage)}))} label="Current allocation"/>}<PlanAlignment portfolio={portfolio}/></>}
       {tab === "performance" && <p className="performance-note">The chart compares real recorded portfolio values, not investment returns. Dated additions are listed separately; Arbor does not attribute portfolio changes to deposits or market movement.</p>}
       {tab === "history" && <section className="portfolio-history-list"><h3 className="text-lg font-semibold">Your recorded history</h3><p className="mt-2 text-sm text-slate-600">Real portfolio observations only. <a className="entry-link" href="#home/monthly">Monthly check-ins</a> are recorded separately.</p><dl className="detail-facts">{[...portfolio.history].reverse().map(point => <div key={point.day}><dt>{point.day}</dt><dd>{money(point.value_php)}</dd></div>)}</dl>{!portfolio.history.length && <p className="mt-4 text-sm text-slate-600">No portfolio observations recorded yet.</p>}<InvestmentHistory userId={userId}/></section>}

@@ -1,4 +1,4 @@
-import type { PortfolioHolding } from "./livePortfolio";
+import type { PortfolioHolding, InvestmentEntry, PortfolioProduct } from "./livePortfolio";
 import type { MonthlyState } from "./monthlyCheckin";
 import { investmentIdentity, providerName } from "./investmentIdentity";
 
@@ -11,6 +11,19 @@ export function recentPortfolioActivity(holdings: PortfolioHolding[], monthly: M
     if (!at) return [];
     const action = manual === at && manual > created ? "Value updated" : created === at ? "Added" : "Updated";
     return [{ key:`holding:${h.id}`, at, title:`${action} ${investmentIdentity(h.product_id,h.display_name).shortName}`, detail:providerName(h.provider), amount:null as string | null }];
+  });
+  for (const row of monthly?.history ?? []) events.push({key:`monthly:${row.month}`,at:Date.parse(row.undone_at ?? row.completed_at),title:row.undone_at ? "Contribution undone" : "Contribution recorded",detail:"Monthly check-in",amount:row.amount_php});
+  return events.sort((a,b)=>b.at-a.at).slice(0,4);
+}
+
+export function recentLedgerActivity(entries: InvestmentEntry[], catalog: PortfolioProduct[], monthly: MonthlyState | null) {
+  const events = entries.map(entry => {
+    const product = catalog.find(item => item.product_id === entry.product_id && item.provider === entry.provider);
+    const label = investmentIdentity(entry.product_id, product?.display_name).shortName;
+    const action = entry.voided_at ? "Voided" : entry.revision > 1 ? "Corrected" : "Added to";
+    return { key: `entry:${entry.id}`, at: Date.parse(entry.updated_at), title: `${action} ${label}`,
+      detail: `${entry.units} ${entry.product_id.endsWith("_btc") ? "BTC" : "units"} · ${providerName(entry.provider)} · Investment date ${entry.investment_date}`,
+      amount: null as string | null };
   });
   for (const row of monthly?.history ?? []) events.push({key:`monthly:${row.month}`,at:Date.parse(row.undone_at ?? row.completed_at),title:row.undone_at ? "Contribution undone" : "Contribution recorded",detail:"Monthly check-in",amount:row.amount_php});
   return events.sort((a,b)=>b.at-a.at).slice(0,4);

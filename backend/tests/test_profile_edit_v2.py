@@ -45,6 +45,17 @@ def test_preview_read_only_keep_plan_reassess_then_save_restore(harness):
     assert client.put(SAVE, json=body, headers=HEADERS).status_code == 409
 
 
+def test_profile_edit_preserves_optional_goal_metadata(harness):
+    client, state = harness
+    saved = setup(client, state)
+    goal = client.put("/v2/goal", json={"goal_target": 500000, "goal_name": "Education",
+        "goal_date": "2036-09-28", "expected_revision": saved["revision"]}, headers=HEADERS).json()
+    changed = client.put(SAVE, json=edit(goal, monthly_investment=2000), headers=HEADERS).json()
+    assert changed["profile"]["goal_target"] == 500000
+    assert changed["profile"]["goal_name"] == "Education"
+    assert changed["profile"]["goal_date"] == "2036-09-28"
+
+
 @pytest.mark.parametrize("choice", ["Conservative", "Balanced", "Growth", "Aggressive"])
 def test_explicit_change_uses_canonical_model_and_chat_reads_new_data(harness, choice):
     client, state = harness

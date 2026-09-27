@@ -42,9 +42,9 @@ test("invalid destinations fail closed",()=>{
   assert.equal(isNextAction({...action,destination:"https://evil.example"}),false);
   assert.equal(isNextAction({...action,key:"buy_stock"}),false);
 });
-test("canonical profile changes remount action and abort old requests; errors allow retry",()=>{
+test("Home no longer mounts the promotional action card; its standalone reader stays safe",()=>{
   const parent=readFileSync("components/PlanV2View.tsx","utf8");
-  assert.match(parent,/<NextActionCard key=\{`\$\{userId\}:\$\{JSON.stringify\(value\)\}`\}/);
+  assert.doesNotMatch(parent,/<NextActionCard/);
   const card=readFileSync("components/NextActionCard.tsx","utf8");
   assert.match(card,/controller.abort\(\)/);assert.match(card,/!controller.signal.aborted/);
   assert.match(card,/role="alert"/);assert.match(card,/setRetry\(retry\+1\)/);
