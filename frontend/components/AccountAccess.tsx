@@ -47,7 +47,7 @@ export function ComparePlans({ value }: { value: Entitlements }) {
     <div className="mt-6 grid gap-5 md:grid-cols-2">
       <article className="min-w-0 rounded-2xl border border-slate-200 p-4"><h3 className="font-semibold text-slate-900">Arbor Free — ₱0</h3>
         <p className="mt-2 text-sm text-slate-600">Build your investment plan and understand it.</p>
-        <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-700"><li>Readiness and informational self-assessment</li><li>Choose and view a standardized plan</li><li>Basic planning assumptions and implementation education</li><li>10 Ask Arbor questions per month</li><li>Basic next-action guidance</li></ul></article>
+        <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-700"><li>Readiness and informational self-assessment</li><li>Choose and view a standardized plan</li><li>Basic portfolio tracking and recorded-cost gain/loss</li><li>Basic planning assumptions and implementation education</li><li>10 Ask Arbor questions per month</li><li>Basic next-action guidance</li></ul></article>
       <article className="min-w-0 rounded-2xl border border-slate-200 p-4"><h3 className="font-semibold text-slate-900">Arbor Plus — ₱399/month</h3>
         <p className="mt-1 text-sm text-slate-500">Or ₱3,990/year at launch</p>
         <p className="mt-2 text-sm text-slate-600">Stay aligned with the plan you chose.</p>

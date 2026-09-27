@@ -8,8 +8,9 @@ import { monthlyApi, monthLabel, checkinDate, type MonthlyState } from "@/lib/mo
 import PortfolioHistoryChart from "../portfolio/PortfolioHistoryChart";
 import { DataAttribution } from "../portfolio/LivePortfolio";
 import { planTargets } from "@/lib/planImplementation";
-import { holdingsUpdatedAfter, recentLedgerActivity } from "@/lib/portfolioActivity";
+import { recentLedgerActivity } from "@/lib/portfolioActivity";
 import HomeGoal from "./HomeGoal";
+import PendingRecordingResume from "../contributions/PendingRecordingResume";
 
 export default function V2Home({ value, userId, onPlanChange }: { value: PlanV2; userId?: string; onPlanChange?: (value:PlanV2)=>void }) {
   const access = useAccountAccess();
@@ -24,7 +25,7 @@ export default function V2Home({ value, userId, onPlanChange }: { value: PlanV2;
   useEffect(() => {
     if (!available || !userId) return;
     const controller = new AbortController();
-    portfolioApi.activity(userId, undefined, 0, controller.signal).then(result => { if (!controller.signal.aborted) { setEntries(result.entries); setEntriesError(false); } }).catch(() => { if (!controller.signal.aborted) setEntriesError(true); });
+    portfolioApi.activity(userId, undefined, 0, controller.signal, { recent: true }).then(result => { if (!controller.signal.aborted) { setEntries(result.entries); setEntriesError(false); } }).catch(() => { if (!controller.signal.aborted) setEntriesError(true); });
     return () => controller.abort();
   }, [available, userId, portfolio]);
   useEffect(() => {
@@ -44,15 +45,14 @@ export default function V2Home({ value, userId, onPlanChange }: { value: PlanV2;
   const currentMonthly = monthlyAllowed && !monthlyError ? monthly : null;
   return <div className="space-y-6">
     <div className="home-grid">
-      {available && userId ? <HomePortfolio userId={userId} onLoaded={setPortfolio} /> : <section className="home-metric home-portfolio" aria-label="Portfolio overview"><header><h2>Portfolio</h2><span className="access-badge">{access?.value?.effective_tier === "free" ? "Plus" : "Preview"}</span></header>
-        <div className="home-history-empty"><span aria-hidden="true">◷</span><strong>Your investments.<br/>One clear view.</strong><p>{!implementationAllowed ? "Your saved profile and current path are ready to review. Tracking stays separate from your plan." : access?.value?.effective_tier === "free" ? "Tracking is part of Arbor Plus. Explore ways to invest your plan on Free." : "Tracking isn’t available yet. Your chosen plan and ways to invest are ready to explore."}</p></div>
+      {available && userId ? <HomePortfolio userId={userId} onLoaded={setPortfolio} /> : <section className="home-metric home-portfolio" aria-label="Portfolio overview"><header><h2>Portfolio</h2><span className="access-badge">Preview</span></header>
+        <div className="home-history-empty"><span aria-hidden="true">◷</span><strong>Your investments.<br/>One clear view.</strong><p>{!implementationAllowed ? "Your saved profile and current path are ready to review. Tracking stays separate from your plan." : "Tracking isn’t available right now. Your chosen plan and ways to invest are ready to explore."}</p></div>
         <a className="entry-link" href="#portfolio">Explore your portfolio →</a>
       </section>}
       <HomeGoal value={value} portfolio={portfolio} userId={userId} onPlanChange={onPlanChange} monthly={
         <a className="home-metric home-monthly" aria-label={`Review monthly contribution: ${formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP")}`} href={value.plan.path === "short_term" || !value.plan.readiness.actionable_contribution_guidance_allowed ? "#portfolio/plan" : "#home/monthly"}><p>Monthly contribution</p><strong>{formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP")}</strong><span aria-hidden="true">›</span>{currentMonthly?.current && <small className="completed-label">Recorded for {monthLabel(currentMonthly.month).split(" ")[0]}</small>}</a>
-      }/>
+      } pending={userId ? <PendingRecordingResume userId={userId} compact monthlyAvailable={monthlyAllowed === true}/> : null}/>
     </div>
-    {currentMonthly?.current && portfolio && !holdingsUpdatedAfter(portfolio.holdings,currentMonthly.current.completed_at) && <div className="home-update-followup"><p>Contribution submitted. Update your holdings with what you actually received.</p><a className="entry-link" href="#portfolio">Update portfolio →</a></div>}
     <div className="home-bottom"><HomeActivity state={currentMonthly} error={monthlyError || entriesError} portfolio={portfolio} entries={entries}/><HomePlanContext value={value} /></div>
     {portfolio && <div className="home-data-attribution"><DataAttribution sources={portfolio.data_sources ?? []}/></div>}
   </div>;

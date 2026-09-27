@@ -168,7 +168,7 @@ def test_endpoint_auth_gate_and_request_validation(endpoint,monkeypatch):
     for body in [{"manual_value_php":"NaN"},{"manual_value_php":"1","user_id":"B"},{"manual_value_php":"1","manual_value_updated_at":NOW.isoformat()}]:
         assert client.put(url,json=body).status_code==422
     state["mode"]="free"
-    assert client.put(url,json={"manual_value_php":"1"}).status_code==403
+    assert client.put(url,json={"manual_value_php":"1"}).status_code==200  # Factual tracking is basic.
     monkeypatch.delenv("LIVE_PORTFOLIO_ENABLED")
     assert client.put(url,json={"manual_value_php":"1"}).status_code==404
     client.app.dependency_overrides.clear()

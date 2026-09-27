@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { PlanV2 } from "@/lib/types/planV2";
 import type { Sleeve } from "@/lib/types/contributions";
 import { monthlyPlanApi, monthlyMoney, type MonthlyPlan, type MonthlyPlanInput } from "@/lib/monthlyPlan";
@@ -8,10 +8,13 @@ import { investmentIdentity, providerName } from "@/lib/investmentIdentity";
 import { providerDestination } from "@/lib/planImplementation";
 import { useAccountAccess } from "../AccountAccess";
 import { MonthlyCheckin } from "../MonthlyCheckin";
+import type { MonthlyState } from "@/lib/monthlyCheckin";
+import { MonthlyInvestmentFollowup } from "./MonthlyInvestmentFollowup";
 import InvestmentIdentity from "../InvestmentIdentity";
 import ProviderIdentity from "../ProviderIdentity";
 import ImplementationPicker from "../portfolio/ImplementationPicker";
 import { sleeveColors } from "../AssetIdentity";
+import { pendingApi, pendingChanged } from "@/lib/pendingRecordings";
 
 const money=monthlyMoney;
 const emptyValues={global_equity:"0",defensive:"0",technology_tilt:"0",crypto:"0"};
@@ -22,6 +25,8 @@ export default function MonthlyInvesting({value,userId,onPlanChange}:{value:Plan
   const [inputMode,setInputMode]=useState<""|"empty"|"manual">("");
   const [manual,setManual]=useState({...emptyValues});
   const [result,setResult]=useState<MonthlyPlan|null>(null);
+  const [checkin,setCheckin]=useState<{owner:string;state:MonthlyState}|null>(null);
+  const onCheckinChange=useCallback((state:MonthlyState)=>setCheckin({owner:userId,state}),[userId]);
   const [busy,setBusy]=useState(false),[error,setError]=useState("");
   const [choosing,setChoosing]=useState<Sleeve|null>(null);
   const request=useRef<AbortController|null>(null);
@@ -71,10 +76,30 @@ export default function MonthlyInvesting({value,userId,onPlanChange}:{value:Plan
       <section className="monthly-reconciliation" aria-label="Full contribution accounting"><h3>Every peso accounted for</h3><dl>
         <div><dt>Minimum met</dt><dd>{money(result.ready_amount)}</dd></div><div><dt>Verify minimum with provider</dt><dd>{money(result.verify_minimum_amount)}</dd></div><div><dt>Waiting for a minimum</dt><dd>{money(result.waiting_amount)}</dd></div><div><dt>Choose an investment</dt><dd>{money(result.choose_investment_amount)}</dd></div><div><dt>Reserve</dt><dd>{money(result.reserve_amount)}</dd></div><div><dt>Unassigned</dt><dd>{money(result.unallocated_amount)}</dd></div><div className="monthly-total"><dt>Total planned</dt><dd>{money(result.contribution_amount)}</dd></div>
       </dl></section>
-      {!!result.provider_groups.length&&<section className="monthly-providers"><h3>Through your providers</h3>{result.provider_groups.map(group=><div className="monthly-provider" key={group.provider_id}><ProviderIdentity provider={group.provider_id}/><dl>{result.rows.filter(row=>row.provider_id===group.provider_id).map(row=><div key={row.sleeve}><dt>{investmentIdentity(row.product_id??"").shortName}</dt><dd>{money(row.amount)}{row.status==="below_minimum"&&<small>Waiting</small>}{row.status==="verify_minimum"&&<small>Verify minimum</small>}</dd></div>)}<div className="monthly-provider-total"><dt>Total assigned</dt><dd>{money(group.amount)}</dd></div></dl>{providerDestination(group.provider_id)&&<a className="provider-open" href={providerDestination(group.provider_id)!} target="_blank" rel="noopener noreferrer">Open {providerName(group.provider_id)} ↗</a>}</div>)}</section>}
-      <div className="monthly-handoff"><p>You invest through your providers. Arbor does not place trades or move money.</p><small>After submitting your contribution, update your holdings with what you actually received.</small></div>
+      {!!result.provider_groups.length&&<section className="monthly-providers"><h3>Through your providers</h3>{result.provider_groups.map(group=><div className="monthly-provider" key={group.provider_id}><ProviderIdentity provider={group.provider_id}/><dl>{result.rows.filter(row=>row.provider_id===group.provider_id).map(row=><div key={row.sleeve}><dt>{investmentIdentity(row.product_id??"").shortName}</dt><dd>{money(row.amount)}{row.status==="below_minimum"&&<small>Waiting</small>}{row.status==="verify_minimum"&&<small>Verify minimum</small>}</dd></div>)}<div className="monthly-provider-total"><dt>Total assigned</dt><dd>{money(group.amount)}</dd></div></dl>{result.rows.filter(row=>row.provider_id===group.provider_id && row.product_id && (row.status==="ready"||row.status==="verify_minimum") && Number(row.amount)>0).map(row=><ProviderContinue key={row.sleeve} userId={userId} productId={row.product_id!} provider={group.provider_id}/>)}</div>)}</section>}
+      <div className="monthly-handoff"><p>You invest through your providers. Arbor does not place trades or move money.</p><small>After your check-in, record the actual units you received. Planned PHP amounts never become investment cost automatically.</small></div>
     </section>}
-    <MonthlyCheckin value={value} userId={userId} scenarioAmount={result?.recordable_amount&&Number(result.recordable_amount)>0?result.recordable_amount:undefined}/>
+    <MonthlyCheckin value={value} userId={userId} scenarioAmount={result?.recordable_amount&&Number(result.recordable_amount)>0?result.recordable_amount:undefined} onStateChange={onCheckinChange}/>
+    {checkin?.owner===userId && tracking && <MonthlyInvestmentFollowup userId={userId} plan={result} completed={Boolean(checkin.state.current)}/>}
     {choosing&&<ImplementationPicker value={value} userId={userId} sleeve={choosing} onClose={()=>setChoosing(null)} onSaved={plan=>{invalidate();onPlanChange(plan);void calculate();}}/>}
   </section>;
+}
+
+function ProviderContinue({userId,productId,provider}:{userId:string;productId:string;provider:string}) {
+  const [busy,setBusy]=useState(false),[error,setError]=useState("");
+  const destination=providerDestination(provider);
+  if(!destination)return null;
+  async function openProvider(){
+    if(busy)return;
+    setBusy(true);setError("");
+    try {
+      await pendingApi.start(userId,productId,provider);
+      pendingChanged();
+      // Navigate only after the owner-scoped resume record is safely persisted.
+      window.location.assign(destination!);
+    } catch(cause) { setError(cause instanceof Error?cause.message:"Please retry before leaving Arbor.");setBusy(false); }
+  }
+  return <div className="monthly-provider-continue"><button type="button" className="provider-open min-h-11" disabled={busy} onClick={()=>void openProvider()}>
+    {busy?"Saving your place…":`Continue with ${providerName(provider)} for ${investmentIdentity(productId).shortName} ↗`}
+  </button>{error&&<p role="alert">{error}</p>}</div>;
 }

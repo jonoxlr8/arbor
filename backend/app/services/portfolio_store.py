@@ -1,6 +1,7 @@
 """Normal JWT/RLS persistence; no service-role access in the application reader."""
 from datetime import datetime, timezone
 from functools import wraps
+from calendar import monthrange
 
 from fastapi import HTTPException
 from postgrest.exceptions import APIError
@@ -114,10 +115,16 @@ class PortfolioStore:
         }).execute().data
 
     @storage_errors
-    def activity(self, holding_id=None, page=0):
+    def activity(self, holding_id=None, page=0, month=None, recent=False):
         query = self.client.table("arbor_investment_entry_values").select("*").eq("user_id", self.owner)
         if holding_id is not None:
             query = query.eq("holding_id", str(holding_id))
+        if month is not None:
+            year, number = (int(part) for part in month.split("-"))
+            query = query.gte("investment_date", f"{month}-01").lte(
+                "investment_date", f"{month}-{monthrange(year, number)[1]:02d}")
+        if recent:
+            return query.order("updated_at", desc=True).order("id", desc=True).range(page * 20, page * 20 + 19).execute().data
         return (query.order("investment_date", desc=True).order("recorded_at", desc=True).order("id", desc=True)
                 .range(page * 20, page * 20 + 19).execute().data)
 

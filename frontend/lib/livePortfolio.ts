@@ -9,7 +9,7 @@ import { manilaInvestmentToday } from "./investmentEntries";
 
 const portfolioMessages = {
   portfolio_auth: "Your session has expired. Sign in again to continue.",
-  portfolio_entitlement: "Portfolio tracking is available with Arbor Plus. Explore plans in Settings.",
+  portfolio_entitlement: "Portfolio tracking is not available for this account. Please check your access in Settings.",
   portfolio_unavailable: "Portfolio tracking is not available right now. Please try again later.",
   portfolio_contract: "We couldn’t load your portfolio correctly. Please refresh and try again.",
   portfolio_network: "We couldn’t reach Arbor. Check your connection and try again.",
@@ -37,6 +37,7 @@ export type InvestmentEntry = { id: string; holding_id: string; product_id: stri
   amount_paid_php: string | null; recorded_at: string; updated_at: string; revision: number; voided_at: string | null };
 export type InvestmentEntryDraft = { provider: string; product_id: string; investment_date: string; units: string; amount_paid_php: string | null;
   idempotency_key: string; opening_units?: string | null; opening_cost_php?: string | null; confirm_conversion?: boolean };
+export type RecordedEntryResult = { entry_id: string; holding_id: string; replayed: boolean };
 export const supportsManualValue = (h: { product_id: string }) => ["gcash_global_equity", "gcash_technology", "gcash_defensive", "dragonfi_global_equity", "dragonfi_technology", "dragonfi_defensive"].includes(h.product_id);
 export const validManualValue = (v: string) => /^\d{1,16}(?:\.\d{1,2})?$/.test(v) && /[1-9]/.test(v);
 export type PortfolioHistory = { day: string; value_php: string; captured_at: string };
@@ -142,7 +143,13 @@ export function createPortfolioApi(token = getAccessToken, request: typeof fetch
     save: (userId: string, draft: HoldingDraft, id?: string) => call(userId, `/holdings${id ? `/${encodeURIComponent(id)}` : ""}`, id ? "PUT" : "POST", draft),
     remove: (userId: string, id: string) => call(userId, `/holdings/${encodeURIComponent(id)}`, "DELETE"),
     manualValue: (userId: string, id: string, value: string | null) => call(userId, `/holdings/${encodeURIComponent(id)}/manual-value`, "PUT", { manual_value_php: value }),
-    recordEntry: (userId: string, draft: InvestmentEntryDraft) => call(userId, "/entries", "POST", draft),
+    async recordEntry(userId: string, draft: InvestmentEntryDraft): Promise<RecordedEntryResult> {
+      const result: unknown = await call(userId, "/entries", "POST", draft);
+      if (!result || typeof result !== "object" || typeof (result as RecordedEntryResult).entry_id !== "string" ||
+        typeof (result as RecordedEntryResult).holding_id !== "string" || typeof (result as RecordedEntryResult).replayed !== "boolean")
+        throw new PortfolioError("portfolio_contract");
+      return result as RecordedEntryResult;
+    },
     reviseEntry: (userId: string, id: string, revision: number, draft: Pick<InvestmentEntryDraft, "investment_date" | "units" | "amount_paid_php">) =>
       call(userId, `/entries/${encodeURIComponent(id)}`, "PUT", { ...draft, expected_revision: revision }),
     voidEntry: (userId: string, id: string, revision: number) => call(userId, `/entries/${encodeURIComponent(id)}/void`, "POST", { expected_revision: revision }),
@@ -150,9 +157,11 @@ export function createPortfolioApi(token = getAccessToken, request: typeof fetch
       call(userId, `/holdings/${encodeURIComponent(id)}/opening-position`, "PUT", {
         expected_updated_at: updatedAt, opening_units: units, opening_cost_php: cost,
       }),
-    async activity(userId: string, holdingId?: string, page = 0, signal?: AbortSignal) {
+    async activity(userId: string, holdingId?: string, page = 0, signal?: AbortSignal, filter?: { month?: string; recent?: boolean }) {
       const params = new URLSearchParams({ page: String(page) });
       if (holdingId) params.set("holding_id", holdingId);
+      if (filter?.month) params.set("month", filter.month);
+      if (filter?.recent) params.set("recent", "true");
       const body: unknown = await call(userId, `/entries?${params}`, "GET", undefined, signal);
       if (!isInvestmentActivity(body)) throw new PortfolioError("portfolio_contract");
       return body;

@@ -228,6 +228,19 @@ def test_phase1_portfolio_merges_ledger_metadata_without_changing_valuation(endp
     assert saved["has_entries"] is True
 
 
+def test_free_basic_portfolio_keeps_ledger_and_value_but_not_plus_alignment(endpoint):
+    client, state = endpoint
+    state["mode"] = "free"
+    row = holding("gotrade_vt", "2")
+    state["rows"]["A"] = {str(row.id): row}
+    result = client.get("/v2/portfolio")
+    assert result.status_code == 200
+    assert result.json()["holdings"][0]["units"] == "2"
+    assert all(sleeve["target_percentage"] is None and sleeve["difference_pp"] is None
+               for sleeve in result.json()["sleeves"])
+    assert client.post("/v2/portfolio/scenarios/plan", json={"contribution_amount": "100", "route_id": "gotrade"}).status_code == 403
+
+
 def test_api_crud_owner_no_client_identity_and_decimals(endpoint):
     client,state=endpoint
     body={"provider":"gotrade","product_id":"gotrade_vt","units":"7.123456789012"}
@@ -247,10 +260,12 @@ def test_api_crud_owner_no_client_identity_and_decimals(endpoint):
     assert client.get("/v2/portfolio").json()["holdings"]==[]
 
 
-@pytest.mark.parametrize("path,method",[("","get"),("/holdings","post"),("/snapshot","post"),("/scenarios/plan","post")])
-def test_free_gated_server_side(endpoint,path,method):
+def test_free_can_track_but_not_request_plus_contribution_scenarios(endpoint):
     client,state=endpoint; state["mode"]="free"
-    assert getattr(client,method)("/v2/portfolio"+path).status_code==403
+    assert client.get("/v2/portfolio").status_code == 200
+    assert client.post("/v2/portfolio/holdings", json={"provider":"gotrade","product_id":"gotrade_vt","units":"1"}).status_code == 201
+    assert client.post("/v2/portfolio/snapshot").status_code == 200
+    assert client.post("/v2/portfolio/scenarios/plan", json={"contribution_amount":"100","route_id":"gotrade"}).status_code == 403
 
 
 @pytest.mark.parametrize("mode",["plan","recommendation"])

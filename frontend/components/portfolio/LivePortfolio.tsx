@@ -15,6 +15,7 @@ import PlanImplementation from "./PlanImplementation";
 import DatedInvestmentFlow from "./DatedInvestmentFlow";
 import HoldingActivity from "./HoldingActivity";
 import InvestmentHistory from "./InvestmentHistory";
+import { useAccountAccess } from "../AccountAccess";
 
 const inputClass = "mt-1 min-h-12 w-full min-w-0 rounded-xl border border-slate-300 bg-white p-3 text-slate-900";
 const blank = (): HoldingDraft => ({ provider: "", product_id: "", units: null, cost_basis_php: null, manual_value_php: null });
@@ -28,6 +29,8 @@ const recordedGain = (h: PortfolioHolding) => {
 };
 
 export default function LivePortfolio({ value, userId, section = "", onPlanChange }: { value: PlanV2; userId: string; section?: string; onPlanChange?: (value:PlanV2)=>void }) {
+  const access = useAccountAccess();
+  const plusAlignment = access?.value?.features.includes("plan_alignment") === true;
   const [portfolio, setPortfolio] = useState<LivePortfolioData | null>(null);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
@@ -77,7 +80,7 @@ export default function LivePortfolio({ value, userId, section = "", onPlanChang
     {!portfolio && !error && <div role="status" className="portfolio-skeleton"><span className="sr-only">Loading your portfolio…</span><div/><div/><div/></div>}
     {portfolio && <>
       <div className="portfolio-value"><PortfolioSummary portfolio={portfolio} /><PortfolioHistoryChart history={portfolio.history} knownValue={portfolio.known_value_php} complete={portfolio.complete} holdingsCount={portfolio.holdings.length} performance={tab === "performance"}/></div>
-      <div className="portfolio-tabs" role="group" aria-label="Portfolio sections">{["holdings", "performance", "allocation", "history"].map(item => <button key={item} className="min-h-11" aria-pressed={tab === item} onClick={() => setTab(item)}>{({holdings:"Holdings",performance:"Performance",allocation:"Allocation",history:"History"} as Record<string,string>)[item]}</button>)}</div>
+      <div className="portfolio-tabs" role="group" aria-label="Portfolio sections">{["holdings", "performance", ...(plusAlignment ? ["allocation"] : []), "history"].map(item => <button key={item} className="min-h-11" aria-pressed={tab === item} onClick={() => setTab(item)}>{({holdings:"Holdings",performance:"Performance",allocation:"Allocation",history:"History"} as Record<string,string>)[item]}</button>)}</div>
       {historyError && <p role="status" className="text-sm text-slate-600">Current values are available, but today’s history could not be recorded. Please retry later.</p>}
       {tab === "holdings" && <section id="section-holdings" aria-label="Holdings">
         {!portfolio.holdings.length ? <>
@@ -88,7 +91,7 @@ export default function LivePortfolio({ value, userId, section = "", onPlanChang
         </button>)}</div>}
         {!!portfolio.holdings.length && <details className="provider-totals"><summary className="min-h-11 cursor-pointer text-sm text-slate-600">Value by provider</summary><dl className="detail-facts">{Object.entries(portfolio.provider_values_php).map(([provider, value]) => <div key={provider}><dt>{providerName(provider)}</dt><dd>{money(value)}{portfolio.holdings.some(h => h.provider === provider && h.value_php === null) ? " · incomplete" : ""}</dd></div>)}</dl></details>}
       </section>}
-      {tab === "allocation" && <>{portfolio.complete && portfolio.sleeves.some(s => s.current_percentage !== null) && <Allocation weights={portfolio.sleeves.filter(s => s.current_percentage !== null).map(s => ({role:s.sleeve, percentage_points:Number(s.current_percentage)}))} label="Current allocation"/>}<PlanAlignment portfolio={portfolio}/></>}
+      {tab === "allocation" && plusAlignment && <>{portfolio.complete && portfolio.sleeves.some(s => s.current_percentage !== null) && <Allocation weights={portfolio.sleeves.filter(s => s.current_percentage !== null).map(s => ({role:s.sleeve, percentage_points:Number(s.current_percentage)}))} label="Current allocation"/>}<PlanAlignment portfolio={portfolio}/></>}
       {tab === "performance" && <p className="performance-note">The chart compares real recorded portfolio values, not investment returns. Dated additions are listed separately; Arbor does not attribute portfolio changes to deposits or market movement.</p>}
       {tab === "history" && <section className="portfolio-history-list"><h3 className="text-lg font-semibold">Your recorded history</h3><p className="mt-2 text-sm text-slate-600">Real portfolio observations only. <a className="entry-link" href="#home/monthly">Monthly check-ins</a> are recorded separately.</p><dl className="detail-facts">{[...portfolio.history].reverse().map(point => <div key={point.day}><dt>{point.day}</dt><dd>{money(point.value_php)}</dd></div>)}</dl>{!portfolio.history.length && <p className="mt-4 text-sm text-slate-600">No portfolio observations recorded yet.</p>}<InvestmentHistory userId={userId}/></section>}
       {detail && <Sheet title={detail.display_name} onClose={() => setDetail(null)}>

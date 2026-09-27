@@ -17,6 +17,8 @@ def test_feature_matrix(tier, status, effective):
     value = resolve_entitlements(tier, status)
     assert value.effective_tier == effective
     assert {'plan_creation','basic_projection','basic_implementation','ask_arbor_basic','next_action'} <= set(value.features)
+    assert 'live_portfolio' in value.features
+    assert ('plan_alignment' in value.features) == (effective == 'plus')
     assert ('profile_rebuild' in value.features) == (effective == 'plus')
     assert ('monthly_contribution_planner' in value.features) == (effective == 'plus')
     assert value.ask_monthly_limit == (10 if effective == 'free' else None)

@@ -14,8 +14,8 @@ import ImplementationPicker from "./ImplementationPicker";
 export function TrackingAvailability({ plus }: { plus: boolean }) {
   return <div className="tracking-availability">
     <span className="tracking-symbol" aria-hidden="true">◷</span>
-    <div><strong>{plus ? "Your portfolio, ready for its next chapter" : "Portfolio tracking with Arbor Plus"}</strong>
-      <p>{plus ? "Tracking is included in Plus and will be available once it’s released. Your saved plan remains available." : "See recorded holdings, value history and comparisons with your targets. Your plan and ways to invest stay available on Free."}</p></div>
+    <div><strong>{plus ? "Portfolio tracking is temporarily unavailable" : "Portfolio tracking is unavailable"}</strong>
+      <p>{plus ? "Your saved plan remains available. Please check back later to record investments." : "Your plan and ways to invest remain available while tracking is unavailable."}</p></div>
     {!plus && <a className="entry-link" href="#settings/plus">Explore Arbor Plus <span aria-hidden="true">↗</span></a>}
   </div>;
 }

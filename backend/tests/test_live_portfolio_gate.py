@@ -89,7 +89,7 @@ def test_manual_contribution_remains_available(disabled, mode):
     assert response.json()["contribution_amount"] == "12000"
 
 
-def test_enabled_availability_does_not_query_storage_or_grant_free_access(disabled, monkeypatch):
+def test_enabled_availability_does_not_query_storage_or_bypass_auth_and_plus_planning(disabled, monkeypatch):
     monkeypatch.setenv("LIVE_PORTFOLIO_ENABLED", "true")
     monkeypatch.setenv("MARKETSTACK_API_KEY", "synthetic")
     monkeypatch.setenv("COINRANKING_API_KEY", "synthetic")
@@ -97,7 +97,8 @@ def test_enabled_availability_does_not_query_storage_or_grant_free_access(disabl
     assert disabled.get("/account/entitlements").json()["availability"] == {"live_portfolio": True, "monthly_checkin": False}
     from app.services import entitlements
     monkeypatch.setattr(entitlements, "get_entitlements", lambda _: resolve_entitlements("free", "active"))
-    assert disabled.get("/v2/portfolio").status_code == 403
+    assert disabled.get("/v2/portfolio").status_code == 401
+    assert disabled.post("/v2/portfolio/scenarios/plan", json={"contribution_amount": "100", "route_id": "gotrade"}).status_code == 403
 
 
 @pytest.mark.parametrize("environment", [{"APP_ENV": "production"}, {"RENDER": "true"}, {"VERCEL": "1"}])

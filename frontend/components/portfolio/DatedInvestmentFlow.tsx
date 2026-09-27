@@ -16,9 +16,9 @@ function fresh(product: PortfolioProduct): InvestmentEntryDraft {
     amount_paid_php: null, idempotency_key: crypto.randomUUID(), opening_units: null, opening_cost_php: null, confirm_conversion: false };
 }
 
-export default function DatedInvestmentFlow({ portfolio, userId, initialProduct, onClose, onSaved, onOpeningOnly }:
+export default function DatedInvestmentFlow({ portfolio, userId, initialProduct, onClose, onSaved, onOpeningOnly, plannedAmount, monthly = false }:
   { portfolio: LivePortfolioData; userId: string; initialProduct?: PortfolioProduct; onClose: () => void;
-    onSaved: () => void; onOpeningOnly: (product: PortfolioProduct) => void }) {
+    onSaved: (draft: InvestmentEntryDraft) => void; onOpeningOnly: (product: PortfolioProduct) => void; plannedAmount?: string; monthly?: boolean }) {
   const [draft, setDraft] = useState<InvestmentEntryDraft | null>(initialProduct ? fresh(initialProduct) : null);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -36,20 +36,21 @@ export default function DatedInvestmentFlow({ portfolio, userId, initialProduct,
   async function save() {
     if (!draft || busy || !validEntryDraft(draft, portfolio.catalog) || (converting && (!draft.confirm_conversion || !draft.opening_units))) return;
     setBusy(true); setError("");
-    try { await portfolioApi.recordEntry(userId, draft); onSaved(); }
+    try { await portfolioApi.recordEntry(userId, draft); onSaved(draft); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Couldn’t save this investment. Retry with the same details."); }
     finally { setBusy(false); }
   }
-  return <Sheet title={!product ? "Add Investment" : existing ? `Add to ${investmentIdentity(product.product_id).shortName}` : `Add ${investmentIdentity(product.product_id).shortName}`} busy={busy} onClose={onClose}>
+  return <Sheet title={monthly ? !product ? "Record an investment" : `Record ${investmentIdentity(product.product_id).shortName} investment` : !product ? "Add Investment" : existing ? `Add to ${investmentIdentity(product.product_id).shortName}` : `Add ${investmentIdentity(product.product_id).shortName}`} busy={busy} onClose={onClose}>
     {!product ? <InvestmentCatalogue catalog={portfolio.catalog} onSelect={p => { setDraft(fresh(p)); setError(""); }}/>
     : <div className="investment-form space-y-4">
       {!initialProduct && <button type="button" className="catalogue-back" onClick={() => { setDraft(null); setConfirm(false); }}>‹ All investments</button>}
       <div className="selected-investment"><AssetIdentity product={product.product_id} sleeve={product.sleeve}/><div><strong>{investmentIdentity(product.product_id).fullName}</strong><ProviderBrand provider={product.provider} name={product.provider_name}/></div></div>
-      {supportsManualValue(product) && !existing && <button type="button" className="entry-link min-h-11" onClick={() => onOpeningOnly(product)}>Track an existing fund value without units instead</button>}
+      {!monthly && supportsManualValue(product) && !existing && <button type="button" className="entry-link min-h-11" onClick={() => onOpeningOnly(product)}>Track an existing fund value without units instead</button>}
       <p className="text-sm text-slate-600">Record units actually received. Your investment date is not the time you recorded this in Arbor. No trade is placed.</p>
+      {monthly && <><p className="text-sm text-slate-600">Enter the units shown by your provider. Arbor won’t estimate them from today’s price. {plannedAmount ? `Planned contribution: ${formatContributionMoney(plannedAmount,"PHP")} (context only).` : "This record is separate from your monthly check-in."}</p><details className="text-sm"><summary className="min-h-11 cursor-pointer py-2">Where do I find my units?</summary><p>Look for shares, fund units, or BTC in your provider’s transaction or holdings record.</p></details></>}
       <label className="block text-sm">Investment date<input type="date" className={field} max={today()} required value={draft!.investment_date} onChange={e => patch({ investment_date: e.target.value })}/></label>
       <label className="block text-sm">{investmentIdentity(product.product_id).category === "bitcoin" ? "BTC received" : product.price_kind === "nav" ? "Fund units received" : "Shares received"}<input className={field} inputMode="decimal" required value={draft!.units} onChange={e => patch({ units: e.target.value })}/></label>
-      <label className="block text-sm">Actual total paid (PHP, optional)<input className={field} inputMode="decimal" value={draft!.amount_paid_php ?? ""} onChange={e => patch({ amount_paid_php: e.target.value || null })}/></label>
+      <label className="block text-sm">{monthly ? "Amount paid (PHP, optional)" : "Actual total paid (PHP, optional)"}<input className={field} inputMode="decimal" value={draft!.amount_paid_php ?? ""} onChange={e => patch({ amount_paid_php: e.target.value || null })}/>{monthly && <small className="mt-1 block text-slate-600">Enter the actual PHP amount you paid if you know it.</small>}</label>
       {converting && <section className="arbor-panel space-y-3"><h3 className="font-semibold">Confirm your existing fund position</h3><p className="text-sm text-slate-600">You currently track this fund by a PHP value only. Enter units you already owned separately; Arbor will not infer them from NAV or treat them as a purchase today. The old whole-position value will clear because it cannot include this new addition; you can enter an updated current value if NAV is unavailable.</p>
         <label className="block text-sm">Units already owned<input className={field} inputMode="decimal" value={draft!.opening_units ?? ""} onChange={e => patch({ opening_units: e.target.value || null })}/></label>
         <label className="block text-sm">Known cost of those units (PHP, optional)<input className={field} inputMode="decimal" value={draft!.opening_cost_php ?? ""} onChange={e => patch({ opening_cost_php: e.target.value || null })}/></label>

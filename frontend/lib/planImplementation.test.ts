@@ -16,7 +16,7 @@ import PortfolioHistoryChart from "../components/portfolio/PortfolioHistoryChart
 const plan = () => { const value = structuredClone(contributionFixture); value.plan.plan_basis = "user_selected"; return value; };
 const access = (plus: boolean, available: boolean): Entitlements => ({
   tier:plus?"plus":"free",status:plus?"trial":"active",effective_tier:plus?"plus":"free",private_beta:plus,
-  features:plus?["live_portfolio","monthly_contribution_planner","profile_rebuild"]:[],
+  features:plus?["live_portfolio","monthly_contribution_planner","profile_rebuild","plan_alignment"]:["live_portfolio"],
   ask_monthly_limit:plus?null:10,ask_usage:null,ask_usage_available:true,availability:{live_portfolio:available,monthly_checkin:false},
 });
 const withAccess = (plus: boolean, available: boolean, node: React.ReactNode) => render(createElement(AccountAccessContext.Provider,{value:{value:access(plus,available),error:"",retry(){}}},node));
@@ -78,9 +78,9 @@ test("return flow calls existing recording action only when provided", () => {
 });
 for(const plus of [false,true])for(const available of [false,true])test(`Portfolio access: plus ${plus}, availability ${available}`,()=>{
   const html=withAccess(plus,available,createElement(V2Destination,{value:plan(),userId:"test",active:"portfolio"}));
-  if(plus&&available){assert.match(html,/Loading your portfolio/);assert.match(html,/\+ Add Investment/);}
+  if(available){assert.match(html,/Loading your portfolio/);assert.match(html,/\+ Add Investment/);}
   else {assert.match(html,/Ways to invest/);assert.match(html,/Open GFunds/);assert.doesNotMatch(html,/\+ Add Investment|Loading your portfolio/);}
-  if(!plus)assert.match(html,/Explore Arbor Plus/);
+  if(!available)assert.match(html,/tracking is temporarily unavailable/i);
 });
 test("feature-OFF Portfolio keeps education primary; monthly investing belongs to Home", () => {
   const html=withAccess(true,false,createElement(V2Destination,{value:plan(),userId:"test",active:"portfolio"}));
@@ -97,17 +97,17 @@ test("explicit final allocation drives Ways to invest without changing the core"
 });
 test("Portfolio primary tabs contain no monthly peer",()=>{
   const source=readFileSync("components/portfolio/LivePortfolio.tsx","utf8");
-  assert.match(source,/\["holdings", "performance", "allocation", "history"\]/);
+  assert.match(source,/\["holdings", "performance", \.\.\.\(plusAlignment \? \["allocation"\] : \[\]\), "history"\]/);
   assert.doesNotMatch(source,/showContribution|ContributionCard/);
 });
-test("Home always includes Portfolio while off and Free never reads holdings",()=>{
+test("Home always includes Portfolio while off and Free can read basic holdings",()=>{
   for(const plus of [false,true]){
     const html=withAccess(plus,false,createElement(V2Home,{value:plan(),userId:"test"}));
     assert.match(html,/Portfolio overview/);assert.match(html,/home-history-empty/);assert.match(html,/Explore your portfolio/);
     assert.doesNotMatch(html,/Checking your recorded portfolio|\+ Add Investment/);
   }
   const freeOn=withAccess(false,true,createElement(V2Home,{value:plan(),userId:"test"}));
-  assert.match(freeOn,/Tracking is part of Arbor Plus/);assert.doesNotMatch(freeOn,/Checking your recorded portfolio/);
+  assert.match(freeOn,/Checking your recorded portfolio/);assert.doesNotMatch(freeOn,/Tracking is part of Arbor Plus/);
 });
 test("compact Home chart keeps a visible flat-line frame without artificial returns",()=>{
   for(const history of [[],[{day:"2026-09-25",value_php:"8000",captured_at:"2026-09-25T12:00:00Z"}]]){

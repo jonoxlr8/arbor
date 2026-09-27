@@ -7,6 +7,7 @@ from app.auth import get_current_user_id
 from app.config import live_portfolio_enabled
 from app.routes.profiles import get_my_profile
 from app.services.entitlements import require_feature
+from app.services import entitlements
 from app.services.arbor.v2_context import build_v2_context
 from app.services.live_portfolio import HoldingInput, ManualValueInput, Portfolio, InvestmentEntryInput, InvestmentRevisionInput, InvestmentVoidInput, OpeningPositionCorrection, catalog, value_portfolio, current_values
 from app.services.portfolio_store import PortfolioStore
@@ -57,6 +58,10 @@ def get_portfolio(response: Response, user_id: str = Depends(get_current_user_id
     portfolio, store = load_portfolio(user_id, authorization)
     # Daily snapshot capture is explicit POST, not a write hidden in GET.
     result = portfolio.model_dump(mode="json")
+    if "plan_alignment" not in entitlements.get_entitlements(user_id).features:
+        for sleeve in result["sleeves"]:
+            sleeve["target_percentage"] = None
+            sleeve["difference_pp"] = None
     metadata = store.ledger_metadata()
     for holding in result["holdings"]:
         if holding["id"] not in metadata:
@@ -108,8 +113,10 @@ def record_investment(request: InvestmentEntryInput, user_id: str = Depends(get_
 
 @router.get("/entries")
 def investment_activity(holding_id: UUID | None = None, page: int = Query(default=0, ge=0, le=10000),
+                        month: str | None = Query(default=None, pattern=r"^[0-9]{4}-(0[1-9]|1[0-2])$"),
+                        recent: bool = False,
                         user_id: str = Depends(get_current_user_id), authorization: str | None = Header(default=None)):
-    rows = PortfolioStore(user_id, authorization).activity(holding_id, page)
+    rows = PortfolioStore(user_id, authorization).activity(holding_id, page, month, recent)
     return {"entries": rows, "page": page, "has_more": len(rows) == 20}
 
 
