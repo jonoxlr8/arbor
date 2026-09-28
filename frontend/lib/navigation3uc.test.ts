@@ -18,7 +18,8 @@ const access: Entitlements = { tier:"plus",status:"trial",effective_tier:"plus",
 test("four destinations include fully labeled mobile Ask Arbor and legacy bookmarks resolve", () => {
   assert.deepEqual(destinations.map(d => d.label), ["Home","Portfolio","Ask Arbor","Settings"]);
   assert.ok(destinations.every(d => d.label === d.mobileLabel));
-  for (const hash of ["#plan","#portfolio/plan","#portfolio/contribution","#portfolio/holdings"]) assert.equal(destinationFromHash(hash),"portfolio");
+  for (const hash of ["#portfolio/contribution","#portfolio/holdings"]) assert.equal(destinationFromHash(hash),"portfolio");
+  for (const hash of ["#plan", "#portfolio/plan", "#home/plan"]) assert.equal(destinationFromHash(hash), "home");
   assert.equal(destinationFromHash("#settings/plus"),"settings");
 });
 test("Home uses planning inputs without inventing projections or current balances", () => {
@@ -41,9 +42,11 @@ test("Home only mounts holdings reader for server availability AND entitlement",
     assert.equal(html.includes("Checking your recorded portfolio"),enabled&&entitled);
   }
 });
-test("Free Portfolio keeps plan and implementation education with calm Plus destination", () => {
+test("Free Portfolio keeps implementation education without repeating plan details", () => {
   const html=render(createElement(AccountAccessContext.Provider,{value:{value:{...access,features:[],effective_tier:"free"},error:"",retry(){}}},createElement(V2Destination,{value,userId:"test",active:"portfolio",section:"contribution"})));
-  assert.match(html,/Your model targets|Where can I invest\?|Explore Arbor Plus/);
+  assert.match(html,/Ways to invest/);
+  assert.match(html,/#home\/plan/);
+  assert.doesNotMatch(html,/portfolio-plan-details/);
   assert.doesNotMatch(html,/Calculate scenario|Add holding/);
 });
 test("provider logo preserves visible accessible text without remote logo URLs", () => {

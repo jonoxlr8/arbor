@@ -5,7 +5,7 @@ import { portfolioApi, type LivePortfolioData, type InvestmentEntry } from "@/li
 import { formatContributionMoney, SLEEVE_LABELS } from "@/lib/contributions";
 import { useAccountAccess } from "../AccountAccess";
 import { monthlyApi, monthLabel, checkinDate, type MonthlyState } from "@/lib/monthlyCheckin";
-import PortfolioHistoryChart from "../portfolio/PortfolioHistoryChart";
+import InvestmentTimeline from "../portfolio/InvestmentTimeline";
 import { DataAttribution } from "../portfolio/LivePortfolio";
 import { planTargets } from "@/lib/planImplementation";
 import { recentLedgerActivity } from "@/lib/portfolioActivity";
@@ -52,7 +52,7 @@ export default function V2Home({ value, userId, onPlanChange }: { value: PlanV2;
         <a className="entry-link" href="#portfolio">Explore your portfolio →</a>
       </section>}
       <HomeGoal value={value} portfolio={portfolio} userId={userId} onPlanChange={onPlanChange} monthly={plusMonthly &&
-        <a className="home-metric home-monthly" aria-label={`Review monthly contribution: ${formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP")}`} href={value.plan.path === "short_term" || !value.plan.readiness.actionable_contribution_guidance_allowed ? "#portfolio/plan" : "#home/monthly"}><p>Monthly contribution</p><strong>{formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP")}</strong><span aria-hidden="true">›</span>{currentMonthly?.current && <small className="completed-label">Recorded for {monthLabel(currentMonthly.month).split(" ")[0]}</small>}</a>
+        <a className="home-metric home-monthly" aria-label={`Review monthly contribution: ${formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP")}`} href={value.plan.path === "short_term" || !value.plan.readiness.actionable_contribution_guidance_allowed ? "#home/plan" : "#home/monthly"}><p>Monthly contribution</p><strong>{formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP")}</strong><span aria-hidden="true">›</span>{currentMonthly?.current && <small className="completed-label">Recorded for {monthLabel(currentMonthly.month).split(" ")[0]}</small>}</a>
       } pending={userId ? <PendingRecordingResume userId={userId} compact monthlyAvailable={monthlyAllowed === true}/> : null}/>
     </div>
     <div className="home-bottom"><HomeActivity state={currentMonthly} error={monthlyError || entriesError} portfolio={portfolio} entries={entries}/><HomePlanContext value={value} /></div>
@@ -64,7 +64,7 @@ export function HomePlanContext({ value }: { value: PlanV2 }) {
   const { plan } = value;
   const targets = planTargets(value);
   return <section className="home-plan">
-    <header><h2 className="text-lg font-semibold">Your plan</h2><a href="#portfolio/plan" className="entry-link">View plan →</a></header>
+    <header><h2 className="text-lg font-semibold">Your plan</h2><a href="#home/plan" className="entry-link">View plan →</a></header>
     <strong>{plan.path === "short_term" ? "Short-term path" : plan.plan_basis === "user_selected" ? plan.selected_strategy : "Historical plan"}</strong>
     {targets.length > 0 && <p className="home-plan-targets">{targets.map(weight => `${SLEEVE_LABELS[weight.role]} ${weight.percentage_points}%`).join(" · ")}</p>}
     {plan.readiness.readiness !== "ready" && <p className="home-plan-caution">{plan.readiness.readiness === "foundation_first" ? "Contribution previews are paused while you review your financial foundation." : "Review your readiness before relying on contribution guidance."}</p>}
@@ -94,11 +94,11 @@ function HomePortfolio({ userId, onLoaded }: { userId: string; onLoaded: (portfo
   return <section className="home-metric home-portfolio" aria-label="Portfolio overview"><header><h2>{portfolio.holdings.length ? portfolio.complete ? "Portfolio value" : "Known portfolio value" : "Portfolio"}</h2><a className="entry-link" href="#portfolio" aria-label="View portfolio">↗</a></header>
     {portfolio.holdings.length ? <>
       <strong>{formatContributionMoney(portfolio.known_value_php,"PHP")}</strong>
-      <PortfolioHistoryChart history={portfolio.history} knownValue={portfolio.known_value_php} complete={portfolio.complete} holdingsCount={portfolio.holdings.length} compact/>
+      <InvestmentTimeline key={userId} userId={userId} portfolio={portfolio} compact/>
       {(!portfolio.complete || portfolio.stale_count > 0) && <a className="entry-link" href="#portfolio">{!portfolio.complete ? "Some values are unavailable · Review →" : "Cached values · Check dates →"}</a>}
     </> : <>
       <strong>{formatContributionMoney("0","PHP")}</strong>
-      <PortfolioHistoryChart history={portfolio.history} knownValue="0" complete holdingsCount={0} compact/>
+      <InvestmentTimeline key={userId} userId={userId} portfolio={portfolio} compact/>
       <a className="entry-primary" href="#portfolio/add">+ Add Investment</a>
     </>}
   </section>;

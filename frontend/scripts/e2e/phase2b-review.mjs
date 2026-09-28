@@ -4,7 +4,9 @@ import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
 const origin = 'http://127.0.0.1:3000';
-const output = '/private/tmp/arbor-phase2b-retention-review';
+const askOnly = process.argv.includes('--ask-only');
+const datedOnly = process.argv.includes('--dated-only');
+const output = datedOnly ? '/private/tmp/arbor-dated-review' : askOnly ? '/private/tmp/arbor-ask-learn-review' : '/private/tmp/arbor-phase2b-retention-review';
 await mkdir(output, { recursive: true });
 const user = { id: '00000000-0000-4000-8000-000000000001', aud: 'authenticated', role: 'authenticated', email: 'phase2b@example.test', created_at: '2026-09-01T00:00:00Z', app_metadata: { provider: 'email' }, user_metadata: {} };
 const encoded = value => Buffer.from(JSON.stringify(value)).toString('base64url');
@@ -74,6 +76,13 @@ await context.route('**/*', async route => {
     { strategy: 'Growth', allocation: [{ role: 'global_equity', percentage_points: 80 }, { role: 'defensive', percentage_points: 20 }], planning_return_pct: 5.0 },
     { strategy: 'Aggressive', allocation: [{ role: 'global_equity', percentage_points: 100 }, { role: 'defensive', percentage_points: 0 }], planning_return_pct: 5.5 },
   ] });
+  if (askOnly && path.endsWith('/chat') && method === 'POST') {
+    const question = request.postDataJSON().message;
+    const reply = question.includes('long explanation')
+      ? 'Your recorded portfolio value comes from the units you entered and the reference prices currently available to Arbor. If a reference is unavailable, Arbor should say the total is incomplete rather than count that investment as zero.\n\nRecorded cost is different: it comes from the actual PHP amounts you choose to record. Adding money to an investment can increase the portfolio value without creating investment profit.\n\nYou can review each dated addition in Holding Detail. Arbor keeps those entries separate from genuine portfolio-value snapshots, so an older investment date does not create fictional chart history.'
+      : question.includes('ETF') ? 'An ETF is a fund whose shares trade on an exchange. Its market price can differ from its net asset value. Check your provider record for actual shares received.' : 'Your recorded portfolio value comes from canonical holdings and available reference prices. A contribution is not investment profit.';
+    return json({ reply, category: 'investment', intent: 'education' });
+  }
   if (path.endsWith('/account/entitlements')) return json({ tier: entitlementMode, status: entitlementMode === 'plus' ? 'trial' : 'active', effective_tier: entitlementMode, private_beta: entitlementMode === 'plus', features: entitlementMode === 'plus' ? ['live_portfolio', 'monthly_contribution_planner', 'monthly_checkin', 'profile_rebuild', 'future_projection', 'plan_alignment'] : ['live_portfolio', 'plan_creation', 'basic_implementation'], ask_monthly_limit: entitlementMode === 'plus' ? null : 10, ask_usage: null, ask_usage_available: true, availability: { live_portfolio: true, monthly_checkin: true } });
   if (path.endsWith('/v2/next-action')) return json({ key: 'review_monthly_contribution', title: 'Review your contribution', explanation: 'Local fixture', button_label: 'Review', blocking: false, destination: 'plan' });
   if (path.endsWith('/v2/future-projection')) return json({ starting_value_php: '10000.00', monthly_contribution_php: '10000.00', annual_planning_rate_pct: '5.500', inflation_planning_rate_pct: '3.0', whole_months: 120, target_date: '2036-09-28', projected_value_php: '342000.00', goal_target_php: '500000.00', difference_to_goal_php: '-158000.00', illustrative: true });
@@ -147,6 +156,165 @@ try {
   await page.getByLabel('Email address').fill(user.email);
   await page.getByLabel('Password').fill('fixture-only-password');
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
+  if (datedOnly) {
+  await page.getByRole('button', {name:/Finish recording your investment/}).waitFor();
+  // Monthly entry: an invalid click must visibly explain itself, then accept provider formatting.
+  await page.setViewportSize({width:390,height:844});
+  await page.evaluate(() => { location.hash='home/monthly'; });
+  await page.locator('.pending-recording li').first().getByRole('button',{name:'Record investment'}).click();
+  await page.getByRole('button',{name:'Review investment'}).click();
+  await page.getByRole('alert').filter({hasText:'actual units'}).waitFor();
+  assert.equal(await page.locator('dialog [role="alert"]').evaluate(e=>e===document.activeElement), true);
+  await page.getByLabel('Investment date',{exact:true}).fill('2026-08-12');
+  await page.getByLabel('Shares received').fill('.5');
+  await page.getByLabel('Amount paid (PHP)').fill('6,500.00');
+  await page.getByRole('button',{name:'Review investment'}).click();
+  await page.getByRole('button',{name:'Confirm and save'}).waitFor();
+  assert.equal(await page.locator('[aria-label="Confirm investment"]').evaluate(e=>e===document.activeElement), true);
+  assert.equal(entries.length,0,'review must not write');
+  await page.getByRole('button',{name:'Confirm and save'}).scrollIntoViewIfNeeded();
+  await page.screenshot({path:`${output}/monthly-review-mobile.png`});
+  await page.getByRole('button',{name:'Confirm and save'}).click();
+  await page.locator('dialog').waitFor({state:'detached'});
+  assert.equal(entries[0].investment_date,'2026-08-12');
+  assert.equal(entries[0].units,'0.5');
+  assert.equal(entries[0].amount_paid_php,'6500.00');
+  // Add Investment with missing/ambiguous costs, edit and review at the narrow viewport.
+  await page.setViewportSize({width:320,height:740});
+  await page.evaluate(() => { location.hash='portfolio/add'; });
+  await page.locator('.catalogue-row').filter({hasText:'Bitcoin'}).click();
+  await page.getByLabel('Investment date',{exact:true}).fill('2026-07-03');
+  await page.getByLabel('BTC received').fill('.00015');
+  await page.getByLabel('Actual total paid (PHP)').fill('1,23');
+  await page.getByRole('button',{name:'Review investment'}).click();
+  await page.getByRole('alert').filter({hasText:'PHP amount'}).waitFor();
+  const addPaid = page.getByLabel('Actual total paid (PHP)');
+  await addPaid.fill('6,500');
+  const unknownCost = page.getByRole('checkbox', { name: "I don't know the amount paid" });
+  await unknownCost.check();
+  assert.equal(await addPaid.inputValue(), '', 'choosing unknown clears a typed amount');
+  assert.equal(await addPaid.isDisabled(), true, 'unknown cost disables the amount field');
+  await unknownCost.uncheck();
+  await page.getByRole('button',{name:'Review investment'}).click();
+  const costChoiceAlert = page.locator('dialog p[role="alert"]');
+  await costChoiceAlert.waitFor();
+  assert.match(await costChoiceAlert.textContent(), /I don't know the amount paid/);
+  await unknownCost.check();
+  await page.getByRole('button',{name:'Review investment'}).click();
+  await page.getByText(/Amount paid: Unknown/).waitFor();
+  assert.equal(entries.length,1,'reviewing unknown cost must not write to the ledger');
+  await page.getByRole('button',{name:'Confirm and save'}).scrollIntoViewIfNeeded();
+  await page.screenshot({path:`${output}/add-review-320.png`});
+  await page.getByRole('button',{name:'Confirm and save'}).click();
+  await page.locator('dialog').waitFor({state:'detached'});
+  assert.equal(entries.length,2);
+  assert.equal(entries[1].amount_paid_php,null);
+  await page.getByRole('heading',{name:'Holdings'}).waitFor();
+  assert.equal(await page.getByRole('heading',{name:'Investments by date'}).count(),0,'Portfolio must not duplicate the Home graph');
+  assert.equal(await page.getByText(/Your plan details/).count(),0);
+  await page.getByText('Investment activity',{exact:true}).click();
+  await page.getByText('2026-07-03',{exact:false}).first().waitFor();
+  await shot('portfolio-dated-320',320);
+  await page.evaluate(()=>{location.hash='home';});
+  await page.getByRole('heading',{name:'Investments by date'}).waitFor();
+  await page.getByText('Investment dates and amounts paid',{exact:true}).click();
+  await page.getByText('2026-07-03 · 1 addition',{exact:true}).waitFor();
+  await page.getByText('2026-08-12 · 1 addition',{exact:true}).waitFor();
+  await page.getByText('Investment dates and amounts paid',{exact:true}).click();
+  await page.getByRole('button',{name:'Recorded value',exact:true}).click();
+  await page.getByText('Current value · No history yet',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Investment dates',exact:true}).click();
+  await shot('home-dated-mobile',390);
+  await shot('home-dated-desktop',1440);
+  await shot('home-dated-dark',390,'dark');
+  await page.getByRole('link',{name:'View plan →'}).click();
+  assert.equal(new URL(page.url()).hash,'#home/plan');
+  await page.locator('#section-plan').waitFor();
+  await shot('home-plan-mobile',390,'light');
+  await page.evaluate(()=>{location.hash='portfolio/plan';});
+  await page.locator('#section-plan').waitFor();
+
+  // Monthly plan amounts are context only; the shared form records only user-entered actual cost or null.
+  await page.evaluate(() => { location.hash='home/monthly'; });
+  await page.getByRole('button', { name: 'Review contribution' }).click();
+  await page.getByText('Your contribution breakdown').waitFor();
+  await page.getByRole('button', { name: 'Submit monthly contribution' }).click();
+  await page.getByRole('button', { name: 'Confirm contribution submitted' }).click();
+  await page.getByRole('heading', { name: 'Record what you actually invested' }).waitFor();
+  const globalEquityRecord = page.locator('.monthly-record-row').first();
+  await globalEquityRecord.getByRole('button', { name: 'Record investment' }).click();
+  await page.getByLabel('Shares received').fill('.4');
+  await page.getByText(/Planned contribution: ₱8,000 \(context only\)/).waitFor();
+  await page.getByLabel('Amount paid (PHP)').fill('6,500');
+  await page.getByRole('button', { name: 'Review investment' }).click();
+  await page.getByText(/Amount paid: ₱6,500/).waitFor();
+  assert.equal(entries.length, 2, 'monthly review must not write a ledger entry');
+  await page.getByRole('button', { name: 'Confirm and save' }).click();
+  await page.getByText('Investment recorded').waitFor();
+  assert.equal(entries[2].amount_paid_php, '6500');
+
+  await globalEquityRecord.getByRole('button', { name: 'Record investment' }).click();
+  await page.getByLabel('Shares received').fill('.2');
+  await page.getByText(/Planned contribution: ₱8,000 \(context only\)/).waitFor();
+  await page.getByRole('checkbox', { name: "I don't know the amount paid" }).check();
+  await page.getByRole('button', { name: 'Review investment' }).click();
+  await page.getByText(/Amount paid: Unknown/).waitFor();
+  assert.equal(entries.length, 3, 'unknown-cost review must not write a ledger entry');
+  await page.getByRole('button', { name: 'Confirm and save' }).click();
+  assert.equal(entries[3].amount_paid_php, null, 'planned PHP must never become unknown actual cost');
+
+  } else if (askOnly) {
+    await page.evaluate(() => { location.hash = 'ask'; });
+    await page.getByRole('tab', { name: 'Chat' }).waitFor();
+    await shot('chat-empty-mobile-390', 390);
+    await shot('chat-empty-mobile-320', 320);
+    await page.getByRole('button', { name: "What's the difference between an ETF and a UITF?" }).click();
+    assert.match(await page.getByLabel('Your question for Ask Arbor').inputValue(), /ETF/);
+    await page.getByLabel('Your question for Ask Arbor').press('Enter');
+    await page.getByRole('log').getByText(/An ETF is a fund/).waitFor();
+    await shot('chat-exchange-mobile-390', 390);
+    await shot('chat-exchange-mobile-320', 320);
+    await page.getByLabel('Your question for Ask Arbor').fill('Please give me a long explanation.');
+    await page.getByLabel('Your question for Ask Arbor').press('Enter');
+    await page.getByRole('log').getByText(/older investment date does not create fictional chart history/).waitFor();
+    await shot('chat-long-answer-mobile-390', 390);
+    await shot('chat-long-answer-mobile-320', 320);
+    await shot('chat-desktop', 1440);
+    await page.getByRole('tab', { name: 'Learn' }).click();
+    await page.getByText('Investing 101', { exact: true }).waitFor();
+    await shot('learn-list-mobile-390', 390);
+    await shot('learn-list-mobile-320', 320);
+    await page.getByRole('button', { name: 'Funds', exact: true }).click();
+    await shot('learn-funds-filter-mobile', 390);
+    await page.getByRole('button', { name: /What are UITFs/ }).click();
+    await shot('learn-detail-mobile', 390);
+    await page.getByRole('button', { name: 'Ask Arbor about this' }).click();
+    assert.match(await page.getByLabel('Your question for Ask Arbor').inputValue(), /UITF/);
+    assert.deepEqual(await page.evaluate(() => {
+      const input = document.querySelector('.chat-composer textarea');
+      const composer = document.querySelector('.chat-composer');
+      const nav = document.querySelector('nav[aria-label="Mobile navigation"]');
+      return { visibleDraft: input.scrollHeight <= input.clientHeight + 1, aboveNav: composer.getBoundingClientRect().bottom <= nav.getBoundingClientRect().top + 1 };
+    }), { visibleDraft: true, aboveNav: true }, 'Learn draft must be fully visible above fixed navigation');
+    await shot('learn-ask-draft-mobile', 390);
+    await page.getByRole('tab', { name: 'Learn' }).click();
+    await shot('learn-desktop', 1440);
+    await page.getByRole('tab', { name: 'Chat' }).click();
+    await shot('chat-dark-mobile', 390, 'dark');
+    await page.getByRole('tab', { name: 'Learn' }).click();
+    await shot('learn-dark-mobile', 390, 'dark');
+    hasProfile = false;
+    await page.reload();
+    if (await page.getByRole('heading', { name: 'Welcome back' }).isVisible()) {
+      await page.getByLabel('Email address').fill(user.email);
+      await page.getByLabel('Password').fill('fixture-only-password');
+      await page.getByRole('button', { name: 'Log in', exact: true }).click();
+    }
+    await page.getByRole('heading', { name: 'What’s your name?' }).waitFor();
+    await page.getByRole('button', { name: 'Explore Ask Arbor' }).click();
+    await page.getByRole('tab', { name: 'Learn' }).click();
+    await shot('learn-before-profile-mobile', 390);
+  } else {
   await page.getByRole('button', { name: /Finish recording your investment/ }).waitFor();
   await shot('home-one-unfinished', 390);
   pending.push({ id: '00000000-0000-4000-8000-000000000202', product_id: 'pdax_btc', provider: 'pdax', source: 'monthly', status: 'pending', started_at: now, resolved_at: null });
@@ -334,4 +502,9 @@ try {
   await shot('phase2c-onboarding-explicit-choice', 390);
   assert.equal(pageErrors, 0, 'browser page errors'); assert.equal(consoleErrors, 0, 'browser console errors'); assert.equal(blockedExternal, 0, 'unhandled external requests');
   console.log(JSON.stringify({ fixtureOnly: true, screenshots: shots, identityComparison: { portfolioIdentity, addIdentity, waysIdentity }, entries: entries.length, pageErrors, consoleErrors, expectedMissingProfile404, blockedExternal }));
+  }
+  if (askOnly || datedOnly) {
+    assert.equal(pageErrors, 0, 'browser page errors'); assert.equal(consoleErrors, 0, 'browser console errors'); assert.equal(blockedExternal, 0, 'unhandled external requests');
+    console.log(JSON.stringify({ fixtureOnly: true, screenshots: shots, pageErrors, consoleErrors, blockedExternal }));
+  }
 } finally { await browser.close(); }

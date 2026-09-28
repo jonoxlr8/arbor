@@ -28,7 +28,7 @@ export default function PlanImplementation({ value, onRecord, intro = true, user
       <div><p className="eyebrow">{value.plan.plan_basis === "user_selected" ? "Chosen by you" : "Your saved approach"}</p>
         <h2>Your {value.plan.selected_strategy} plan</h2>
         <p>{value.plan.plan_basis === "user_selected" ? "The targets you chose. The way you put them into practice is yours, too." : "Your historical targets stay unchanged. These are ways to understand them, not a new plan."}</p>
-        <a className="entry-link" href="#portfolio/plan">Plan details <span aria-hidden="true">↗</span></a>
+        <a className="entry-link" href="#home/plan">Plan details <span aria-hidden="true">↗</span></a>
       </div><Allocation weights={planTargets(value)} />
     </div>}
     <header className="ways-heading"><div><h2>Ways to invest</h2><p>Explore options for each part of your plan.</p></div><span>Choose your provider</span></header>

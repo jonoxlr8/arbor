@@ -13,7 +13,7 @@ import InvestmentProfileEditor from "./InvestmentProfileEditor";
 import ChatSection from "./dashboard/ChatSection";
 import { AccountAccessProvider, AccountPlans, PlusFeature, AccessLoading, useAccountAccess } from "./AccountAccess";
 import PlanImplementation, { TrackingAvailability } from "./portfolio/PlanImplementation";
-import { implementationGroups, planTargets } from "@/lib/planImplementation";
+import { planTargets } from "@/lib/planImplementation";
 import V2Home from "./app/V2Home";
 import Allocation from "./portfolio/Allocation";
 import SettingsIcon from "./app/SettingsIcon";
@@ -42,13 +42,13 @@ function PlanV2Shell({ value, userId, onSignOut, signingOut, logoutError, onPlan
   }
   return <AppShell active={active} name={value.profile.full_name} onSignOut={onSignOut} signingOut={signingOut} logoutError={logoutError}>
     {choosing && userId && onPlanChange ? <PlusFeature feature="profile_rebuild" title="Review and rebuild your investment profile" onBack={() => setChoosing(false)}><InvestmentProfileEditor value={value} userId={userId} initialMode={editMode} onCancel={() => setChoosing(false)} onSaved={plan => { onPlanChange(plan); setChoosing(false); }} /></PlusFeature> : <>
-      {((active === "home" && section === "monthly") || (active === "portfolio" && section === "contribution")) && userId && onPlanChange ? <PlusFeature feature="monthly_contribution_planner" title="Invest this month"><MonthlyInvesting value={value} userId={userId} onPlanChange={onPlanChange}/></PlusFeature> : active === "home" && <V2Home value={value} userId={userId} onPlanChange={onPlanChange}/>}
+      {((active === "home" && section === "monthly") || (active === "portfolio" && section === "contribution")) && userId && onPlanChange ? <PlusFeature feature="monthly_contribution_planner" title="Invest this month"><MonthlyInvesting value={value} userId={userId} onPlanChange={onPlanChange}/></PlusFeature> : active === "home" && (section === "plan" ? <><a href="#home" className="entry-link min-h-11 inline-flex items-center">‹ Home</a><V2PlanContent value={value}/></> : <V2Home value={value} userId={userId} onPlanChange={onPlanChange}/>)}
       {active === "settings" && userId && onPlanChange && <section id="section-investment" className="settings-list" aria-label="Account and plan settings">
         <p className="settings-group-label">Account</p>
         <div className="settings-account-header"><span aria-hidden="true">{value.profile.full_name.trim().slice(0,1)}</span><div><strong>{value.profile.full_name}</strong><small>Your Arbor account</small></div></div>
         <details><summary><SettingsIcon kind="account"/><span>Account details</span></summary><dl className="mt-4 space-y-3 text-sm text-slate-700"><div><dt>Name</dt><dd className="font-semibold">{value.profile.full_name}</dd></div><div><dt>Country</dt><dd className="font-semibold">{value.profile.country}</dd></div><div><dt>Planning currency</dt><dd className="font-semibold">{value.profile.currency}</dd></div></dl></details>
         <p className="settings-group-label">Plan</p>
-        <a className="settings-row" href="#portfolio/plan"><SettingsIcon kind="plan"/><span>Your plan<small className="block mt-1">{value.plan.path === "short_term" ? "Short-term path" : value.plan.selected_strategy}</small></span><span aria-hidden="true">›</span></a>
+        <a className="settings-row" href="#home/plan"><SettingsIcon kind="plan"/><span>Your plan<small className="block mt-1">{value.plan.path === "short_term" ? "Short-term path" : value.plan.selected_strategy}</small></span><span aria-hidden="true">›</span></a>
         <a className="settings-row" href="#home"><SettingsIcon kind="plan"/><span>Your goal<small className="block mt-1">View or edit your primary goal</small></span><span aria-hidden="true">›</span></a>
         <button className="settings-row" aria-label="Edit investment profile" onClick={() => {setEditMode("profile");setChoosing(true);}}><SettingsIcon kind="plan"/><span>Investment profile<small className="block mt-1">Review or change your answers · Plus</small></span><span aria-hidden="true">›</span></button>
         <button className="settings-row" onClick={()=>{setEditMode("plan");setChoosing(true);}}><SettingsIcon kind="plan"/><span>Change plan<small className="block mt-1">Changes targets, not investments · Plus</small></span><span aria-hidden="true">›</span></button>
@@ -65,14 +65,11 @@ export function V2Destination({ value, active, userId, section = "", onPlanChang
   if (active === "ask") return <ChatSection key={userId} plan={value} />;
   if (active === "portfolio" && userId && !access?.value) return <AccessLoading />;
   const tracking = access?.value?.availability?.live_portfolio === true && access.value.features.includes("live_portfolio");
-  const hasOptions = implementationGroups(value).length > 0;
   if (active === "portfolio") return <div className="space-y-5">
-    {!hasOptions && <V2PlanContent value={value} />}
     {tracking && userId ? <LivePortfolio key={section} value={value} userId={userId} section={section} onPlanChange={onPlanChange}/> : <>
       <PlanImplementation value={value} userId={userId} onPlanChange={onPlanChange}/>
       <TrackingAvailability/>
     </>}
-    {hasOptions && <details className="portfolio-plan-details" open={section === "plan"}><summary className="font-semibold">Your plan details · {value.plan.selected_strategy}</summary><V2PlanContent value={value}/></details>}
     {value.plan.path === "short_term" || value.plan.plan_basis !== "user_selected" ? <p className="text-sm leading-6 text-slate-600">{value.plan.path === "short_term" ? "Long-term monthly investing is paused on your short-term path." : "Your historical plan remains saved. Explicitly choose an approach before exploring monthly investing."} <a className="entry-link" href="#settings/investment">Review investment profile</a></p> : null}
   </div>;
   if (active === "settings") return <div className="settings-list">

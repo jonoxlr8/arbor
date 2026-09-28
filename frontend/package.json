@@ -5,7 +5,7 @@
   "scripts": {
     "test": "node scripts/test.mjs",
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "e2e:auth": "node scripts/e2e/auth.mjs",

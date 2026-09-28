@@ -26,3 +26,21 @@ export function addUnitTexts(left: string, right: string): string {
   const fraction = sum.slice(-12).replace(/0+$/,"");
   return `${whole}${fraction ? `.${fraction}` : ""}`;
 }
+
+/** Accept common provider display formats without rounding or guessing decimal commas. */
+export function normalizeInvestmentNumber(value: string): string {
+  const text = value.trim();
+  const ungrouped = /^\d{1,3}(?:,\d{3})+(?:\.\d+)?$/.test(text) ? text.replaceAll(",", "") : text;
+  return /^\.\d+$/.test(ungrouped) ? `0${ungrouped}` : ungrouped;
+}
+
+/** Cost is optional in the ledger, but the entry flow requires an explicit unknown-cost choice. */
+export function investmentCostChoiceError(amount: string | null, explicitlyUnknown: boolean): string | null {
+  const normalized = amount?.trim() ? normalizeInvestmentNumber(amount) : "";
+  if (explicitlyUnknown) return normalized ? "Clear the amount paid or switch to a known amount." : null;
+  if (!normalized) return "Enter the amount you paid, or choose “I don't know the amount paid.”";
+  if (!/^\d{1,16}(?:\.\d{1,2})?$/.test(normalized) || !/[1-9]/.test(normalized)) {
+    return "Enter a positive PHP amount with up to two decimal places, or choose “I don't know the amount paid.”";
+  }
+  return null;
+}

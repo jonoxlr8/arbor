@@ -9,7 +9,7 @@ import InvestmentCatalogue from "../components/portfolio/InvestmentCatalogue";
 import { contributionFixture } from "./contributions.test";
 import { AccountAccessContext } from "../components/AccountAccess";
 import type { Entitlements } from "./entitlements";
-import { V2Destination } from "../components/PlanV2View";
+import { V2Destination, V2PlanContent } from "../components/PlanV2View";
 import V2Home from "../components/app/V2Home";
 import PlanImplementation from "../components/portfolio/PlanImplementation";
 import PortfolioHistoryChart from "../components/portfolio/PortfolioHistoryChart";
@@ -47,12 +47,12 @@ test("foundation-first suppresses implementation links and monthly completion pr
   const value = plan();value.plan.readiness={...value.plan.readiness,readiness:"foundation_first",actionable_contribution_guidance_allowed:false,message_requirement:"foundation_first"};
   assert.deepEqual(implementationGroups(value),[]);
   const html=withAccess(true,false,createElement(V2Destination,{value,userId:"test",active:"portfolio"}));
-  assert.match(html,/Foundation First/);assert.doesNotMatch(html,/provider-open|Review this month|Mark as invested/);
+  assert.match(render(createElement(V2PlanContent,{value})),/Foundation First/);assert.doesNotMatch(html,/provider-open|Review this month|Mark as invested/);
 });
 test("short-term Portfolio preserves dormant path and hides long-term implementation", () => {
   const value=plan();value.plan={...value.plan,path:"short_term",selected_strategy:null,base_allocation:null,planning_return_pct:null,dormant_selected_approach:"Growth"};
   const html=withAccess(true,false,createElement(V2Destination,{value,userId:"test",active:"portfolio"}));
-  assert.match(html,/dormant/);assert.doesNotMatch(html,/provider-open|Review this month/);
+  assert.match(render(createElement(V2PlanContent,{value})),/dormant/);assert.doesNotMatch(html,/provider-open|Review this month/);
 });
 test("twelve supported options have identities and neutral alphabetical provider order", () => {
   const options=Object.values(PLAN_OPTIONS).flat();assert.equal(new Set(options.map(o=>o.product)).size,12);

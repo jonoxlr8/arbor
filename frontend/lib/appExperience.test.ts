@@ -66,13 +66,13 @@ test("chat renders conversation before composer and prompts are empty-state only
   assert.ok(source.indexOf("messages.map") < source.indexOf("<textarea"));
   assert.match(source, /messages.length === 0/);
   const html = renderToStaticMarkup(createElement(ChatSection, { plan }));
-  assert.match(html, /aria-label="Ask Arbor"/);
+  assert.match(html, /aria-label="Ask Arbor views"/);
   assert.doesNotMatch(html, /Personalized to your plan/);
 });
 
 test("four primary destinations and settings have deterministic bookmark identities", () => {
   assert.deepEqual(destinations.map(item => item.id), ["home", "portfolio", "ask", "settings"]);
-  assert.equal(destinationFromHash("#plan"), "portfolio");
+  assert.equal(destinationFromHash("#plan"), "home");
   assert.equal(destinationFromHash("#portfolio/contribution"), "portfolio");
   for (const id of [...destinations.map(item => item.id), "settings"]) assert.equal(destinationFromHash(`#${id}`), id);
   for (const hash of ["", "#unknown", "#PROFILE", "#%invalid"]) assert.equal(destinationFromHash(hash), "home");
@@ -161,12 +161,12 @@ test("app initially gates actual analytics while keeping destination owners moun
 
 test("dedicated Ask destination preserves bounded explanation copy and suggested prompts", () => {
   const html = renderToStaticMarkup(createElement(ChatSection, { plan }));
-  assert.match(html, /Your investing companion/);
-  assert.match(html, /What are my target allocations/);
+  assert.match(html, /Ask Arbor/);
+  assert.match(html, /What is an ETF/);
   assert.doesNotMatch(html, /rule-based|limited set/);
   assert.match(html, /No live market, tax or trading advice/);
   assert.match(html, /not actual holdings/);
-  assert.match(html, /aria-label="Your question about your Arbor plan"/);
+  assert.match(html, /aria-label="Your question for Ask Arbor"/);
 });
 
 test("appearance exposes three keyboard-accessible choices with System as default", () => {

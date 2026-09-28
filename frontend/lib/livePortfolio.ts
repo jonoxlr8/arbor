@@ -52,13 +52,21 @@ const money = (v: unknown) => typeof v === "string" && /^\d+(?:\.\d+)?$/.test(v)
 const decimal = (v: unknown) => typeof v === "string" && /^-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(v);
 const roles = ["global_equity", "defensive", "technology_tilt", "crypto"];
 const timestamp = (v: unknown) => typeof v === "string" && Number.isFinite(Date.parse(v));
-const day = (v: unknown) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`));
+const day = (v: unknown) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`)) && new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) === v;
+export function entryDraftError(d: InvestmentEntryDraft, catalog: PortfolioProduct[], converting = false): string | null {
+  if (!catalog.some(p => p.product_id === d.product_id && p.provider === d.provider)) return "Choose a supported investment.";
+  if (!day(d.investment_date) || d.investment_date > manilaInvestmentToday()) return "Enter a valid investment date on or before today in the Philippines.";
+  const units = (value: string) => /^\d{1,12}(?:\.\d{1,12})?$/.test(value) && /[1-9]/.test(value);
+  const cost = (value: string) => /^\d{1,16}(?:\.\d{1,2})?$/.test(value);
+  if (!units(d.units)) return "Enter the actual units received, greater than zero, with up to 12 decimal places.";
+  if (d.amount_paid_php !== null && !cost(d.amount_paid_php)) return "Enter the PHP amount paid with up to two decimal places, or leave it blank.";
+  if (d.opening_units && !units(d.opening_units)) return "Enter valid existing units, greater than zero, with up to 12 decimal places.";
+  if (d.opening_cost_php && (!d.opening_units || !cost(d.opening_cost_php))) return "Enter existing units and a valid PHP cost with up to two decimal places, or leave that cost blank.";
+  if (converting && (!d.confirm_conversion || !d.opening_units)) return "Enter your existing units and confirm the existing fund position before reviewing.";
+  return null;
+}
 export function validEntryDraft(d: InvestmentEntryDraft, catalog: PortfolioProduct[]) {
-  return catalog.some(p => p.product_id === d.product_id && p.provider === d.provider) && day(d.investment_date) &&
-    d.investment_date <= manilaInvestmentToday() && /^\d{1,12}(?:\.\d{1,12})?$/.test(d.units) && /[1-9]/.test(d.units) &&
-    (d.amount_paid_php === null || /^\d{1,16}(?:\.\d{1,2})?$/.test(d.amount_paid_php)) &&
-    (!d.opening_units || /^\d{1,12}(?:\.\d{1,12})?$/.test(d.opening_units) && /[1-9]/.test(d.opening_units)) &&
-    (!d.opening_cost_php || d.opening_units != null && /^\d{1,16}(?:\.\d{1,2})?$/.test(d.opening_cost_php));
+  return entryDraftError(d, catalog) === null;
 }
 export function isInvestmentActivity(v: unknown): v is { entries: InvestmentEntry[]; page: number; has_more: boolean } {
   if (!v || typeof v !== "object") return false;

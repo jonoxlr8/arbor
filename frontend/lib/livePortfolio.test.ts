@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createPortfolioApi, isPortfolio, validHolding, validEntryDraft, isInvestmentActivity, freshnessText, portfolioValues, scenarioAvailability, supportsManualValue, validManualValue, type LivePortfolioData } from "./livePortfolio";
+import { createPortfolioApi, isPortfolio, validHolding, entryDraftError, validEntryDraft, isInvestmentActivity, freshnessText, portfolioValues, scenarioAvailability, supportsManualValue, validManualValue, type LivePortfolioData } from "./livePortfolio";
 import LivePortfolio, { PortfolioSummary, PlanAlignment, DataAttribution, RecordedGain, recordedGainDisplay } from "../components/portfolio/LivePortfolio";
 import PortfolioHistoryChart from "../components/portfolio/PortfolioHistoryChart";
 import ContributionCard from "../components/contributions/ContributionCard";
@@ -259,4 +259,14 @@ test("multiple observed history points have accessible values and range controls
   ]}));
   assert.match(markup,/₱5,000/);assert.match(markup,/₱5,600/);assert.match(markup,/Portfolio history/);
   for(const range of [">1M<",">3M<",">1Y<"])assert.ok(!markup.includes(range));
+});
+
+test("review explains invalid dates, units, cost and unconfirmed conversion", () => {
+  const draft = { provider:"gotrade", product_id:"gotrade_vt", investment_date:"2026-09-24", units:"0.5", amount_paid_php:null, idempotency_key:"fixed" };
+  assert.equal(entryDraftError(draft, portfolioFixture.catalog), null);
+  assert.match(entryDraftError({...draft, units:""}, portfolioFixture.catalog)!, /actual units/);
+  assert.match(entryDraftError({...draft, investment_date:"2026-02-30"}, portfolioFixture.catalog)!, /valid investment date/);
+  assert.match(entryDraftError({...draft, amount_paid_php:"1,23"}, portfolioFixture.catalog)!, /PHP amount/);
+  assert.match(entryDraftError(draft, portfolioFixture.catalog, true)!, /existing units and confirm/);
+  assert.equal(entryDraftError({...draft, opening_units:"1", confirm_conversion:true}, portfolioFixture.catalog, true), null);
 });

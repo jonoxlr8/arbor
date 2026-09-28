@@ -8,7 +8,7 @@ export type Destination = typeof destinations[number]["id"];
 
 export function destinationFromHash(hash: string): Destination {
   const candidate = hash.replace(/^#/, "").split("/")[0];
-  if (candidate === "plan") return "portfolio"; // Preserve old bookmarks.
+  if (candidate === "plan" || hash === "#portfolio/plan") return "home"; // Preserve old bookmarks.
   return destinations.some(item => item.id === candidate)
     ? candidate as Destination : "home";
 }
