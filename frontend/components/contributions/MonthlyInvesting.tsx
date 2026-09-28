@@ -5,7 +5,6 @@ import type { Sleeve } from "@/lib/types/contributions";
 import { monthlyPlanApi, monthlyMoney, type MonthlyPlan, type MonthlyPlanInput } from "@/lib/monthlyPlan";
 import { SLEEVE_LABELS } from "@/lib/contributions";
 import { investmentIdentity, providerName } from "@/lib/investmentIdentity";
-import { providerDestination } from "@/lib/planImplementation";
 import { useAccountAccess } from "../AccountAccess";
 import { MonthlyCheckin } from "../MonthlyCheckin";
 import type { MonthlyState } from "@/lib/monthlyCheckin";
@@ -14,7 +13,7 @@ import InvestmentIdentity from "../InvestmentIdentity";
 import ProviderIdentity from "../ProviderIdentity";
 import ImplementationPicker from "../portfolio/ImplementationPicker";
 import { sleeveColors } from "../AssetIdentity";
-import { pendingApi, pendingChanged } from "@/lib/pendingRecordings";
+import ProviderContinue from "./ProviderContinue";
 
 const money=monthlyMoney;
 const emptyValues={global_equity:"0",defensive:"0",technology_tilt:"0",crypto:"0"};
@@ -83,23 +82,4 @@ export default function MonthlyInvesting({value,userId,onPlanChange}:{value:Plan
     {checkin?.owner===userId && tracking && <MonthlyInvestmentFollowup userId={userId} plan={result} completed={Boolean(checkin.state.current)}/>}
     {choosing&&<ImplementationPicker value={value} userId={userId} sleeve={choosing} onClose={()=>setChoosing(null)} onSaved={plan=>{invalidate();onPlanChange(plan);void calculate();}}/>}
   </section>;
-}
-
-function ProviderContinue({userId,productId,provider}:{userId:string;productId:string;provider:string}) {
-  const [busy,setBusy]=useState(false),[error,setError]=useState("");
-  const destination=providerDestination(provider);
-  if(!destination)return null;
-  async function openProvider(){
-    if(busy)return;
-    setBusy(true);setError("");
-    try {
-      await pendingApi.start(userId,productId,provider);
-      pendingChanged();
-      // Navigate only after the owner-scoped resume record is safely persisted.
-      window.location.assign(destination!);
-    } catch(cause) { setError(cause instanceof Error?cause.message:"Please retry before leaving Arbor.");setBusy(false); }
-  }
-  return <div className="monthly-provider-continue"><button type="button" className="provider-open min-h-11" disabled={busy} onClick={()=>void openProvider()}>
-    {busy?"Saving your place…":`Continue with ${providerName(provider)} for ${investmentIdentity(productId).shortName} ↗`}
-  </button>{error&&<p role="alert">{error}</p>}</div>;
 }

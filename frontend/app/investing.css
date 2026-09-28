@@ -97,9 +97,11 @@
   .ways-heading {margin:24px 0 18px;}.ways-heading h2 {font-size:20px;}.ways-heading > span {display:none;}
   .implementation-options {padding:0 14px;}
   .implementation-option {grid-template-columns:44px minmax(0,1fr);gap:10px 12px;padding:18px 0;align-items:start;}
-  .implementation-option > .identity-mark {width:44px;height:44px;border-radius:13px;}
+  .implementation-option > .identity-mark {width:44px;height:44px;border-radius:50%;}
   .implementation-identity strong {font-size:13px;}.implementation-identity > p {font-size:10px;}
   .implementation-option .provider-open {grid-column:2;justify-self:start;min-height:44px;padding:8px 12px;font-size:11px;}
+  .implementation-option > .entry-secondary {grid-column:2;justify-self:start;min-height:44px;}
+  .implementation-option > .monthly-provider-continue {grid-column:2;min-width:0;margin-top:0;}
   .record-return {align-items:flex-start;flex-direction:column;gap:14px;}
   .record-return .entry-primary {width:100%;justify-content:center;}
   .home-history-empty {min-height:160px;}

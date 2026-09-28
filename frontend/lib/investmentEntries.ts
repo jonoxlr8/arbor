@@ -34,13 +34,12 @@ export function normalizeInvestmentNumber(value: string): string {
   return /^\.\d+$/.test(ungrouped) ? `0${ungrouped}` : ungrouped;
 }
 
-/** Cost is optional in the ledger, but the entry flow requires an explicit unknown-cost choice. */
-export function investmentCostChoiceError(amount: string | null, explicitlyUnknown: boolean): string | null {
+/** Historical ledger costs may be unknown; every new addition needs actual PHP paid. */
+export function investmentAmountPaidError(amount: string | null): string | null {
   const normalized = amount?.trim() ? normalizeInvestmentNumber(amount) : "";
-  if (explicitlyUnknown) return normalized ? "Clear the amount paid or switch to a known amount." : null;
-  if (!normalized) return "Enter the amount you paid, or choose “I don't know the amount paid.”";
+  if (!normalized) return "Enter the actual PHP amount paid from your provider record before reviewing.";
   if (!/^\d{1,16}(?:\.\d{1,2})?$/.test(normalized) || !/[1-9]/.test(normalized)) {
-    return "Enter a positive PHP amount with up to two decimal places, or choose “I don't know the amount paid.”";
+    return "Enter a positive PHP amount with up to two decimal places.";
   }
   return null;
 }

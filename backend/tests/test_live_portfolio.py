@@ -31,11 +31,23 @@ TARGET = get_base_strategy("Growth").allocation
 def test_entry_date_uses_manila_today_during_previous_utc_day():
     with patch("app.services.live_portfolio.datetime") as clock:
         clock.now.return_value = datetime(2026, 9, 27, 0, 5, tzinfo=ZoneInfo("Asia/Manila"))
-        entry = dict(provider="gotrade", product_id="gotrade_vt", units="1", idempotency_key=uuid4())
+        entry = dict(provider="gotrade", product_id="gotrade_vt", units="1", amount_paid_php="100", idempotency_key=uuid4())
         assert InvestmentEntryInput(**entry, investment_date=date(2026, 9, 27)).investment_date == date(2026, 9, 27)
         with pytest.raises(ValidationError, match="Investment date cannot be in the future"):
             InvestmentEntryInput(**entry, investment_date=date(2026, 9, 28))
         assert clock.now.call_args.args[0].key == "Asia/Manila"
+
+
+@pytest.mark.parametrize("product,provider", UNIVERSE.items())
+def test_every_supported_pair_requires_actual_php_cost_for_new_additions(product, provider):
+    details = dict(product_id=product, provider=provider, investment_date=date(2026, 9, 24),
+                   units="0.5", idempotency_key=uuid4())
+    assert InvestmentEntryInput(**details, amount_paid_php="1650.50").amount_paid_php == Decimal("1650.50")
+    for invalid in (None, "", "0", "-1", "1.001", "1,23"):
+        with pytest.raises(ValidationError):
+            InvestmentEntryInput(**details, amount_paid_php=invalid)
+    with pytest.raises(ValidationError):
+        InvestmentEntryInput(**details, amount_paid_php="1650.50", user_id="another-owner")
 
 
 def holding(product="gotrade_vt", units="7.42"):
@@ -142,10 +154,42 @@ def test_added_capital_is_not_profit_and_unknown_cost_stays_unknown():
     assert row.value_php == Decimal("2000.00")
     assert row.recorded_gain_php == Decimal("0.00")
     assert row.recorded_gain_percentage == Decimal("0")
+    assert result.recorded_cost_php == Decimal("2000")
+    assert result.recorded_gain_php == Decimal("0.00")
+    assert result.recorded_gain_percentage == Decimal("0")
     assert row.unit_price == Decimal("100") and row.unit_price_currency == "USD"
     unknown = valued([complete.model_copy(update={"cost_basis_php": None})],
                      [price("gotrade_vt", "100"), price("usd_php", "1")]).holdings[0]
     assert unknown.recorded_gain_php is None and unknown.recorded_gain_percentage is None
+    mixed = valued([complete, holding("coins_btc", "0.01")],
+                   [price("gotrade_vt", "100"), price("usd_php", "1"), price("btc_php", "100000")])
+    assert mixed.complete and mixed.recorded_cost_php is None
+    assert mixed.recorded_gain_php is None and mixed.recorded_gain_percentage is None
+
+
+def test_portfolio_gain_tracks_price_and_fx_without_calling_contributions_return():
+    position = holding("gotrade_vt", "10").model_copy(update={"cost_basis_php": Decimal("1000")})
+    for usd_price, fx, gain in [("100", "1", "0"), ("110", "1", "100"), ("90", "1", "-100"),
+                                ("100", "1.1", "100")]:
+        result = valued([position], [price("gotrade_vt", usd_price), price("usd_php", fx)])
+        assert result.recorded_gain_php == Decimal(gain)
+        assert result.holdings[0].recorded_gain_php == Decimal(gain)
+    assert "recorded cost" in explain_portfolio("How much have I gained?", result).lower()
+    assert "added investments" in explain_portfolio("Why did my portfolio value go up?", result).lower()
+
+
+def test_fund_nav_and_manual_current_value_use_actual_recorded_cost_only():
+    fund = holding("gcash_global_equity", "10").model_copy(update={"cost_basis_php": Decimal("1000")})
+    official = valued([fund], [price("gcash_global_equity", "110")])
+    assert official.holdings[0].valuation_source == "nav"
+    assert official.recorded_gain_php == Decimal("100")
+    manual = fund.model_copy(update={"manual_value_php": Decimal("1200"), "manual_value_updated_at": NOW})
+    fallback = valued([manual], [])
+    assert fallback.holdings[0].valuation_source == "manual_user"
+    assert fallback.recorded_gain_php == Decimal("200")
+    assert fallback.recorded_cost_php == Decimal("1000")
+    assert valued([manual], [price("gcash_global_equity", "110")]).recorded_gain_php == Decimal("100")
+    assert valued([manual.model_copy(update={"cost_basis_php": None})], []).recorded_gain_php is None
 
 
 def test_empty_and_round_to_zero_have_no_actual_percentages():

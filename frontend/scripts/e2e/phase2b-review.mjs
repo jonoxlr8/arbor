@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
-const origin = 'http://127.0.0.1:3000';
+const origin = process.env.ARBOR_REVIEW_ORIGIN ?? 'http://127.0.0.1:3000';
 const askOnly = process.argv.includes('--ask-only');
 const datedOnly = process.argv.includes('--dated-only');
-const output = datedOnly ? '/private/tmp/arbor-dated-review' : askOnly ? '/private/tmp/arbor-ask-learn-review' : '/private/tmp/arbor-phase2b-retention-review';
+const tabletGraphOnly = process.argv.includes('--tablet-graph-only');
+const homeLayoutOnly = process.argv.includes('--home-layout-only');
+const output = homeLayoutOnly ? '/private/tmp/arbor-home-layout-review' : tabletGraphOnly ? '/private/tmp/arbor-tablet-graph-review' : datedOnly ? '/private/tmp/arbor-dated-review' : askOnly ? '/private/tmp/arbor-ask-learn-review' : '/private/tmp/arbor-phase2b-retention-review';
 await mkdir(output, { recursive: true });
 const user = { id: '00000000-0000-4000-8000-000000000001', aud: 'authenticated', role: 'authenticated', email: 'phase2b@example.test', created_at: '2026-09-01T00:00:00Z', app_metadata: { provider: 'email' }, user_metadata: {} };
 const encoded = value => Buffer.from(JSON.stringify(value)).toString('base64url');
@@ -22,6 +24,7 @@ const plan = { strategy_engine_version: '2.0', profile: { strategy_engine_versio
 const catalog = [
   { product_id: 'gotrade_vt', provider: 'gotrade', provider_name: 'Gotrade', display_name: 'VT', sleeve: 'global_equity', price_kind: 'reference' },
   { product_id: 'pdax_btc', provider: 'pdax', provider_name: 'PDAX', display_name: 'Bitcoin', sleeve: 'crypto', price_kind: 'reference' },
+  { product_id: 'gcash_global_equity', provider: 'gcash', provider_name: 'GFunds', display_name: 'ATRAM Global Equity Opportunity Feeder Fund', sleeve: 'global_equity', price_kind: 'nav' },
 ];
 const breakdown = { contribution_amount: '10000.000', current_portfolio_value: '10000.00', source: 'recorded_portfolio', status: 'active', rows: [
   { sleeve: 'global_equity', target_percentage_points: '80', current_value: '10000', target_value_after_contribution: '16000', deficit: '6000', amount: '8000', product_id: 'gotrade_vt', provider_id: 'gotrade', minimum: null, status: 'ready' },
@@ -48,23 +51,42 @@ const headers = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Head
 function portfolio() {
   const vt = entries.filter(e => e.product_id === 'gotrade_vt' && !e.voided_at);
   const btc = entries.filter(e => e.product_id === 'pdax_btc' && !e.voided_at);
+  const fund = entries.filter(e => e.product_id === 'gcash_global_equity' && !e.voided_at);
   const vtUnits = ((showOpening ? 2 : 0) + vt.reduce((sum, e) => sum + Number(e.units), 0)).toFixed(5);
   const btcUnits = btc.reduce((sum, e) => sum + Number(e.units), 0).toFixed(8);
   const vtValue = (Number(vtUnits) * 5000).toFixed(2), btcValue = (Number(btcUnits) * 2000000).toFixed(2);
+  const fundUnits = fund.reduce((sum, e) => sum + Number(e.units), 0);
+  const fundValue = (fundUnits * 100).toFixed(2);
   const vtCost = vt.some(e => e.amount_paid_php === null) ? null : (showOpening ? 10000 : 0) + vt.reduce((sum, e) => sum + Number(e.amount_paid_php), 0);
   const vtGain = vtCost === null ? null : (Number(vtValue) - vtCost).toFixed(2);
   const holdings = showOpening || vt.length ? [{ ...catalog[0], id: '00000000-0000-4000-8000-000000000101', units: vtUnits, cost_basis_php: vtCost === null ? null : String(vtCost), manual_value_php: null, manual_value_updated_at: null, opening_units: showOpening ? '2' : '0', opening_cost_php: showOpening ? '10000' : null, has_entries: vt.length > 0, value_php: vtValue, freshness: 'fresh', as_of: now, updated_at: now, created_at: now, valuation_source: 'market_reference', unit_price: '100', unit_price_currency: 'USD', recorded_gain_php: vtGain, recorded_gain_percentage: vtGain === null || !vtCost ? null : (Number(vtGain) / vtCost * 100).toFixed(2) }] : [];
-  if (btc.length) holdings.push({ ...catalog[1], id: '00000000-0000-4000-8000-000000000102', units: btcUnits, cost_basis_php: btc.some(e => e.amount_paid_php === null) ? null : String(btc.reduce((sum, e) => sum + Number(e.amount_paid_php), 0)), manual_value_php: null, manual_value_updated_at: null, opening_units: '0', opening_cost_php: null, has_entries: true, value_php: btcValue, freshness: 'fresh', as_of: now, updated_at: now, created_at: now, valuation_source: 'market_reference', unit_price: '2000000', unit_price_currency: 'PHP', recorded_gain_php: null, recorded_gain_percentage: null });
-  const total = (Number(vtValue) + Number(btcValue)).toFixed(2);
-  return { currency: 'PHP', holdings, catalog, history: [], known_value_php: total, total_value_php: total, complete: true, unavailable_count: 0, stale_count: 0, provider_values_php: { ...(holdings.length ? { gotrade: vtValue } : {}), ...(btc.length ? { pdax: btcValue } : {}) }, valued_at: now, data_sources: ['marketstack', 'coinranking'], sleeves: weights.map(w => {
-    const value = w.role === 'global_equity' ? Number(vtValue) : w.role === 'crypto' ? Number(btcValue) : 0;
+  if (btc.length) {
+    const btcCost = btc.some(e => e.amount_paid_php === null) ? null : btc.reduce((sum, e) => sum + Number(e.amount_paid_php), 0);
+    const btcGain = btcCost === null ? null : Number(btcValue) - btcCost;
+    holdings.push({ ...catalog[1], id: '00000000-0000-4000-8000-000000000102', units: btcUnits, cost_basis_php: btcCost === null ? null : String(btcCost), manual_value_php: null, manual_value_updated_at: null, opening_units: '0', opening_cost_php: null, has_entries: true, value_php: btcValue, freshness: 'fresh', as_of: now, updated_at: now, created_at: now, valuation_source: 'market_reference', unit_price: '2000000', unit_price_currency: 'PHP', recorded_gain_php: btcGain === null ? null : btcGain.toFixed(2), recorded_gain_percentage: btcGain === null || !btcCost ? null : (btcGain / btcCost * 100).toFixed(2) });
+  }
+  if (fund.length) {
+    const fundCost = fund.some(e => e.amount_paid_php === null) ? null : fund.reduce((sum, e) => sum + Number(e.amount_paid_php), 0);
+    const fundGain = fundCost === null ? null : Number(fundValue) - fundCost;
+    holdings.push({ ...catalog[2], id: '00000000-0000-4000-8000-000000000103', units: String(fundUnits), cost_basis_php: fundCost === null ? null : String(fundCost), manual_value_php: null, manual_value_updated_at: null, opening_units: '0', opening_cost_php: null, has_entries: true, value_php: fundValue, freshness: 'fresh', as_of: now, updated_at: now, created_at: now, valuation_source: 'nav', unit_price: '100', unit_price_currency: 'PHP', recorded_gain_php: fundGain === null ? null : fundGain.toFixed(2), recorded_gain_percentage: fundGain === null || !fundCost ? null : (fundGain / fundCost * 100).toFixed(2) });
+  }
+  const total = (Number(vtValue) + Number(btcValue) + Number(fundValue)).toFixed(2);
+  const completeCost = holdings.length > 0 && holdings.every(holding => holding.cost_basis_php !== null);
+  const recordedCost = completeCost ? holdings.reduce((sum, holding) => sum + Number(holding.cost_basis_php), 0) : null;
+  const recordedGain = recordedCost && recordedCost > 0 ? Number(total) - recordedCost : null;
+  return { currency: 'PHP', holdings, catalog, history: [], known_value_php: total, total_value_php: total,
+    recorded_cost_php: recordedCost === null ? null : recordedCost.toFixed(2),
+    recorded_gain_php: recordedGain === null ? null : recordedGain.toFixed(2),
+    recorded_gain_percentage: recordedGain === null ? null : (recordedGain / recordedCost * 100).toFixed(2),
+    complete: true, unavailable_count: 0, stale_count: 0, provider_values_php: { ...(showOpening || vt.length ? { gotrade: vtValue } : {}), ...(btc.length ? { pdax: btcValue } : {}), ...(fund.length ? { gcash: fundValue } : {}) }, valued_at: now, data_sources: ['marketstack', 'coinranking', 'toap'], sleeves: weights.map(w => {
+    const value = w.role === 'global_equity' ? Number(vtValue) + Number(fundValue) : w.role === 'crypto' ? Number(btcValue) : 0;
     const current = Number(total) > 0 ? value / Number(total) * 100 : null;
     return { sleeve: w.role, known_value_php: value.toFixed(2), current_percentage: current === null ? null : current.toFixed(2), target_percentage: w.percentage_points, difference_pp: current === null ? null : (current - w.percentage_points).toFixed(2) };
   }) };
 }
 await context.route('**/*', async route => {
   const request = route.request(), url = new URL(request.url()), path = url.pathname, method = request.method();
-  if (['localhost', '127.0.0.1'].includes(url.hostname) && url.port === '3000') return route.continue();
+  if (url.origin === origin) return route.continue();
   const json = (body, status = 200) => route.fulfill({ status, json: body, headers });
   if (method === 'OPTIONS') return route.fulfill({ status: 204, headers });
   if (path.endsWith('/auth/v1/token')) return json(session);
@@ -121,9 +143,9 @@ await context.route('**/*', async route => {
   }
   if (path.endsWith('/v2/portfolio/entries') && method === 'POST') {
     const body = request.postDataJSON();
-    if (keys.has(body.idempotency_key)) return json({ entry_id: keys.get(body.idempotency_key), holding_id: body.product_id === 'pdax_btc' ? '00000000-0000-4000-8000-000000000102' : '00000000-0000-4000-8000-000000000101', replayed: true }, 201);
+    if (keys.has(body.idempotency_key)) return json({ entry_id: keys.get(body.idempotency_key), holding_id: body.product_id === 'pdax_btc' ? '00000000-0000-4000-8000-000000000102' : body.product_id === 'gcash_global_equity' ? '00000000-0000-4000-8000-000000000103' : '00000000-0000-4000-8000-000000000101', replayed: true }, 201);
     const id = `00000000-0000-4000-8000-${String(entries.length + 1).padStart(12, '0')}`;
-    const holding_id = body.product_id === 'pdax_btc' ? '00000000-0000-4000-8000-000000000102' : '00000000-0000-4000-8000-000000000101';
+    const holding_id = body.product_id === 'pdax_btc' ? '00000000-0000-4000-8000-000000000102' : body.product_id === 'gcash_global_equity' ? '00000000-0000-4000-8000-000000000103' : '00000000-0000-4000-8000-000000000101';
     entries.push({ id, holding_id, product_id: body.product_id, provider: body.provider, investment_date: body.investment_date, units: body.units, amount_paid_php: body.amount_paid_php, recorded_at: now, updated_at: now, revision: 1, voided_at: null });
     keys.set(body.idempotency_key, id);
     return json({ entry_id: id, holding_id, replayed: false }, 201);
@@ -138,7 +160,7 @@ async function shot(name, width, theme = 'light') {
   const offenders = overflow > 0 ? await page.evaluate(() => { const element = document.querySelector('.monthly-amount-input'); const chain = []; let current = element; while (current && chain.length < 9) { const r = current.getBoundingClientRect(); chain.push(`${current.tagName}.${String(current.className).slice(0, 35)} x=${Math.round(r.x)} w=${Math.round(r.width)}`); current = current.parentElement; } return chain; }) : [];
   assert.ok(overflow <= 0, `${name}: horizontal overflow ${overflow}px at ${offenders.join(', ')}`);
   const file = `${output}/${name}.png`; await page.screenshot({ path: file, fullPage: true, animations: 'disabled', style: 'nextjs-portal{display:none!important}' }); shots.push(file);
-  if (width <= 390) {
+  if (width < 1024) {
     const reachable = await page.evaluate(() => {
       const nav = document.querySelector('nav[aria-label="Mobile navigation"]');
       const main = document.querySelector('#app-content');
@@ -156,112 +178,162 @@ try {
   await page.getByLabel('Email address').fill(user.email);
   await page.getByLabel('Password').fill('fixture-only-password');
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
-  if (datedOnly) {
-  await page.getByRole('button', {name:/Finish recording your investment/}).waitFor();
-  // Monthly entry: an invalid click must visibly explain itself, then accept provider formatting.
-  await page.setViewportSize({width:390,height:844});
-  await page.evaluate(() => { location.hash='home/monthly'; });
-  await page.locator('.pending-recording li').first().getByRole('button',{name:'Record investment'}).click();
-  await page.getByRole('button',{name:'Review investment'}).click();
-  await page.getByRole('alert').filter({hasText:'actual units'}).waitFor();
-  assert.equal(await page.locator('dialog [role="alert"]').evaluate(e=>e===document.activeElement), true);
-  await page.getByLabel('Investment date',{exact:true}).fill('2026-08-12');
-  await page.getByLabel('Shares received').fill('.5');
-  await page.getByLabel('Amount paid (PHP)').fill('6,500.00');
-  await page.getByRole('button',{name:'Review investment'}).click();
-  await page.getByRole('button',{name:'Confirm and save'}).waitFor();
-  assert.equal(await page.locator('[aria-label="Confirm investment"]').evaluate(e=>e===document.activeElement), true);
-  assert.equal(entries.length,0,'review must not write');
-  await page.getByRole('button',{name:'Confirm and save'}).scrollIntoViewIfNeeded();
-  await page.screenshot({path:`${output}/monthly-review-mobile.png`});
-  await page.getByRole('button',{name:'Confirm and save'}).click();
-  await page.locator('dialog').waitFor({state:'detached'});
-  assert.equal(entries[0].investment_date,'2026-08-12');
-  assert.equal(entries[0].units,'0.5');
-  assert.equal(entries[0].amount_paid_php,'6500.00');
-  // Add Investment with missing/ambiguous costs, edit and review at the narrow viewport.
-  await page.setViewportSize({width:320,height:740});
-  await page.evaluate(() => { location.hash='portfolio/add'; });
-  await page.locator('.catalogue-row').filter({hasText:'Bitcoin'}).click();
-  await page.getByLabel('Investment date',{exact:true}).fill('2026-07-03');
-  await page.getByLabel('BTC received').fill('.00015');
-  await page.getByLabel('Actual total paid (PHP)').fill('1,23');
-  await page.getByRole('button',{name:'Review investment'}).click();
-  await page.getByRole('alert').filter({hasText:'PHP amount'}).waitFor();
-  const addPaid = page.getByLabel('Actual total paid (PHP)');
-  await addPaid.fill('6,500');
-  const unknownCost = page.getByRole('checkbox', { name: "I don't know the amount paid" });
-  await unknownCost.check();
-  assert.equal(await addPaid.inputValue(), '', 'choosing unknown clears a typed amount');
-  assert.equal(await addPaid.isDisabled(), true, 'unknown cost disables the amount field');
-  await unknownCost.uncheck();
-  await page.getByRole('button',{name:'Review investment'}).click();
-  const costChoiceAlert = page.locator('dialog p[role="alert"]');
-  await costChoiceAlert.waitFor();
-  assert.match(await costChoiceAlert.textContent(), /I don't know the amount paid/);
-  await unknownCost.check();
-  await page.getByRole('button',{name:'Review investment'}).click();
-  await page.getByText(/Amount paid: Unknown/).waitFor();
-  assert.equal(entries.length,1,'reviewing unknown cost must not write to the ledger');
-  await page.getByRole('button',{name:'Confirm and save'}).scrollIntoViewIfNeeded();
-  await page.screenshot({path:`${output}/add-review-320.png`});
-  await page.getByRole('button',{name:'Confirm and save'}).click();
-  await page.locator('dialog').waitFor({state:'detached'});
-  assert.equal(entries.length,2);
-  assert.equal(entries[1].amount_paid_php,null);
-  await page.getByRole('heading',{name:'Holdings'}).waitFor();
-  assert.equal(await page.getByRole('heading',{name:'Investments by date'}).count(),0,'Portfolio must not duplicate the Home graph');
-  assert.equal(await page.getByText(/Your plan details/).count(),0);
-  await page.getByText('Investment activity',{exact:true}).click();
-  await page.getByText('2026-07-03',{exact:false}).first().waitFor();
-  await shot('portfolio-dated-320',320);
-  await page.evaluate(()=>{location.hash='home';});
-  await page.getByRole('heading',{name:'Investments by date'}).waitFor();
-  await page.getByText('Investment dates and amounts paid',{exact:true}).click();
-  await page.getByText('2026-07-03 · 1 addition',{exact:true}).waitFor();
-  await page.getByText('2026-08-12 · 1 addition',{exact:true}).waitFor();
-  await page.getByText('Investment dates and amounts paid',{exact:true}).click();
-  await page.getByRole('button',{name:'Recorded value',exact:true}).click();
-  await page.getByText('Current value · No history yet',{exact:true}).waitFor();
-  await page.getByRole('button',{name:'Investment dates',exact:true}).click();
-  await shot('home-dated-mobile',390);
-  await shot('home-dated-desktop',1440);
-  await shot('home-dated-dark',390,'dark');
-  await page.getByRole('link',{name:'View plan →'}).click();
-  assert.equal(new URL(page.url()).hash,'#home/plan');
-  await page.locator('#section-plan').waitFor();
-  await shot('home-plan-mobile',390,'light');
-  await page.evaluate(()=>{location.hash='portfolio/plan';});
-  await page.locator('#section-plan').waitFor();
-
-  // Monthly plan amounts are context only; the shared form records only user-entered actual cost or null.
-  await page.evaluate(() => { location.hash='home/monthly'; });
-  await page.getByRole('button', { name: 'Review contribution' }).click();
-  await page.getByText('Your contribution breakdown').waitFor();
-  await page.getByRole('button', { name: 'Submit monthly contribution' }).click();
-  await page.getByRole('button', { name: 'Confirm contribution submitted' }).click();
-  await page.getByRole('heading', { name: 'Record what you actually invested' }).waitFor();
-  const globalEquityRecord = page.locator('.monthly-record-row').first();
-  await globalEquityRecord.getByRole('button', { name: 'Record investment' }).click();
-  await page.getByLabel('Shares received').fill('.4');
-  await page.getByText(/Planned contribution: ₱8,000 \(context only\)/).waitFor();
-  await page.getByLabel('Amount paid (PHP)').fill('6,500');
-  await page.getByRole('button', { name: 'Review investment' }).click();
-  await page.getByText(/Amount paid: ₱6,500/).waitFor();
-  assert.equal(entries.length, 2, 'monthly review must not write a ledger entry');
-  await page.getByRole('button', { name: 'Confirm and save' }).click();
-  await page.getByText('Investment recorded').waitFor();
-  assert.equal(entries[2].amount_paid_php, '6500');
-
-  await globalEquityRecord.getByRole('button', { name: 'Record investment' }).click();
-  await page.getByLabel('Shares received').fill('.2');
-  await page.getByText(/Planned contribution: ₱8,000 \(context only\)/).waitFor();
-  await page.getByRole('checkbox', { name: "I don't know the amount paid" }).check();
-  await page.getByRole('button', { name: 'Review investment' }).click();
-  await page.getByText(/Amount paid: Unknown/).waitFor();
-  assert.equal(entries.length, 3, 'unknown-cost review must not write a ledger entry');
-  await page.getByRole('button', { name: 'Confirm and save' }).click();
-  assert.equal(entries[3].amount_paid_php, null, 'planned PHP must never become unknown actual cost');
+  if (homeLayoutOnly) {
+    const readings = [];
+    await page.getByRole('region', { name: 'Portfolio value graph' }).waitFor();
+    await page.getByRole('heading', { name: 'Where you could be headed' }).waitFor();
+    for (const width of [1440, 1024, 960, 900, 820, 768, 390, 320]) {
+      await shot(`home-${width}`, width);
+      const reading = await page.evaluate(() => {
+        const box = selector => {
+          const element = document.querySelector(selector);
+          if (!element) return null;
+          const rect = element.getBoundingClientRect();
+          return { top: Math.round(rect.top), bottom: Math.round(rect.bottom), left: Math.round(rect.left), height: Math.round(rect.height) };
+        };
+        return { width: innerWidth, portfolio: box('.home-portfolio'), utility: box('.home-utility-stack'), goal: box('.home-goal'), monthly: box('.home-monthly'), pending: box('.home-utility-stack .pending-recording'), projection: box('.home-projection'), activity: box('.home-activity'), plan: box('.home-plan'), plotHeight: Math.round(document.querySelector('.home-portfolio .chart-plot')?.getBoundingClientRect().height ?? 0) };
+      });
+      assert.ok(reading.activity.height < 160, `${width}: empty Recent activity should stay compact`);
+      if (width >= 1000) {
+        assert.ok(Math.abs(reading.portfolio.top - reading.utility.top) <= 2, `${width}: Portfolio and utility stack should share the first row`);
+        assert.ok(Math.abs(reading.projection.top - reading.plan.top) <= 2, `${width}: Projection and plan should share the second row`);
+        assert.ok(Math.abs(reading.projection.bottom - reading.plan.bottom) <= 2, `${width}: paired Projection and plan cards should match height`);
+        assert.ok(reading.activity.top >= Math.max(reading.projection.bottom, reading.plan.bottom), `${width}: Recent activity should follow the second row`);
+      } else {
+        const sequence = [reading.portfolio, reading.goal, reading.monthly, reading.pending, reading.projection, reading.activity, reading.plan].filter(Boolean);
+        assert.ok(sequence.every((section, index) => index === 0 || section.top >= sequence[index - 1].top), `${width}: Home sections should follow reading order`);
+      }
+      readings.push(reading);
+    }
+    for (const width of [1024, 768, 390]) await shot(`home-dark-${width}`, width, 'dark');
+    assert.equal(pageErrors, 0, 'browser page errors'); assert.equal(consoleErrors, 0, 'browser console errors'); assert.equal(blockedExternal, 0, 'unhandled external requests');
+    console.log(JSON.stringify({ fixtureOnly: true, screenshots: shots, readings, pageErrors, consoleErrors, blockedExternal }));
+  } else if (tabletGraphOnly) {
+    const widths = [1440, 1024, 1023, 900, 820, 768, 390, 320];
+    const readings = [];
+    await page.getByRole('region', { name: 'Portfolio value graph' }).waitFor();
+    for (const width of widths) {
+      await shot(`home-${width}`, width);
+      readings.push(await page.evaluate(() => ({ surface: 'home', width: innerWidth, overflow: document.documentElement.scrollWidth - innerWidth, plotHeight: Math.round(document.querySelector('.home-portfolio .chart-plot')?.getBoundingClientRect().height ?? 0), cardHeight: Math.round(document.querySelector('.home-portfolio')?.getBoundingClientRect().height ?? 0), sidebarVisible: getComputedStyle(document.querySelector('.app-shell aside')).display !== 'none', mobileNavVisible: getComputedStyle(document.querySelector('nav[aria-label="Mobile navigation"]')).display !== 'none' })));
+    }
+    await shot('home-dark-768', 768, 'dark');
+    await page.evaluate(() => { location.hash = 'portfolio'; });
+    await page.getByRole('heading', { name: 'Holdings' }).waitFor();
+    await page.getByRole('region', { name: 'Portfolio value graph' }).waitFor();
+    for (const width of widths) {
+      await shot(`portfolio-${width}`, width);
+      readings.push(await page.evaluate(() => ({ surface: 'portfolio', width: innerWidth, overflow: document.documentElement.scrollWidth - innerWidth, plotHeight: Math.round(document.querySelector('.portfolio-value .chart-plot')?.getBoundingClientRect().height ?? 0), cardHeight: Math.round(document.querySelector('.portfolio-value')?.getBoundingClientRect().height ?? 0), sidebarVisible: getComputedStyle(document.querySelector('.app-shell aside')).display !== 'none', mobileNavVisible: getComputedStyle(document.querySelector('nav[aria-label="Mobile navigation"]')).display !== 'none' })));
+    }
+    await shot('portfolio-dark-768', 768, 'dark');
+    assert.ok(readings.every(reading => reading.overflow <= 0), 'tablet graph layouts must not overflow horizontally');
+    assert.equal(pageErrors, 0, 'browser page errors'); assert.equal(consoleErrors, 0, 'browser console errors'); assert.equal(blockedExternal, 0, 'unhandled external requests');
+    console.log(JSON.stringify({ fixtureOnly: true, screenshots: shots, readings, pageErrors, consoleErrors, blockedExternal }));
+  } else if (datedOnly) {
+    await page.getByRole('button', {name:/Finish recording your investment/}).waitFor();
+    await shot('home-plan-target-desktop',1440);
+    await shot('home-plan-target-mobile',390);
+    assert.equal(await page.getByRole('link',{name:'Ways to invest →'}).count(),1);
+    await page.setViewportSize({width:390,height:844});
+    await page.locator('.pending-recording-toggle').click();
+    await page.locator('.pending-recording li').first().getByRole('button',{name:'Record investment'}).click();
+    await page.getByLabel('Shares received').fill('.5');
+    await page.getByRole('button',{name:'Review investment'}).click();
+    await page.getByRole('alert').filter({hasText:'actual PHP amount'}).waitFor();
+    assert.equal(entries.length,0,'blank cost and Review must not write');
+    await page.getByLabel('Actual amount paid (PHP)').fill('1,23');
+    await page.getByRole('button',{name:'Review investment'}).click();
+    await page.getByRole('alert').filter({hasText:'PHP amount'}).waitFor();
+    await page.getByLabel('Actual amount paid (PHP)').fill('6,500.00');
+    await page.getByLabel('Investment date',{exact:true}).fill('2026-08-12');
+    await shot('pending-record-required-cost',390);
+    await page.getByRole('button',{name:'Review investment'}).click();
+    await page.getByRole('button',{name:'Confirm and save'}).waitFor();
+    assert.equal(entries.length,0,'Review makes no ledger write');
+    await shot('pending-review',390);
+    await page.getByRole('button',{name:'Confirm and save'}).click();
+    await page.locator('dialog').waitFor({state:'detached'});
+    assert.deepEqual([entries[0].investment_date,entries[0].units,entries[0].amount_paid_php],['2026-08-12','0.5','6500.00']);
+    await page.evaluate(()=>{location.hash='portfolio';});
+    await page.getByRole('heading',{name:'Holdings'}).waitFor();
+    await page.getByRole('region',{name:'Portfolio value graph'}).waitFor();
+    assert.equal(await page.getByRole('button',{name:'Investment dates'}).count(),0);
+    await shot('portfolio-populated-desktop',1440);
+    await shot('portfolio-populated-mobile',390);
+    await shot('portfolio-populated-320',320);
+    const actualCost=entries[0].amount_paid_php;
+    entries[0].amount_paid_php='500';
+    await page.reload();
+    await page.locator('.holding-row [data-gain="positive"]').waitFor();
+    await shot('portfolio-positive-gain',390);
+    entries[0].amount_paid_php=null;
+    await page.reload();
+    await page.locator('.holding-row [data-gain="unknown"]').waitFor();
+    await shot('portfolio-legacy-unknown-cost',390);
+    entries[0].amount_paid_php=actualCost;
+    await page.reload();
+    await page.locator('.holding-row [data-gain="negative"]').waitFor();
+    await shot('portfolio-negative-gain',390);
+    await page.evaluate(()=>{location.hash='home';});
+    await page.getByRole('region',{name:'Portfolio value graph'}).waitFor();
+    await page.getByText('Current value · No history yet',{exact:true}).waitFor();
+    await page.getByText(/Added to VT/).waitFor();
+    await shot('home-populated-desktop',1440);
+    await shot('home-populated-mobile',390);
+    await shot('home-populated-dark',390,'dark');
+    await page.evaluate(()=>{location.hash='portfolio/add';});
+    await page.locator('.catalogue-row[data-product="pdax_btc"]').click();
+    await page.getByLabel('BTC received').fill('.00015');
+    await page.getByRole('button',{name:'Review investment'}).click();
+    await page.getByRole('alert').filter({hasText:'actual PHP amount'}).waitFor();
+    await shot('add-required-cost',390);
+    await page.getByLabel('Actual amount paid (PHP)').fill('300');
+    await page.getByRole('button',{name:'Review investment'}).click();
+    assert.equal(entries.length,1,'Add Investment Review must not write');
+    await page.getByRole('button',{name:'Confirm and save'}).click();
+    await page.locator('dialog').waitFor({state:'detached'});
+    assert.equal(entries.length,2);
+    await page.getByRole('button',{name:'+ Add Investment'}).click();
+    await page.locator('.catalogue-row[data-product="gcash_global_equity"]').click();
+    await page.getByLabel('Fund units received').fill('10');
+    await page.getByLabel('Actual amount paid (PHP)').fill('900');
+    await page.getByRole('button',{name:'Review investment'}).click();
+    assert.equal(entries.length,2,'Fund Review must not write');
+    await page.getByRole('button',{name:'Confirm and save'}).click();
+    await page.locator('dialog').waitFor({state:'detached'});
+    assert.deepEqual([entries[2].product_id,entries[2].units,entries[2].amount_paid_php],['gcash_global_equity','10','900']);
+    await page.locator('.holding-row').filter({hasText:'ATRAM'}).waitFor();
+    await page.evaluate(()=>{location.hash='home/monthly';});
+    await page.getByRole('button',{name:'Review contribution'}).click();
+    await page.getByText('Your contribution breakdown').waitFor();
+    await page.getByRole('button',{name:'Submit monthly contribution'}).click();
+    await page.getByRole('button',{name:'Confirm contribution submitted'}).click();
+    await page.getByRole('heading',{name:'Record what you actually invested'}).waitFor();
+    await page.locator('.monthly-record-row').first().getByRole('button',{name:'Record investment'}).click();
+    await page.getByLabel('Shares received').fill('.4');
+    await page.getByText(/Planned contribution: ₱8,000 \(context only\)/).waitFor();
+    await page.getByRole('button',{name:'Review investment'}).click();
+    await page.getByRole('alert').filter({hasText:'actual PHP amount'}).waitFor();
+    await shot('monthly-required-cost',390);
+    await page.getByLabel('Actual amount paid (PHP)').fill('6,500');
+    await page.getByRole('button',{name:'Review investment'}).click();
+    assert.equal(entries.length,3,'Monthly Review must not write');
+    await page.getByRole('button',{name:'Confirm and save'}).click();
+    await page.getByText('Investment recorded').waitFor();
+    assert.equal(entries[3].amount_paid_php,'6500');
+    assert.notEqual(entries[3].amount_paid_php,breakdown.rows[0].amount);
+    await page.evaluate(()=>{location.hash='portfolio/ways';});
+    await page.locator('.implementation-option[data-product="gotrade_vt"]').waitFor();
+    await shot('ways-to-invest',390);
+    await page.evaluate(()=>{location.hash='portfolio';});
+    await shot('portfolio-dark',390,'dark');
+    entries.length=0;showOpening=false;checkin=null;
+    await page.reload();
+    await page.getByRole('heading',{name:'No investments recorded yet.'}).waitFor();
+    await shot('portfolio-empty',390);
+    await shot('portfolio-empty-desktop',1440);
+    await page.evaluate(()=>{location.hash='home';});
+    await page.getByText('No investments recorded yet.').waitFor();
+    await shot('home-empty',390);
 
   } else if (askOnly) {
     await page.evaluate(() => { location.hash = 'ask'; });
@@ -326,7 +398,7 @@ try {
   await page.evaluate(() => { location.hash = 'home/monthly'; });
   await page.getByRole('button', { name: 'Review contribution' }).click();
   await page.getByText('Your contribution breakdown').waitFor();
-  await page.getByRole('button', { name: 'Continue with Gotrade for VT' }).waitFor();
+  await page.getByRole('button', { name: /Continue with Gotrade/ }).waitFor();
   await page.getByRole('button', { name: 'Submit monthly contribution' }).click();
   await page.getByRole('button', { name: 'Confirm contribution submitted' }).click();
   await page.getByRole('heading', { name: 'Record what you actually invested' }).waitFor();
@@ -340,7 +412,7 @@ try {
   await shot('dismissed-without-ledger', 390);
   await page.locator('.pending-recording li').first().getByRole('button', { name: 'Record investment' }).click();
   await page.getByLabel('Shares received').fill('0.5');
-  await page.getByLabel('Amount paid (PHP, optional)').fill('6500');
+  await page.getByLabel('Actual amount paid (PHP)').fill('6500');
   await shot('record-from-pending', 390);
   await page.getByRole('button', { name: 'Review investment' }).click();
   await page.getByRole('button', { name: 'Confirm and save' }).click();
@@ -350,6 +422,7 @@ try {
   await shot('pending-resolved-after-ledger', 390);
   await page.locator('.monthly-record-row').last().getByRole('button', { name: 'Record investment' }).click();
   await page.getByLabel('BTC received').fill('0.00015');
+  await page.getByLabel('Actual amount paid (PHP)').fill('300');
   await shot('dark-actual-recording', 390, 'dark');
   await page.getByRole('button', { name: 'Review investment' }).click();
   await page.getByRole('button', { name: 'Confirm and save' }).click();
@@ -369,7 +442,7 @@ try {
   await page.getByText('Recorded VT').waitFor();
   assert.equal(entries.length, 2, 'Undo must not alter investment entries');
   await shot('mobile-320-after-undo', 320);
-  assert.equal(entries.length, 2); assert.equal(entries[0].amount_paid_php, '6500'); assert.equal(entries[1].amount_paid_php, null);
+  assert.equal(entries.length, 2); assert.equal(entries[0].amount_paid_php, '6500'); assert.equal(entries[1].amount_paid_php, '300');
   // Phase 2C review reuses this synthetic owner and intercepts every external call.
   await page.evaluate(() => { location.hash = 'portfolio'; });
   await page.getByRole('button', { name: 'View VT' }).waitFor();
@@ -382,12 +455,12 @@ try {
   await shot('phase2c-portfolio-plus-320', 320);
   await shot('phase2c-gain-loss-dark-mobile', 390, 'dark');
   const gainColors = await page.evaluate(() => {
-    const loss = document.querySelector('[data-gain="negative"]');
-    const unknown = document.querySelector('[data-gain="unknown"]');
+    const loss = document.querySelector('.holding-row [data-gain="negative"]');
+    const neutral = document.querySelector('.holding-row [data-gain="zero"]');
     const value = loss?.closest('.holding-money');
-    return [loss, unknown, value].map(element => element ? getComputedStyle(element).color : null);
+    return [loss, neutral, value].map(element => element ? getComputedStyle(element).color : null);
   });
-  assert.ok(gainColors.every(Boolean) && gainColors[0] !== gainColors[1] && gainColors[0] !== gainColors[2], 'loss, unknown cost, and current value need distinct dark-mode treatments');
+  assert.ok(gainColors.every(Boolean) && gainColors[0] !== gainColors[1] && gainColors[0] !== gainColors[2], 'loss, zero gain, and current value need distinct dark-mode treatments');
   await shot('phase2c-portfolio-plus-mobile', 390);
   await page.getByRole('button', { name: 'View Bitcoin' }).click();
   await page.getByText('₱2,000,000 per BTC', { exact: true }).waitFor();
@@ -406,7 +479,7 @@ try {
     await page.reload();
     for (const theme of ['light', 'dark']) {
       await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
-      const gain = page.locator(`.holding-row [data-gain="${tone}"]`);
+      const gain = page.getByRole('button', { name: 'View VT' }).locator(`[data-gain="${tone}"]`);
       await gain.waitFor();
       assert.ok((await gain.textContent()).includes(expected));
       const className = await gain.getAttribute('class');

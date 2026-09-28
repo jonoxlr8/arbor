@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createPortfolioApi, isPortfolio, validHolding, entryDraftError, validEntryDraft, isInvestmentActivity, freshnessText, portfolioValues, scenarioAvailability, supportsManualValue, validManualValue, type LivePortfolioData } from "./livePortfolio";
-import LivePortfolio, { PortfolioSummary, PlanAlignment, DataAttribution, RecordedGain, recordedGainDisplay } from "../components/portfolio/LivePortfolio";
+import LivePortfolio, { PortfolioSummary, PlanAlignment, DataAttribution, RecordedGain, recordedGainDisplay, PortfolioGain, portfolioGainDisplay } from "../components/portfolio/LivePortfolio";
 import PortfolioHistoryChart from "../components/portfolio/PortfolioHistoryChart";
 import ContributionCard from "../components/contributions/ContributionCard";
 import { contributionFixture } from "./contributions.test";
@@ -40,6 +40,18 @@ test("recorded-cost gain colors follow the signed backend result, with neutral z
     assert.match(markup,new RegExp(color));
     assert.ok(markup.includes(content));
   }
+});
+test("portfolio gain displays only backend-computed complete recorded-cost amounts",()=>{
+  const fixture={...portfolioFixture, recorded_cost_php:"2000.00", recorded_gain_php:"0.00", recorded_gain_percentage:"0"};
+  assert.deepEqual(portfolioGainDisplay(fixture),{text:"₱0 · 0%",tone:"zero"});
+  for (const [gain,pct,tone] of [["100.00","5","positive"],["-100.00","-5","negative"]] as const) {
+    const markup=html(createElement(PortfolioGain,{portfolio:{...fixture,recorded_gain_php:gain,recorded_gain_percentage:pct}}));
+    assert.match(markup,new RegExp(`data-gain="${tone}"`));
+    assert.match(markup,/Gain\/loss against recorded cost/);
+  }
+  assert.equal(portfolioGainDisplay({...fixture,recorded_cost_php:null,recorded_gain_php:null,recorded_gain_percentage:null}).text,"Recorded cost needed");
+  assert.equal(portfolioGainDisplay({...fixture,complete:false,total_value_php:null}).text,"Gain/loss unavailable");
+  assert.match(html(createElement(PortfolioSummary,{portfolio:fixture})),/Portfolio value graph/);
 });
 for (const [status, code] of [[401,"portfolio_auth"],[403,"portfolio_entitlement"],[404,"portfolio_unavailable"],[500,"portfolio_server"],[503,"portfolio_server"]] as const) test(`read classifies ${status} without exposing body`, async () => {
   const api = createPortfolioApi(async()=>"fixture",async()=>Response.json({detail:"private database URL and payload"},{status}));
@@ -262,8 +274,9 @@ test("multiple observed history points have accessible values and range controls
 });
 
 test("review explains invalid dates, units, cost and unconfirmed conversion", () => {
-  const draft = { provider:"gotrade", product_id:"gotrade_vt", investment_date:"2026-09-24", units:"0.5", amount_paid_php:null, idempotency_key:"fixed" };
+  const draft = { provider:"gotrade", product_id:"gotrade_vt", investment_date:"2026-09-24", units:"0.5", amount_paid_php:"100", idempotency_key:"fixed" };
   assert.equal(entryDraftError(draft, portfolioFixture.catalog), null);
+  assert.match(entryDraftError({...draft, amount_paid_php:null}, portfolioFixture.catalog)!, /actual PHP amount/);
   assert.match(entryDraftError({...draft, units:""}, portfolioFixture.catalog)!, /actual units/);
   assert.match(entryDraftError({...draft, investment_date:"2026-02-30"}, portfolioFixture.catalog)!, /valid investment date/);
   assert.match(entryDraftError({...draft, amount_paid_php:"1,23"}, portfolioFixture.catalog)!, /PHP amount/);

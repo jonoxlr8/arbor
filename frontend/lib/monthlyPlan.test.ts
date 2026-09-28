@@ -47,9 +47,10 @@ for(const path of ["foundation","short_term","historical"])test(`monthly ${path}
 });
 test("monthly UI has no browser financial persistence, allocation engine or holding mutation",()=>{
   const source=readFileSync("components/contributions/MonthlyInvesting.tsx","utf8");
+  const providerContinue=readFileSync("components/contributions/ProviderContinue.tsx","utf8");
   assert.doesNotMatch(source,/localStorage|sessionStorage|portfolioApi\.(save|capture|remove)|Math\.round/);
   assert.match(source,/monthlyPlanApi.calculate/);assert.match(source,/recordable_amount/);assert.match(source,/does not hold or carry it forward automatically/);
-  assert.match(source,/await pendingApi\.start/);assert.match(source,/window\.location\.assign\(destination!\)/);assert.doesNotMatch(source,/href="#portfolio\/add"/);
+  assert.match(source,/ProviderContinue/);assert.match(providerContinue,/await pendingApi\.start/);assert.match(providerContinue,/window\.location\.assign\(destination!\)/);assert.doesNotMatch(source,/href="#portfolio\/add"/);
   assert.match(source,/record the actual units you received/);
   assert.match(source,/MonthlyInvestmentFollowup/);
 });

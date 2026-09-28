@@ -13,6 +13,8 @@ import { V2Destination, V2PlanContent } from "../components/PlanV2View";
 import V2Home from "../components/app/V2Home";
 import PlanImplementation from "../components/portfolio/PlanImplementation";
 import PortfolioHistoryChart from "../components/portfolio/PortfolioHistoryChart";
+import { entryDraftError } from "./livePortfolio";
+import { manilaInvestmentToday } from "./investmentEntries";
 
 const plan = () => { const value = structuredClone(contributionFixture); value.plan.plan_basis = "user_selected"; return value; };
 const access = (plus: boolean, available: boolean): Entitlements => ({
@@ -59,6 +61,19 @@ test("twelve supported options have identities and neutral alphabetical provider
   for(const group of Object.values(PLAN_OPTIONS)) {
     assert.deepEqual(group.map(o=>providerName(o.provider)),group.map(o=>providerName(o.provider)).sort());
     for(const option of group){assert.ok(INVESTMENTS[option.product]);assert.ok(providerDestination(option.provider));}
+  }
+});
+test("all twelve catalogue pairs accept only user-entered date, units and actual PHP paid", () => {
+  const options=Object.values(PLAN_OPTIONS).flat();
+  for (const option of options) {
+    const catalog=[{product_id:option.product,provider:option.provider,provider_name:providerName(option.provider),
+      display_name:INVESTMENTS[option.product].fullName,sleeve:"global_equity" as const,price_kind:"reference" as const}];
+    const draft={product_id:option.product,provider:option.provider,investment_date:manilaInvestmentToday(),
+      units:option.product.endsWith("_btc") ? "0.00012345" : "0.5",amount_paid_php:"1650.50",idempotency_key:"fixture"};
+    assert.equal(entryDraftError(draft,catalog),null,option.product);
+    assert.match(entryDraftError({...draft,amount_paid_php:null},catalog)!,/actual PHP amount/,option.product);
+    assert.match(entryDraftError({...draft,units:""},catalog)!,/actual units/,option.product);
+    assert.match(entryDraftError({...draft,provider:"wrong"},catalog)!,/supported/,option.product);
   }
 });
 test("Ways to invest and Add Investment share every canonical product and provider identity", () => {

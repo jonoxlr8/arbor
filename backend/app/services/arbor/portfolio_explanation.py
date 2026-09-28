@@ -31,10 +31,21 @@ def explain_portfolio(question: str, portfolio: Portfolio | None) -> str:
         named = [holding for holding in portfolio.holdings if
                  re.search(r"(?<!\w)" + re.escape(holding.display_name) + r"(?!\w)", question, re.I)
                  or re.search(r"(?<!\w)" + re.escape(holding.product_id.split("_")[-1]) + r"(?!\w)", question, re.I)]
-        matching = named or portfolio.holdings
-        if len(matching) != 1:
-            return "Recorded-cost gain/loss belongs to each holding. Ask about a named investment in your Portfolio; portfolio value change can include contributions and is not investment return."
-        holding = matching[0]
+        if not named:
+            if not portfolio.complete:
+                return "Complete portfolio gain/loss is unavailable while a holding needs a usable current value. Missing value is not zero."
+            if portfolio.recorded_cost_php is None:
+                return "Complete portfolio gain/loss is unavailable until every active holding has recorded cost. An unknown opening or addition cost is not zero."
+            if portfolio.recorded_gain_php is None or portfolio.recorded_gain_percentage is None:
+                return "A comparable portfolio recorded-cost percentage is unavailable. Arbor does not invent a 0% gain."
+            return (f"Portfolio current reference value PHP {portfolio.total_value_php:,.2f}; "
+                    f"complete recorded cost PHP {portfolio.recorded_cost_php:,.2f}; "
+                    f"gain/loss against recorded cost PHP {portfolio.recorded_gain_php:+,.2f} "
+                    f"({portfolio.recorded_gain_percentage:+.2f}%). Added capital is included in recorded cost, not profit. "
+                    "PHP values for foreign holdings may also change with exchange rates. This is not realized or tax return.")
+        if len(named) != 1:
+            return "Ask about one named investment to see its gain/loss against recorded cost. Portfolio value change can include contributions and is not investment return."
+        holding = named[0]
         if holding.value_php is None:
             return f"{holding.display_name} needs a usable current value before Arbor can show gain/loss against recorded cost. Missing value is not zero."
         if holding.cost_basis_php is None:
@@ -48,6 +59,8 @@ def explain_portfolio(question: str, portfolio: Portfolio | None) -> str:
                 "New capital is included in recorded cost, not counted as profit.")
     if re.search(r"perform|worst|best", question, re.I):
         return "Arbor has reference valuations, not complete transaction or contribution history. I can’t separate investment growth from added holdings or rank performance."
+    if re.search(r"why.*portfolio value.*(?:up|increas)", question, re.I):
+        return "Portfolio value can rise because you added investments, current valuations changed, or both. That change is not automatically profit. Gain/loss against complete recorded cost is a separate measure; Arbor does not reconstruct a cause from past prices it has not recorded."
     if re.search(r"how much.*recorded|how many.*(?:shares|units|btc)", question, re.I):
         named = [holding for holding in portfolio.holdings if
                  re.search(r"(?<!\w)" + re.escape(holding.display_name) + r"(?!\w)", question, re.I)

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { addUnitTexts, investmentCostChoiceError, manilaInvestmentToday, normalizeInvestmentNumber } from "./investmentEntries";
+import { addUnitTexts, investmentAmountPaidError, manilaInvestmentToday, normalizeInvestmentNumber } from "./investmentEntries";
 
 test("investment today uses Manila rather than the previous UTC date", () => {
   assert.equal(manilaInvestmentToday(new Date("2026-09-26T16:05:00Z")), "2026-09-27");
@@ -18,11 +18,9 @@ test("provider decimal formats normalize without rounding or guessing ambiguous 
   for (const [input, expected] of [[" 6,500.00 ", "6500.00"], [".5", "0.5"], ["1,234,567.12", "1234567.12"], ["1,23", "1,23"], ["1e3", "1e3"], ["0.000000000001", "0.000000000001"]]) assert.equal(normalizeInvestmentNumber(input), expected);
 });
 
-test("an omitted investment cost requires an explicit unknown choice", () => {
-  assert.match(investmentCostChoiceError(null, false)!, /choose.*I don't know the amount paid/i);
-  assert.equal(investmentCostChoiceError(null, true), null);
-  assert.equal(investmentCostChoiceError(" 6,500 ", false), null);
-  assert.match(investmentCostChoiceError("1,23", false)!, /positive PHP amount/);
-  assert.match(investmentCostChoiceError("0", false)!, /positive PHP amount/);
-  assert.match(investmentCostChoiceError("6500", true)!, /Clear the amount paid/);
+test("new dated investments require an actual positive PHP amount", () => {
+  assert.match(investmentAmountPaidError(null)!, /actual PHP amount paid/);
+  assert.equal(investmentAmountPaidError(" 6,500 "), null);
+  assert.equal(investmentAmountPaidError("6500.50"), null);
+  for (const invalid of ["", "0", "-1", "1,23", "6500.501", "1e3"]) assert.match(investmentAmountPaidError(invalid)!, /PHP amount/);
 });

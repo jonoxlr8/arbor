@@ -103,8 +103,8 @@ export const learnLessons: Lesson[] = [
   {
     id: "recorded-cost", title: "Recorded cost and gain/loss", category: "Arbor", summary: "Added capital is not investment profit.",
     sections: [
-      { heading: "Cost is what you actually paid", body: "Arbor can compare a current holding value with its complete recorded PHP cost. If an opening position or addition has unknown cost, the complete gain/loss is unavailable rather than calculated against only known costs." },
-      { heading: "Portfolio value change is different", body: "A portfolio-value graph compares recorded values over time. Contributions and changes to holdings can affect it, so Arbor calls this portfolio value change, not investment return. Adding money is not profit." },
+      { heading: "Cost is what you actually paid", body: "For a new investment, enter the actual PHP amount paid from your provider record. Arbor compares current value with complete recorded cost to show gain/loss against recorded cost. Older opening positions or entries may still have unknown cost; Arbor does not invent it or calculate gain from only the known part." },
+      { heading: "Portfolio value change is different", body: "Contributions increase both holdings and recorded cost; added capital is not profit. A portfolio-value graph compares observations over time and may include new contributions. Exchange rates can also affect the PHP value of foreign holdings, so Arbor calls the chart difference portfolio value change, not investment return." },
     ],
     sources: [source("Investor.gov: Introduction to Investing", `${investor}/introduction-investing`)],
     reviewed, askDraft: "Why isn't a contribution counted as investment profit?",
@@ -121,7 +121,7 @@ export const learnLessons: Lesson[] = [
   {
     id: "arbor-workflow", title: "How Arbor records investments", category: "Arbor", summary: "Additions, corrections and monthly follow-up are separate.",
     sections: [
-      { heading: "An addition is a record", body: "Add Investment and Add more record the date and actual units you received. You can optionally enter the actual PHP amount paid. Editing corrects a record; voiding it retains the correction history and is not a market sale." },
+      { heading: "An addition is a record", body: "Add Investment and Add more record the date, actual units and actual PHP amount paid from your provider record. If you do not know the amount yet, return when you can verify it. Editing corrects a record; voiding it retains the correction history and is not a market sale." },
       { heading: "A plan is not a purchase", body: "A monthly check-in or provider-continuation pending item does not add units, create a holding or establish a cost. If you completed an investment, come back and record the actual units received. A reminder does not mean you invested." },
     ],
     sources: [],

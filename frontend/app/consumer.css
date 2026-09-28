@@ -233,13 +233,7 @@
 .portfolio-plus-preview p{max-width:42rem;line-height:1.6}
 @media(max-width:480px){.portfolio-insights,.portfolio-plus-preview,.portfolio-history-list{padding:14px 16px}.holding-row > .identity-mark,.holding-row > .asset-identity{border-radius:50%}}
 
-/* Dated activity and observed value remain separate chart modes. */
-.investment-timeline { min-width:0; margin-top:16px; }
-.investment-timeline > .chart-range { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
-.investment-timeline > .chart-range button { font-size:12px; padding:8px 12px; }
-.investment-timeline > .chart-range button[aria-pressed="true"] { background:light-dark(#e0f1e9,#234a3b); color:light-dark(#0f5132,#b9ebd0); }
-.timeline-note { font-size:12px; line-height:1.6; color:light-dark(#526176,#b7c5d6); margin:10px 0; }
 .investment-form [tabindex="-1"] { scroll-margin:90px 0 24px; }
 
-.home-portfolio .investment-timeline .portfolio-chart .chart-history-details { display:block; }
-.home-portfolio .investment-timeline .portfolio-chart .chart-history-details summary { min-height:44px; }
+.home-portfolio .portfolio-chart .chart-history-details { display:block; }
+.home-portfolio .portfolio-chart .chart-history-details summary { min-height:44px; }

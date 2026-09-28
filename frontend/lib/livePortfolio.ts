@@ -5,7 +5,7 @@ import type { Sleeve, ContributionMode, ContributionRequest } from "./types/cont
 import { parseContributionResponse } from "./contributionApi";
 import type { PlanV2 } from "./types/planV2";
 import { InvalidSessionError } from "./accountRecovery";
-import { manilaInvestmentToday } from "./investmentEntries";
+import { investmentAmountPaidError, manilaInvestmentToday } from "./investmentEntries";
 
 const portfolioMessages = {
   portfolio_auth: "Your session has expired. Sign in again to continue.",
@@ -43,6 +43,7 @@ export const validManualValue = (v: string) => /^\d{1,16}(?:\.\d{1,2})?$/.test(v
 export type PortfolioHistory = { day: string; value_php: string; captured_at: string };
 export type LivePortfolioData = {
   currency: "PHP"; holdings: PortfolioHolding[]; catalog: PortfolioProduct[]; history: PortfolioHistory[];
+  recorded_cost_php?: string | null; recorded_gain_php?: string | null; recorded_gain_percentage?: string | null;
   data_sources?: string[];
   known_value_php: string; total_value_php: string | null; complete: boolean; unavailable_count: number; stale_count: number;
   provider_values_php: Record<string, string>; valued_at: string;
@@ -59,7 +60,8 @@ export function entryDraftError(d: InvestmentEntryDraft, catalog: PortfolioProdu
   const units = (value: string) => /^\d{1,12}(?:\.\d{1,12})?$/.test(value) && /[1-9]/.test(value);
   const cost = (value: string) => /^\d{1,16}(?:\.\d{1,2})?$/.test(value);
   if (!units(d.units)) return "Enter the actual units received, greater than zero, with up to 12 decimal places.";
-  if (d.amount_paid_php !== null && !cost(d.amount_paid_php)) return "Enter the PHP amount paid with up to two decimal places, or leave it blank.";
+  const amountError = investmentAmountPaidError(d.amount_paid_php);
+  if (amountError) return amountError;
   if (d.opening_units && !units(d.opening_units)) return "Enter valid existing units, greater than zero, with up to 12 decimal places.";
   if (d.opening_cost_php && (!d.opening_units || !cost(d.opening_cost_php))) return "Enter existing units and a valid PHP cost with up to two decimal places, or leave that cost blank.";
   if (converting && (!d.confirm_conversion || !d.opening_units)) return "Enter your existing units and confirm the existing fund position before reviewing.";
@@ -83,6 +85,9 @@ export function isPortfolio(value: unknown): value is LivePortfolioData {
   if (sources !== undefined && (!Array.isArray(sources) || !sources.every(s => ["marketstack", "coinranking", "exchangerate_api", "toap"].includes(s)))) return false;
   const p = value as LivePortfolioData;
   return p.currency === "PHP" && money(p.known_value_php) && (p.total_value_php === null || money(p.total_value_php)) &&
+    (p.recorded_cost_php === undefined || p.recorded_cost_php === null || money(p.recorded_cost_php)) &&
+    (p.recorded_gain_php === undefined || p.recorded_gain_php === null || decimal(p.recorded_gain_php)) &&
+    (p.recorded_gain_percentage === undefined || p.recorded_gain_percentage === null || decimal(p.recorded_gain_percentage)) &&
     typeof p.complete === "boolean" && Number.isInteger(p.unavailable_count) && p.unavailable_count >= 0 && Number.isInteger(p.stale_count) && p.stale_count >= 0 && timestamp(p.valued_at) &&
     !!p.provider_values_php && typeof p.provider_values_php === "object" && Object.values(p.provider_values_php).every(money) &&
     Array.isArray(p.catalog) && p.catalog.every(h => h && typeof h.product_id === "string" && typeof h.provider === "string" && typeof h.provider_name === "string" && typeof h.display_name === "string" && roles.includes(h.sleeve)) &&

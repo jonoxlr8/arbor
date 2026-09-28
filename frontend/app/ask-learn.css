@@ -50,3 +50,8 @@
   .chat-canvas .chat-reply {padding:13px 15px;}
   .learn-row {min-height:74px;gap:11px;}.learn-mark {width:48px;height:48px;}
 }
+
+/* The app uses bottom navigation through tablet widths. */
+@media(min-width:768px) and (max-width:1023px) {
+  .app-shell .chat-canvas .chat-composer {bottom:calc(74px + env(safe-area-inset-bottom));}
+}

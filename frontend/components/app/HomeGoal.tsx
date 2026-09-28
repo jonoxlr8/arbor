@@ -58,6 +58,7 @@ export default function HomeGoal({ value, portfolio, userId, onPlanChange, month
     finally { setSaving(false); }
   }
   return <>
+    <div className="home-utility-stack">
     <section className="home-goal" aria-labelledby="home-goal-title"><header><div><p className="eyebrow">Your goal</p><h2 id="home-goal-title">{value.profile.goal_name || "Your goal"}</h2></div><button className="entry-link min-h-11" onClick={openGoal}>{progress ? "Edit goal" : "Set a goal"}</button></header>
       {progress ? <><p className="goal-amount">{money(progress.knownValue)} <span>of {money(progress.target)}</span></p>{progress.complete ? <><p>{progress.percent}% complete</p><div className="goal-track" role="progressbar" aria-label="Goal progress" aria-valuenow={Number(progress.percent)} aria-valuemin={0} aria-valuemax={Math.max(100,Number(progress.percent))}><span style={{width:`${progress.barPercent}%`}}/></div></> : <p role="status">Known progress. Some investments need an updated value before Arbor can calculate complete progress.</p>}</>
         : value.profile.goal_target ? <p>{money(value.profile.goal_target)} target saved. {portfolio ? "Current progress is unavailable." : "Checking your recorded portfolio before showing progress."}</p>
@@ -65,6 +66,7 @@ export default function HomeGoal({ value, portfolio, userId, onPlanChange, month
     </section>
     {monthly}
     {pending}
+    </div>
     <section className="home-projection" aria-labelledby="home-projection-title"><p className="eyebrow">{plus ? "Arbor Plus" : "Plan ahead"}</p><h2 id="home-projection-title">{plus ? "Where you could be headed" : "See where your plan could take you"}</h2>
       {!plus ? <><p>Explore future projections and monthly planning with Arbor Plus.</p><a className="entry-secondary min-h-11 inline-flex items-center" href="#settings/plus">Explore Arbor Plus</a></>
       : !eligible ? <p>{value.plan.path === "short_term" ? "A long-term projection is not shown for your short-term path." : "Review your long-term approach and readiness before exploring a projection."}</p>

@@ -51,9 +51,13 @@ test("invalid response cannot confirm provider exit or resolution", async () => 
 
 test("provider navigation follows persisted start; ledger save precedes pending resolution", () => {
   const monthly = readFileSync("components/contributions/MonthlyInvesting.tsx", "utf8");
+  const providerContinue = readFileSync("components/contributions/ProviderContinue.tsx", "utf8");
+  const ways = readFileSync("components/portfolio/PlanImplementation.tsx", "utf8");
   const followup = readFileSync("components/contributions/MonthlyInvestmentFollowup.tsx", "utf8");
-  assert.ok(monthly.indexOf("await pendingApi.start") < monthly.indexOf("window.location.assign(destination!)"));
+  assert.ok(providerContinue.indexOf("await pendingApi.start") < providerContinue.indexOf("window.location.assign(destination!)"));
+  assert.match(monthly, /ProviderContinue/);
+  assert.match(ways, /ProviderContinue/);
   assert.match(followup, /pendingApi\.resolve\(userId, pendingId, "recorded"\)/);
-  assert.doesNotMatch(monthly, /pendingApi\.start.*checkin|pendingApi\.start.*calculate/);
+  assert.doesNotMatch(providerContinue, /pendingApi\.start.*checkin|pendingApi\.start.*calculate/);
   assert.match(followup, /Do not record the investment again/);
 });

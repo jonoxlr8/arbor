@@ -39,7 +39,7 @@
 .home-grid{grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);grid-template-rows:auto;}
 .home-portfolio{grid-row:span 3;min-height:420px;}
 .home-portfolio>strong{font-size:clamp(38px,4vw,50px);line-height:1.1;}
-.home-portfolio .compact-chart .chart-plot{height:480px;}
+.home-portfolio .compact-chart .chart-plot{height:240px;}
 .home-grid>a.home-metric{grid-column:2;min-height:78px;display:flex;flex-direction:row;align-items:center;gap:10px;padding:15px 20px;}
 .home-grid>a.home-metric>p{flex:1;min-width:0;}
 .home-grid>a.home-metric>strong{font-size:21px;white-space:nowrap;}
@@ -54,3 +54,57 @@
 .home-activity .activity-empty p{margin:0;font-size:13px;}
 @media(max-width:767px){.home-grid{grid-template-columns:minmax(0,1fr);}.home-portfolio{grid-row:auto;grid-column:1;min-height:350px;}.home-portfolio .compact-chart .chart-plot{height:240px;}.home-grid>a.home-metric{grid-column:1;}}
 @media(max-width:480px){.app-shell main{padding-bottom:calc(100px + env(safe-area-inset-bottom));}.home-portfolio{min-height:270px;}.home-portfolio>strong{font-size:36px;}.home-portfolio .compact-chart .chart-plot{height:190px;}.home-portfolio .compact-chart .chart-plot:has(.chart-flat-line){height:155px;}.home-grid>a.home-metric{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 8px;min-height:76px;}.home-grid>a.home-metric>p{grid-column:1;}.home-grid>a.home-metric>strong{grid-column:2;grid-row:1;}.home-grid>a.home-metric>span{grid-column:3;grid-row:1;}.home-grid>a.home-metric>small{grid-column:1/-1;}}
+
+/* Keep the target legend and actions compact at narrow widths. */
+.home-plan-actions {display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:12px;}
+.portfolio-gain {display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;line-height:1.5;}
+.portfolio-gain > [data-gain] {display:inline-block;}
+@media(max-width:480px) {.portfolio-value .chart-plot:has(.chart-flat-line) {height:140px;}}
+
+/* Keep the shared portfolio graph proportionate through the tablet/sidebar transition. */
+@media (min-width:768px) and (max-width:1199px) {
+  .home-grid {grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);grid-template-rows:auto;}
+  .home-portfolio {grid-column:1;grid-row:span 3;min-height:0;}
+  .home-portfolio .compact-chart .chart-plot,
+  .portfolio-value .portfolio-chart .chart-plot {height:clamp(180px,20vw,240px);}
+}
+
+/* Home: two intentional rows, followed by activity that grows only with real entries. */
+.home-dashboard {--home-section-gap:16px;--home-related-gap:8px;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:var(--home-section-gap);align-items:start;}
+.home-dashboard > .home-grid,.home-dashboard > .home-bottom {display:contents;}
+.home-dashboard .home-portfolio {grid-column:1;grid-row:1;min-height:0;align-self:start;}
+.home-dashboard .home-utility-stack {grid-column:2;grid-row:1;display:grid;align-content:start;gap:var(--home-related-gap);min-width:0;}
+.home-dashboard .home-utility-stack > .home-monthly {display:flex;flex-direction:row;align-items:center;gap:10px;min-height:78px;padding:15px 20px;}
+.home-dashboard .home-monthly > p {flex:1;min-width:0;}
+.home-dashboard .home-monthly > strong {font-size:21px;white-space:nowrap;margin-top:0;}
+.home-dashboard .home-monthly > small {margin-top:0;padding-top:0;}
+.home-dashboard .home-projection {grid-column:1;grid-row:2;align-self:start;}
+.home-dashboard .home-plan {grid-column:2;grid-row:2;align-self:start;}
+.home-dashboard .home-activity {grid-column:1/-1;grid-row:3;align-self:start;}
+.home-dashboard .home-activity .activity-empty {padding:10px 0 0;}
+
+@media (min-width:1000px) {
+  .home-dashboard .home-projection,.home-dashboard .home-plan {align-self:stretch;}
+  .home-dashboard .home-plan {display:flex;flex-direction:column;}
+  .home-dashboard .home-plan .allocation-layout {flex:1;}
+}
+@media (min-width:1000px) and (max-width:1150px) {
+  .home-dashboard .home-plan .allocation-layout {gap:12px;}
+  .home-dashboard .home-plan .allocation-ring {width:112px;height:112px;padding:12px;}
+}
+@media (max-width:999px) {
+  .home-dashboard {grid-template-columns:minmax(0,1fr);}
+  .home-dashboard :is(.home-portfolio,.home-utility-stack,.home-projection,.home-activity,.home-plan) {grid-column:1;grid-row:auto;}
+}
+@media (max-width:767px) {
+  .home-dashboard .home-portfolio {min-height:350px;}
+}
+@media (max-width:480px) {
+  .home-dashboard .home-portfolio {min-height:270px;}
+  .home-dashboard .home-goal,.home-dashboard .home-projection {order:0;}
+  .home-dashboard .home-utility-stack > .home-monthly {display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 8px;min-height:76px;padding:18px 14px;}
+  .home-dashboard .home-monthly > p {grid-column:1;}
+  .home-dashboard .home-monthly > strong {grid-column:2;grid-row:1;}
+  .home-dashboard .home-monthly > span {grid-column:3;grid-row:1;}
+  .home-dashboard .home-monthly > small {grid-column:1/-1;}
+}

@@ -14,26 +14,36 @@ import DatedInvestmentFlow from "./DatedInvestmentFlow";
 import HoldingActivity from "./HoldingActivity";
 import InvestmentHistory from "./InvestmentHistory";
 import { useAccountAccess } from "../AccountAccess";
+import PortfolioHistoryChart from "./PortfolioHistoryChart";
 
 const inputClass = "mt-1 min-h-12 w-full min-w-0 rounded-xl border border-slate-300 bg-white p-3 text-slate-900";
 const blank = (): HoldingDraft => ({ provider: "", product_id: "", units: null, cost_basis_php: null, manual_value_php: null });
 const money = (v: string) => formatContributionMoney(v, "PHP");
 type GainTone = "positive" | "negative" | "zero" | "unknown";
-export function recordedGainDisplay(h: PortfolioHolding): { text: string; tone: GainTone } {
-  if (h.value_php === null) return { text: "Gain/loss unavailable", tone: "unknown" };
-  if (h.cost_basis_php === null) return { text: "Recorded cost needed", tone: "unknown" };
-  if (h.recorded_gain_php == null) return { text: "Gain/loss unavailable", tone: "unknown" };
-  const negative = h.recorded_gain_php.startsWith("-");
-  const magnitude = negative ? h.recorded_gain_php.slice(1) : h.recorded_gain_php;
+function gainDisplay(value: string | null, cost: string | null | undefined, gain: string | null | undefined, pct: string | null | undefined): { text: string; tone: GainTone } {
+  if (value === null) return { text: "Gain/loss unavailable", tone: "unknown" };
+  if (cost == null) return { text: "Recorded cost needed", tone: "unknown" };
+  if (gain == null) return { text: "Gain/loss unavailable", tone: "unknown" };
+  const negative = gain.startsWith("-");
+  const magnitude = negative ? gain.slice(1) : gain;
   const tone: GainTone = decimalText(magnitude) === "0" ? "zero" : negative ? "negative" : "positive";
   const sign = tone === "zero" ? "" : negative ? "−" : "+";
-  const percentage = h.recorded_gain_percentage == null ? "" : ` · ${tone === "zero" ? "0" : `${sign}${Math.abs(Number(h.recorded_gain_percentage)).toFixed(1)}`}%`;
+  const percentage = pct == null ? "" : ` · ${tone === "zero" ? "0" : `${sign}${Math.abs(Number(pct)).toFixed(1)}`}%`;
   return { text: `${sign}${money(magnitude)}${percentage}`, tone };
+}
+export function recordedGainDisplay(h: PortfolioHolding) { return gainDisplay(h.value_php, h.cost_basis_php, h.recorded_gain_php, h.recorded_gain_percentage); }
+export function portfolioGainDisplay(p: LivePortfolioData) { return gainDisplay(p.total_value_php, p.recorded_cost_php, p.recorded_gain_php, p.recorded_gain_percentage); }
+function GainText({ text, tone }: { text: string; tone: GainTone }) {
+  const color = { positive: "text-emerald-700", negative: "text-red-700", zero: "text-slate-900", unknown: "text-slate-500" }[tone];
+  return <span className={color} data-gain={tone}>{text}</span>;
 }
 export function RecordedGain({ holding }: { holding: PortfolioHolding }) {
   const gain = recordedGainDisplay(holding);
-  const color = { positive: "text-emerald-700", negative: "text-red-700", zero: "text-slate-900", unknown: "text-slate-500" }[gain.tone];
-  return <span className={color} data-gain={gain.tone}>{gain.text}</span>;
+  return <GainText {...gain}/>;
+}
+export function PortfolioGain({ portfolio }: { portfolio: LivePortfolioData }) {
+  if (!portfolio.holdings.length) return null;
+  return <p className="portfolio-gain mt-2 text-sm" aria-label="Gain/loss against recorded cost"><span>Gain/loss against recorded cost</span><GainText {...portfolioGainDisplay(portfolio)}/></p>;
 }
 
 export default function LivePortfolio({ value, userId, section = "", onPlanChange }: { value: PlanV2; userId: string; section?: string; onPlanChange?: (value:PlanV2)=>void }) {
@@ -97,7 +107,7 @@ export default function LivePortfolio({ value, userId, section = "", onPlanChang
       </section>
       {plusAlignment && <details id="section-allocation" className="portfolio-insights" open={section === "allocation" || section === "insights"}><summary className="min-h-11 cursor-pointer font-semibold text-slate-900">Portfolio insights</summary><div className="pt-4">{portfolio.complete && portfolio.sleeves.some(s => s.current_percentage !== null) && <Allocation weights={portfolio.sleeves.filter(s => s.current_percentage !== null).map(s => ({role:s.sleeve, percentage_points:Number(s.current_percentage)}))} label="Current allocation"/>}<PlanAlignment portfolio={portfolio}/>{!!portfolio.holdings.length && <details className="provider-totals"><summary className="min-h-11 cursor-pointer text-sm text-slate-600">Value by provider</summary><dl className="detail-facts">{Object.entries(portfolio.provider_values_php).map(([provider, value]) => <div key={provider}><dt>{providerName(provider)}</dt><dd>{money(value)}{portfolio.holdings.some(h => h.provider === provider && h.value_php === null) ? " · incomplete" : ""}</dd></div>)}</dl></details>}</div></details>}
       {plusAlignment === false && <section className="portfolio-plus-preview"><h2 className="text-lg font-semibold text-slate-900">Understand your portfolio</h2><p className="mt-2 text-sm text-slate-600">See how your recorded holdings compare with the plan you chose with Arbor Plus.</p><a className="entry-link mt-3 inline-flex min-h-11 items-center" href="#settings/plus">Explore Arbor Plus →</a></section>}
-      <details id="section-history" className="portfolio-history-list" open={section === "history"}><summary className="min-h-11 cursor-pointer font-semibold text-slate-900">Investment activity</summary><p className="mt-3 text-sm text-slate-600">Dated additions and recorded portfolio values are separate. Home shows both chart views; the records are listed here.</p><InvestmentHistory userId={userId}/><details className="mt-5"><summary className="min-h-11 cursor-pointer text-sm font-semibold">Recorded portfolio values</summary><dl className="detail-facts">{[...portfolio.history].reverse().map(point => <div key={point.day}><dt>{point.day}</dt><dd>{money(point.value_php)}</dd></div>)}</dl>{!portfolio.history.length && <p className="mt-3 text-sm text-slate-600">No portfolio observations recorded yet.</p>}</details></details>
+      <details id="section-history" className="portfolio-history-list" open={section === "history"}><summary className="min-h-11 cursor-pointer font-semibold text-slate-900">Investment activity</summary><p className="mt-3 text-sm text-slate-600">Investment dates belong to activity; recorded portfolio values are separate observations.</p><InvestmentHistory userId={userId}/><details className="mt-5"><summary className="min-h-11 cursor-pointer text-sm font-semibold">Recorded portfolio values</summary><dl className="detail-facts">{[...portfolio.history].reverse().map(point => <div key={point.day}><dt>{point.day}</dt><dd>{money(point.value_php)}</dd></div>)}</dl>{!portfolio.history.length && <p className="mt-3 text-sm text-slate-600">No portfolio observations recorded yet.</p>}</details></details>
       {detail && <Sheet title={detail.display_name} onClose={() => setDetail(null)}>
         <div className="holding-detail-identity flex items-center gap-3"><AssetIdentity product={detail.product_id} sleeve={detail.sleeve}/><div><strong>{investmentIdentity(detail.product_id,detail.display_name).shortName}</strong><small>{investmentIdentity(detail.product_id,detail.display_name).fullName}</small><ProviderBrand provider={detail.provider} name={detail.provider_name}/></div></div>
         <p className="mt-6 text-4xl font-semibold">{detail.value_php === null ? "Value unavailable" : money(detail.value_php)}</p><p className="mt-2 text-sm text-slate-600">{freshnessText(detail)}</p>
@@ -155,6 +165,8 @@ export function DataAttribution({ sources }: { sources: string[] }) {
 
 export function PortfolioSummary({ portfolio: p }: { portfolio: LivePortfolioData }) {
   return <section><p className="text-sm text-slate-600">{p.complete ? "Portfolio value" : "Known portfolio value · PHP"}</p><p className="value-number mt-2 break-words font-semibold text-slate-900">{money(p.known_value_php)}</p>
+    <PortfolioGain portfolio={p}/>
+    <PortfolioHistoryChart history={p.history} knownValue={p.known_value_php} complete={p.complete} holdingsCount={p.holdings.length}/>
     {p.unavailable_count > 0 && <p role="status" className="mt-2 text-sm text-slate-600">Plus {p.unavailable_count} unavailable holding(s). This is not the complete portfolio value.</p>}
     {p.stale_count > 0 && <p role="status" className="mt-2 text-sm text-slate-600">{p.stale_count} holding(s) use cached prices. Check each holding for its price date.</p>}
   </section>;

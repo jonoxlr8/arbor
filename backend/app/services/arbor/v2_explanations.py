@@ -76,7 +76,7 @@ def classify_v2_question(question: str) -> tuple[str, str]:
         return "investment", "implementation"
     if has(r"overlap"):
         return "investment", "overlap"
-    if has(r"\b(recorded cost|cost basis|gain.loss|profit)\b"):
+    if has(r"\b(recorded cost|cost basis|gain(?:ed|s)?|gain.loss|profit)\b"):
         return "investment", "recorded_cost"
     if has(r"how far.*goal|progress.*goal|goal progress"):
         return "investment", "goal_progress"
@@ -84,7 +84,7 @@ def classify_v2_question(question: str) -> tuple[str, str]:
         return "investment", "actual_holdings"
     if is_target_comparison(question):
         return "investment", "actual_holdings"
-    if has(r"overweight|underweight|(?:above|below).*target|furthest|largest gap|current.*(value|portfolio|holding|allocation)|how much.*(own|have|recorded)|which holding|my holdings|performance|how.*perform"):
+    if has(r"overweight|underweight|(?:above|below).*target|furthest|largest gap|current.*(value|portfolio|holding|allocation)|how much.*(own|have|recorded)|which holding|my holdings|performance|how.*perform|why.*portfolio value.*(?:up|increas)"):
         return "investment", "actual_holdings"
     if has(r"preferenc|earlier|historical|capped|\bcaps?\b"):
         return "investment", "preferences"

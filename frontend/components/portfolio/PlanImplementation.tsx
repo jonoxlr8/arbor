@@ -10,6 +10,8 @@ import ProviderIdentity from "../ProviderIdentity";
 import { sleeveColors } from "../AssetIdentity";
 import Allocation from "./Allocation";
 import ImplementationPicker from "./ImplementationPicker";
+import ProviderContinue from "../contributions/ProviderContinue";
+import { useAccountAccess } from "../AccountAccess";
 
 export function TrackingAvailability() {
   return <div className="tracking-availability">
@@ -21,6 +23,8 @@ export function TrackingAvailability() {
 
 export default function PlanImplementation({ value, onRecord, intro = true, userId, onPlanChange }: { value: PlanV2; onRecord?: () => void; intro?: boolean; userId?: string; onPlanChange?: (value: PlanV2) => void }) {
   const [choosing,setChoosing]=useState<Sleeve|null>(null);
+  const access=useAccountAccess();
+  const pendingAvailable=access?.value?.features.includes("monthly_contribution_planner") === true && access.value.availability?.monthly_checkin === true;
   const groups = implementationGroups(value);
   if (!groups.length) return null; // Foundation/short-term guidance remains upstream.
   return <section className="plan-implementation" aria-label="Ways to invest your plan">
@@ -45,11 +49,15 @@ export default function PlanImplementation({ value, onRecord, intro = true, user
             <p>{identity.category === "etf" ? identity.fullName : identity.description}{identity.unitClass && <span> · {identity.unitClass}</span>}</p>
             <ProviderIdentity provider={option.provider}/>
           </div>
-          {href && <a className="provider-open" href={href} target="_blank" rel="noopener noreferrer" aria-label={`Open ${providerName(option.provider)} (opens in a new tab)`}>Open {providerName(option.provider)} <span aria-hidden="true">↗</span></a>}
+          {href && (userId && onPlanChange && value.plan.plan_basis === "user_selected" && value.profile.implementation_choices?.[group.role] !== option.product
+            ? <button type="button" className="entry-secondary min-h-11" onClick={()=>setChoosing(group.role)}>Choose investment</button>
+            : userId && pendingAvailable && value.profile.implementation_choices?.[group.role] === option.product
+              ? <ProviderContinue userId={userId} productId={option.product} provider={option.provider}/>
+              : <a className="provider-open" href={href} target="_blank" rel="noopener noreferrer" aria-label={`Open ${providerName(option.provider)} (opens in a new tab)`}>Open {providerName(option.provider)} <span aria-hidden="true">↗</span></a>)}
         </li>;
       })}</ul>
     </section>)}
-    <p className="implementation-footnote">Options are listed by provider name, not ranked. Funds and ETFs differ in holdings, fees and structure. Check availability and terms with your provider.</p>
+    <p className="implementation-footnote">Options are listed by provider name, not ranked. Choose your implementation, then continue to your provider. Invest outside Arbor and return to record your actual units and PHP paid. Funds and ETFs differ in holdings, fees and structure; check availability and terms with your provider.</p>
     <div className="record-return"><div><h3>{onRecord ? "Already invested?" : "Your choices. Your provider."}</h3><p>You invest through your provider. Arbor does not place trades or move money.</p>{onRecord && <small>Come back to record what you own—not a broker transaction.</small>}</div>
       {onRecord && <p className="text-sm">Use + Add Investment above to start tracking what you own.</p>}
     </div>

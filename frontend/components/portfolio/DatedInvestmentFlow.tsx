@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { addUnitTexts, investmentCostChoiceError, manilaInvestmentToday, normalizeInvestmentNumber } from "@/lib/investmentEntries";
+import { addUnitTexts, manilaInvestmentToday, normalizeInvestmentNumber } from "@/lib/investmentEntries";
 import { entryDraftError, portfolioApi, supportsManualValue, validEntryDraft, type InvestmentEntryDraft, type LivePortfolioData, type PortfolioProduct } from "@/lib/livePortfolio";
 import { investmentIdentity } from "@/lib/investmentIdentity";
 import { decimalText, formatContributionMoney } from "@/lib/contributions";
@@ -21,7 +21,6 @@ export default function DatedInvestmentFlow({ portfolio, userId, initialProduct,
     onSaved: (draft: InvestmentEntryDraft) => void; onOpeningOnly: (product: PortfolioProduct) => void; plannedAmount?: string; monthly?: boolean }) {
   const [draft, setDraft] = useState<InvestmentEntryDraft | null>(initialProduct ? fresh(initialProduct) : null);
   const [confirm, setConfirm] = useState(false);
-  const [unknownCost, setUnknownCost] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const feedback = useRef<HTMLParagraphElement>(null);
@@ -40,10 +39,10 @@ export default function DatedInvestmentFlow({ portfolio, userId, initialProduct,
   function review() {
     if (!draft) return;
     const next = { ...draft, units: normalizeInvestmentNumber(draft.units),
-      amount_paid_php: unknownCost ? null : draft.amount_paid_php?.trim() ? normalizeInvestmentNumber(draft.amount_paid_php) : null,
+      amount_paid_php: draft.amount_paid_php?.trim() ? normalizeInvestmentNumber(draft.amount_paid_php) : null,
       opening_units: draft.opening_units?.trim() ? normalizeInvestmentNumber(draft.opening_units) : null,
       opening_cost_php: draft.opening_cost_php?.trim() ? normalizeInvestmentNumber(draft.opening_cost_php) : null };
-    const message = entryDraftError(next, portfolio.catalog, converting) ?? investmentCostChoiceError(next.amount_paid_php, unknownCost);
+    const message = entryDraftError(next, portfolio.catalog, converting);
     setDraft(next);
     setError(message ?? "");
     setConfirm(!message);
@@ -57,9 +56,9 @@ export default function DatedInvestmentFlow({ portfolio, userId, initialProduct,
     finally { setBusy(false); }
   }
   return <Sheet title={monthly ? !product ? "Record an investment" : `Record ${investmentIdentity(product.product_id).shortName} investment` : !product ? "Add Investment" : existing ? `Add to ${investmentIdentity(product.product_id).shortName}` : `Add ${investmentIdentity(product.product_id).shortName}`} busy={busy} onClose={onClose}>
-    {!product ? <InvestmentCatalogue catalog={portfolio.catalog} onSelect={p => { setDraft(fresh(p)); setUnknownCost(false); setError(""); }}/>
+    {!product ? <InvestmentCatalogue catalog={portfolio.catalog} onSelect={p => { setDraft(fresh(p)); setError(""); }}/>
     : <div className="investment-form space-y-4">
-      {!initialProduct && <button type="button" className="catalogue-back" onClick={() => { setDraft(null); setConfirm(false); setUnknownCost(false); }}>‹ All investments</button>}
+      {!initialProduct && <button type="button" className="catalogue-back" onClick={() => { setDraft(null); setConfirm(false); }}>‹ All investments</button>}
       <div className="selected-investment"><AssetIdentity product={product.product_id} sleeve={product.sleeve}/><div><strong>{investmentIdentity(product.product_id).fullName}</strong><ProviderBrand provider={product.provider} name={product.provider_name}/></div></div>
       {!monthly && supportsManualValue(product) && !existing && <button type="button" className="entry-link min-h-11" onClick={() => onOpeningOnly(product)}>Track an existing fund value without units instead</button>}
       <p className="text-sm text-slate-600">Record units actually received. Your investment date is not the time you recorded this in Arbor. No trade is placed.</p>
@@ -67,13 +66,9 @@ export default function DatedInvestmentFlow({ portfolio, userId, initialProduct,
       <label className="block text-sm">Investment date<input type="date" className={field} max={today()} required value={draft!.investment_date} onChange={e => patch({ investment_date: e.target.value })}/></label>
       <label className="block text-sm">{investmentIdentity(product.product_id).category === "bitcoin" ? "BTC received" : product.price_kind === "nav" ? "Fund units received" : "Shares received"}<input className={field} inputMode="decimal" required value={draft!.units} onChange={e => patch({ units: e.target.value })}/></label>
       <div>
-        <label className="block text-sm" htmlFor="investment-amount-paid">{monthly ? "Amount paid (PHP)" : "Actual total paid (PHP)"}<span className="ml-1 text-slate-500">Optional if unknown</span></label>
-        <input id="investment-amount-paid" className={field} inputMode="decimal" aria-describedby="investment-amount-paid-help" value={draft!.amount_paid_php ?? ""} disabled={unknownCost} onChange={e => { setUnknownCost(false); patch({ amount_paid_php: e.target.value || null }); }}/>
-        <small id="investment-amount-paid-help" className="mt-1 block text-slate-600">Enter the actual PHP amount you paid if you know it. This helps Arbor calculate gain/loss.</small>
-        <label className="mt-2 flex min-h-11 cursor-pointer items-center gap-3 text-sm">
-          <input type="checkbox" checked={unknownCost} aria-label="I don't know the amount paid" onChange={e => { const checked = e.target.checked; setUnknownCost(checked); patch({ amount_paid_php: checked ? null : draft!.amount_paid_php }); }}/>
-          I don&apos;t know the amount paid
-        </label>
+        <label className="block text-sm" htmlFor="investment-amount-paid">Actual amount paid (PHP)</label>
+        <input id="investment-amount-paid" className={field} inputMode="decimal" required aria-describedby="investment-amount-paid-help" value={draft!.amount_paid_php ?? ""} onChange={e => patch({ amount_paid_php: e.target.value || null })}/>
+        <small id="investment-amount-paid-help" className="mt-1 block text-slate-600">Enter the actual PHP amount shown in your provider record. Check your provider&apos;s transaction record and return later if you don&apos;t know it yet; Arbor won&apos;t estimate it.</small>
       </div>
       {converting && <section className="arbor-panel space-y-3"><h3 className="font-semibold">Confirm your existing fund position</h3><p className="text-sm text-slate-600">You currently track this fund by a PHP value only. Enter units you already owned separately; Arbor will not infer them from NAV or treat them as a purchase today. The old whole-position value will clear because it cannot include this new addition; you can enter an updated current value if NAV is unavailable.</p>
         <label className="block text-sm">Units already owned<input className={field} inputMode="decimal" value={draft!.opening_units ?? ""} onChange={e => patch({ opening_units: e.target.value || null })}/></label>
@@ -82,7 +77,7 @@ export default function DatedInvestmentFlow({ portfolio, userId, initialProduct,
       </section>}
       <dl className="detail-facts"><div><dt>Previously recorded</dt><dd>{converting ? `${draft!.opening_units || "—"} units to confirm` : `${decimalText(prior)} units`}</dd></div><div><dt>Adding</dt><dd>{draft!.units || "—"} units</dd></div><div><dt>New recorded total</dt><dd>{total || "—"} units</dd></div></dl>
       {!confirm ? <button type="button" className="entry-primary min-h-12 w-full" disabled={busy} onClick={review}>Review investment</button>
-      : <section ref={confirmation} tabIndex={-1} className="arbor-panel space-y-3" aria-label="Confirm investment"><h3 className="font-semibold">Review investment</h3><p className="text-sm">{investmentIdentity(product.product_id).shortName}<br/>{draft!.units} {investmentIdentity(product.product_id).category === "bitcoin" ? "BTC" : product.price_kind === "nav" ? "units" : "shares"}<br/>{draft!.investment_date}<br/>Amount paid: {draft!.amount_paid_php === null ? "Unknown" : formatContributionMoney(draft!.amount_paid_php,"PHP")}</p><p className="text-sm">This records the details you entered. It doesn’t place a trade or create a historical portfolio value.</p><button type="button" className="entry-primary min-h-12 w-full" disabled={busy} onClick={() => void save()}>{busy ? "Saving…" : "Confirm and save"}</button><button type="button" className="entry-secondary min-h-11 w-full" onClick={() => setConfirm(false)}>Edit details</button></section>}
+      : <section ref={confirmation} tabIndex={-1} className="arbor-panel space-y-3" aria-label="Confirm investment"><h3 className="font-semibold">Review investment</h3><dl className="detail-facts"><div><dt>Investment</dt><dd>{investmentIdentity(product.product_id).shortName}</dd></div><div><dt>Provider</dt><dd>{product.provider_name}</dd></div><div><dt>Investment date</dt><dd>{draft!.investment_date}</dd></div><div><dt>Units received</dt><dd>{draft!.units} {investmentIdentity(product.product_id).category === "bitcoin" ? "BTC" : product.price_kind === "nav" ? "units" : "shares"}</dd></div><div><dt>Amount paid</dt><dd>{formatContributionMoney(draft!.amount_paid_php!,"PHP")}</dd></div></dl><p className="text-sm">This records the details you entered. It doesn’t place a trade or create a historical portfolio value.</p><button type="button" className="entry-primary min-h-12 w-full" disabled={busy} onClick={() => void save()}>{busy ? "Saving…" : "Confirm and save"}</button><button type="button" className="entry-secondary min-h-11 w-full" onClick={() => setConfirm(false)}>Edit details</button></section>}
       {error && <p ref={feedback} tabIndex={-1} role="alert" className="text-sm text-red-700">{error}</p>}
     </div>}
   </Sheet>;

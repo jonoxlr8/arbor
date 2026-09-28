@@ -144,7 +144,7 @@ class InvestmentEntryInput(DomainModel):
     product_id: str
     investment_date: date
     units: Units
-    amount_paid_php: Cost | None = None
+    amount_paid_php: Annotated[Decimal, Field(gt=0, lt=10**16, max_digits=18, decimal_places=2, allow_inf_nan=False)]
     idempotency_key: UUID
     opening_units: Units | None = None
     opening_cost_php: Cost | None = None
@@ -191,6 +191,9 @@ class Portfolio(DomainModel):
     holdings: tuple[ValuedHolding, ...]
     known_value_php: Decimal
     total_value_php: Decimal | None
+    recorded_cost_php: Decimal | None
+    recorded_gain_php: Decimal | None
+    recorded_gain_percentage: Decimal | None
     complete: bool
     unavailable_count: int
     stale_count: int
@@ -263,8 +266,14 @@ def _value_portfolio(holdings, market, target, now):
         comparisons.append(SleeveValue(sleeve=role, known_value_php=value,
             current_percentage=actual, target_percentage=weight,
             difference_pp=actual - weight if actual is not None and weight is not None else None))
+    recorded_cost = (sum((row.cost_basis_php for row in rows), Decimal(0))
+                     if rows and all(row.cost_basis_php is not None for row in rows) else None)
+    recorded_gain = (total - recorded_cost if complete and recorded_cost is not None and recorded_cost > 0 else None)
+    recorded_gain_percentage = (recorded_gain / recorded_cost * 100 if recorded_gain is not None else None)
     return Portfolio(holdings=tuple(rows), known_value_php=total,
         total_value_php=total if complete else None, complete=complete, unavailable_count=missing,
+        recorded_cost_php=recorded_cost, recorded_gain_php=recorded_gain,
+        recorded_gain_percentage=recorded_gain_percentage,
         bitcoin_units=sum((h.units for h in holdings if PRODUCTS[h.product_id].sleeve == AssetRole.CRYPTO), Decimal(0)),
         stale_count=sum(r.freshness == "stale" for r in rows), provider_values_php=providers,
         sleeves=tuple(comparisons), valued_at=now,
