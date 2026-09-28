@@ -9,8 +9,8 @@ export function chatPlanKey(plan: AccountPlan) {
 }
 
 export function chatPrompts(v2: boolean, livePortfolio = false) {
-  return v2 ? ["Explain my investment plan", ...(livePortfolio ? ["What is my current portfolio worth?", "How does my portfolio compare with my targets?"] : ["Why does my plan include Global Equity?", "How does the contribution planner work?"]), "What should I do next?"]
-    : ["Explain my Arbor plan", "What are my target allocations?", "What are my projection assumptions?", "Does my projection reach my goal?"];
+  return v2 ? [...(livePortfolio ? ["What is my portfolio worth?", "How does my portfolio compare with my plan?"] : ["Explain my investment plan"]), "What does recorded cost mean?", "What's the difference between an ETF and a UITF?", "What should I do next?"]
+    : ["Explain my Arbor plan", "What is an ETF?", "What is a UITF?", "What does recorded cost mean?"];
 }
 
 export function chatErrorMessage(error: unknown) {

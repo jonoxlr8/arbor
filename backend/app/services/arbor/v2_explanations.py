@@ -50,13 +50,17 @@ def classify_v2_question(question: str) -> tuple[str, str]:
         return "investment", "monthly_plan"
     if has(r"how much.*invest.*(?:this month|monthly)|how (?:was|is).*contribution.*calculated|why.*amount.*(?:global equity|technology|bitcoin|defensive)|why.*(?:technology|bitcoin|global equity|defensive).*minimum"):
         return "investment", "monthly_plan"
+    if has(r"what happens.*invest.*month"):
+        return "investment", "projection"
     if has(r"\b(buy|sell|hold|switch|recommend|best|suitable|undervalued|overvalued)\b|should i (invest|use)|which.*(choose|pick|should i use)|better for (me|my)"):
         if has(r"(buy|invest).*(month|contribut)|what should i buy"):
             return "investment", "contribution"
         return "investment", "decision_boundary"
     if has(r"what should i do next|what.*next step|next action"):
         return "product_support", "next_action"
-    if has(r"check[ -]?in|how much did i record|recorded.*this month|did i.*(?:complete|invest)"):
+    if has(r"pending record|finish record|still need to record|what should i finish recording"):
+        return "product_support", "pending_recording"
+    if has(r"check[ -]?in|(?:how much|what) did i record|recorded.*this month|did i.*(?:complete|invest)"):
         return "product_support", "monthly_checkin"
     if has(r"arbor plus|subscription|billing|paid plan|what (?:account )?plan am i on"):
         return "product_support", "plus"
@@ -72,6 +76,10 @@ def classify_v2_question(question: str) -> tuple[str, str]:
         return "investment", "implementation"
     if has(r"overlap"):
         return "investment", "overlap"
+    if has(r"\b(recorded cost|cost basis|gain.loss|profit)\b"):
+        return "investment", "recorded_cost"
+    if has(r"how far.*goal|progress.*goal|goal progress"):
+        return "investment", "goal_progress"
     if has(r"^what is my portfolio worth(?: now| today)?\??$|^how is my fund valued\??$"):
         return "investment", "actual_holdings"
     if is_target_comparison(question):
@@ -124,6 +132,7 @@ def explain(c: V2ChatContext, question: str, intent: str) -> str:
         if not c.contributions_allowed: return readiness(c)
         return "Open Invest this month on Home. I need the saved targets, your chosen investments and complete current portfolio values to explain the deterministic monthly calculation. I won’t infer current values from planning assumptions."
     if intent == "monthly_checkin": return "Monthly activity is separate from your holdings. I need your saved check-in record to explain completion."
+    if intent == "pending_recording": return "A pending item means you opened a provider continuation, not that an investment occurred. Record actual units only if you completed the investment; otherwise dismiss the item."
     if intent == "out_of_scope": return SCOPE
     if intent == "decision_boundary": return DECISION
     if intent == "plus": return "I don’t have a confirmed Arbor Plus feature or pricing contract to explain. I can help with the plan and planning tools currently available in Arbor."
@@ -132,6 +141,8 @@ def explain(c: V2ChatContext, question: str, intent: str) -> str:
     if intent == "help": return "Ask me about your saved plan, targets, assessment or planning assumptions. Home contains Invest this month; Portfolio shows Ways to invest and your recorded holdings. Each question stands alone."
     if intent == "actual_holdings": return ACTUAL
     if intent == "overlap": return "I can’t measure overlap in your actual portfolio. No implementation products or current holdings are saved for this V2 chat; asset-class targets alone do not identify fund constituents. I can describe catalog products factually if you name them, without treating them as holdings."
+    if intent == "recorded_cost": return "Recorded cost is the actual PHP amount you entered for an investment. If any active opening position or addition has unknown cost, Arbor does not calculate a complete gain/loss. Adding capital does not turn that capital into profit."
+    if intent == "goal_progress": return "Your saved goal target is not a current portfolio value. I need your complete recorded portfolio value to explain actual progress; an unavailable holding must not be counted as zero."
     if intent == "contribution":
         if c.path == "short_term": return "Your short-term path has no active long-term allocation. Long-term contribution scenarios are paused. You can review your investment profile in Plan; this chat does not choose a product."
         if not c.contributions_allowed: return readiness(c) + " No product purchase is proposed."

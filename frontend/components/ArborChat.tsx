@@ -10,7 +10,8 @@ import { FREE_LIMIT_MESSAGE, type AskUsage } from "@/lib/entitlements";
 import { providerDisplayText } from "@/lib/investmentIdentity";
 
 type ArborChatProps = {
-  plan: AccountPlan;
+  plan: AccountPlan | null;
+  requestedDraft?: { text: string; id: number } | null;
 };
 
 type Message = {
@@ -142,21 +143,26 @@ function ArborMessage({ text }: { text: string }) {
   );
 }
 
-export default function ArborChat({ plan }: ArborChatProps) {
-  return <PlanChat key={chatPlanKey(plan)} v2={"strategy_engine_version" in plan && plan.strategy_engine_version === "2.0"} />;
+export default function ArborChat({ plan, requestedDraft }: ArborChatProps) {
+  return <PlanChat key={plan ? chatPlanKey(plan) : "pre-profile"} v2={!!plan && "strategy_engine_version" in plan && plan.strategy_engine_version === "2.0"} preProfile={!plan} requestedDraft={requestedDraft} />;
 }
 
-function PlanChat({ v2 }: { v2: boolean }) {
+function PlanChat({ v2, preProfile, requestedDraft }: { v2: boolean; preProfile: boolean; requestedDraft?: { text: string; id: number } | null }) {
   const access = useAccountAccess();
   const updateUsage = access?.updateUsage;
   const [usage, setUsage] = useState<AskUsage | null>(null);
   const [question, setQuestion] = useState("");
+  const [seenDraft, setSeenDraft] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const session = useRef<ReturnType<typeof createChatSession> | null>(null);
   const busy = useRef(false);
   const bottom = useRef<HTMLDivElement>(null);
+  if (requestedDraft && requestedDraft.id !== seenDraft) {
+    setSeenDraft(requestedDraft.id);
+    setQuestion(requestedDraft.text);
+  }
   useEffect(()=>{if(messages.length)bottom.current?.scrollIntoView({block:"nearest",behavior:"instant"});},[messages.length]);
   useEffect(() => {
     const current = createChatSession(askArbor, state => {
@@ -184,12 +190,10 @@ function PlanChat({ v2 }: { v2: boolean }) {
     await sendMessage(question);
   };
 
-  const handlePromptClick = async (prompt: string) => {
-    await sendMessage(prompt);
-  };
+  const handlePromptClick = (prompt: string) => setQuestion(prompt);
 
   const livePortfolio = v2 && access?.value?.availability?.live_portfolio === true && access.value.features.includes("live_portfolio");
-  const prompts = chatPrompts(v2, livePortfolio);
+  const prompts = preProfile ? ["What is an ETF?", "What is a UITF?", "What is diversification?", "What does recorded cost mean?"] : chatPrompts(v2, livePortfolio);
   const currentUsage = usage ?? access?.value?.ask_usage;
   const limited = error === FREE_LIMIT_MESSAGE || currentUsage?.remaining === 0;
 
@@ -197,8 +201,7 @@ function PlanChat({ v2 }: { v2: boolean }) {
     <div className="chat-thread min-w-0">
       {/* Intro */}
       <div className="text-sm">
-        {access?.value?.effective_tier === "plus" && <p className="mb-2 text-xs font-medium text-slate-500">Arbor Plus · Full Ask Arbor access</p>}
-        {access?.value?.effective_tier === "free" && <p className="mb-2 text-xs font-medium text-slate-500">Arbor Free · Ask about your plan</p>}
+        {access?.value?.private_beta && <p className="ask-tier">Plus Trial</p>}
         {currentUsage && !limited && <p role="status" className="mb-2 text-sm text-slate-600">{currentUsage.remaining} Free questions remaining this month.</p>}
         {limited && <div role="status" className="mb-4 rounded-xl border border-slate-200 p-4"><p className="text-slate-700">{FREE_LIMIT_MESSAGE}</p><a className="entry-link mt-2 inline-flex min-h-11 items-center" href="#settings/plus">Explore Arbor Plus</a></div>}
         {access?.value?.ask_usage_available === false && <p role="status" className="mb-3 text-sm text-slate-600">Ask Arbor usage is temporarily unavailable. Your saved plan remains accessible.</p>}
@@ -206,8 +209,8 @@ function PlanChat({ v2 }: { v2: boolean }) {
 
       {/* Suggested questions */}
       {messages.length === 0 && <div className="mt-6">
-        <div className="chat-intro-bubble"><ArborMark className="h-7 w-7"/><p>{livePortfolio ? "Let’s make sense of your investments. Ask about your portfolio, your plan or your next step." : "Your plan is a starting point. I’m here to help you understand it, one question at a time."}</p></div>
-        <p className="mb-3 mt-5 text-xs font-medium text-slate-500">A few places to start</p>
+        <div className="chat-intro-bubble"><ArborMark className="h-7 w-7"/><p>Ask me about your portfolio, your plan, or investing basics.</p></div>
+        <p className="mb-3 mt-5 text-xs font-medium text-slate-500">Try asking</p>
 
         <div className="chat-suggestions">
           {prompts.map((prompt) => (
@@ -233,7 +236,7 @@ function PlanChat({ v2 }: { v2: boolean }) {
                 disabled:opacity-50
               "
             >
-              <span aria-hidden="true" className="suggestion-spark">✧</span>{prompt}
+              {prompt}
             </button>
           ))}
         </div>
@@ -249,7 +252,7 @@ function PlanChat({ v2 }: { v2: boolean }) {
                 <div key={index} className="chat-user">
                   <p className="sr-only">You</p>
 
-                  <p className="mt-1 whitespace-pre-wrap leading-7 text-slate-700">
+                  <p className="mt-1 whitespace-pre-wrap leading-7">
                     {message.text}
                   </p>
                 </div>
@@ -257,13 +260,13 @@ function PlanChat({ v2 }: { v2: boolean }) {
             )}
           </div>
         )}
-      {messages.length > 0 && v2 && <nav aria-label="Explore your plan" className="mt-4 flex gap-5 text-sm"><a className="entry-link min-h-11" href="#portfolio/plan">View your plan</a><a className="entry-link min-h-11" href="#portfolio">View portfolio</a></nav>}
       <div ref={bottom}/>
+      <details className="chat-about"><summary className="text-xs text-slate-500">About your Arbor answers</summary><p className="text-sm leading-6 text-slate-700">{preProfile ? "General investing education is available before you choose a plan. Your personal portfolio and plan answers become available after setup." : livePortfolio ? "Understand your selected plan and recorded holdings. Values may include amounts you entered." : "About your target plan—not actual holdings."} No live market, tax or trading advice. Each question stands alone.</p></details>
       {/* Input */}
       <div className="chat-composer">
         {error && error !== FREE_LIMIT_MESSAGE && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-red-800">{error}</p>}
         <textarea
-          aria-label="Your question about your Arbor plan"
+          aria-label="Your question for Ask Arbor"
           maxLength={1000}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
@@ -303,14 +306,13 @@ function PlanChat({ v2 }: { v2: boolean }) {
         <button
           onClick={handleAsk}
           disabled={loading || limited || !question.trim()}
-          aria-label={loading ? "Loading explanation..." : "Ask Arbor"}
+          aria-label={loading ? "Loading explanation..." : "Send question"}
           className="entry-primary disabled:opacity-50"
         >
           <span aria-hidden="true">{loading ? "…" : "↑"}</span>
         </button></div>
-        {loading && <p role="status" className="mt-2 text-sm text-slate-500">Explaining your saved plan…</p>}
+        {loading && <p role="status" className="mt-2 text-sm text-slate-500">Arbor is preparing an answer…</p>}
       </div>
-      <details className="chat-about"><summary className="text-xs text-slate-500">About your Arbor answers</summary><p className="text-sm leading-6 text-slate-700">{livePortfolio ? "Understand your selected plan and recorded holdings. Values may include amounts you entered." : "About your target plan—not actual holdings."} No live market, tax or trading advice. Each question stands alone.</p></details>
     </div>
   );
 }

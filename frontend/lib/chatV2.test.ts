@@ -4,6 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import { V2Destination } from "../components/PlanV2View";
+import ChatSection from "../components/dashboard/ChatSection";
 import { chatPlanKey, chatPrompts, chatErrorMessage, createChatSession } from "./chatSession";
 import { createChatReader } from "./api";
 import type { PlanV2 } from "./types/planV2";
@@ -11,21 +12,30 @@ import type { RequestState } from "./dashboardConsistency";
 
 // Only the discriminant/key are consumed by the shared chat: context is server-loaded.
 const plan = { strategy_engine_version:"2.0", profile:{selected_approach:"Growth"}, plan:{plan_basis:"user_selected"} } as unknown as PlanV2;
-test("V2 Ask Arbor replaces unavailable state with the shared labelled composer and focused suggestions", () => {
+test("V2 Ask Arbor has Chat and Learn with a labelled composer and safe draft suggestions", () => {
   const html = renderToStaticMarkup(createElement(V2Destination, {value:plan, active:"ask", userId:"fixture"}));
-  assert.match(html, /Your investing companion/);
-  assert.match(html, /Your question about your Arbor plan/);
+  assert.match(html, /Ask Arbor/);
+  assert.match(html, /role="tablist"/);
+  assert.match(html, /What are ETFs\?/);
+  assert.match(html, /Your question for Ask Arbor/);
   assert.match(html, /Explain my investment plan/);
-  assert.match(html, /How does the contribution planner work/);
+  assert.match(html, /What does recorded cost mean/);
   assert.match(html, /not actual holdings/);
   assert.doesNotMatch(html, /not available for this plan yet|recommended for you/);
   assert.match(html, /min-h-11/);
 });
-test("V1 prompts remain unchanged and V2 prompts do not presume a projection result", () => {
-  assert.ok(chatPrompts(false).includes("Does my projection reach my goal?"));
+test("education Chat and Learn can render before a plan exists", () => {
+  const html = renderToStaticMarkup(createElement(ChatSection, {plan:null}));
+  assert.match(html, /What is an ETF\?/);
+  assert.match(html, /What are ETFs\?/);
+  assert.match(html, /General investing education is available before you choose a plan/);
+  assert.doesNotMatch(html, /Explain my Arbor plan/);
+});
+test("prompts offer education and do not presume a projection result", () => {
+  assert.ok(chatPrompts(false).includes("What is an ETF?"));
   assert.ok(chatPrompts(true).includes("What should I do next?"));
-  assert.ok(!chatPrompts(true).includes("What is my current portfolio worth?"));
-  assert.ok(chatPrompts(true, true).includes("What is my current portfolio worth?"));
+  assert.ok(!chatPrompts(true).includes("What is my portfolio worth?"));
+  assert.ok(chatPrompts(true, true).includes("What is my portfolio worth?"));
   assert.ok(!chatPrompts(true).includes("Does my projection reach my goal?"));
 });
 test("V2 context changes reset conversation and account mounting isolates sessions", () => {

@@ -346,6 +346,18 @@ def test_catalog_has_no_partnership_information():
     assert "affiliate" not in str(catalog())
 
 
+def test_chat_recorded_cost_uses_canonical_valued_holding():
+    quotes = [price("gotrade_vt", "100"), price("usd_php", "50")]
+    for cost, expected in [("4000", "+1,000.00"), ("6000", "-1,000.00"), ("5000", "+0.00")]:
+        row = holding("gotrade_vt", "1").model_copy(update={"cost_basis_php": Decimal(cost)})
+        reply = explain_portfolio("What is my VT gain/loss?", valued([row], quotes))
+        assert expected in reply and "complete recorded cost" in reply
+    unknown = explain_portfolio("Why is my VT gain/loss unavailable?", valued([holding("gotrade_vt", "1")], quotes))
+    assert "unknown" in unknown.lower() and "0%" not in unknown
+    recorded = explain_portfolio("How much have I recorded in VT?", valued([holding("gotrade_vt", "1")], quotes))
+    assert "1 recorded units" in recorded and "Gotrade" in recorded and "5,000.00" in recorded
+
+
 def test_chat_owner_grounding_and_decision_guard(endpoint):
     client,state=endpoint
     client.post("/v2/portfolio/holdings",json={"provider":"gotrade","product_id":"gotrade_vt","units":"1"})

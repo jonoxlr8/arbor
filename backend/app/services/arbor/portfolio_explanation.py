@@ -27,8 +27,37 @@ def explain_portfolio(question: str, portfolio: Portfolio | None) -> str:
         if is_target_comparison(question):
             return "No holdings are recorded yet. Add investments you already own in Portfolio before Arbor can compare your current portfolio with your chosen targets. Plan targets are not evidence of ownership."
         return "No holdings are recorded yet. Add investments you already own in Portfolio. Your plan targets are not evidence of ownership."
-    if re.search(r"perform|worst|best|gain|loss", question, re.I):
+    if re.search(r"recorded cost|cost basis|gain|loss|profit", question, re.I):
+        named = [holding for holding in portfolio.holdings if
+                 re.search(r"(?<!\w)" + re.escape(holding.display_name) + r"(?!\w)", question, re.I)
+                 or re.search(r"(?<!\w)" + re.escape(holding.product_id.split("_")[-1]) + r"(?!\w)", question, re.I)]
+        matching = named or portfolio.holdings
+        if len(matching) != 1:
+            return "Recorded-cost gain/loss belongs to each holding. Ask about a named investment in your Portfolio; portfolio value change can include contributions and is not investment return."
+        holding = matching[0]
+        if holding.value_php is None:
+            return f"{holding.display_name} needs a usable current value before Arbor can show gain/loss against recorded cost. Missing value is not zero."
+        if holding.cost_basis_php is None:
+            return f"{holding.display_name} needs complete recorded cost before Arbor can show gain/loss. An unknown opening or addition cost is not zero."
+        if holding.recorded_gain_php is None or holding.recorded_gain_percentage is None:
+            return f"{holding.display_name} has no comparable recorded-cost percentage yet. Arbor does not invent a 0% gain."
+        return (f"{holding.display_name}: current reference value PHP {holding.value_php:,.2f}; "
+                f"complete recorded cost PHP {holding.cost_basis_php:,.2f}; "
+                f"gain/loss against recorded cost PHP {holding.recorded_gain_php:+,.2f} "
+                f"({holding.recorded_gain_percentage:+.2f}%). This is not a realized or tax return. "
+                "New capital is included in recorded cost, not counted as profit.")
+    if re.search(r"perform|worst|best", question, re.I):
         return "Arbor has reference valuations, not complete transaction or contribution history. I can’t separate investment growth from added holdings or rank performance."
+    if re.search(r"how much.*recorded|how many.*(?:shares|units|btc)", question, re.I):
+        named = [holding for holding in portfolio.holdings if
+                 re.search(r"(?<!\w)" + re.escape(holding.display_name) + r"(?!\w)", question, re.I)
+                 or re.search(r"(?<!\w)" + re.escape(holding.product_id.split("_")[-1]) + r"(?!\w)", question, re.I)]
+        if len(named) == 1:
+            holding = named[0]
+            value = f"PHP {holding.value_php:,.2f}" if holding.value_php is not None else "currently unavailable"
+            quantity = f"{holding.units:f} recorded units" if holding.units is not None else "a manual current value without recorded units"
+            return (f"Your {holding.display_name} holding through {holding.provider_name} has {quantity}. "
+                    f"Its current reference value is {value}. This is an Arbor record, not proof of a provider trade.")
     prefix = (f"Recorded portfolio value: PHP {portfolio.total_value_php:,.2f}. " if portfolio.complete else
               f"Known recorded value: PHP {portfolio.known_value_php:,.2f}, with {portfolio.unavailable_count} holding(s) unavailable. This is not your complete portfolio value. ")
     if portfolio.stale_count:

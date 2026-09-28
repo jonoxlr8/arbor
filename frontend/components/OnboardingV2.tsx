@@ -8,6 +8,7 @@ import { isPlanV2 } from "@/lib/planV2";
 import { answerError, EMPTY_ANSWERS, ONBOARDING_STEPS, onboardingRequest, SAVINGS_OPTIONS, DEBT_OPTIONS, HORIZON_OPTIONS, RISK_OPTIONS, type Answers } from "@/lib/onboardingV2";
 import type { AccountPlan, ProfileV2Input } from "@/lib/types/planV2";
 import { onboardingEnter } from "@/lib/onboardingKeyboard";
+import ChatSection from "./dashboard/ChatSection";
 
 const QUESTIONS: Record<keyof Answers, string> = {
   full_name: "What’s your name?", country: "Where do you live?",
@@ -66,6 +67,7 @@ export default function OnboardingV2({ userId, onComplete, onSignOut, signingOut
   const [step, setStep] = useState(0);
   const [review, setReview] = useState<ProfileV2Input | null>(null);
   const [created, setCreated] = useState<AccountPlan | null>(null);
+  const [showEducation, setShowEducation] = useState(false);
   const questionPanel = useRef<HTMLDivElement>(null);
   useEffect(() => { questionPanel.current?.focus({ preventScroll: true }); window.scrollTo(0, 0); }, [step]);
   const steps = ONBOARDING_STEPS;
@@ -77,9 +79,10 @@ export default function OnboardingV2({ userId, onComplete, onSignOut, signingOut
     setReview(onboardingRequest(answers));
   }
   if (isPlanV2(created)) return <PlanCreated value={created} onContinue={destination=>{window.location.hash=destination;onComplete(created);}}/>;
+  if (showEducation) return <main className="onboarding-consumer"><header className="onboarding-brand"><Logo /><button className="entry-link" onClick={() => setShowEducation(false)}>Back to setup</button></header><div className="mx-auto w-full max-w-2xl px-4 pb-16"><h1 className="mb-5 text-2xl font-semibold text-slate-900">Ask Arbor</h1><ChatSection plan={null}/></div></main>;
   if (review) return <main className="onboarding-consumer"><header className="onboarding-brand"><Logo /></header><ApproachSelection input={review} userId={userId} onComplete={plan=>{if(isPlanV2(plan))setCreated(plan);else onComplete(plan);}} onBack={() => setReview(null)} /></main>;
   return <main className="onboarding-consumer">
-    <header className="onboarding-brand"><Logo /><span>Your next chapter</span></header>
+    <header className="onboarding-brand"><Logo /><button className="entry-link" onClick={() => setShowEducation(true)}>Explore Ask Arbor</button></header>
     <div className="onboarding-panel" ref={questionPanel} tabIndex={-1}>
       <div className="onboarding-progress"><span>Getting to know you · {step + 1} of {steps.length}</span><div role="progressbar" aria-label="Getting to know you" aria-valuemin={0} aria-valuemax={steps.length} aria-valuenow={step + 1}><i style={{width:`${(step + 1) / steps.length * 100}%`}}/></div></div>
       <form onSubmit={e => { e.preventDefault(); void next(); }} onKeyDown={e => {

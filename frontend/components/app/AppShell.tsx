@@ -55,7 +55,7 @@ export default function AppShell({ active, name, children, onSignOut, signingOut
           <header className="mb-7 flex min-w-0 flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
               <h1 ref={heading} tabIndex={-1} className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 outline-none sm:text-4xl">{active === "home" ? `Hello, ${name.trim().split(/\s+/)[0] || "there"}.` : destination?.label ?? "Settings"}</h1>
-              {active !== "home" && active !== "settings" && <p className="mt-2 text-sm text-slate-500">{{portfolio:"Your investments, in perspective.",ask:"Your Arbor investment companion."}[active]}</p>}
+              {active === "portfolio" && <p className="mt-2 text-sm text-slate-500">Your investments, in perspective.</p>}
             </div>
           </header>
           {logoutError && <p role="alert" className="mb-5 rounded-xl bg-red-50 p-4 text-sm text-red-800">{logoutError}</p>}
