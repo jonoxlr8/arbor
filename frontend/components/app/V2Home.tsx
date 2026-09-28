@@ -9,6 +9,7 @@ import PortfolioHistoryChart from "../portfolio/PortfolioHistoryChart";
 import { DataAttribution } from "../portfolio/LivePortfolio";
 import { planTargets } from "@/lib/planImplementation";
 import { recentLedgerActivity } from "@/lib/portfolioActivity";
+import InvestmentIdentity from "../InvestmentIdentity";
 import HomeGoal from "./HomeGoal";
 import PendingRecordingResume from "../contributions/PendingRecordingResume";
 
@@ -16,7 +17,8 @@ export default function V2Home({ value, userId, onPlanChange }: { value: PlanV2;
   const access = useAccountAccess();
   const available = access?.value?.availability?.live_portfolio === true && access.value.features.includes("live_portfolio");
   const implementationAllowed = value.plan.path === "long_term" && value.plan.readiness.actionable_contribution_guidance_allowed;
-  const monthlyAllowed = access?.value?.availability?.monthly_checkin === true && access.value.features.includes("monthly_contribution_planner") && value.plan.path === "long_term" && value.plan.plan_basis === "user_selected" && value.plan.readiness.actionable_contribution_guidance_allowed;
+  const plusMonthly = access?.value?.features.includes("monthly_contribution_planner") === true;
+  const monthlyAllowed = access?.value?.availability?.monthly_checkin === true && plusMonthly && value.plan.path === "long_term" && value.plan.plan_basis === "user_selected" && value.plan.readiness.actionable_contribution_guidance_allowed;
   const [monthly, setMonthly] = useState<MonthlyState | null>(null);
   const [monthlyError, setMonthlyError] = useState(false);
   const [portfolio, setPortfolio] = useState<LivePortfolioData | null>(null);
@@ -49,7 +51,7 @@ export default function V2Home({ value, userId, onPlanChange }: { value: PlanV2;
         <div className="home-history-empty"><span aria-hidden="true">◷</span><strong>Your investments.<br/>One clear view.</strong><p>{!implementationAllowed ? "Your saved profile and current path are ready to review. Tracking stays separate from your plan." : "Tracking isn’t available right now. Your chosen plan and ways to invest are ready to explore."}</p></div>
         <a className="entry-link" href="#portfolio">Explore your portfolio →</a>
       </section>}
-      <HomeGoal value={value} portfolio={portfolio} userId={userId} onPlanChange={onPlanChange} monthly={
+      <HomeGoal value={value} portfolio={portfolio} userId={userId} onPlanChange={onPlanChange} monthly={plusMonthly &&
         <a className="home-metric home-monthly" aria-label={`Review monthly contribution: ${formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP")}`} href={value.plan.path === "short_term" || !value.plan.readiness.actionable_contribution_guidance_allowed ? "#portfolio/plan" : "#home/monthly"}><p>Monthly contribution</p><strong>{formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP")}</strong><span aria-hidden="true">›</span>{currentMonthly?.current && <small className="completed-label">Recorded for {monthLabel(currentMonthly.month).split(" ")[0]}</small>}</a>
       } pending={userId ? <PendingRecordingResume userId={userId} compact monthlyAvailable={monthlyAllowed === true}/> : null}/>
     </div>
@@ -72,7 +74,7 @@ export function HomePlanContext({ value }: { value: PlanV2 }) {
 export function HomeActivity({state,error=false,portfolio=null,entries=[]}:{state:MonthlyState|null;error?:boolean;portfolio?:LivePortfolioData|null;entries?:InvestmentEntry[]}) {
   const events = recentLedgerActivity(entries,portfolio?.catalog ?? [],state);
   return <section className="home-activity"><header><h2>Recent activity</h2><a href="#portfolio/history" aria-label="View all recorded activity">View all →</a></header>
-    {events.length ? <>{error && <p role="status">Some activity is temporarily unavailable.</p>}<ul>{events.map(row=><li key={row.key}><time className="activity-date" dateTime={new Date(row.at).toISOString()}><small>{new Date(row.at).toLocaleDateString("en-PH",{month:"short",timeZone:"UTC"})}</small>{new Date(row.at).getUTCDate()}</time><div><strong>{row.title}</strong><small>{row.detail}</small></div>{row.amount !== null && <span>{formatContributionMoney(row.amount,"PHP")}</span>}</li>)}</ul></>
+    {events.length ? <>{error && <p role="status">Some activity is temporarily unavailable.</p>}<ul>{events.map(row=><li key={row.key}>{row.product_id ? <InvestmentIdentity product={row.product_id}/> : <time className="activity-date" dateTime={new Date(row.at).toISOString()}><small>{new Date(row.at).toLocaleDateString("en-PH",{month:"short",timeZone:"UTC"})}</small>{new Date(row.at).getUTCDate()}</time>}<div><strong>{row.title}</strong><small>{row.detail}</small>{row.product_id && <time dateTime={new Date(row.at).toISOString()}>{new Date(row.at).toLocaleDateString("en-PH",{month:"short",day:"numeric",timeZone:"UTC"})}</time>}</div>{row.amount !== null && <span>{formatContributionMoney(row.amount,"PHP")}</span>}</li>)}</ul></>
       : <div className="activity-empty">{error ? <p role="status">Activity is temporarily unavailable. Open your monthly contribution to retry.</p> : <p>Your investment activity will appear here.</p>}</div>}
     {state?.current && <p className="activity-note">Recorded as invested {checkinDate(state.current.completed_at)}. Holdings are tracked separately.</p>}
   </section>;

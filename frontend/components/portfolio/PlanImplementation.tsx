@@ -11,12 +11,11 @@ import { sleeveColors } from "../AssetIdentity";
 import Allocation from "./Allocation";
 import ImplementationPicker from "./ImplementationPicker";
 
-export function TrackingAvailability({ plus }: { plus: boolean }) {
+export function TrackingAvailability() {
   return <div className="tracking-availability">
     <span className="tracking-symbol" aria-hidden="true">◷</span>
-    <div><strong>{plus ? "Portfolio tracking is temporarily unavailable" : "Portfolio tracking is unavailable"}</strong>
-      <p>{plus ? "Your saved plan remains available. Please check back later to record investments." : "Your plan and ways to invest remain available while tracking is unavailable."}</p></div>
-    {!plus && <a className="entry-link" href="#settings/plus">Explore Arbor Plus <span aria-hidden="true">↗</span></a>}
+    <div><strong>Portfolio tracking is temporarily unavailable</strong>
+      <p>Your saved plan remains available. Please check back later to record investments.</p></div>
   </div>;
 }
 

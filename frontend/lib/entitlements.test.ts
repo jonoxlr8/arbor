@@ -16,10 +16,10 @@ const plus: Entitlements = {...free,tier:"plus",status:"trial",effective_tier:"p
   features:[...free.features,"profile_rebuild","monthly_contribution_planner","ask_arbor_full"],ask_monthly_limit:null,ask_usage:null};
 
 for (const [label,value] of [["Free",free],["Private Beta",plus],["Plus Active",{...plus,status:"active",private_beta:false}],["Expired Plus",{...free,tier:"plus",status:"expired"}]] as const) {
-  test(`Compare Plans ${label}: current access, plain prices, no payment action`,()=>{
+  test(`Compare Plans ${label}: learn-track versus understand-plan, no payment action`,()=>{
     const html=renderToStaticMarkup(createElement(ComparePlans,{value}));
-    assert.match(html,/₱399\/month/);assert.match(html,/₱3,990\/year/);assert.match(html,/₱0/);
-    assert.match(html,/10 Ask Arbor questions per month/);assert.match(html,/Full Ask Arbor access/);
+    assert.match(html,/Free · Learn and track/);assert.match(html,/Plus · Understand and plan/);
+    assert.match(html,/Limited Ask Arbor access is planned/);assert.match(html,/Allocation and Plan Alignment/);
     assert.match(html,/No payment is collected/);assert.doesNotMatch(html,/<button|checkout|Unlimited AI|Buy now/i);
     assert.equal(html.includes("Current plan: Arbor Plus — Private Beta"),value.private_beta);
     assert.match(html,/grid gap-5 md:grid-cols-2/);assert.match(html,/min-w-0/);

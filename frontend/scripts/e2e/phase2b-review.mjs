@@ -26,26 +26,39 @@ const breakdown = { contribution_amount: '10000.000', current_portfolio_value: '
   { sleeve: 'crypto', target_percentage_points: '10', current_value: '0', target_value_after_contribution: '2000', deficit: '2000', amount: '2000', product_id: 'pdax_btc', provider_id: 'pdax', minimum: null, status: 'ready' },
 ], provider_groups: [{ provider_id: 'gotrade', amount: '8000', ready_amount: '8000', verify_minimum_amount: '0', waiting_amount: '0' }, { provider_id: 'pdax', amount: '2000', ready_amount: '2000', verify_minimum_amount: '0', waiting_amount: '0' }], ready_amount: '10000', recordable_amount: '10000.000', verify_minimum_amount: '0', waiting_amount: '0', choose_investment_amount: '0', reserve_amount: '0', unallocated_amount: '0' };
 let checkin = null;
+let entitlementMode = 'plus';
+let showOpening = true;
+let hasProfile = true;
 const pending = [{ id: '00000000-0000-4000-8000-000000000201', product_id: 'gotrade_vt', provider: 'gotrade', source: 'monthly', status: 'pending', started_at: now, resolved_at: null }];
 const entries = [];
 const keys = new Map();
-let pageErrors = 0, consoleErrors = 0, blockedExternal = 0;
+let pageErrors = 0, consoleErrors = 0, expectedMissingProfile404 = 0, blockedExternal = 0;
 const browser = await chromium.launch({ channel: 'chrome' });
 const context = await browser.newContext({ viewport: { width: 1440, height: 950 }, colorScheme: 'light', reducedMotion: 'reduce' });
 const page = await context.newPage();
 page.on('pageerror', () => pageErrors++);
-page.on('console', message => { if (message.type() === 'error') consoleErrors++; });
+page.on('console', message => {
+  if (message.type() !== 'error') return;
+  if (!hasProfile && message.text().includes('404')) { expectedMissingProfile404++; return; }
+  consoleErrors++;
+});
 const headers = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization,content-type,apikey,x-client-info', 'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS' };
 function portfolio() {
   const vt = entries.filter(e => e.product_id === 'gotrade_vt' && !e.voided_at);
   const btc = entries.filter(e => e.product_id === 'pdax_btc' && !e.voided_at);
-  const vtUnits = (2 + vt.reduce((sum, e) => sum + Number(e.units), 0)).toFixed(5);
+  const vtUnits = ((showOpening ? 2 : 0) + vt.reduce((sum, e) => sum + Number(e.units), 0)).toFixed(5);
   const btcUnits = btc.reduce((sum, e) => sum + Number(e.units), 0).toFixed(8);
   const vtValue = (Number(vtUnits) * 5000).toFixed(2), btcValue = (Number(btcUnits) * 2000000).toFixed(2);
-  const holdings = [{ ...catalog[0], id: '00000000-0000-4000-8000-000000000101', units: vtUnits, cost_basis_php: vt.some(e => e.amount_paid_php === null) ? null : String(10000 + vt.reduce((sum, e) => sum + Number(e.amount_paid_php), 0)), manual_value_php: null, manual_value_updated_at: null, opening_units: '2', opening_cost_php: '10000', has_entries: vt.length > 0, value_php: vtValue, freshness: 'fresh', as_of: now, updated_at: now, created_at: now, valuation_source: 'market_reference', unit_price: '100', unit_price_currency: 'USD', recorded_gain_php: null, recorded_gain_percentage: null }];
+  const vtCost = vt.some(e => e.amount_paid_php === null) ? null : (showOpening ? 10000 : 0) + vt.reduce((sum, e) => sum + Number(e.amount_paid_php), 0);
+  const vtGain = vtCost === null ? null : (Number(vtValue) - vtCost).toFixed(2);
+  const holdings = showOpening || vt.length ? [{ ...catalog[0], id: '00000000-0000-4000-8000-000000000101', units: vtUnits, cost_basis_php: vtCost === null ? null : String(vtCost), manual_value_php: null, manual_value_updated_at: null, opening_units: showOpening ? '2' : '0', opening_cost_php: showOpening ? '10000' : null, has_entries: vt.length > 0, value_php: vtValue, freshness: 'fresh', as_of: now, updated_at: now, created_at: now, valuation_source: 'market_reference', unit_price: '100', unit_price_currency: 'USD', recorded_gain_php: vtGain, recorded_gain_percentage: vtGain === null || !vtCost ? null : (Number(vtGain) / vtCost * 100).toFixed(2) }] : [];
   if (btc.length) holdings.push({ ...catalog[1], id: '00000000-0000-4000-8000-000000000102', units: btcUnits, cost_basis_php: btc.some(e => e.amount_paid_php === null) ? null : String(btc.reduce((sum, e) => sum + Number(e.amount_paid_php), 0)), manual_value_php: null, manual_value_updated_at: null, opening_units: '0', opening_cost_php: null, has_entries: true, value_php: btcValue, freshness: 'fresh', as_of: now, updated_at: now, created_at: now, valuation_source: 'market_reference', unit_price: '2000000', unit_price_currency: 'PHP', recorded_gain_php: null, recorded_gain_percentage: null });
   const total = (Number(vtValue) + Number(btcValue)).toFixed(2);
-  return { currency: 'PHP', holdings, catalog, history: [], known_value_php: total, total_value_php: total, complete: true, unavailable_count: 0, stale_count: 0, provider_values_php: { gotrade: vtValue, ...(btc.length ? { pdax: btcValue } : {}) }, valued_at: now, data_sources: ['marketstack', 'coinranking'], sleeves: weights.map(w => ({ sleeve: w.role, known_value_php: w.role === 'global_equity' ? vtValue : w.role === 'crypto' ? btcValue : '0.00', current_percentage: w.role === 'global_equity' ? '100' : '0', target_percentage: w.percentage_points, difference_pp: '0' })) };
+  return { currency: 'PHP', holdings, catalog, history: [], known_value_php: total, total_value_php: total, complete: true, unavailable_count: 0, stale_count: 0, provider_values_php: { ...(holdings.length ? { gotrade: vtValue } : {}), ...(btc.length ? { pdax: btcValue } : {}) }, valued_at: now, data_sources: ['marketstack', 'coinranking'], sleeves: weights.map(w => {
+    const value = w.role === 'global_equity' ? Number(vtValue) : w.role === 'crypto' ? Number(btcValue) : 0;
+    const current = Number(total) > 0 ? value / Number(total) * 100 : null;
+    return { sleeve: w.role, known_value_php: value.toFixed(2), current_percentage: current === null ? null : current.toFixed(2), target_percentage: w.percentage_points, difference_pp: current === null ? null : (current - w.percentage_points).toFixed(2) };
+  }) };
 }
 await context.route('**/*', async route => {
   const request = route.request(), url = new URL(request.url()), path = url.pathname, method = request.method();
@@ -54,8 +67,14 @@ await context.route('**/*', async route => {
   if (method === 'OPTIONS') return route.fulfill({ status: 204, headers });
   if (path.endsWith('/auth/v1/token')) return json(session);
   if (path.endsWith('/auth/v1/user')) return json(user);
-  if (path.endsWith('/profiles/me')) return json(plan);
-  if (path.endsWith('/account/entitlements')) return json({ tier: 'plus', status: 'trial', effective_tier: 'plus', private_beta: true, features: ['live_portfolio', 'monthly_contribution_planner', 'monthly_checkin', 'profile_rebuild', 'future_projection', 'plan_alignment'], ask_monthly_limit: null, ask_usage: null, ask_usage_available: true, availability: { live_portfolio: true, monthly_checkin: true } });
+  if (path.endsWith('/profiles/me')) return hasProfile ? json(plan) : json({ detail: 'Profile not found' }, 404);
+  if (path.endsWith('/v2/approaches')) return json({ assessment: { requested_strategy: 'Growth', is_short_term: false }, approaches: [
+    { strategy: 'Conservative', allocation: [{ role: 'global_equity', percentage_points: 40 }, { role: 'defensive', percentage_points: 60 }], planning_return_pct: 4.0 },
+    { strategy: 'Balanced', allocation: [{ role: 'global_equity', percentage_points: 60 }, { role: 'defensive', percentage_points: 40 }], planning_return_pct: 4.5 },
+    { strategy: 'Growth', allocation: [{ role: 'global_equity', percentage_points: 80 }, { role: 'defensive', percentage_points: 20 }], planning_return_pct: 5.0 },
+    { strategy: 'Aggressive', allocation: [{ role: 'global_equity', percentage_points: 100 }, { role: 'defensive', percentage_points: 0 }], planning_return_pct: 5.5 },
+  ] });
+  if (path.endsWith('/account/entitlements')) return json({ tier: entitlementMode, status: entitlementMode === 'plus' ? 'trial' : 'active', effective_tier: entitlementMode, private_beta: entitlementMode === 'plus', features: entitlementMode === 'plus' ? ['live_portfolio', 'monthly_contribution_planner', 'monthly_checkin', 'profile_rebuild', 'future_projection', 'plan_alignment'] : ['live_portfolio', 'plan_creation', 'basic_implementation'], ask_monthly_limit: entitlementMode === 'plus' ? null : 10, ask_usage: null, ask_usage_available: true, availability: { live_portfolio: true, monthly_checkin: true } });
   if (path.endsWith('/v2/next-action')) return json({ key: 'review_monthly_contribution', title: 'Review your contribution', explanation: 'Local fixture', button_label: 'Review', blocking: false, destination: 'plan' });
   if (path.endsWith('/v2/future-projection')) return json({ starting_value_php: '10000.00', monthly_contribution_php: '10000.00', annual_planning_rate_pct: '5.500', inflation_planning_rate_pct: '3.0', whole_months: 120, target_date: '2036-09-28', projected_value_php: '342000.00', goal_target_php: '500000.00', difference_to_goal_php: '-158000.00', illustrative: true });
   if (path.endsWith('/v2/monthly-plan')) return json(breakdown);
@@ -81,7 +100,11 @@ await context.route('**/*', async route => {
     if (!item) return json({ detail: 'not found' }, 409);
     item.status = request.postDataJSON().resolution; item.resolved_at = now; return json(item);
   }
-  if (path.endsWith('/v2/portfolio') && method === 'GET') return json(portfolio());
+  if (path.endsWith('/v2/portfolio') && method === 'GET') {
+    const response = portfolio();
+    if (entitlementMode === 'free') { response.sleeves = []; response.provider_values_php = {}; }
+    return json(response);
+  }
   if (path.endsWith('/v2/portfolio/snapshot')) return json({ recorded: false, history: [] });
   if (path.endsWith('/v2/portfolio/entries') && method === 'GET') {
     const selected = url.searchParams.get('month'); const rows = entries.filter(e => !selected || e.investment_date.startsWith(selected));
@@ -106,6 +129,17 @@ async function shot(name, width, theme = 'light') {
   const offenders = overflow > 0 ? await page.evaluate(() => { const element = document.querySelector('.monthly-amount-input'); const chain = []; let current = element; while (current && chain.length < 9) { const r = current.getBoundingClientRect(); chain.push(`${current.tagName}.${String(current.className).slice(0, 35)} x=${Math.round(r.x)} w=${Math.round(r.width)}`); current = current.parentElement; } return chain; }) : [];
   assert.ok(overflow <= 0, `${name}: horizontal overflow ${overflow}px at ${offenders.join(', ')}`);
   const file = `${output}/${name}.png`; await page.screenshot({ path: file, fullPage: true, animations: 'disabled', style: 'nextjs-portal{display:none!important}' }); shots.push(file);
+  if (width <= 390) {
+    const reachable = await page.evaluate(() => {
+      const nav = document.querySelector('nav[aria-label="Mobile navigation"]');
+      const main = document.querySelector('#app-content');
+      if (!nav || !main || document.querySelector('[role="dialog"]')) return true;
+      window.scrollTo(0, document.documentElement.scrollHeight);
+      return (main.lastElementChild?.getBoundingClientRect().bottom ?? 0) <= nav.getBoundingClientRect().top;
+    });
+    assert.ok(reachable, `${name}: final content is hidden behind mobile navigation`);
+    await page.evaluate(() => window.scrollTo(0, 0));
+  }
 }
 try {
   await page.goto(`${origin}/#login`);
@@ -156,6 +190,8 @@ try {
   await page.evaluate(() => { location.hash = 'home'; });
   await page.getByText('Added to Bitcoin').waitFor();
   await shot('home-factual-recent-activity', 390);
+  await shot('phase2c-home-desktop', 1440);
+  await shot('phase2c-home-mobile', 390);
   await page.evaluate(() => { location.hash = 'portfolio'; });
   await page.getByRole('button', { name: 'View VT' }).waitFor();
   await page.evaluate(() => { location.hash = 'home/monthly'; });
@@ -166,6 +202,136 @@ try {
   assert.equal(entries.length, 2, 'Undo must not alter investment entries');
   await shot('mobile-320-after-undo', 320);
   assert.equal(entries.length, 2); assert.equal(entries[0].amount_paid_php, '6500'); assert.equal(entries[1].amount_paid_php, null);
-  assert.equal(pageErrors, 0); assert.equal(consoleErrors, 0); assert.equal(blockedExternal, 0);
-  console.log(JSON.stringify({ fixtureOnly: true, screenshots: shots, entries: entries.length, pageErrors, consoleErrors, blockedExternal }));
+  // Phase 2C review reuses this synthetic owner and intercepts every external call.
+  await page.evaluate(() => { location.hash = 'portfolio'; });
+  await page.getByRole('button', { name: 'View VT' }).waitFor();
+  await shot('phase2c-portfolio-plus-desktop', 1440);
+  await shot('phase2c-portfolio-plus-laptop', 1024);
+  await page.getByRole('button', { name: 'View VT' }).getByText('US$100 per share').waitFor();
+  await page.getByRole('button', { name: 'View Bitcoin' }).getByText('₱2,000,000 per BTC').waitFor();
+  await shot('phase2c-portfolio-plus-tablet', 768);
+  await shot('phase2c-portfolio-plus-mobile', 390);
+  await shot('phase2c-portfolio-plus-320', 320);
+  await shot('phase2c-gain-loss-dark-mobile', 390, 'dark');
+  const gainColors = await page.evaluate(() => {
+    const loss = document.querySelector('[data-gain="negative"]');
+    const unknown = document.querySelector('[data-gain="unknown"]');
+    const value = loss?.closest('.holding-money');
+    return [loss, unknown, value].map(element => element ? getComputedStyle(element).color : null);
+  });
+  assert.ok(gainColors.every(Boolean) && gainColors[0] !== gainColors[1] && gainColors[0] !== gainColors[2], 'loss, unknown cost, and current value need distinct dark-mode treatments');
+  await shot('phase2c-portfolio-plus-mobile', 390);
+  await page.getByRole('button', { name: 'View Bitcoin' }).click();
+  await page.getByText('₱2,000,000 per BTC', { exact: true }).waitFor();
+  await shot('phase2c-btc-detail-mobile', 390);
+  await page.getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'View VT' }).click();
+  await shot('phase2c-holding-detail-mobile', 390);
+  await shot('phase2c-gain-loss-dark-detail', 390, 'dark');
+  await shot('phase2c-holding-detail-mobile', 390);
+  await page.getByRole('button', { name: 'Close' }).click();
+  const vtEntry = entries.find(entry => entry.product_id === 'gotrade_vt');
+  assert.ok(vtEntry, 'synthetic VT addition must exist for gain-color review');
+  const originalCost = vtEntry.amount_paid_php;
+  for (const [cost, tone, expected] of [['500', 'positive', '+₱2,000'], ['2500', 'zero', '₱0 · 0%']]) {
+    vtEntry.amount_paid_php = cost;
+    await page.reload();
+    for (const theme of ['light', 'dark']) {
+      await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
+      const gain = page.locator(`.holding-row [data-gain="${tone}"]`);
+      await gain.waitFor();
+      assert.ok((await gain.textContent()).includes(expected));
+      const className = await gain.getAttribute('class');
+      assert.equal(className, tone === 'positive' ? 'text-emerald-700' : 'text-slate-900');
+    }
+  }
+  vtEntry.amount_paid_php = originalCost;
+  await page.reload();
+  await page.getByRole('button', { name: 'View VT' }).waitFor();
+  await page.evaluate(() => { location.hash = 'portfolio/insights'; });
+  await page.getByText('Plan Alignment').waitFor();
+  await shot('phase2c-plus-insights', 1440);
+  const portfolioIdentity = {};
+  for (const [product, label] of [['gotrade_vt', 'VT'], ['pdax_btc', 'Bitcoin']]) {
+    const row = page.getByRole('button', { name: `View ${label}` });
+    portfolioIdentity[product] = { product: await row.locator(':scope > .identity-mark').getAttribute('data-identity'), provider: await row.locator('.provider-brand [data-identity]').getAttribute('data-identity') };
+  }
+  await page.getByRole('button', { name: '+ Add Investment' }).click();
+  await shot('phase2c-add-investment', 390);
+  const addIdentity = {};
+  for (const product of ['gotrade_vt', 'pdax_btc']) {
+    const row = page.locator(`.catalogue-row[data-product="${product}"]`);
+    addIdentity[product] = { product: await row.locator(':scope > .identity-mark').getAttribute('data-identity'), provider: await row.locator('.provider-brand [data-identity]').getAttribute('data-identity') };
+  }
+  await page.getByRole('button', { name: 'Close' }).click();
+  await page.evaluate(() => { location.hash = 'portfolio/ways'; });
+  await page.locator('.implementation-option[data-product="gotrade_vt"]').waitFor();
+  await shot('phase2c-ways-mobile', 390);
+  const waysIdentity = {};
+  for (const product of ['gotrade_vt', 'pdax_btc']) {
+    const row = page.locator(`.implementation-option[data-product="${product}"]`);
+    waysIdentity[product] = { product: await row.locator(':scope > .identity-mark').getAttribute('data-identity'), provider: await row.locator('.provider-brand [data-identity]').getAttribute('data-identity') };
+    assert.deepEqual(portfolioIdentity[product], addIdentity[product]);
+    assert.deepEqual(portfolioIdentity[product], waysIdentity[product]);
+  }
+  await page.evaluate(() => { location.hash = 'settings'; });
+  await page.getByText('Account details').waitFor();
+  await shot('phase2c-settings', 1024);
+  entitlementMode = 'free';
+  await page.evaluate(() => { location.hash = 'home'; });
+  await page.reload();
+  await page.getByText('See where your plan could take you').waitFor();
+  await shot('phase2c-free-home', 1440);
+  await page.evaluate(() => { location.hash = 'portfolio'; });
+  await page.getByText('Understand your portfolio').waitFor();
+  assert.equal(await page.getByText('Portfolio insights').count(), 0, 'Free must not expose Plus insights');
+  assert.equal(await page.getByText('Plan Alignment').count(), 0, 'Free must not expose Plan Alignment');
+  await shot('phase2c-free-portfolio-mobile', 390);
+  entries.length = 0; showOpening = false;
+  await page.reload();
+  await page.getByRole('heading', { name: 'No investments recorded yet.' }).waitFor();
+  await shot('phase2c-empty-portfolio', 390);
+  await page.locator('.portfolio-ways-details summary').click();
+  await page.getByRole('heading', { name: 'Ways to invest' }).waitFor();
+  await shot('phase2c-free-ways-empty', 390);
+  await shot('phase2c-dark-portfolio', 390, 'dark');
+  await page.evaluate(() => { location.hash = 'home'; });
+  await page.getByText('See where your plan could take you').waitFor();
+  await shot('phase2c-free-home-320', 320);
+  hasProfile = false;
+  await page.reload();
+  if (await page.getByRole('heading', { name: 'Welcome back' }).isVisible()) {
+    await page.getByLabel('Email address').fill(user.email);
+    await page.getByLabel('Password').fill('fixture-only-password');
+    await page.getByRole('button', { name: 'Log in', exact: true }).click();
+  }
+  await shot('phase2c-onboarding-initial', 390);
+  await page.getByRole('heading', { name: 'What’s your name?' }).waitFor();
+  await page.locator('#full_name').fill('New QA');
+  await page.getByRole('button', { name: 'Continue →' }).click();
+  await page.getByRole('button', { name: /Philippines · PHP/ }).click();
+  await page.getByRole('button', { name: 'Continue →' }).click();
+  await page.getByRole('button', { name: 'Not yet' }).click();
+  await page.getByRole('button', { name: /10\+ years/ }).click();
+  await page.getByRole('button', { name: 'Continue →' }).click();
+  await page.getByRole('button', { name: /3–6 months/ }).click();
+  await page.getByRole('button', { name: 'Continue →' }).click();
+  await page.getByRole('button', { name: 'None', exact: true }).click();
+  await page.getByRole('button', { name: 'Continue →' }).click();
+  await page.locator('#current_portfolio_value').fill('0');
+  await page.getByRole('button', { name: 'Continue →' }).click();
+  await page.locator('#monthly_investment').fill('2000');
+  await page.getByRole('button', { name: 'Continue →' }).click();
+  await page.getByRole('button', { name: 'Hold', exact: true }).click();
+  await page.getByRole('button', { name: 'See my investing profile' }).click();
+  await page.getByRole('heading', { name: 'Your investing profile' }).waitFor();
+  await page.getByText('Comfortable with larger market swings', { exact: true }).waitFor();
+  assert.equal(await page.locator('.profile-assessment strong').textContent(), 'Comfortable with larger market swings');
+  await shot('phase2c-onboarding-informational-profile', 390);
+  await page.getByRole('button', { name: 'Compare approaches' }).click();
+  await page.getByRole('heading', { name: 'Choose your approach' }).waitFor();
+  assert.equal(await page.locator('.approach-option[aria-pressed="true"]').count(), 0, 'No plan may be silently chosen');
+  await shot('phase2c-onboarding-explicit-choice', 390);
+  assert.equal(pageErrors, 0, 'browser page errors'); assert.equal(consoleErrors, 0, 'browser console errors'); assert.equal(blockedExternal, 0, 'unhandled external requests');
+  console.log(JSON.stringify({ fixtureOnly: true, screenshots: shots, identityComparison: { portfolioIdentity, addIdentity, waysIdentity }, entries: entries.length, pageErrors, consoleErrors, expectedMissingProfile404, blockedExternal }));
 } finally { await browser.close(); }

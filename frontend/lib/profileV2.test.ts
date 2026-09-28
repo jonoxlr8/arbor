@@ -39,8 +39,10 @@ test("v2 unsupported destinations remain safe; settings preserves appearance and
   }
   const settings = renderToStaticMarkup(createElement(V2Destination, { value: fixture(), active: "settings" }));
   assert.match(settings, /Appearance/);
-  assert.match(settings, /Philippines/);
+  assert.match(settings, /Subscription/);
   const source = readFileSync("components/PlanV2View.tsx", "utf8");
+  assert.match(source, /Account details/);
+  assert.match(source, /value\.profile\.country/);
   assert.doesNotMatch(source, /ResultsDashboard|HoldingsSection|EditProfileForm|getMyPortfolioHealth|calculate/);
   assert.match(source, /useSyncExternalStore\(subscribeNavigation, navigationSnapshot, serverNavigationSnapshot\)/);
 });

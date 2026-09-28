@@ -65,4 +65,4 @@ def subscription_explanation(entitlements: Entitlements) -> str:
         return "You’re currently on Arbor Plus — Private Beta. All Plus features are unlocked free while Arbor is in private beta. No credit card or billing date is required."
     if entitlements.effective_tier == "plus":
         return "Your account has Arbor Plus access, including full Ask Arbor, contribution scenarios and profile editing. Investment decisions remain yours."
-    return "Your account has Arbor Free access: build and understand your plan, explore implementation options and ask 10 Ask Arbor questions per UTC calendar month. Explore Arbor Plus in Settings."
+    return "Your account has Arbor Free access: choose a plan, track supported investments and view your actual goal progress. Limited Ask Arbor access is planned for public launch; it is not active for private beta. Explore Arbor Plus in Settings."

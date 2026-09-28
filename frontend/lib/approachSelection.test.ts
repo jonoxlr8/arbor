@@ -21,10 +21,18 @@ test("investing profile summarizes answers without assigning a model or inventin
   const html=renderToStaticMarkup(createElement(InvestingProfileSummary,{input,assessment:options.assessment}));
   assert.match(html,/Your investing profile/);
   assert.match(html,/10\+ years/);
-  assert.match(html,/Conservative/);
+  assert.match(html,/Prefer steadier market movements/);
+  assert.doesNotMatch(html,/<strong>(Conservative|Balanced|Growth|Aggressive)<\/strong>/);
   assert.match(html,/Not set yet/);
   assert.match(html,/No plan has been selected for you/);
   assert.doesNotMatch(html,/Risk Score|recommended|satellite/i);
+});
+test("every informational profile headline is descriptive, not a selectable plan name",()=>{
+  for (const requested_strategy of ["Conservative","Balanced","Growth","Aggressive"] as const) {
+    const html=renderToStaticMarkup(createElement(InvestingProfileSummary,{input,assessment:{requested_strategy,is_short_term:false}}));
+    assert.match(html,/No plan has been selected for you/);
+    assert.doesNotMatch(html,/<strong>(Conservative|Balanced|Growth|Aggressive)<\/strong>/);
+  }
 });
 function selected(): PlanV2 {
   return {strategy_engine_version:"2.0",profile:{...input},plan:{strategy_engine_version:"2.0",plan_basis:"user_selected",path:"long_term",selected_strategy:"Growth",base_allocation:[{role:"global_equity",percentage_points:80},{role:"defensive",percentage_points:20}],planning_return_pct:5,inflation_pct:3,

@@ -59,9 +59,10 @@ def get_portfolio(response: Response, user_id: str = Depends(get_current_user_id
     # Daily snapshot capture is explicit POST, not a write hidden in GET.
     result = portfolio.model_dump(mode="json")
     if "plan_alignment" not in entitlements.get_entitlements(user_id).features:
-        for sleeve in result["sleeves"]:
-            sleeve["target_percentage"] = None
-            sleeve["difference_pp"] = None
+        # Tracking facts stay available on Free. Derived allocation and
+        # provider-group analysis are Plus-only and must not reach the client.
+        result["sleeves"] = []
+        result["provider_values_php"] = {}
     metadata = store.ledger_metadata()
     for holding in result["holdings"]:
         if holding["id"] not in metadata:

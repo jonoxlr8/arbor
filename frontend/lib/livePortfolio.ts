@@ -91,7 +91,7 @@ export function isPortfolio(value: unknown): value is LivePortfolioData {
     p.unavailable_count === p.holdings.filter(h => h.value_php === null).length && p.complete === (p.unavailable_count === 0) &&
     p.stale_count === p.holdings.filter(h => h.freshness === "stale").length &&
     isHistory(p.history) &&
-    Array.isArray(p.sleeves) && p.sleeves.length === 4 && p.sleeves.every(Boolean) && new Set(p.sleeves.map(s => s.sleeve)).size === 4 &&
+    Array.isArray(p.sleeves) && (p.sleeves.length === 0 || p.sleeves.length === 4) && p.sleeves.every(Boolean) && new Set(p.sleeves.map(s => s.sleeve)).size === p.sleeves.length &&
     p.sleeves.every(s => s && roles.includes(s.sleeve) && money(s.known_value_php) && (s.current_percentage === null || decimal(s.current_percentage)) &&
       (s.difference_pp === null || decimal(s.difference_pp)) && (s.target_percentage === null || (Number.isInteger(s.target_percentage) && s.target_percentage >= 0 && s.target_percentage <= 100)));
 }
@@ -102,7 +102,10 @@ export function validHolding(draft: HoldingDraft, catalog: PortfolioProduct[]) {
     (supportsManualValue(draft) ? (draft.units === null || unitsValid) && (draft.manual_value_php == null || manualValid) && (unitsValid || manualValid) : unitsValid && draft.manual_value_php == null) &&
     (draft.cost_basis_php === null || /^\d{1,16}(?:\.\d{1,2})?$/.test(draft.cost_basis_php));
 }
-export const portfolioValues = (p: LivePortfolioData) => Object.fromEntries(p.sleeves.map(s => [s.sleeve, s.known_value_php])) as Record<Sleeve, string>;
+export function portfolioValues(p: LivePortfolioData): Record<Sleeve, string> {
+  if (p.sleeves.length !== 4) throw new Error("Portfolio allocation is unavailable for this account.");
+  return Object.fromEntries(p.sleeves.map(s => [s.sleeve, s.known_value_php])) as Record<Sleeve, string>;
+}
 export function scenarioAvailability(plan: PlanV2, portfolio: LivePortfolioData) {
   if (plan.plan.path !== "long_term" || plan.plan.plan_basis !== "user_selected") return "plan_required";
   if (portfolio.holdings.length && (!portfolio.complete || portfolio.stale_count)) return "prices_required";

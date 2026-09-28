@@ -43,7 +43,17 @@ function PlanV2Shell({ value, userId, onSignOut, signingOut, logoutError, onPlan
   return <AppShell active={active} name={value.profile.full_name} onSignOut={onSignOut} signingOut={signingOut} logoutError={logoutError}>
     {choosing && userId && onPlanChange ? <PlusFeature feature="profile_rebuild" title="Review and rebuild your investment profile" onBack={() => setChoosing(false)}><InvestmentProfileEditor value={value} userId={userId} initialMode={editMode} onCancel={() => setChoosing(false)} onSaved={plan => { onPlanChange(plan); setChoosing(false); }} /></PlusFeature> : <>
       {((active === "home" && section === "monthly") || (active === "portfolio" && section === "contribution")) && userId && onPlanChange ? <PlusFeature feature="monthly_contribution_planner" title="Invest this month"><MonthlyInvesting value={value} userId={userId} onPlanChange={onPlanChange}/></PlusFeature> : active === "home" && <V2Home value={value} userId={userId} onPlanChange={onPlanChange}/>}
-      {active === "settings" && userId && onPlanChange && <section id="section-investment" className="settings-list" aria-label="Investment profile"><div className="settings-account-header"><span aria-hidden="true">{value.profile.full_name.trim().slice(0,1)}</span><div><strong>{value.profile.full_name}</strong><small>Your Arbor account</small></div></div><p className="settings-group-label">Investment</p><button className="settings-row" aria-label="Edit investment profile" onClick={() => {setEditMode("profile");setChoosing(true);}}><SettingsIcon kind="plan"/><span>Investment Profile<small className="block mt-1">Review your answers</small></span><span className="text-sm text-slate-500">›</span></button><button className="settings-row" onClick={()=>{setEditMode("plan");setChoosing(true);}}><SettingsIcon kind="plan"/><span>Change Plan<small className="block mt-1">Approach and optional exposure</small></span><span className="text-sm text-slate-500">{value.plan.path==="short_term"?"Short term":value.plan.selected_strategy} ›</span></button><a className="settings-row" href="#portfolio/ways"><SettingsIcon kind="plan"/><span>Your investment choices<small className="block mt-1">Ways to invest your plan</small></span><span aria-hidden="true">›</span></a></section>}
+      {active === "settings" && userId && onPlanChange && <section id="section-investment" className="settings-list" aria-label="Account and plan settings">
+        <p className="settings-group-label">Account</p>
+        <div className="settings-account-header"><span aria-hidden="true">{value.profile.full_name.trim().slice(0,1)}</span><div><strong>{value.profile.full_name}</strong><small>Your Arbor account</small></div></div>
+        <details><summary><SettingsIcon kind="account"/><span>Account details</span></summary><dl className="mt-4 space-y-3 text-sm text-slate-700"><div><dt>Name</dt><dd className="font-semibold">{value.profile.full_name}</dd></div><div><dt>Country</dt><dd className="font-semibold">{value.profile.country}</dd></div><div><dt>Planning currency</dt><dd className="font-semibold">{value.profile.currency}</dd></div></dl></details>
+        <p className="settings-group-label">Plan</p>
+        <a className="settings-row" href="#portfolio/plan"><SettingsIcon kind="plan"/><span>Your plan<small className="block mt-1">{value.plan.path === "short_term" ? "Short-term path" : value.plan.selected_strategy}</small></span><span aria-hidden="true">›</span></a>
+        <a className="settings-row" href="#home"><SettingsIcon kind="plan"/><span>Your goal<small className="block mt-1">View or edit your primary goal</small></span><span aria-hidden="true">›</span></a>
+        <button className="settings-row" aria-label="Edit investment profile" onClick={() => {setEditMode("profile");setChoosing(true);}}><SettingsIcon kind="plan"/><span>Investment profile<small className="block mt-1">Review or change your answers · Plus</small></span><span aria-hidden="true">›</span></button>
+        <button className="settings-row" onClick={()=>{setEditMode("plan");setChoosing(true);}}><SettingsIcon kind="plan"/><span>Change plan<small className="block mt-1">Changes targets, not investments · Plus</small></span><span aria-hidden="true">›</span></button>
+        <a className="settings-row" href="#portfolio/ways"><SettingsIcon kind="plan"/><span>Your investment choices<small className="block mt-1">Ways to invest your plan</small></span><span aria-hidden="true">›</span></a>
+      </section>}
       {active !== "home" && active !== "ask" && !(active==="portfolio"&&section==="contribution") && <V2Destination key={`${active}:${JSON.stringify(value)}`} value={value} active={active} userId={userId} section={section} onPlanChange={onPlanChange}/>}
     </>}
     {chatVisited && <div hidden={active !== "ask" || choosing}><ChatSection key={`${userId}:${JSON.stringify(value)}`} plan={value} /></div>}
@@ -60,24 +70,19 @@ export function V2Destination({ value, active, userId, section = "", onPlanChang
     {!hasOptions && <V2PlanContent value={value} />}
     {tracking && userId ? <LivePortfolio key={section} value={value} userId={userId} section={section} onPlanChange={onPlanChange}/> : <>
       <PlanImplementation value={value} userId={userId} onPlanChange={onPlanChange}/>
-      <TrackingAvailability plus={access?.value?.features.includes("live_portfolio") === true}/>
+      <TrackingAvailability/>
     </>}
     {hasOptions && <details className="portfolio-plan-details" open={section === "plan"}><summary className="font-semibold">Your plan details · {value.plan.selected_strategy}</summary><V2PlanContent value={value}/></details>}
     {value.plan.path === "short_term" || value.plan.plan_basis !== "user_selected" ? <p className="text-sm leading-6 text-slate-600">{value.plan.path === "short_term" ? "Long-term monthly investing is paused on your short-term path." : "Your historical plan remains saved. Explicitly choose an approach before exploring monthly investing."} <a className="entry-link" href="#settings/investment">Review investment profile</a></p> : null}
   </div>;
   if (active === "settings") return <div className="settings-list">
+    <p className="settings-group-label">Subscription</p>
     <details id="section-plus" open={section === "plus"}><summary><SettingsIcon kind="plus"/><span>Arbor Plus<small className="block mt-1">{access?.value?.private_beta ? "Private Beta · Included for now" : access?.value?.effective_tier === "free" ? "Arbor Free · Explore Plus" : "Arbor Plus · Your access"}</small></span></summary><AccountPlans /></details>
-    <p className="settings-group-label">Preferences</p>
+    <p className="settings-group-label">Appearance</p>
     <AppearanceSettings />
+    <p className="settings-group-label">Security</p>
     {userId && <details><summary><SettingsIcon kind="account"/><span>Change password<small className="block mt-1">Account &amp; security</small></span></summary><ChangePassword userId={userId}/></details>}
-    <details><summary><SettingsIcon kind="account"/><span>Account details</span></summary>
-      <dl className="mt-4 space-y-3 text-sm text-slate-700">
-        <div><dt>Name</dt><dd className="font-semibold">{value.profile.full_name}</dd></div>
-        <div><dt>Country</dt><dd className="font-semibold">{value.profile.country}</dd></div>
-        <div><dt>Planning currency</dt><dd className="font-semibold">{value.profile.currency}</dd></div>
-      </dl>
-      <p className="mt-4 text-sm text-slate-600">Use Edit investment profile to review assumptions and preview changes before saving.</p>
-    </details>
+    <p className="settings-group-label">About and data</p>
     <details><summary><SettingsIcon kind="help"/><span>Help &amp; disclosures</span></summary><p className="mt-2 text-sm text-slate-600">Ask Arbor can explain your plan and how existing tools work. You make your own investment decisions; projections are hypothetical. Arbor does not execute trades or hold your money.</p><a className="entry-link" href="#ask">Ask about Arbor →</a><p className="mt-3 text-xs text-slate-500">Arbor’s category and provider icons are original graphics. Investment and provider names are shown for identification only and do not imply affiliation, sponsorship or endorsement.</p></details>
   </div>;
   return <V2PlanContent value={value} />;

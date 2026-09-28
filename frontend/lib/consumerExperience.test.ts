@@ -36,6 +36,11 @@ test("empty history does not fabricate returns or chart points", () => {
   const html = render(createElement(PortfolioHistoryChart,{history:[]}));
   assert.match(html,/No investments recorded yet/); assert.match(html,/chart-plot/); assert.doesNotMatch(html, /12.4%|performance return/i);
 });
+test("current-only graph does not repeat the Portfolio summary amount", () => {
+  const html = render(createElement(PortfolioHistoryChart,{history:[],knownValue:"12800",holdingsCount:1}));
+  assert.match(html,/Current value · No history yet/);
+  assert.doesNotMatch(html,/₱12,800/);
+});
 test("single observation has exact recorded amount, not a synthetic graph", () => {
   const html = render(createElement(PortfolioHistoryChart,{history:[{day:"2026-09-24",value_php:"8000",captured_at:"2026-09-24T00:00:00Z"}]}));
   assert.match(html,/₱8,000/); assert.match(html,/one recorded portfolio value/); assert.match(html,/chart-plot/); assert.doesNotMatch(html,/Portfolio value change/);

@@ -1,4 +1,5 @@
 import type { PortfolioProduct } from "./livePortfolio";
+import { formatContributionMoney } from "./contributions";
 
 /** Display metadata only. The authenticated API catalog remains the product allowlist. */
 export type IdentityGlyph = "globe" | "circuit" | "shield" | "coin" | "layers" | "market" | "facets" | "wallet" | "coins" | "exchange";
@@ -21,8 +22,17 @@ export const PROVIDERS: Record<string, BrandIdentity> = {
 export function investmentMark(id: string): BrandIdentity {
   const display = investmentIdentity(id);
   const icon = display.category === "bitcoin" ? "coin" : /technology|_vgt$/.test(id) ? "circuit" : /defensive|_bnd$/.test(id) ? "shield" : "globe";
+  const tone = id === "gotrade_vt" ? "vt" : id === "gotrade_vgt" ? "vgt" : id === "gotrade_bnd" ? "vanguard_bond"
+    : id.startsWith("gcash_") ? "atram" : id.startsWith("dragonfi_") ? "bpi"
+    : display.category === "bitcoin" ? "crypto" : ({globe:"equity",circuit:"technology",shield:"defensive",coin:"crypto"} as const)[icon];
   return { name: display.fullName, fallback: display.shortName.slice(0, 3), icon,
-    tone: ({globe:"equity",circuit:"technology",shield:"defensive",coin:"crypto"} as const)[icon] };
+    tone };
+}
+/** Display-only formatting; preserves every decimal supplied by the portfolio API. */
+export function investmentUnitPrice(productId: string, value: string, currency: string): string {
+  const price = currency === "USD" ? `US${formatContributionMoney(value, currency)}` : formatContributionMoney(value, currency);
+  const unit = investmentIdentity(productId).category === "bitcoin" ? "BTC" : investmentIdentity(productId).category === "etf" ? "share" : "unit";
+  return `${price} per ${unit}`;
 }
 export const providerName = (id: string, fallback = id) => PROVIDERS[id]?.name ?? fallback;
 /** Display-only compatibility for canonical replies with legacy provider labels. */

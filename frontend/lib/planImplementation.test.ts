@@ -4,7 +4,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup as render } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import { PLAN_OPTIONS, implementationGroups, planTargets, providerDestination } from "./planImplementation";
-import { INVESTMENTS, providerName } from "./investmentIdentity";
+import { INVESTMENTS, investmentMark, providerName } from "./investmentIdentity";
+import InvestmentCatalogue from "../components/portfolio/InvestmentCatalogue";
 import { contributionFixture } from "./contributions.test";
 import { AccountAccessContext } from "../components/AccountAccess";
 import type { Entitlements } from "./entitlements";
@@ -60,6 +61,31 @@ test("twelve supported options have identities and neutral alphabetical provider
     for(const option of group){assert.ok(INVESTMENTS[option.product]);assert.ok(providerDestination(option.provider));}
   }
 });
+test("Ways to invest and Add Investment share every canonical product and provider identity", () => {
+  const value = plan();
+  if (value.plan.path !== "long_term") throw Error("Expected long-term plan");
+  value.plan.final_allocation = [
+    { role: "global_equity", percentage_points: 40 }, { role: "defensive", percentage_points: 30 },
+    { role: "technology_tilt", percentage_points: 20 }, { role: "crypto", percentage_points: 10 },
+  ];
+  const ways = render(createElement(PlanImplementation, { value }));
+  const choices = Object.values(PLAN_OPTIONS).flat();
+  const catalogue = render(createElement(InvestmentCatalogue, { catalog: choices.map(option => ({
+    product_id: option.product, provider: option.provider, provider_name: providerName(option.provider),
+    display_name: INVESTMENTS[option.product].fullName, sleeve: "global_equity" as const, price_kind: "reference" as const,
+  })), onSelect() {} }));
+  assert.equal(choices.length, 12);
+  for (const option of choices) {
+    const tone = investmentMark(option.product).tone;
+    const product = option.product.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    for (const [surface, html, tag] of [["Ways", ways, "li"], ["Add", catalogue, "button"]] as const) {
+      const row = html.match(new RegExp(`<${tag}[^>]*data-product="${product}"[^>]*>[\\s\\S]*?<\\/${tag}>`))?.[0];
+      assert.ok(row, `${surface} missing ${option.product}`);
+      assert.match(row, new RegExp(`data-identity="${tone}"`));
+      assert.match(row, new RegExp(`data-provider="${option.provider}"`));
+    }
+  }
+});
 test("official destinations fail closed for unknown providers or supplied URLs", () => {
   for(const key of ["https://evil.example","javascript:alert(1)","gotrade?next=x","ibkr","__proto__","constructor",""])assert.equal(providerDestination(key),null);
   for(const group of Object.values(PLAN_OPTIONS))for(const option of group){const url=new URL(providerDestination(option.provider)!);assert.equal(url.protocol,"https:");assert.equal(url.search,"");assert.equal(url.hash,"");}
@@ -95,9 +121,12 @@ test("explicit final allocation drives Ways to invest without changing the core"
   assert.deepEqual(implementationGroups(value).map(g=>g.role),["global_equity","technology_tilt","crypto"]);
   assert.deepEqual(value.plan.base_allocation,[{role:"global_equity",percentage_points:80},{role:"defensive",percentage_points:20}]);
 });
-test("Portfolio primary tabs contain no monthly peer",()=>{
+test("Portfolio is holdings-first with secondary history and Plus insights",()=>{
   const source=readFileSync("components/portfolio/LivePortfolio.tsx","utf8");
-  assert.match(source,/\["holdings", "performance", \.\.\.\(plusAlignment \? \["allocation"\] : \[\]\), "history"\]/);
+  assert.match(source,/section id="section-holdings"/);
+  assert.match(source,/Portfolio insights/);
+  assert.match(source,/Investment activity/);
+  assert.doesNotMatch(source,/portfolio-tabs|setTab\(/);
   assert.doesNotMatch(source,/showContribution|ContributionCard/);
 });
 test("Home always includes Portfolio while off and Free can read basic holdings",()=>{

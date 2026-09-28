@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { investmentIdentity, providerName } from "@/lib/investmentIdentity";
+import InvestmentIdentity from "../InvestmentIdentity";
+import ProviderIdentity from "../ProviderIdentity";
 import { pendingApi, pendingChanged, type PendingRecording } from "@/lib/pendingRecordings";
 
 export default function PendingRecordingResume({ userId, compact = false, monthlyAvailable = true, onRecord }:
@@ -29,11 +31,11 @@ export default function PendingRecordingResume({ userId, compact = false, monthl
   if (!items.length) return <p role="alert" className="pending-recording">{error} <button type="button" className="entry-link min-h-11" onClick={() => setRevision(value => value + 1)}>Retry</button></p>;
   return <section className={compact ? "pending-recording pending-recording-compact" : "pending-recording"} aria-label="Unfinished investment recordings">
     {compact ? <button type="button" className="pending-recording-toggle" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>
-      <span><strong>{items.length === 1 ? "Finish recording your investment" : "Finish recording investments"}</strong><small>{items.length === 1 ? `${investmentIdentity(items[0].product_id).shortName} · ${providerName(items[0].provider)}` : `${items.length} waiting`}</small></span><span aria-hidden="true">›</span>
+      {items.length === 1 && <InvestmentIdentity product={items[0].product_id}/>}<span><strong>{items.length === 1 ? "Finish recording your investment" : "Finish recording investments"}</strong><small>{items.length === 1 ? `${investmentIdentity(items[0].product_id).shortName} · ${providerName(items[0].provider)}` : `${items.length} waiting`}</small></span><span aria-hidden="true">›</span>
     </button> : <header><h3>Finish recording</h3><p>Only record units if you actually invested through your provider.</p></header>}
     {error && <p role="alert">{error} <button type="button" className="entry-link min-h-11" onClick={() => setRevision(value => value + 1)}>Retry</button></p>}
     {expanded && <ul>{items.map(item => <li key={item.id}>
-      <div><strong>{investmentIdentity(item.product_id).shortName}</strong><small>{providerName(item.provider)}</small></div>
+      <div className="investment-line"><InvestmentIdentity product={item.product_id}/><div><strong>{investmentIdentity(item.product_id).shortName}</strong><ProviderIdentity provider={item.provider}/></div></div>
       <div className="pending-recording-actions">
         {onRecord ? <button type="button" className="entry-primary min-h-11" disabled={Boolean(busy)} onClick={() => onRecord(item)}>Record investment</button>
           : <a className="entry-primary min-h-11" href={monthlyAvailable ? "#home/monthly" : "#portfolio/add"}>Record investment</a>}

@@ -105,6 +105,10 @@ test("desktop/mobile navigation share active destination and accessible profile/
     assert.match(html, /aria-label="Settings"/);
     assert.doesNotMatch(html, /Profile &amp; settings|Profile and settings/);
     assert.equal(html.includes("Sign out"), active === "settings");
+    if (active === "settings") {
+      assert.doesNotMatch(html, /Make Arbor feel like yours|Account &amp; security/);
+      assert.equal((html.match(/Sign out/g) ?? []).length, 1);
+    }
     assert.match(html, /safe-area-inset-bottom/);
     assert.match(html, /Skip to content/);
   }

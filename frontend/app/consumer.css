@@ -121,16 +121,29 @@
 .identity-mark[data-identity="technology"] {background:linear-gradient(140deg,light-dark(#ece7ff,#3c3456),light-dark(#dfe8ff,#263c57));color:light-dark(#5947b1,#cfc1ff);}
 .identity-mark[data-identity="defensive"] {background:light-dark(#dcefed,#234b4b);color:light-dark(#20666c,#a0deda);}
 .identity-mark[data-identity="crypto"] {background:light-dark(#fff0d6,#493a24);color:light-dark(#996013,#f5cc8c);border-radius:50%;}
+/* Product/issuer identity is primary; provider marks remain smaller and secondary. */
+.identity-mark {border-radius:50%;}
+.identity-mark[data-identity="vt"] {background:light-dark(#8b1231,#6f1731);color:#fff;}
+.identity-mark[data-identity="vgt"] {background:light-dark(#123f8a,#1a4b9a);color:#fff;}
+.identity-mark[data-identity="vanguard_bond"] {background:light-dark(#325376,#284564);color:#fff;}
+.identity-mark[data-identity="atram"] {background:light-dark(#086d6b,#0a6261);color:#fff;}
+.identity-mark[data-identity="bpi"] {background:light-dark(#a71932,#92253b);color:#fff;}
+.identity-mark[data-identity="crypto"] {background:light-dark(#ed9213,#c87a13);color:#fff;}
 .catalogue-categories {display:flex;gap:4px;padding:4px;background:var(--muted-surface);border-radius:13px;margin:16px 0 8px;}
 .catalogue-categories button {flex:1;min-height:44px;border-radius:10px;font-size:12px;color:var(--muted);}
 .catalogue-categories button[aria-pressed="true"] {background:var(--surface);color:var(--foreground);box-shadow:0 2px 8px #152d4410;font-weight:600;}
-.identity-small {width:24px;height:24px;border-radius:7px;font-size:9px;letter-spacing:-.03em;box-shadow:none;}
+.identity-small {width:24px;height:24px;border-radius:50%;font-size:9px;letter-spacing:-.03em;box-shadow:none;}
 .identity-mark[data-identity="gfunds"],.identity-mark[data-identity="gcrypto"] {background:light-dark(#e0eaff,#294367);color:light-dark(#2157b5,#b4ccff);}
 .identity-mark[data-identity="gotrade"] {background:light-dark(#dbf1e4,#244b3d);color:light-dark(#176849,#a8e5c8);}
 .identity-mark[data-identity="dragonfi"] {background:light-dark(#e9e3fa,#43355c);color:light-dark(#61429c,#d5bfff);}
 .identity-mark[data-identity="coins"] {background:light-dark(#def3f2,#234949);color:light-dark(#116d72,#a6e8e5);}
 .identity-mark[data-identity="pdax"] {background:light-dark(#e1eafb,#2d405c);color:light-dark(#224477,#b7d1f8);font-size:7px;letter-spacing:-.03em;}
 .provider-brand {gap:6px;font-size:11px;line-height:1.25;color:light-dark(#57687b,#aebed1);}
+.investment-line {display:flex;align-items:center;gap:12px;min-width:0;}
+.investment-line > div {min-width:0;}
+.investment-line > .identity-mark {width:40px;height:40px;}
+.investment-line .provider-brand {margin-top:4px;}
+.holding-detail-identity > div {min-width:0;}.holding-detail-identity strong,.holding-detail-identity small {display:block;}.holding-detail-identity strong {font-size:16px;line-height:1.35;}.holding-detail-identity small {font-size:11px;line-height:1.45;color:light-dark(#66788c,#adc0d0);}.holding-detail-identity .provider-brand {margin-top:5px;}
 .next-action-hero {min-height:205px;padding:25px 28px;border-radius:20px;background:linear-gradient(110deg,light-dark(#d9f1e6,#173b32),light-dark(#dceaf8,#253950) 64%,light-dark(#e7dff6,#3a3455));}
 .next-action-hero::after {display:none;}
 .hero-landscape {position:absolute;right:0;bottom:0;width:48%;height:100%;z-index:-1;opacity:.85;pointer-events:none;}
@@ -159,6 +172,8 @@
 .home-activity header a {display:grid;place-items:center;min-width:44px;min-height:44px;color:light-dark(#377568,#a4d8c4);}
 .home-activity li {display:flex;align-items:center;gap:12px;padding:16px 0;border-bottom:1px solid var(--line);font-size:11px;}
 .home-activity li > div {flex:1;}.home-activity li strong {font-weight:500;}.home-activity li small {display:block;margin-top:4px;color:light-dark(#697b91,#adbccc);font-size:10px;}
+.home-activity li > .identity-mark {width:40px;height:40px;}
+.home-activity li > div time {display:block;margin-top:5px;color:light-dark(#697b91,#adbccc);font-size:10px;}
 .activity-date {display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:36px;min-height:46px;border-radius:9px;background:var(--muted-surface);font-size:15px;}
 .activity-date small {text-transform:uppercase;font-size:9px!important;margin:0!important;}
 .activity-empty {padding:28px 12px;text-align:center;}.activity-empty > span {font-size:32px;color:light-dark(#73968c,#a9bfb9);}.activity-empty h3 {font-size:13px;font-weight:500;margin-top:12px;}.activity-empty p,.activity-note {font-size:11px;line-height:1.6;margin-top:8px;color:light-dark(#6a7b90,#a8b9cc);}
@@ -184,7 +199,7 @@
 .catalogue-search {display:flex;gap:8px;align-items:center;background:var(--muted-surface);border-radius:12px;padding:0 14px;}.catalogue-search > span:first-child {font-size:25px;color:light-dark(#78889c,#b5c4d9);}.catalogue-search input {border:0;min-width:0;min-height:46px;width:100%;background:transparent!important;padding:10px 0;font-size:14px;outline-offset:3px;}
 .investment-catalogue section {margin-top:22px;}.investment-catalogue h3 {font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:light-dark(#64768d,#b1c2d7);margin-bottom:8px;}
 .catalogue-list {border-radius:15px;background:color-mix(in srgb,var(--muted-surface) 38%,var(--surface));padding:0 12px;}
-.catalogue-row {display:flex;align-items:center;gap:12px;padding:17px 0;width:100%;text-align:left;border-bottom:1px solid var(--line);}.catalogue-row:last-child {border:0;}.catalogue-row:hover {background:var(--muted-surface);}.catalogue-row .identity-mark {width:46px;height:46px;border-radius:13px;}.catalogue-copy {flex:1;min-width:0;}.catalogue-copy strong {display:block;font-size:13px;line-height:1.5;font-weight:600;}.catalogue-copy > small {display:block;font-size:10px;line-height:1.5;margin-top:3px;color:light-dark(#738297,#b6c3d4);}.catalogue-copy .provider-brand {margin-top:6px;font-size:10px;}.catalogue-row .identity-small {width:18px;height:18px;border-radius:5px;font-size:7px;}.catalogue-empty {padding:35px 15px;text-align:center;font-size:14px;line-height:1.7;}
+.catalogue-row {display:flex;align-items:center;gap:12px;padding:17px 0;width:100%;text-align:left;border-bottom:1px solid var(--line);}.catalogue-row:last-child {border:0;}.catalogue-row:hover {background:var(--muted-surface);}.catalogue-row .identity-mark {width:46px;height:46px;border-radius:50%;}.catalogue-copy {flex:1;min-width:0;}.catalogue-copy strong {display:block;font-size:13px;line-height:1.5;font-weight:600;}.catalogue-copy > small {display:block;font-size:10px;line-height:1.5;margin-top:3px;color:light-dark(#738297,#b6c3d4);}.catalogue-copy .provider-brand {margin-top:6px;font-size:10px;}.catalogue-row .identity-small {width:18px;height:18px;border-radius:50%;font-size:7px;}.catalogue-empty {padding:35px 15px;text-align:center;font-size:14px;line-height:1.7;}
 .catalogue-back {font-size:12px;color:light-dark(#638171,#a7ccb8);min-height:44px;}.selected-investment {display:flex;align-items:center;gap:14px;padding:18px 14px;background:var(--muted-surface);border-radius:15px;margin-bottom:28px;}.selected-investment > div {min-width:0;}.selected-investment strong {display:block;font-size:14px;line-height:1.5;}.selected-investment small {display:block;font-size:10px;margin-top:4px;}.selected-investment .provider-brand {margin-top:7px;}.investment-form > label {font-size:13px;}.investment-form > label input {font-size:25px;font-weight:500;min-height:64px;letter-spacing:-.03em;}.investment-form > p {font-size:12px;line-height:1.65;}.investment-form details {font-size:12px;border-top:1px solid var(--line);padding-top:6px;}.form-footnote {color:light-dark(#708097,#acbcd1);font-size:11px!important;}
 .chat-welcome {padding:4px 0 18px;}.chat-welcome h2 {font-size:18px;}.chat-welcome p {font-size:12px;}.companion-mark {display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,light-dark(#e0f3e9,#214b3d),light-dark(#f2f6ff,#2e3f55));box-shadow:0 3px 10px #245a3510;}
 .chat-intro-bubble {display:flex;gap:12px;align-items:flex-start;max-width:92%;background:var(--surface);padding:22px;border-radius:6px 20px 20px 20px;font-size:15px;line-height:1.7;box-shadow:0 3px 18px #1d395108;}.chat-intro-bubble svg {flex:none;margin-top:2px;}
@@ -206,3 +221,13 @@
 @media(max-width:350px){.portfolio-tabs button{font-size:10px;padding-inline:2px}.portfolio-add{font-size:13px!important;padding-inline:12px!important}.holding-row{grid-template-columns:42px minmax(0,1fr) 14px}.holding-row>.identity-mark{width:42px;height:42px}.holding-money{overflow-wrap:anywhere}}
 @media(max-width:767px){.home-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.home-portfolio{grid-row:auto;grid-column:1/-1}.home-bottom{grid-template-columns:1fr}}
 @media(max-width:480px){.home-grid{grid-template-columns:1fr}.home-portfolio{grid-column:auto}.home-goal{order:1}.home-grid>.home-metric:not(.home-portfolio){order:2}.home-projection{order:3}.portfolio-toolbar .portfolio-add{width:100%;min-height:52px!important;font-size:14px!important}}
+
+/* Phase 2C keeps tracking and dated activity primary; interpretation is secondary. */
+.holding-row > .identity-mark,.holding-row > .asset-identity,.holding-detail-identity > .identity-mark,.holding-detail-identity > .asset-identity{border-radius:50%}
+.portfolio-insights,.portfolio-plus-preview,.portfolio-history-list{background:var(--surface);border-radius:18px;padding:18px 22px}
+.portfolio-insights > summary,.portfolio-history-list > summary{display:flex;align-items:center;min-height:44px;cursor:pointer;list-style:none}
+.portfolio-insights > summary::-webkit-details-marker,.portfolio-history-list > summary::-webkit-details-marker{display:none}
+.portfolio-insights > summary::after,.portfolio-history-list > summary::after{content:"›";margin-left:auto;color:light-dark(#68798c,#b4c3d4);font-size:22px}
+.portfolio-insights[open] > summary::after,.portfolio-history-list[open] > summary::after{transform:rotate(90deg)}
+.portfolio-plus-preview p{max-width:42rem;line-height:1.6}
+@media(max-width:480px){.portfolio-insights,.portfolio-plus-preview,.portfolio-history-list{padding:14px 16px}.holding-row > .identity-mark,.holding-row > .asset-identity{border-radius:50%}}

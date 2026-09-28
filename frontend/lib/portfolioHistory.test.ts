@@ -37,6 +37,8 @@ test("Bitcoin ledger activity uses BTC units and corrections are not new purchas
   assert.match(events[0].title,/Corrected Bitcoin/);
   assert.match(events[0].detail,/0\.01 BTC/);
   assert.equal(events[0].amount,null);
+  assert.equal(events[0].product_id,"pdax_btc");
+  assert.equal(events[0].provider,"pdax");
 });
 test("Home recent activity prefers record-change time over backdated investment date",()=>{
   const older={id:"old",holding_id:"h",product_id:"gotrade_vt",provider:"gotrade",investment_date:"2025-09-15",units:"0.5",amount_paid_php:null,recorded_at:"2026-09-28T10:00:00Z",updated_at:"2026-09-28T10:00:00Z",revision:1,voided_at:null} satisfies InvestmentEntry;

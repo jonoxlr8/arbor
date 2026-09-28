@@ -40,6 +40,12 @@ def chat(request: ChatRequest, user_id: str = Depends(get_current_user_id), auth
             result = explain_v2(request.message, plan, entitlements).model_dump()
             intent = result["intent"]
             portfolio = None
+            if intent == "actual_holdings" and "ask_arbor_full" not in entitlements.features:
+                result["reply"] = ("Your recorded holdings and current value are available in Portfolio. "
+                                   "Portfolio allocation and comparisons with your targets are part of Arbor Plus.")
+            if intent == "monthly_checkin" and "monthly_contribution_planner" not in entitlements.features:
+                result["reply"] = ("Monthly check-ins and contribution planning are part of Arbor Plus. "
+                                   "Your investment records remain available in Portfolio.")
             if intent == "monthly_plan" and "monthly_contribution_planner" in entitlements.features:
                 from app.routes.monthly_plan import owner_monthly_plan
                 from app.services.monthly_plan import explain_monthly_plan
@@ -52,7 +58,10 @@ def chat(request: ChatRequest, user_id: str = Depends(get_current_user_id), auth
                     result["reply"] = "I can’t calculate a complete monthly breakdown from the current data. I can’t reconstruct unsaved current-value inputs or a previous preview amount from chat. Open Invest this month on Home to review your current values and investment choices. Missing or stale values are not treated as zero."
             if intent == "actual_holdings" and not live_portfolio_enabled():
                 result["reply"] = "I can explain your selected plan, but Live Portfolio is not currently available, so I don’t have canonical current holdings to compare with it. Plan targets are not actual holdings. On Home, Invest this month lets you explicitly enter current sleeve values to calculate a breakdown. These inputs do not create recorded holdings."
-            if live_portfolio_enabled() and "live_portfolio" in entitlements.features and intent in ("actual_holdings", "holdings_help", "next_action", "overlap", "contribution"):
+            portfolio_intents = ("holdings_help", "next_action", "overlap", "contribution")
+            if "ask_arbor_full" in entitlements.features:
+                portfolio_intents += ("actual_holdings",)
+            if live_portfolio_enabled() and "live_portfolio" in entitlements.features and intent in portfolio_intents:
                 from app.routes.live_portfolio import optional_portfolio
                 from app.services.arbor.portfolio_explanation import explain_portfolio
                 from app.services.next_action import get_next_action
@@ -69,7 +78,7 @@ def chat(request: ChatRequest, user_id: str = Depends(get_current_user_id), auth
                     result["reply"] = "Recorded product quantities do not include current fund constituents. I can explain named products, but cannot measure underlying holdings overlap from sleeve targets or units alone."
                 elif portfolio is not None and portfolio.holdings:
                     result["reply"] = "On Home, Invest this month uses your recorded portfolio and available reference prices for contribution calculations. Choose implementation options yourself. Incomplete or stale values must be refreshed first. Readiness and your selected plan still control availability. I don’t select securities, calculate a separate scenario, or execute trades."
-            if intent in ("next_action", "monthly_checkin"):
+            if intent in ("next_action", "monthly_checkin") and "monthly_contribution_planner" in entitlements.features:
                 from app.services.monthly_checkin import read_monthly, explain_monthly
                 from app.services.next_action import get_next_action
                 monthly = read_monthly(user_id, authorization, plan, entitlements)

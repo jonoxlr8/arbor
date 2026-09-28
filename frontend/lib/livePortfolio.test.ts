@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createPortfolioApi, isPortfolio, validHolding, validEntryDraft, isInvestmentActivity, freshnessText, portfolioValues, scenarioAvailability, supportsManualValue, validManualValue, type LivePortfolioData } from "./livePortfolio";
-import LivePortfolio, { PortfolioSummary, PlanAlignment, DataAttribution } from "../components/portfolio/LivePortfolio";
+import LivePortfolio, { PortfolioSummary, PlanAlignment, DataAttribution, RecordedGain, recordedGainDisplay } from "../components/portfolio/LivePortfolio";
 import PortfolioHistoryChart from "../components/portfolio/PortfolioHistoryChart";
 import ContributionCard from "../components/contributions/ContributionCard";
 import { contributionFixture } from "./contributions.test";
@@ -24,6 +24,23 @@ export const portfolioFixture: LivePortfolioData = {
     {sleeve:"crypto",known_value_php:"0.00",current_percentage:"0",target_percentage:0,difference_pp:"0"}],
 };
 const html=(component: Parameters<typeof renderToStaticMarkup>[0])=>renderToStaticMarkup(component);
+test("recorded-cost gain colors follow the signed backend result, with neutral zero and unknown cost",()=>{
+  const base={...portfolioFixture.holdings[0],value_php:"12500.00",cost_basis_php:"16500.00",recorded_gain_php:"-4000.00",recorded_gain_percentage:"-24.2424"};
+  for (const [holding,tone,color,content] of [
+    [{...base,value_php:"20500.00",recorded_gain_php:"4000.00",recorded_gain_percentage:"24.2424"},"positive","text-emerald-700","+₱4,000 · +24.2%"],
+    [base,"negative","text-red-700","−₱4,000 · −24.2%"],
+    [{...base,value_php:"16500.00",recorded_gain_php:"0.00",recorded_gain_percentage:"0.000"},"zero","text-slate-900","₱0 · 0%"],
+    [{...base,cost_basis_php:null,recorded_gain_php:null,recorded_gain_percentage:null},"unknown","text-slate-500","Recorded cost needed"],
+  ] as const) {
+    const result=recordedGainDisplay(holding);
+    assert.equal(result.tone,tone);
+    assert.equal(result.text,content);
+    const markup=html(createElement(RecordedGain,{holding}));
+    assert.match(markup,new RegExp(`data-gain="${tone}"`));
+    assert.match(markup,new RegExp(color));
+    assert.ok(markup.includes(content));
+  }
+});
 for (const [status, code] of [[401,"portfolio_auth"],[403,"portfolio_entitlement"],[404,"portfolio_unavailable"],[500,"portfolio_server"],[503,"portfolio_server"]] as const) test(`read classifies ${status} without exposing body`, async () => {
   const api = createPortfolioApi(async()=>"fixture",async()=>Response.json({detail:"private database URL and payload"},{status}));
   await assert.rejects(api.read("A"), error => error instanceof PortfolioError && error.code === code && !error.message.includes("private"));
@@ -97,7 +114,7 @@ for (const enabled of [undefined, false, true]) test(`server availability ${enab
 });
 test("portfolio contract requires complete typed decimal data",()=>{
   assert.ok(isPortfolio(portfolioFixture));
-  for(const value of [null,{}, {...portfolioFixture,known_value_php:5600}, {...portfolioFixture,sleeves:[]}, {...portfolioFixture,holdings:[{}]}]) assert.equal(isPortfolio(value),false);
+  for(const value of [null,{}, {...portfolioFixture,known_value_php:5600}, {...portfolioFixture,holdings:[{}]}]) assert.equal(isPortfolio(value),false);
 });
 for(const sources of [["toap"], ["marketstack","coinranking","exchangerate_api","toap"], ["marketstack"], ["coinranking"], ["exchangerate_api"], []])test(`portfolio accepts canonical sources ${JSON.stringify(sources)}`,()=>{
   assert.ok(isPortfolio({...portfolioFixture,data_sources:sources}));
@@ -192,6 +209,12 @@ test("canonical holdings replace manual sleeve and ownership inputs; explicit op
   const markup=html(createElement(ContributionCard,{value:contributionFixture,userId:"test",portfolio:portfolioFixture}));
   assert.match(markup,/come from your saved holdings/);assert.match(markup,/Choose an option/);
   assert.doesNotMatch(markup,/Hypothetical current values|I do not own|Confirm ownership/);
+});
+test("Free portfolio accepts factual tracking without Plus allocation payload",()=>{
+  const basic={...portfolioFixture,sleeves:[],provider_values_php:{}};
+  assert.equal(isPortfolio(basic),true);
+  assert.throws(()=>portfolioValues(basic),/allocation is unavailable/);
+  assert.equal(isPortfolio({...basic,sleeves:portfolioFixture.sleeves.slice(0,1)}),false);
 });
 test("loading and Free entitlement surface are accessible",()=>{
   assert.match(html(createElement(LivePortfolio,{value:contributionFixture,userId:"test"})),/role="status"/);

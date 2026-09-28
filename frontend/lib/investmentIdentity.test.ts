@@ -4,8 +4,8 @@ import {createElement} from "react";
 import {renderToStaticMarkup as render} from "react-dom/server";
 import {readFileSync} from "node:fs";
 import {createHash} from "node:crypto";
-import {INVESTMENTS,ISSUERS,PROVIDERS,investmentMark,providerName,providerDisplayText,catalogueGroups} from "./investmentIdentity";
-import type {PortfolioProduct} from "./livePortfolio";
+import {INVESTMENTS,ISSUERS,PROVIDERS,investmentMark,investmentUnitPrice,providerName,providerDisplayText,catalogueGroups} from "./investmentIdentity";
+import type {PortfolioProduct,InvestmentEntry} from "./livePortfolio";
 import InvestmentIdentity from "../components/InvestmentIdentity";
 import ProviderIdentity from "../components/ProviderIdentity";
 import InvestmentCatalogue from "../components/portfolio/InvestmentCatalogue";
@@ -62,6 +62,20 @@ test("six providers have distinct original icons and visible factual names",()=>
   assert.match(render(createElement(InvestmentIdentity,{product:'dragonfi_defensive'})),/data-glyph="shield"/);
   assert.doesNotMatch(render(createElement(InvestmentIdentity,{product:'unknown',name:'Unknown investment'})),/<img/);
 });
+test("round product identities use issuer/product families rather than a shared Arbor tone",()=>{
+  assert.equal(investmentMark("gotrade_vt").tone,"vt");
+  assert.equal(investmentMark("gotrade_vgt").tone,"vgt");
+  assert.equal(investmentMark("gcash_global_equity").tone,"atram");
+  assert.equal(investmentMark("dragonfi_global_equity").tone,"bpi");
+  for (const product of ["gcrypto_btc","coins_btc","pdax_btc"]) assert.equal(investmentMark(product).tone,"crypto");
+  assert.match(render(createElement(InvestmentIdentity,{product:"gotrade_vt"})),/data-identity="vt"/);
+});
+test("unit-price display groups exact API decimals and uses product-appropriate units",()=>{
+  assert.equal(investmentUnitPrice("gotrade_vt","100","USD"),"US$100 per share");
+  assert.equal(investmentUnitPrice("gcash_global_equity","1234.56","PHP"),"₱1,234.56 per unit");
+  assert.equal(investmentUnitPrice("pdax_btc","2000000","PHP"),"₱2,000,000 per BTC");
+  assert.equal(investmentUnitPrice("pdax_btc","2000000.12345678","PHP"),"₱2,000,000.12345678 per BTC");
+});
 test("catalogue categories intersect with search and never expand server products",()=>{
   assert.equal(catalogueGroups(catalog,'','fund').flatMap(g=>g.products).length,6);
   assert.equal(catalogueGroups(catalog,'','etf').flatMap(g=>g.products).length,3);
@@ -104,6 +118,12 @@ test("Home shows only supplied history and labels undone records distinctly",()=
   assert.match(html,/₱5,000/);assert.match(html,/Holdings are tracked separately/);
   const undone=render(createElement(HomeActivity,{state:{month:"2026-09",current:null,history:[{...row,undone_at:"2026-09-25T08:00:00Z"}]}}));
   assert.match(undone,/Contribution undone/);assert.doesNotMatch(undone,/Contribution recorded/);
+});
+test("real Home investment activity uses the canonical product mark, while check-ins keep a date mark",()=>{
+  const entry={id:"one",holding_id:"holding",product_id:"pdax_btc",provider:"pdax",investment_date:"2026-09-25",units:"0.01",amount_paid_php:null,recorded_at:"2026-09-26T00:00:00Z",updated_at:"2026-09-27T00:00:00Z",revision:1,voided_at:null} satisfies InvestmentEntry;
+  const html=render(createElement(HomeActivity,{state:null,entries:[entry],portfolio:null}));
+  assert.match(html,/data-identity="crypto"/);assert.match(html,/Added to Bitcoin/);
+  assert.match(html,/Investment date 2026-09-25/);assert.doesNotMatch(html,/₱/);
 });
 test("price attribution stays visible while source explanation is disclosed",()=>{
   const source=readFileSync("components/portfolio/LivePortfolio.tsx","utf8");assert.match(source,/<\/details><DataAttribution/);assert.match(source,/About prices &amp; data/);

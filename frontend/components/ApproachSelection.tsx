@@ -16,11 +16,17 @@ const PROFILE_DESCRIPTION: Record<Strategy, string> = {
   Growth: "Your answers suggest you are comfortable with larger ups and downs over a long time horizon.",
   Aggressive: "Your answers suggest you are comfortable with substantial ups and downs over a long time horizon.",
 };
+const PROFILE_HEADLINE: Record<Strategy, string> = {
+  Conservative: "Prefer steadier market movements",
+  Balanced: "Comfortable balancing growth and stability",
+  Growth: "Comfortable with larger market swings",
+  Aggressive: "Comfortable with substantial market swings",
+};
 export function InvestingProfileSummary({ input, assessment }: { input: ProfileV2Input; assessment: Options["assessment"] }) {
   return <section aria-labelledby="investing-profile-heading">
     <p className="choice-eyebrow">A little clarity about you</p>
     <h2 id="investing-profile-heading" className="choice-heading">Your investing profile</h2>
-    <div className="profile-assessment"><span className="profile-orbit" aria-hidden="true"><ArborIdentityIcon glyph="globe"/></span><strong>{assessment.requested_strategy}</strong><p>{PROFILE_DESCRIPTION[assessment.requested_strategy]}</p></div>
+    <div className="profile-assessment"><span className="profile-orbit" aria-hidden="true"><ArborIdentityIcon glyph="globe"/></span><strong>{PROFILE_HEADLINE[assessment.requested_strategy]}</strong><p>{PROFILE_DESCRIPTION[assessment.requested_strategy]}</p></div>
     <p className="choice-intro">This summary is informational. No plan has been selected for you. You choose your approach next.</p>
     <ul className="profile-context"><li>{HORIZON_OPTIONS.find(([code]) => code === input.horizon)?.[1]}</li><li>₱{input.monthly_investment.toLocaleString("en-PH")} monthly plan</li><li>Goal: {input.goal_target == null ? "Not set yet" : `₱${input.goal_target.toLocaleString("en-PH")}`}</li></ul>
   </section>;

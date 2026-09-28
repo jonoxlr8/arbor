@@ -236,9 +236,61 @@ def test_free_basic_portfolio_keeps_ledger_and_value_but_not_plus_alignment(endp
     result = client.get("/v2/portfolio")
     assert result.status_code == 200
     assert result.json()["holdings"][0]["units"] == "2"
-    assert all(sleeve["target_percentage"] is None and sleeve["difference_pp"] is None
-               for sleeve in result.json()["sleeves"])
+    assert result.json()["holdings"][0]["value_php"] is not None
+    assert result.json()["sleeves"] == []
+    assert result.json()["provider_values_php"] == {}
     assert client.post("/v2/portfolio/scenarios/plan", json={"contribution_amount": "100", "route_id": "gotrade"}).status_code == 403
+
+
+def test_free_chat_does_not_return_plus_allocation_from_portfolio(endpoint, monkeypatch):
+    from app.routes import chat
+    monkeypatch.setattr(chat, "ask_usage", lambda *_args, **_kwargs: {"allowed": True})
+    client, state = endpoint
+    state["mode"] = "free"
+    row = holding("gotrade_vt", "2")
+    state["rows"]["A"] = {str(row.id): row}
+    response = client.post("/chat", json={"message": "How does my portfolio compare with my targets?"})
+    assert response.status_code == 200
+    assert response.json()["intent"] == "actual_holdings"
+    assert "Portfolio allocation and comparisons" in response.json()["reply"]
+    assert "100.00%" not in response.json()["reply"]
+    assert "5,000" not in response.json()["reply"]
+
+
+def test_free_chat_does_not_read_plus_monthly_checkin(endpoint, monkeypatch):
+    from app.routes import chat
+    from app.services import monthly_checkin
+    monkeypatch.setattr(chat, "ask_usage", lambda *_args, **_kwargs: {"allowed": True})
+    monkeypatch.setattr(monthly_checkin, "read_monthly", lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("Free read monthly state")))
+    client, state = endpoint
+    state["mode"] = "free"
+    response = client.post("/chat", json={"message": "Did I finish my monthly check-in?"})
+    assert response.status_code == 200
+    assert response.json()["intent"] == "monthly_checkin"
+    assert "part of Arbor Plus" in response.json()["reply"]
+
+
+def test_downgrade_preserves_tracking_records_without_plus_payload(endpoint):
+    client, state = endpoint
+    row = holding("gotrade_vt", "2")
+    state["rows"]["A"] = {str(row.id): row}
+    state["mode"] = "plus"
+    before = client.get("/v2/portfolio").json()
+    assert len(before["holdings"]) == 1
+    assert len(before["sleeves"]) == 4
+    state["mode"] = "free"
+    during = client.get("/v2/portfolio").json()
+    for key in ("id", "provider", "product_id", "units", "cost_basis_php", "value_php", "opening_units", "has_entries"):
+        assert during["holdings"][0][key] == before["holdings"][0][key]
+    assert during["history"] == before["history"]
+    assert during["sleeves"] == []
+    assert during["provider_values_php"] == {}
+    assert client.post("/v2/portfolio/scenarios/plan", json={"contribution_amount": "100", "route_id": "gotrade"}).status_code == 403
+    state["mode"] = "plus"
+    after = client.get("/v2/portfolio").json()
+    assert after["holdings"][0]["id"] == before["holdings"][0]["id"]
+    assert after["holdings"][0]["units"] == before["holdings"][0]["units"]
+    assert after["sleeves"] == before["sleeves"]
 
 
 def test_api_crud_owner_no_client_identity_and_decimals(endpoint):

@@ -34,7 +34,7 @@ export function PlusFeature({ feature, title, children, onBack }: { feature: str
   if (access.value.features.includes(feature)) return children;
   return <section className="arbor-panel"><p className="text-xs font-semibold text-slate-500">Arbor Plus</p>
     <h2 className="mt-2 text-xl font-semibold text-slate-900">{title}</h2>
-    <p className="mt-3 text-sm leading-6 text-slate-600">This ongoing planning tool is part of Plus. Your saved plan, basic planning assumptions and implementation education remain available on Free.</p>
+    <p className="mt-3 text-sm leading-6 text-slate-600">Explore this planning tool with Arbor Plus. Your saved plan and investment records remain available on Free.</p>
     <a href="#settings/plus" onClick={onBack} className="entry-secondary mt-4 inline-flex min-h-11 items-center">Explore Arbor Plus</a>
     {onBack && <button className="entry-link mt-3 min-h-11 w-full" onClick={onBack}>Back to your plan</button>}</section>;
 }
@@ -43,17 +43,16 @@ export function ComparePlans({ value }: { value: Entitlements }) {
   return <section className="arbor-panel" aria-labelledby="compare-plans-title">
     <h2 id="compare-plans-title" className="text-xl font-semibold text-slate-900">Compare Arbor plans</h2>
     <p role="status" className="mt-3 font-medium text-slate-900">Current plan: {value.private_beta ? "Arbor Plus — Private Beta" : value.effective_tier === "plus" ? "Arbor Plus" : "Arbor Free"}</p>
-    {value.private_beta && <p className="mt-2 text-sm leading-6 text-slate-600">All Plus features are unlocked free while Arbor is in private beta. Your feedback will help shape what goes into Free and Plus at launch.</p>}
+    {value.private_beta && <p className="mt-2 text-sm leading-6 text-slate-600">Plus Trial is included during private beta. There is no card or billing date.</p>}
     <div className="mt-6 grid gap-5 md:grid-cols-2">
-      <article className="min-w-0 rounded-2xl border border-slate-200 p-4"><h3 className="font-semibold text-slate-900">Arbor Free — ₱0</h3>
-        <p className="mt-2 text-sm text-slate-600">Build your investment plan and understand it.</p>
-        <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-700"><li>Readiness and informational self-assessment</li><li>Choose and view a standardized plan</li><li>Basic portfolio tracking and recorded-cost gain/loss</li><li>Basic planning assumptions and implementation education</li><li>10 Ask Arbor questions per month</li><li>Basic next-action guidance</li></ul></article>
-      <article className="min-w-0 rounded-2xl border border-slate-200 p-4"><h3 className="font-semibold text-slate-900">Arbor Plus — ₱399/month</h3>
-        <p className="mt-1 text-sm text-slate-500">Or ₱3,990/year at launch</p>
-        <p className="mt-2 text-sm text-slate-600">Stay aligned with the plan you chose.</p>
-        <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-700"><li>Everything in Free</li><li>Full Ask Arbor access under fair-use limits</li><li>Monthly Contribution Planner</li><li>Investment-profile editing and plan rebuild</li>{value.availability?.live_portfolio === true && <li>Live Portfolio and Plan Alignment</li>}</ul></article>
+      <article className="min-w-0 rounded-2xl border border-slate-200 p-4"><h3 className="font-semibold text-slate-900">Free · Learn and track</h3>
+        <p className="mt-2 text-sm text-slate-600">Choose your plan and keep an accurate record of what you own.</p>
+        <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-700"><li>Readiness assessment and your explicit plan choice</li><li>Ways to invest and official provider links</li><li>Supported holdings, dated activity, current value and recorded-cost gain/loss</li><li>Truthful portfolio graph and actual goal progress</li><li>Limited Ask Arbor access is planned for public launch</li></ul></article>
+      <article className="min-w-0 rounded-2xl border border-slate-200 p-4"><h3 className="font-semibold text-slate-900">Plus · Understand and plan</h3>
+        <p className="mt-2 text-sm text-slate-600">Explore where you could be headed and compare holdings with your chosen targets.</p>
+        <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-700"><li>Everything in Free</li><li>Allocation and Plan Alignment</li><li>Future projection and What If</li><li>Monthly contribution planning and follow-up</li><li>Change or rebuild your chosen plan</li><li>Expanded Ask Arbor support during private beta</li></ul></article>
     </div>
-    <p className="mt-4 text-sm leading-6 text-slate-500">Prices are launch planning assumptions. No payment is collected here. Private beta is free, with no credit card, billing date or trial countdown.</p>
+    <p className="mt-4 text-sm leading-6 text-slate-500">No payment is collected here. Private beta Plus Trial has no credit card, billing date or trial countdown.</p>
   </section>;
 }
 
