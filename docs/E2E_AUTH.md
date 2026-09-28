@@ -78,3 +78,55 @@ fresh disposable account when onboarding itself must be tested.
 Run helper regression tests with `npm run e2e:test`. These use synthetic SDK mocks,
 never hosted credentials. Live `e2e:auth` success must be checked separately after
 the dedicated account is configured. Production builds do not import this tooling.
+
+## Separate hosted production QA
+
+The generic `e2e:auth` and `withAuthenticatedBrowser` paths **remain loopback-only**.
+Never pass a deployed URL to them or copy their cached session to a browser profile.
+
+The separate `npm run e2e:hosted-qa` runner permits only `https://arbor.ph`,
+the fixed production API origin, and the reviewed production Supabase project
+origin. It uses the same owner-only `.env.e2e.local`
+configuration (`ARBOR_E2E_EMAIL`, `ARBOR_E2E_PASSWORD`, `ARBOR_E2E_USER_ID`,
+`ARBOR_E2E_ACCOUNT_IS_DISPOSABLE=true`) and the public Supabase URL and
+publishable key from `.env.local`. Values must never be pasted into chat or logs.
+Its two opt-ins must be supplied to the **current process**, not saved in an env
+file:
+
+```sh
+ARBOR_HOSTED_QA=1 npm run e2e:hosted-qa
+ARBOR_HOSTED_QA=1 ARBOR_HOSTED_QA_WRITE=1 npm run e2e:hosted-qa -- --write
+```
+
+The first command is read-only. It checks the dedicated account and tours the
+live app in a fresh headless Chrome context. It never imports personal cookies,
+Chrome profiles, or the local E2E session cache. It blocks unapproved network
+origins and application writes. Arbor's normal automatic snapshot POST is
+answered locally with the genuine history from the preceding portfolio GET,
+so a read-only tour does not create an observation or invent chart data.
+The backend's exact `/v2/future-projection` POST is permitted because it is
+documented as an ephemeral calculation that saves no scenario or history;
+other POSTs remain blocked without a reviewed write scope.
+
+The second command is intentionally write-capable and must be used only after
+the harness safety tests pass and its cleanup plan is reviewed. It allows only
+bounded owner-scoped actions for the current QA run. New investment entries are
+voided through Arbor's existing correction API, and newly created pending
+recordings are dismissed through the normal resolve API in a `finally` cleanup.
+If this run creates a monthly check-in, cleanup undoes it through Arbor's
+normal check-in API; the audit history remains. A single-run lock at
+`frontend/playwright/.auth/hosted-qa.lock` prevents overlapping hosted runs.
+After an interrupted run, inspect the dedicated QA account and confirm no QA
+process remains before removing that lock and retrying.
+The runner compares active holdings, entries, pending items and check-in state
+with the pre-run baseline and reports any cleanup failure. Voided entries remain
+as audit history. Do not use it to manufacture snapshots or alter a real user.
+
+Both modes require `getUser` to match the configured dedicated email and UUID;
+credentials alone are insufficient. Neither mode changes market data, NAVs,
+prices, feature flags, cron jobs, migrations, auth configuration, or billing.
+The runner rejects lookalike domains, HTTP, `www`, preview URLs and arbitrary
+hosts. No screenshots, traces, HAR, videos or raw network logs are saved.
+
+Before hosted use, run `npm run e2e:test`; this exercises both the unchanged
+local refusal and the hosted origin/identity/write gates with synthetic data.

@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 
 export class SetupError extends Error {}
 
-export function configuration(env) {
+export function qaAuthConfiguration(env, baseURL) {
   if (env.NODE_ENV === "production") throw new SetupError("E2E authentication is developer-only; do not run it with NODE_ENV=production.");
   const required = ["ARBOR_E2E_EMAIL", "ARBOR_E2E_PASSWORD", "ARBOR_E2E_USER_ID"];
   if (required.some(key => !env[key]?.trim())) {
@@ -16,16 +16,12 @@ export function configuration(env) {
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(env.ARBOR_E2E_USER_ID)) {
     throw new SetupError("Check the dedicated test email and Supabase user ID in .env.e2e.local.");
   }
-  let base, supabase;
+  let supabase;
   try {
-    base = new URL(env.ARBOR_E2E_BASE_URL || "http://localhost:3000");
     supabase = new URL(env.NEXT_PUBLIC_SUPABASE_URL);
-  } catch { throw new SetupError("Configure a local ARBOR_E2E_BASE_URL and the existing public Supabase URL."); }
+  } catch { throw new SetupError("Configure the existing public Supabase project root URL."); }
   const local = url => ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   const originOnly = url => !url.username && !url.password && url.pathname === "/" && !url.search && !url.hash;
-  if (!local(base) || !["http:", "https:"].includes(base.protocol) || !originOnly(base)) {
-    throw new SetupError("E2E browser authentication is restricted to a loopback origin, not the deployed Arbor site.");
-  }
   if (!originOnly(supabase) || (supabase.protocol !== "https:" && !(local(supabase) && supabase.protocol === "http:"))) {
     throw new SetupError("Use the Supabase project root URL; HTTPS is required except for a local Supabase instance.");
   }
@@ -35,11 +31,23 @@ export function configuration(env) {
   if (!key.startsWith("sb_publishable_") && !anon) {
     throw new SetupError("A Supabase publishable/anon key is required. Secret and service-role keys are forbidden.");
   }
-  return { baseURL:base.origin, supabaseURL:supabase.origin, key,
+  return { baseURL, supabaseURL:supabase.origin, key,
     email:env.ARBOR_E2E_EMAIL.trim(), password:env.ARBOR_E2E_PASSWORD,
     userId:env.ARBOR_E2E_USER_ID,
     // Supabase JS's default project-specific localStorage key (same browser SDK).
     storageKey:`sb-${supabase.hostname.split(".")[0]}-auth-token` };
+}
+
+export function configuration(env) {
+  let base;
+  try { base = new URL(env.ARBOR_E2E_BASE_URL || "http://localhost:3000"); }
+  catch { throw new SetupError("Configure a local ARBOR_E2E_BASE_URL and the existing public Supabase URL."); }
+  const local = ["localhost", "127.0.0.1", "[::1]"].includes(base.hostname);
+  if (!local || !["http:", "https:"].includes(base.protocol) || base.username || base.password ||
+      base.pathname !== "/" || base.search || base.hash) {
+    throw new SetupError("E2E browser authentication is restricted to a loopback origin, not the deployed Arbor site.");
+  }
+  return qaAuthConfiguration(env, base.origin);
 }
 
 export function sessionStorage(config, state) {
@@ -86,7 +94,7 @@ export async function authenticate(config, state, factory = createClient, { allo
     }
     if (result.error) throw new SetupError("Supabase could not verify the signed-in test account. Retry after checking the local setup.");
     checkOwner(result.data.user, config);
-    return {state:storage.snapshot(), reused};
+    return {state:storage.snapshot(), reused, verifiedUser:{id:result.data.user.id,email:result.data.user.email}};
   } catch (error) {
     if (error instanceof SetupError) throw error;
     throw new SetupError("Test authentication could not complete. Check the local setup and connectivity; provider details were withheld.");
