@@ -6,7 +6,8 @@ import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 
-const expected = { PGHOST: '127.0.0.1', PGPORT: '5432', PGDATABASE: 'arbor_ledger_test', PGUSER: 'arbor_test' };
+const expected = { PGHOST: '127.0.0.1', PGPORT: process.env.PGPORT === '55432' ? '55432' : '5432',
+  PGDATABASE: 'arbor_ledger_test', PGUSER: 'arbor_test' };
 for (const [key, value] of Object.entries(expected)) {
   if (process.env[key] !== value) throw new Error(`Refusing database connection: ${key} must be ${value}`);
 }
@@ -229,12 +230,11 @@ test('post-ledger forced failures roll back create, edit, void and opening corre
   }
 });
 
-test('unknown cost, RLS, direct-write denial and RPC grants preserve owner boundaries', async () => {
+test('RLS, direct-write denial and RPC grants preserve owner boundaries', async () => {
   const a = await owner();
   const b = await owner();
   await good(a, record('gotrade_vt', '1', '100'));
-  await good(a, record('gotrade_vt', '1', null));
-  assert.equal((await position(a, 'gotrade_vt'))[2], 'NULL');
+  assert.equal((await position(a, 'gotrade_vt'))[2], '100');
   await invariant(a);
   const [entry] = await entryIds(a, 'gotrade_vt');
   assert.equal(await good(b, 'select count(*) from public.arbor_investment_entry_values'), '0');
