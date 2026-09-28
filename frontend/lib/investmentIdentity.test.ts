@@ -73,8 +73,11 @@ test("round product identities use issuer/product families rather than a shared 
 test("unit-price display groups exact API decimals and uses product-appropriate units",()=>{
   assert.equal(investmentUnitPrice("gotrade_vt","100","USD"),"US$100 per share");
   assert.equal(investmentUnitPrice("gcash_global_equity","1234.56","PHP"),"₱1,234.56 per unit");
-  assert.equal(investmentUnitPrice("pdax_btc","2000000","PHP"),"₱2,000,000 per BTC");
-  assert.equal(investmentUnitPrice("pdax_btc","2000000.12345678","PHP"),"₱2,000,000.12345678 per BTC");
+  assert.equal(investmentUnitPrice("pdax_btc","2000000","PHP"),"₱2,000,000.00 per BTC");
+  assert.equal(investmentUnitPrice("pdax_btc","2000000.12345678","PHP"),"₱2,000,000.12 per BTC");
+  const longQuote = investmentUnitPrice("pdax_btc","5240321.537813270207","PHP");
+  assert.equal(longQuote,"₱5,240,321.54 per BTC");
+  assert.doesNotMatch(longQuote,/537813270207/);
 });
 test("catalogue categories intersect with search and never expand server products",()=>{
   assert.equal(catalogueGroups(catalog,'','fund').flatMap(g=>g.products).length,6);

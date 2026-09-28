@@ -5,6 +5,7 @@ import { apiBaseUrl } from "./apiConfig";
 import { boundedRequest } from "./dashboardConsistency";
 import { InvalidSessionError } from "./accountRecovery";
 import { isPlanV2 } from "./planV2";
+import { formatPhpMoney } from "./contributions";
 
 export type EditInputs = Omit<ProfileV2Input, "selected_approach" | "saved_preferences" | "explicit_customization" | "implementation_choices">;
 export type EditRequest = {inputs: EditInputs; proposed_approach: Strategy | "short_term" | null; expected_revision: string; explicit_customization?: ExplicitCustomization};
@@ -27,7 +28,7 @@ export function displayAnswer(field: string, value: unknown): string {
   if (value == null || value === "") return "Not set";
   const option = [...SAVINGS_OPTIONS,...DEBT_OPTIONS,...HORIZON_OPTIONS,...RISK_OPTIONS].find(([key])=>key===value);
   if (option) return option[1];
-  if (["goal_target","current_portfolio_value","monthly_investment"].includes(field)) return `₱${Number(value).toLocaleString("en-PH",{maximumFractionDigits:2})}`;
+  if (["goal_target","current_portfolio_value","monthly_investment"].includes(field)) return formatPhpMoney(String(value));
   return String(value);
 }
 export function planChoiceLabel(value: PlanV2): string {

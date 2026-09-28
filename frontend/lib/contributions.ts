@@ -21,10 +21,22 @@ export function decimalText(value: string): string {
   return whole + (fraction ? `.${fraction}` : "");
 }
 export const nonzero = (value: string) => decimalText(value) !== "0";
+/** Peso display only. Round decimal text to cents without converting money to a float. */
+export function formatPhpMoney(value: string): string {
+  const negative = value.startsWith("-");
+  const [whole, fraction = ""] = decimalText(negative ? value.slice(1) : value).split(".");
+  const cents = BigInt(whole) * BigInt(100) + BigInt(fraction.slice(0, 2).padEnd(2, "0")) + (Number(fraction[2] ?? "0") >= 5 ? BigInt(1) : BigInt(0));
+  const digits = cents.toString().padStart(3, "0");
+  const pesos = digits.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${negative && cents !== BigInt(0) ? "−" : ""}₱${pesos}.${digits.slice(-2)}`;
+}
 export function formatContributionMoney(value: string, currency: string) {
-  const [whole, fraction] = decimalText(value).split(".");
+  if (currency === "PHP") return formatPhpMoney(value);
+  const negative = value.startsWith("-");
+  const [whole, fraction] = decimalText(negative ? value.slice(1) : value).split(".");
   const prefix: Record<string, string> = { PHP: "₱", USD: "$", NZD: "NZ$", AUD: "A$", CAD: "C$", EUR: "€", GBP: "£" };
-  return `${prefix[currency] ?? `${currency} `}${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}${fraction ? `.${fraction}` : ""}`;
+  const displayedFraction = fraction?.length === 1 && currency !== "BTC" ? `${fraction}0` : fraction;
+  return `${negative ? "−" : ""}${prefix[currency] ?? `${currency} `}${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}${displayedFraction ? `.${displayedFraction}` : ""}`;
 }
 export function validInput(value: string, positive = false) {
   return value.length <= 80 && /^\d+(?:\.\d+)?$/.test(value) && (!positive || /[1-9]/.test(value));

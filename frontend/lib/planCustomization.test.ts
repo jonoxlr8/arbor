@@ -36,7 +36,14 @@ for (const choice of [{technology_tilt:0,bitcoin:0},{technology_tilt:10,bitcoin:
 test("backend final review shows 80/10/10 and explicit source, never an assessment recommendation",()=>{
   const html=render(createElement(FinalPlanReview,{value:fixture()}));
   for(const label of ["Aggressive","80%","10%","Global Equity","Technology","Bitcoin","You chose this allocation","Technology and Bitcoin were added by you"])assert.ok(html.includes(label));
+  for(const label of ["Monthly contribution","₱10,000","Illustrative planning assumption","5.5% per year"])assert.ok(html.includes(label));
   assert.doesNotMatch(html,/recommended|suitable|Defensive/);
+});
+test("final plan review includes saved goal context without changing the allocation",()=>{
+  const value=fixture();value.profile.goal_name="Buy a home";value.profile.goal_target=500000;
+  const html=render(createElement(FinalPlanReview,{value}));
+  assert.match(html,/Buy a home/);assert.match(html,/₱500,000/);
+  assert.equal(planTargets(value).reduce((sum,part)=>sum+part.percentage_points,0),100);
 });
 test("core None/None is complete and does not invent optional sleeves",()=>{
   const html=render(createElement(FinalPlanReview,{value:fixture(CORE_CUSTOMIZATION)}));

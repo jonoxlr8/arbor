@@ -35,10 +35,12 @@ test("current allocation is identified separately from plan targets", () => {
 test("empty history does not fabricate returns or chart points", () => {
   const html = render(createElement(PortfolioHistoryChart,{history:[]}));
   assert.match(html,/No investments recorded yet/); assert.match(html,/chart-plot/); assert.doesNotMatch(html, /12.4%|performance return/i);
+  assert.match(html,/No portfolio history yet/); assert.match(html,/chart-no-history-empty_zero/); assert.doesNotMatch(html,/chart-flat-line|<line|linearGradient/);
 });
 test("current-only graph does not repeat the Portfolio summary amount", () => {
   const html = render(createElement(PortfolioHistoryChart,{history:[],knownValue:"12800",holdingsCount:1}));
   assert.match(html,/Current value · No history yet/);
+  assert.match(html,/chart-no-history-current_only/); assert.doesNotMatch(html,/chart-flat-line|<line|linearGradient/);
   assert.doesNotMatch(html,/₱12,800/);
 });
 test("single observation has exact recorded amount, not a synthetic graph", () => {

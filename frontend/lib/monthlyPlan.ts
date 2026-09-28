@@ -3,6 +3,9 @@ import { apiBaseUrl } from "./apiConfig";
 import { boundedRequest } from "./dashboardConsistency";
 import { isPlanV2 } from "./planV2";
 import { PLAN_OPTIONS } from "./planImplementation";
+import { investmentIdentity } from "./investmentIdentity";
+import { formatPhpMoney } from "./contributions";
+import type { PortfolioHolding } from "./livePortfolio";
 import type { PlanV2 } from "./types/planV2";
 import type { MinimumCheck, Sleeve } from "./types/contributions";
 
@@ -24,16 +27,31 @@ export type MonthlyPlanInput = {
   contribution_amount: string; confirm_empty?: boolean;
   manual_current?: Record<Sleeve, string> & {currency: "PHP"; owned_product_ids: string[]};
 };
+export class MonthlyPlanConflictError extends Error {
+  constructor() {
+    super("Arbor couldn’t calculate this month’s plan. Review your saved plan and portfolio, then retry.");
+    this.name = "MonthlyPlanConflictError";
+  }
+}
+export function monthlyPlanConflictCopy(portfolio: {holdings: Pick<PortfolioHolding, "freshness" | "product_id" | "display_name">[]}): string {
+  const stale = portfolio.holdings.filter(holding => holding.freshness === "stale");
+  if (stale.length) {
+    const names = stale.map(holding => investmentIdentity(holding.product_id, holding.display_name).shortName).join(", ");
+    return `Arbor can’t calculate this month’s plan because ${names} ${stale.length === 1 ? "has a price" : "have prices"} too old for planning. Check the price date in Portfolio and retry when a newer official price is available. Don’t estimate a replacement value.`;
+  }
+  const unavailable = portfolio.holdings.filter(holding => holding.freshness === "unavailable");
+  if (unavailable.length) {
+    const names = unavailable.map(holding => investmentIdentity(holding.product_id, holding.display_name).shortName).join(", ");
+    return `Arbor can’t calculate this month’s plan because ${names} ${unavailable.length === 1 ? "has no usable current value" : "have no usable current values"}. Review the holding in Portfolio, then retry when its value is available.`;
+  }
+  return new MonthlyPlanConflictError().message;
+}
 const decimal = (v: unknown) => typeof v === "string" && /^\d+(\.\d+)?$/.test(v) && Number.isFinite(Number(v));
 const statuses = ["ready", "verify_minimum", "below_minimum", "choose_investment", "no_amount"];
-/** Display only: preserve backend decimal digits, including sub-cent planning
- * amounts. Never round or redistribute them in the browser. */
+/** Display only: the backend's exact planning decimals remain unchanged. */
 export function monthlyMoney(value:string):string {
   if(!/^-?\d+(\.\d+)?$/.test(value))throw new Error("Invalid monthly amount");
-  const negative=value.startsWith("-");
-  const [whole,fraction=""]=(negative?value.slice(1):value).split(".");
-  const significant=fraction.replace(/0+$/,"");
-  return `${negative?"−":""}₱${whole.replace(/\B(?=(\d{3})+(?!\d))/g,",")}${significant?`.${significant.padEnd(2,"0")}`:""}`;
+  return formatPhpMoney(value);
 }
 export function validMonthlyPlan(value: unknown): value is MonthlyPlan {
   if (!value || typeof value !== "object") return false;
@@ -56,7 +74,8 @@ export function createMonthlyPlanApi(token=getAccessToken, request: typeof fetch
       const response=await request(`${apiBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL,process.env.NODE_ENV)}/v2/${path}`,{
         method,signal:active,cache:"no-store",headers:{Authorization:`Bearer ${credential}`,"Content-Type":"application/json"},body:JSON.stringify(body),
       });
-      if(!response.ok)throw new Error(response.status===403 ? "Monthly investing is part of Arbor Plus, with an eligible long-term plan." : response.status===409 ? "Your plan or portfolio needs a fresh look. Reload your plan and update any missing or old holding values." : response.status===422 ? "Check your amount and choose a supported investment for each part of your plan." : "We couldn’t load or save these choices. Please retry.");
+      if(response.status===409)throw path==="monthly-plan" ? new MonthlyPlanConflictError() : new Error("Your plan changed before these choices could be saved. Reload your plan and try again.");
+      if(!response.ok)throw new Error(response.status===403 ? "Monthly investing is part of Arbor Plus, with an eligible long-term plan." : response.status===422 ? "Check your amount and choose a supported investment for each part of your plan." : "We couldn’t load or save these choices. Please retry.");
       return response.json();
     },signal);
   }

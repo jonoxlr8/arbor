@@ -40,7 +40,7 @@ function PlanV2Shell({ value, userId, onSignOut, signingOut, logoutError, onPlan
     setPreviousDestination(active);
     setChoosing(false);
   }
-  return <AppShell active={active} name={value.profile.full_name} onSignOut={onSignOut} signingOut={signingOut} logoutError={logoutError}>
+  return <AppShell active={active} pageTitle={(active === "home" && section === "monthly") || (active === "portfolio" && section === "contribution") ? "Monthly plan" : undefined} name={value.profile.full_name} onSignOut={onSignOut} signingOut={signingOut} logoutError={logoutError}>
     {choosing && userId && onPlanChange ? <PlusFeature feature="profile_rebuild" title="Review and rebuild your investment profile" onBack={() => setChoosing(false)}><InvestmentProfileEditor value={value} userId={userId} initialMode={editMode} onCancel={() => setChoosing(false)} onSaved={plan => { onPlanChange(plan); setChoosing(false); }} /></PlusFeature> : <>
       {((active === "home" && section === "monthly") || (active === "portfolio" && section === "contribution")) && userId && onPlanChange ? <PlusFeature feature="monthly_contribution_planner" title="Invest this month"><MonthlyInvesting value={value} userId={userId} onPlanChange={onPlanChange}/></PlusFeature> : active === "home" && (section === "plan" ? <><a href="#home" className="entry-link min-h-11 inline-flex items-center">‹ Home</a><V2PlanContent value={value}/></> : <V2Home value={value} userId={userId} onPlanChange={onPlanChange}/>)}
       {active === "settings" && userId && onPlanChange && <section id="section-investment" className="settings-list" aria-label="Account and plan settings">

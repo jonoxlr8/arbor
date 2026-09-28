@@ -2,7 +2,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PlanV2 } from "@/lib/types/planV2";
 import type { Sleeve } from "@/lib/types/contributions";
-import { monthlyPlanApi, monthlyMoney, type MonthlyPlan, type MonthlyPlanInput } from "@/lib/monthlyPlan";
+import { monthlyPlanApi, monthlyMoney, monthlyPlanConflictCopy, MonthlyPlanConflictError, type MonthlyPlan, type MonthlyPlanInput } from "@/lib/monthlyPlan";
+import { portfolioApi } from "@/lib/livePortfolio";
 import { SLEEVE_LABELS } from "@/lib/contributions";
 import { investmentIdentity, providerName } from "@/lib/investmentIdentity";
 import { useAccountAccess } from "../AccountAccess";
@@ -27,18 +28,26 @@ export default function MonthlyInvesting({value,userId,onPlanChange}:{value:Plan
   const [checkin,setCheckin]=useState<{owner:string;state:MonthlyState}|null>(null);
   const onCheckinChange=useCallback((state:MonthlyState)=>setCheckin({owner:userId,state}),[userId]);
   const [busy,setBusy]=useState(false),[error,setError]=useState("");
+  const [reviewPortfolio,setReviewPortfolio]=useState(false);
   const [choosing,setChoosing]=useState<Sleeve|null>(null);
   const request=useRef<AbortController|null>(null);
   useEffect(()=>()=>request.current?.abort(),[]);
-  function invalidate(){request.current?.abort();request.current=null;setResult(null);setBusy(false);setError("");}
+  function invalidate(){request.current?.abort();request.current=null;setResult(null);setBusy(false);setError("");setReviewPortfolio(false);}
   async function calculate(){
     if(request.current)return;
     if(!/^\d+(\.\d{1,2})?$/.test(amount)||Number(amount)<=0){setError("Enter a positive PHP contribution with up to two decimal places.");return;}
     if(!tracking&&!inputMode){setError("Tell Arbor whether you have existing investments before calculating.");return;}
-    const controller=new AbortController();request.current=controller;setBusy(true);setError("");
+    const controller=new AbortController();request.current=controller;setBusy(true);setError("");setReviewPortfolio(false);
     const input:MonthlyPlanInput={contribution_amount:amount,...(!tracking?(inputMode==="empty"?{confirm_empty:true}:{manual_current:{...manual,currency:"PHP",owned_product_ids:[]}}):{})};
     try{const next=await monthlyPlanApi.calculate(userId,input,controller.signal);if(!controller.signal.aborted)setResult(next);}
-    catch(e){if(!controller.signal.aborted)setError(e instanceof Error?e.message:"Please retry.");}
+    catch(e){
+      if(controller.signal.aborted)return;
+      if(e instanceof MonthlyPlanConflictError){
+        let message=e.message;
+        if(tracking)try{message=monthlyPlanConflictCopy(await portfolioApi.read(userId,controller.signal));}catch{/* Keep the safe plan/portfolio message if this read fails. */}
+        if(!controller.signal.aborted){setError(message);setReviewPortfolio(tracking);}
+      }else setError(e instanceof Error?e.message:"Please retry.");
+    }
     finally{if(request.current===controller)request.current=null;if(!controller.signal.aborted)setBusy(false);}
   }
   if(value.plan.path!=="long_term"||value.plan.plan_basis!=="user_selected"||!value.plan.readiness.actionable_contribution_guidance_allowed)return <section className="monthly-investing"><a className="entry-link monthly-back" href="#home">‹ Home</a><h2>{!value.plan.readiness.actionable_contribution_guidance_allowed?"Foundation First":value.plan.path==="short_term"?"Your short-term path":"Choose your plan first"}</h2><p className="mt-4 text-sm text-slate-600">Monthly investing is paused for your current path. Your saved plan stays unchanged.</p><a className="entry-link mt-4 inline-flex" href="#settings/investment">Review investment profile</a></section>;
@@ -55,7 +64,7 @@ export default function MonthlyInvesting({value,userId,onPlanChange}:{value:Plan
       {tracking&&<p className="monthly-source-note">Your recorded portfolio supplies current values automatically.</p>}
       <button className="entry-primary" disabled={busy}>{busy?"Calculating…":"Review contribution"}</button>
     </form>
-    {error&&<p id="monthly-plan-error" role="alert" className="monthly-error">{error}</p>}
+    {error&&<div id="monthly-plan-error" role="alert" className="monthly-error"><p>{error}</p>{reviewPortfolio&&<a className="entry-link inline-flex min-h-11 items-center" href="#portfolio/holdings">Review holdings in Portfolio →</a>}</div>}
     {result&&<section className="monthly-breakdown" aria-label="Monthly investment breakdown">
       <header><h3>Your contribution breakdown</h3><span>{money(result.contribution_amount)}</span></header>
       <p className="monthly-result-note">{result.source.includes("empty")?"No investments recorded yet. This starts from the targets you chose.":"Calculated from your current values and the gaps to your chosen targets."}</p>

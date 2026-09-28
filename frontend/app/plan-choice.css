@@ -94,6 +94,11 @@
 .final-plan-review .allocation-layout {background:linear-gradient(140deg,light-dark(#edf7f0,#19382e),light-dark(#eef1fc,#26334b));padding:32px;text-align:left;}
 .final-plan-review .allocation-ring {width:180px;height:180px;padding:21px;}
 .final-plan-review .allocation-ring > div {background:light-dark(#f2f7f3,#203b32);}
+.final-plan-facts {display:grid;gap:0;margin:16px 0;text-align:left;border:1px solid light-dark(#dce9e1,#3c5a4c);border-radius:12px;padding:2px 14px;}
+.final-plan-facts > div {display:flex;justify-content:space-between;gap:12px;padding:9px 0;font-size:12px;}
+.final-plan-facts > div + div {border-top:1px solid light-dark(#dce9e1,#3c5a4c);}
+.final-plan-facts dt {color:light-dark(#54715f,#b0cbbb);}
+.final-plan-facts dd {font-weight:600;text-align:right;}
 .plan-created .allocation-layout {margin:28px 0;gap:24px;text-align:left;}
 .plan-created .allocation-ring {width:140px;height:140px;padding:16px;}
 @media(max-width:600px) {

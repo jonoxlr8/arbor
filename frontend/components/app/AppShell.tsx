@@ -16,6 +16,7 @@ function NavIcon({ name }: { name: Destination }) {
 
 type Props = {
   active: Destination;
+  pageTitle?: string;
   name: string;
   children?: ReactNode;
   onSignOut: () => void;
@@ -23,7 +24,7 @@ type Props = {
   logoutError: string;
 };
 
-export default function AppShell({ active, name, children, onSignOut, signingOut, logoutError }: Props) {
+export default function AppShell({ active, pageTitle, name, children, onSignOut, signingOut, logoutError }: Props) {
   const heading = useRef<HTMLHeadingElement>(null);
   const previous = useRef(active);
   const destination = destinations.find(item => item.id === active);
@@ -54,7 +55,7 @@ export default function AppShell({ active, name, children, onSignOut, signingOut
         <main id="app-content" tabIndex={-1} className="mx-auto w-full min-w-0 max-w-6xl px-4 pt-7 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-8 lg:px-10 lg:py-10">
           <header className="mb-7 flex min-w-0 flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
-              <h1 ref={heading} tabIndex={-1} className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 outline-none sm:text-4xl">{active === "home" ? `Hello, ${name.trim().split(/\s+/)[0] || "there"}.` : destination?.label ?? "Settings"}</h1>
+              <h1 ref={heading} tabIndex={-1} className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 outline-none sm:text-4xl">{pageTitle ?? (active === "home" ? `Hello, ${name.trim().split(/\s+/)[0] || "there"}.` : destination?.label ?? "Settings")}</h1>
               {active === "portfolio" && <p className="mt-2 text-sm text-slate-500">Your investments, in perspective.</p>}
             </div>
           </header>

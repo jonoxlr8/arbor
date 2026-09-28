@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {createElement} from "react";
 import {renderToStaticMarkup as render} from "react-dom/server";
 import {readFileSync} from "node:fs";
-import {monthlyMoney,validMonthlyPlan,createMonthlyPlanApi,type MonthlyPlan} from "./monthlyPlan";
+import {monthlyMoney,validMonthlyPlan,createMonthlyPlanApi,monthlyPlanConflictCopy,MonthlyPlanConflictError,type MonthlyPlan} from "./monthlyPlan";
 import MonthlyInvesting from "../components/contributions/MonthlyInvesting";
 import {AccountAccessContext} from "../components/AccountAccess";
 import {contributionFixture} from "./contributions.test";
@@ -11,7 +11,7 @@ import type {Entitlements} from "./entitlements";
 
 export const monthlyPlanFixture:MonthlyPlan={contribution_amount:"10000",current_portfolio_value:"0",source:"recorded_portfolio",status:"waiting",rows:[{sleeve:"global_equity",target_percentage_points:"80",current_value:"0",target_value_after_contribution:"8000",deficit:"8000",amount:"8000",product_id:null,provider_id:null,minimum:null,status:"choose_investment"}],provider_groups:[],ready_amount:"0",recordable_amount:"0",verify_minimum_amount:"0",waiting_amount:"0",choose_investment_amount:"10000",reserve_amount:"0",unallocated_amount:"0"};
 test("monthly Decimal display preserves backend digits, signs and cents",()=>{
-  assert.equal(monthlyMoney("10000.00"),"₱10,000");assert.equal(monthlyMoney("800.008"),"₱800.008");assert.equal(monthlyMoney("-100.50"),"−₱100.50");assert.equal(monthlyMoney("0.002"),"₱0.002");
+  assert.equal(monthlyMoney("10000.00"),"₱10,000.00");assert.equal(monthlyMoney("800.008"),"₱800.01");assert.equal(monthlyMoney("-100.50"),"−₱100.50");assert.equal(monthlyMoney("0.002"),"₱0.00");
   for(const value of ["NaN","Infinity","bad","1e3"])assert.throws(()=>monthlyMoney(value));
 });
 test("monthly response accepts Decimal strings and rejects mismatched investment/provider",()=>{
@@ -26,7 +26,16 @@ test("monthly API sends only current inputs, not client targets/owner or provide
 });
 test("monthly API fails closed on incomplete success and stale portfolio",async()=>{
   await assert.rejects(createMonthlyPlanApi(async()=>"synthetic",async()=>Response.json({})).calculate("owner",{contribution_amount:"100"}),/could not be confirmed/);
-  await assert.rejects(createMonthlyPlanApi(async()=>"synthetic",async()=>Response.json({}, {status:409})).calculate("owner",{contribution_amount:"100"}),/fresh look/);
+  await assert.rejects(createMonthlyPlanApi(async()=>"synthetic",async()=>Response.json({}, {status:409})).calculate("owner",{contribution_amount:"100"}),MonthlyPlanConflictError);
+  await assert.rejects(createMonthlyPlanApi(async()=>"synthetic",async()=>Response.json({}, {status:409})).choose("owner",plan(),{}),/plan changed before these choices could be saved/);
+});
+test("monthly stale-value recovery names the affected holding without suggesting a guessed value",()=>{
+  const holding={product_id:"dragonfi_global_equity",display_name:"BPI Global Equity Fund-of-Funds",freshness:"stale" as const};
+  const copy=monthlyPlanConflictCopy({holdings:[holding]});
+  assert.match(copy,/BPI Global Equity/);assert.match(copy,/price date in Portfolio/);assert.match(copy,/Don’t estimate a replacement value/);
+  assert.doesNotMatch(copy,/409|canonical cache|freshness guard/);
+  assert.match(monthlyPlanConflictCopy({holdings:[{...holding,freshness:"unavailable"}]}),/no usable current value/);
+  assert.match(monthlyPlanConflictCopy({holdings:[]}),/Review your saved plan and portfolio/);
 });
 const plan=()=>{const p=structuredClone(contributionFixture);p.plan.plan_basis="user_selected";return p;};
 const access=(tracking:boolean):Entitlements=>({tier:"plus",status:"trial",effective_tier:"plus",private_beta:true,features:["live_portfolio","monthly_contribution_planner"],ask_monthly_limit:null,ask_usage:null,ask_usage_available:true,availability:{live_portfolio:tracking,monthly_checkin:true}});

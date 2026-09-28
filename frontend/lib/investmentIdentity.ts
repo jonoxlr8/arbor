@@ -28,10 +28,11 @@ export function investmentMark(id: string): BrandIdentity {
   return { name: display.fullName, fallback: display.shortName.slice(0, 3), icon,
     tone };
 }
-/** Display-only formatting; preserves every decimal supplied by the portfolio API. */
+/** Display-only formatting; never changes the portfolio API's quote or calculations. */
 export function investmentUnitPrice(productId: string, value: string, currency: string): string {
+  const category = investmentIdentity(productId).category;
   const price = currency === "USD" ? `US${formatContributionMoney(value, currency)}` : formatContributionMoney(value, currency);
-  const unit = investmentIdentity(productId).category === "bitcoin" ? "BTC" : investmentIdentity(productId).category === "etf" ? "share" : "unit";
+  const unit = category === "bitcoin" ? "BTC" : category === "etf" ? "share" : "unit";
   return `${price} per ${unit}`;
 }
 export const providerName = (id: string, fallback = id) => PROVIDERS[id]?.name ?? fallback;

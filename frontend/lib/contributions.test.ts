@@ -46,8 +46,16 @@ test("zero market values allowed; missing targets are not recreated", () => {
   assert.throws(() => contributionRequest({ ...contributionFixture, plan: { ...contributionFixture.plan, preference_result: undefined } }, "100", values, "gcash", [], false), /unavailable/);
   assert.throws(() => contributionRequest(contributionFixture, "100", { ...values, crypto: "" }, "gcash", [], false));
 });
-test("decimal strings formatted exactly without money floats", () => {
-  assert.equal(formatContributionMoney("12345678901234567890.123456789", "PHP"), "₱12,345,678,901,234,567,890.123456789");
+test("PHP display rounds string decimals to cents without money floats", () => {
+  assert.equal(formatContributionMoney("12345678901234567890.123456789", "PHP"), "₱12,345,678,901,234,567,890.12");
+  assert.equal(formatContributionMoney("0", "PHP"), "₱0.00");
+  assert.equal(formatContributionMoney("100", "PHP"), "₱100.00");
+  assert.equal(formatContributionMoney("6200", "PHP"), "₱6,200.00");
+  assert.equal(formatContributionMoney("13424.4", "PHP"), "₱13,424.40");
+  assert.equal(formatContributionMoney("101.7", "PHP"), "₱101.70");
+  assert.equal(formatContributionMoney("5240321.537813270207", "PHP"), "₱5,240,321.54");
+  assert.equal(formatContributionMoney("-250.5", "PHP"), "−₱250.50");
+  assert.equal(formatContributionMoney("-0.001", "PHP"), "₱0.00");
   assert.equal(formatContributionMoney("0.00002", "BTC"), "BTC 0.00002");
   assert.equal(decimalText("1.2E-7"), "0.00000012");
   assert.equal(decimalText("1E+3"), "1000");
@@ -110,12 +118,12 @@ for (const mode of ["plan", "recommendation"] as const) {
 test("below minimum and partial waiting retain available amounts", () => {
   const below = { ...minimum, status: "below_minimum" as const, amount_needed_to_minimum: "500" };
   const html = render(recommendation({ action: "wait", execution_status: "below_minimum", minimum: below }));
-  assert.match(html, /Difference to minimum: ₱500/); assert.match(html, /Available: ₱12,000/);
+  assert.match(html, /Difference to minimum: ₱500\.00/); assert.match(html, /Available: ₱12,000\.00/);
   const partial = render(plan({ status: "partial", invested_amount: "11300", unallocated_amount: "700", blocked_allocations: [{ ...row, allocated_amount: "0", minimum: below }] }));
-  assert.match(partial, /₱700 remains unallocated/); assert.match(partial, /Minimums to check/);
+  assert.match(partial, /₱700\.00 remains unallocated/); assert.match(partial, /Minimums to check/);
 });
 test("empty results and null product are safe", () => {
-  assert.match(render(plan({ allocations: [], invested_amount: "0", unallocated_amount: "12000", status: "wait" })), /₱12,000 remains unallocated/);
+  assert.match(render(plan({ allocations: [], invested_amount: "0", unallocated_amount: "12000", status: "wait" })), /₱12,000\.00 remains unallocated/);
   assert.match(render(recommendation({ selected: null, minimum: null, action: "no_action" })), /No eligible target gap/);
 });
 test("card labels, default monthly mode, feedback and placement", () => {

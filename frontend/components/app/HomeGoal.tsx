@@ -59,7 +59,7 @@ export default function HomeGoal({ value, portfolio, userId, onPlanChange, month
   }
   return <>
     <div className="home-utility-stack">
-    <section className="home-goal" aria-labelledby="home-goal-title"><header><div><p className="eyebrow">Your goal</p><h2 id="home-goal-title">{value.profile.goal_name || "Your goal"}</h2></div><button className="entry-link min-h-11" onClick={openGoal}>{progress ? "Edit goal" : "Set a goal"}</button></header>
+    <section className="home-goal" aria-labelledby="home-goal-title"><header><div>{value.profile.goal_name && value.profile.goal_name.trim().toLowerCase() !== "your goal" && <p className="eyebrow">Your goal</p>}<h2 id="home-goal-title">{value.profile.goal_name || "Your goal"}</h2></div><button className="entry-link min-h-11" onClick={openGoal}>{progress ? "Edit goal" : "Set a goal"}</button></header>
       {progress ? <><p className="goal-amount">{money(progress.knownValue)} <span>of {money(progress.target)}</span></p>{progress.complete ? <><p>{progress.percent}% complete</p><div className="goal-track" role="progressbar" aria-label="Goal progress" aria-valuenow={Number(progress.percent)} aria-valuemin={0} aria-valuemax={Math.max(100,Number(progress.percent))}><span style={{width:`${progress.barPercent}%`}}/></div></> : <p role="status">Known progress. Some investments need an updated value before Arbor can calculate complete progress.</p>}</>
         : value.profile.goal_target ? <p>{money(value.profile.goal_target)} target saved. {portfolio ? "Current progress is unavailable." : "Checking your recorded portfolio before showing progress."}</p>
         : <p>One amount to work toward. Add a goal to see your actual progress here.</p>}

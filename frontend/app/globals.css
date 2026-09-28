@@ -5,8 +5,8 @@
 @import "./monthly-investing.css";
 @import "./marketing.css";
 @import "./auth-experience.css";
-@import "./vision.css";
 @import "./ask-learn.css";
+@import "./v3.css";
 
 :root {
   color-scheme: light dark;

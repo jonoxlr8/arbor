@@ -27,9 +27,9 @@ const html=(component: Parameters<typeof renderToStaticMarkup>[0])=>renderToStat
 test("recorded-cost gain colors follow the signed backend result, with neutral zero and unknown cost",()=>{
   const base={...portfolioFixture.holdings[0],value_php:"12500.00",cost_basis_php:"16500.00",recorded_gain_php:"-4000.00",recorded_gain_percentage:"-24.2424"};
   for (const [holding,tone,color,content] of [
-    [{...base,value_php:"20500.00",recorded_gain_php:"4000.00",recorded_gain_percentage:"24.2424"},"positive","text-emerald-700","+₱4,000 · +24.2%"],
-    [base,"negative","text-red-700","−₱4,000 · −24.2%"],
-    [{...base,value_php:"16500.00",recorded_gain_php:"0.00",recorded_gain_percentage:"0.000"},"zero","text-slate-900","₱0 · 0%"],
+    [{...base,value_php:"20500.00",recorded_gain_php:"4000.00",recorded_gain_percentage:"24.2424"},"positive","text-emerald-700","+₱4,000.00 · +24.2%"],
+    [base,"negative","text-red-700","−₱4,000.00 · −24.2%"],
+    [{...base,value_php:"16500.00",recorded_gain_php:"0.00",recorded_gain_percentage:"0.000"},"zero","text-slate-900","₱0.00 · 0%"],
     [{...base,cost_basis_php:null,recorded_gain_php:null,recorded_gain_percentage:null},"unknown","text-slate-500","Recorded cost needed"],
   ] as const) {
     const result=recordedGainDisplay(holding);
@@ -43,7 +43,7 @@ test("recorded-cost gain colors follow the signed backend result, with neutral z
 });
 test("portfolio gain displays only backend-computed complete recorded-cost amounts",()=>{
   const fixture={...portfolioFixture, recorded_cost_php:"2000.00", recorded_gain_php:"0.00", recorded_gain_percentage:"0"};
-  assert.deepEqual(portfolioGainDisplay(fixture),{text:"₱0 · 0%",tone:"zero"});
+  assert.deepEqual(portfolioGainDisplay(fixture),{text:"₱0.00 · 0%",tone:"zero"});
   for (const [gain,pct,tone] of [["100.00","5","positive"],["-100.00","-5","negative"]] as const) {
     const markup=html(createElement(PortfolioGain,{portfolio:{...fixture,recorded_gain_php:gain,recorded_gain_percentage:pct}}));
     assert.match(markup,new RegExp(`data-gain="${tone}"`));
@@ -52,6 +52,18 @@ test("portfolio gain displays only backend-computed complete recorded-cost amoun
   assert.equal(portfolioGainDisplay({...fixture,recorded_cost_php:null,recorded_gain_php:null,recorded_gain_percentage:null}).text,"Recorded cost needed");
   assert.equal(portfolioGainDisplay({...fixture,complete:false,total_value_php:null}).text,"Gain/loss unavailable");
   assert.match(html(createElement(PortfolioSummary,{portfolio:fixture})),/Portfolio value graph/);
+});
+test("one genuine observation is a dated point, not a flat historical line",()=>{
+  const markup=html(createElement(PortfolioHistoryChart,{history:[{day:"2026-09-25",value_php:"10000.00",captured_at:"2026-09-25T00:00:00Z"}],knownValue:"10000.00",complete:true,holdingsCount:1}));
+  assert.match(markup,/chart-single-observation/);
+  assert.match(markup,/dateTime="2026-09-25"/);
+  assert.doesNotMatch(markup,/chart-flat-line|\+0%/);
+});
+test("a first investment at unchanged value has zero gain; empty portfolios show none",()=>{
+  const first={...portfolioFixture,known_value_php:"10000.00",total_value_php:"10000.00",recorded_cost_php:"10000.00",recorded_gain_php:"0.00",recorded_gain_percentage:"0"};
+  assert.match(html(createElement(PortfolioSummary,{portfolio:first})),/₱0\.00 · 0%/);
+  const empty={...first,holdings:[]};
+  assert.doesNotMatch(html(createElement(PortfolioSummary,{portfolio:empty})),/Gain\/loss against recorded cost/);
 });
 for (const [status, code] of [[401,"portfolio_auth"],[403,"portfolio_entitlement"],[404,"portfolio_unavailable"],[500,"portfolio_server"],[503,"portfolio_server"]] as const) test(`read classifies ${status} without exposing body`, async () => {
   const api = createPortfolioApi(async()=>"fixture",async()=>Response.json({detail:"private database URL and payload"},{status}));

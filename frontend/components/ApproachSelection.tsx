@@ -9,6 +9,7 @@ import { CORE_CUSTOMIZATION, FinalPlanReview, PlanCustomization } from "./PlanCu
 import Allocation from "./portfolio/Allocation";
 import { planTargets } from "@/lib/planImplementation";
 import ArborIdentityIcon from "./ArborIdentityIcon";
+import { formatContributionMoney } from "@/lib/contributions";
 
 const PROFILE_DESCRIPTION: Record<Strategy, string> = {
   Conservative: "Your answers suggest you prefer smaller ups and downs and place more importance on stability.",
@@ -28,7 +29,7 @@ export function InvestingProfileSummary({ input, assessment }: { input: ProfileV
     <h2 id="investing-profile-heading" className="choice-heading">Your investing profile</h2>
     <div className="profile-assessment"><span className="profile-orbit" aria-hidden="true"><ArborIdentityIcon glyph="globe"/></span><strong>{PROFILE_HEADLINE[assessment.requested_strategy]}</strong><p>{PROFILE_DESCRIPTION[assessment.requested_strategy]}</p></div>
     <p className="choice-intro">This summary is informational. No plan has been selected for you. You choose your approach next.</p>
-    <ul className="profile-context"><li>{HORIZON_OPTIONS.find(([code]) => code === input.horizon)?.[1]}</li><li>₱{input.monthly_investment.toLocaleString("en-PH")} monthly plan</li><li>Goal: {input.goal_target == null ? "Not set yet" : `₱${input.goal_target.toLocaleString("en-PH")}`}</li></ul>
+    <ul className="profile-context"><li>{HORIZON_OPTIONS.find(([code]) => code === input.horizon)?.[1]}</li><li>{formatContributionMoney(String(input.monthly_investment), "PHP")} monthly plan</li><li>Goal: {input.goal_target == null ? "Not set yet" : formatContributionMoney(String(input.goal_target), "PHP")}</li></ul>
   </section>;
 }
 

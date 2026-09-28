@@ -1,3 +1,5 @@
+import { formatPhpMoney } from "./contributions";
+
 export function formatMoney(value: number) {
   return new Intl.NumberFormat("en", {
     notation: "compact",
@@ -8,6 +10,7 @@ export function formatMoney(value: number) {
 export function formatPlanningMoney(value: number, currency: string) {
   const prefixes: Record<string, string> = { NZD: "NZ$", PHP: "₱", AUD: "A$", USD: "$", CAD: "C$", EUR: "€", GBP: "£" };
   const code = currency.trim().toUpperCase();
+  if (code === "PHP") return formatPhpMoney(String(value));
   const amount = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(Math.abs(value));
   return `${value < 0 ? "−" : ""}${prefixes[code] ?? `${code} `}${amount}`;
 }
