@@ -154,7 +154,19 @@ class PortfolioStore:
 
     @storage_errors
     def history(self):
-        return self.client.table("arbor_portfolio_history").select("day,value_php,captured_at").eq("user_id", self.owner).order("day", desc=True).limit(366).execute().data[::-1]
+        # A snapshot is at most daily, but All must not silently stop at a year.
+        # Page under the authenticated owner filter rather than trusting the
+        # PostgREST default row limit.
+        rows = []
+        page_size = 1000
+        while True:
+            page = (self.client.table("arbor_portfolio_history")
+                    .select("day,value_php,captured_at,recorded_cost_php,recorded_gain_php,recorded_gain_percentage,cost_complete,cost_context_captured,value_usd")
+                    .eq("user_id", self.owner).order("day")
+                    .range(len(rows), len(rows) + page_size - 1).execute().data)
+            rows.extend(page)
+            if len(page) < page_size:
+                return rows
 
     @storage_errors
     def capture(self):

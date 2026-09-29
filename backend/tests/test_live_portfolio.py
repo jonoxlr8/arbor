@@ -79,6 +79,17 @@ def test_exact_universe_supported_and_currency_valuation(product):
     assert len(result.holdings) == 1
 
 
+def test_current_usd_display_uses_decimal_fx_without_changing_php_cost_or_gain():
+    row = holding("gcrypto_btc", "0.01").model_copy(update={"cost_basis_php": Decimal("10000.00")})
+    result = valued([row], [price("btc_php", "1100000"), price("usd_php", "55")])
+    assert result.total_value_php == Decimal("11000.00")
+    assert result.total_value_usd == Decimal("200.00")
+    assert result.recorded_gain_php == Decimal("1000.00")
+    assert result.model_dump(mode="json")["total_value_usd"] == "200.00"
+    assert valued([row], [price("btc_php", "1100000")]).total_value_usd is None
+    assert valued([row], [price("btc_php", "1100000"), price("usd_php", "55", age=345601)]).total_value_usd is None
+
+
 @pytest.mark.parametrize("units", ["0", "-1", "NaN", "Infinity", "-Infinity", "1000000000000", "0.0000000000001", True])
 def test_invalid_units(units):
     with pytest.raises(ValidationError):

@@ -191,6 +191,7 @@ class Portfolio(DomainModel):
     holdings: tuple[ValuedHolding, ...]
     known_value_php: Decimal
     total_value_php: Decimal | None
+    total_value_usd: Decimal | None = None
     recorded_cost_php: Decimal | None
     recorded_gain_php: Decimal | None
     recorded_gain_percentage: Decimal | None
@@ -213,7 +214,7 @@ def value_portfolio(holdings: list[Holding], market: MarketData, target: Allocat
 
 def _value_portfolio(holdings, market, target, now):
     keys = {price_key(h.product_id) for h in holdings}
-    if any(h.provider == "gotrade" for h in holdings):
+    if holdings:
         keys.add("usd_php")
     prices = market.prices(keys)
     now = now or datetime.now(timezone.utc)
@@ -259,6 +260,11 @@ def _value_portfolio(holdings, market, target, now):
     total = sum(sleeves.values(), Decimal(0))
     missing = sum(r.value_php is None for r in rows)
     complete = missing == 0
+    fx = prices.get("usd_php")
+    fx_usable = (fx is not None and fx.value > 0 and
+                 0 <= (now - fx.as_of).total_seconds() <= price_limits("usd_php")[1])
+    total_usd = ((total / fx.value).quantize(Decimal(".01"), rounding=ROUND_HALF_UP)
+                 if complete and fx_usable else None)
     comparisons = []
     for role, value in sleeves.items():
         actual = value / total * 100 if complete and total else None
@@ -271,7 +277,8 @@ def _value_portfolio(holdings, market, target, now):
     recorded_gain = (total - recorded_cost if complete and recorded_cost is not None and recorded_cost > 0 else None)
     recorded_gain_percentage = (recorded_gain / recorded_cost * 100 if recorded_gain is not None else None)
     return Portfolio(holdings=tuple(rows), known_value_php=total,
-        total_value_php=total if complete else None, complete=complete, unavailable_count=missing,
+        total_value_php=total if complete else None, total_value_usd=total_usd,
+        complete=complete, unavailable_count=missing,
         recorded_cost_php=recorded_cost, recorded_gain_php=recorded_gain,
         recorded_gain_percentage=recorded_gain_percentage,
         bitcoin_units=sum((h.units for h in holdings if PRODUCTS[h.product_id].sleeve == AssetRole.CRYPTO), Decimal(0)),
