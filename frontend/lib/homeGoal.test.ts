@@ -40,3 +40,10 @@ test("goal, monthly action and projection retain the intended reading order",()=
   assert.ok(text.indexOf('id="home-goal-title"') < text.indexOf("Monthly contribution"));
   assert.ok(text.indexOf("Monthly contribution") < text.indexOf('id="home-projection-title"'));
 });
+test("only the entitled projection is marked Arbor Plus; basic goal progress is not",()=>{
+  const plus = markup(plan, holdings("0"), true);
+  assert.match(plus, /class="eyebrow plus-eyebrow">Arbor Plus<\/p><h2 id="home-projection-title"/);
+  assert.doesNotMatch(plus, /<section class="home-goal"[^>]*>\s*<p class="eyebrow plus-eyebrow"/);
+  const free = markup(plan, holdings("0"));
+  assert.doesNotMatch(free, /class="eyebrow plus-eyebrow"/);
+});

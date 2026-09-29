@@ -1,5 +1,5 @@
 import type { PortfolioProduct } from "./livePortfolio";
-import { formatContributionMoney } from "./contributions";
+import { formatContributionMoney, formatUsdQuote } from "./contributions";
 
 /** Display metadata only. The authenticated API catalog remains the product allowlist. */
 export type IdentityGlyph = "globe" | "circuit" | "shield" | "coin" | "layers" | "market" | "facets" | "wallet" | "coins" | "exchange";
@@ -31,7 +31,7 @@ export function investmentMark(id: string): BrandIdentity {
 /** Display-only formatting; never changes the portfolio API's quote or calculations. */
 export function investmentUnitPrice(productId: string, value: string, currency: string): string {
   const category = investmentIdentity(productId).category;
-  const price = currency === "USD" ? `US${formatContributionMoney(value, currency)}` : formatContributionMoney(value, currency);
+  const price = currency === "USD" ? formatUsdQuote(value) : formatContributionMoney(value, currency);
   const unit = category === "bitcoin" ? "BTC" : category === "etf" ? "share" : "unit";
   return `${price} per ${unit}`;
 }

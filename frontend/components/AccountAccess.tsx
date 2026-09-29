@@ -32,7 +32,7 @@ export function PlusFeature({ feature, title, children, onBack }: { feature: str
   const access = useAccountAccess();
   if (!access?.value) return <AccessLoading />;
   if (access.value.features.includes(feature)) return children;
-  return <section className="arbor-panel"><p className="text-xs font-semibold text-slate-500">Arbor Plus</p>
+  return <section className="arbor-panel"><p className="eyebrow plus-eyebrow">Arbor Plus</p>
     <h2 className="mt-2 text-xl font-semibold text-slate-900">{title}</h2>
     <p className="mt-3 text-sm leading-6 text-slate-600">Explore this planning tool with Arbor Plus. Your saved plan and investment records remain available on Free.</p>
     <a href="#settings/plus" onClick={onBack} className="entry-secondary mt-4 inline-flex min-h-11 items-center">Explore Arbor Plus</a>
@@ -42,13 +42,13 @@ export function PlusFeature({ feature, title, children, onBack }: { feature: str
 export function ComparePlans({ value }: { value: Entitlements }) {
   return <section className="arbor-panel" aria-labelledby="compare-plans-title">
     <h2 id="compare-plans-title" className="text-xl font-semibold text-slate-900">Compare Arbor plans</h2>
-    <p role="status" className="mt-3 font-medium text-slate-900">Current plan: {value.private_beta ? "Arbor Plus — Private Beta" : value.effective_tier === "plus" ? "Arbor Plus" : "Arbor Free"}</p>
+    <p role="status" className="mt-3 font-medium text-slate-900">Current plan: {value.private_beta ? "Arbor Plus Trial" : value.effective_tier === "plus" ? "Arbor Plus" : "Arbor Free"}</p>
     {value.private_beta && <p className="mt-2 text-sm leading-6 text-slate-600">Plus Trial is included during private beta. There is no card or billing date.</p>}
     <div className="mt-6 grid gap-5 md:grid-cols-2">
       <article className="min-w-0 rounded-2xl border border-slate-200 p-4"><h3 className="font-semibold text-slate-900">Free · Learn and track</h3>
         <p className="mt-2 text-sm text-slate-600">Choose your plan and keep an accurate record of what you own.</p>
         <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-700"><li>Readiness assessment and your explicit plan choice</li><li>Ways to invest and official provider links</li><li>Supported holdings, dated activity, current value and recorded-cost gain/loss</li><li>Truthful portfolio graph and actual goal progress</li><li>Limited Ask Arbor access is planned for public launch</li></ul></article>
-      <article className="min-w-0 rounded-2xl border border-slate-200 p-4"><h3 className="font-semibold text-slate-900">Plus · Understand and plan</h3>
+      <article className="min-w-0 rounded-2xl border border-slate-200 p-4"><h3 className="font-semibold text-slate-900">Arbor Plus · Understand and plan</h3>
         <p className="mt-2 text-sm text-slate-600">Explore where you could be headed and compare holdings with your chosen targets.</p>
         <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-700"><li>Everything in Free</li><li>Allocation and Plan Alignment</li><li>Future projection and What If</li><li>Monthly contribution planning and follow-up</li><li>Change or rebuild your chosen plan</li><li>Expanded Ask Arbor support during private beta</li></ul></article>
     </div>

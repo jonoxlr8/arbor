@@ -12,7 +12,7 @@ const labels = ["Build wealth", "Home", "Emergency fund", "Education", "Retireme
 const money = (value: string | number) => formatContributionMoney(String(value), "PHP");
 const signedMoney = (value: string) => value.startsWith("-") ? `−${money(value.slice(1))}` : `+${money(value)}`;
 
-export default function HomeGoal({ value, portfolio, userId, onPlanChange, monthly, pending }: { value: PlanV2; portfolio: LivePortfolioData | null; userId?: string; onPlanChange?: (plan:PlanV2)=>void; monthly?: ReactNode; pending?: ReactNode }) {
+export default function HomeGoal({ value, portfolio, userId, onPlanChange, monthly }: { value: PlanV2; portfolio: LivePortfolioData | null; userId?: string; onPlanChange?: (plan:PlanV2)=>void; monthly?: ReactNode }) {
   const access = useAccountAccess();
   const [editing, setEditing] = useState(false);
   const [step, setStep] = useState(0);
@@ -65,9 +65,8 @@ export default function HomeGoal({ value, portfolio, userId, onPlanChange, month
         : <p>One amount to work toward. Add a goal to see your actual progress here.</p>}
     </section>
     {monthly}
-    {pending}
     </div>
-    <section className="home-projection" aria-labelledby="home-projection-title"><p className="eyebrow">{plus ? "Arbor Plus" : "Plan ahead"}</p><h2 id="home-projection-title">{plus ? "Where you could be headed" : "See where your plan could take you"}</h2>
+    <section className="home-projection" aria-labelledby="home-projection-title"><p className={plus ? "eyebrow plus-eyebrow" : "eyebrow"}>{plus ? "Arbor Plus" : "Plan ahead"}</p><h2 id="home-projection-title">{plus ? "Where you could be headed" : "See where your plan could take you"}</h2>
       {!plus ? <><p>Explore future projections and monthly planning with Arbor Plus.</p><a className="entry-secondary min-h-11 inline-flex items-center" href="#settings/plus">Explore Arbor Plus</a></>
       : !eligible ? <p>{value.plan.path === "short_term" ? "A long-term projection is not shown for your short-term path." : "Review your long-term approach and readiness before exploring a projection."}</p>
       : !value.profile.goal_date ? <><p>Add a target date to see where your plan could be headed.</p><button className="entry-secondary min-h-11" onClick={openDate}>Add target date</button></>

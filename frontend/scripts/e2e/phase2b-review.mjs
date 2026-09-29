@@ -25,6 +25,7 @@ const catalog = [
   { product_id: 'gotrade_vt', provider: 'gotrade', provider_name: 'Gotrade', display_name: 'VT', sleeve: 'global_equity', price_kind: 'reference' },
   { product_id: 'pdax_btc', provider: 'pdax', provider_name: 'PDAX', display_name: 'Bitcoin', sleeve: 'crypto', price_kind: 'reference' },
   { product_id: 'gcash_global_equity', provider: 'gcash', provider_name: 'GFunds', display_name: 'ATRAM Global Equity Opportunity Feeder Fund', sleeve: 'global_equity', price_kind: 'nav' },
+  { product_id: 'gotrade_vgt', provider: 'gotrade', provider_name: 'Gotrade', display_name: 'VGT', sleeve: 'technology_tilt', price_kind: 'reference' },
 ];
 const breakdown = { contribution_amount: '10000.000', current_portfolio_value: '10000.00', source: 'recorded_portfolio', status: 'active', rows: [
   { sleeve: 'global_equity', target_percentage_points: '80', current_value: '10000', target_value_after_contribution: '16000', deficit: '6000', amount: '8000', product_id: 'gotrade_vt', provider_id: 'gotrade', minimum: null, status: 'ready' },
@@ -32,6 +33,7 @@ const breakdown = { contribution_amount: '10000.000', current_portfolio_value: '
 ], provider_groups: [{ provider_id: 'gotrade', amount: '8000', ready_amount: '8000', verify_minimum_amount: '0', waiting_amount: '0' }, { provider_id: 'pdax', amount: '2000', ready_amount: '2000', verify_minimum_amount: '0', waiting_amount: '0' }], ready_amount: '10000', recordable_amount: '10000.000', verify_minimum_amount: '0', waiting_amount: '0', choose_investment_amount: '0', reserve_amount: '0', unallocated_amount: '0' };
 let checkin = null;
 let entitlementMode = 'plus';
+let marketScreenshot = false;
 let showOpening = true;
 let hasProfile = true;
 const pending = [{ id: '00000000-0000-4000-8000-000000000201', product_id: 'gotrade_vt', provider: 'gotrade', source: 'monthly', status: 'pending', started_at: now, resolved_at: null }];
@@ -105,7 +107,7 @@ await context.route('**/*', async route => {
       : question.includes('ETF') ? 'An ETF is a fund whose shares trade on an exchange. Its market price can differ from its net asset value. Check your provider record for actual shares received.' : 'Your recorded portfolio value comes from canonical holdings and available reference prices. A contribution is not investment profit.';
     return json({ reply, category: 'investment', intent: 'education' });
   }
-  if (path.endsWith('/account/entitlements')) return json({ tier: entitlementMode, status: entitlementMode === 'plus' ? 'trial' : 'active', effective_tier: entitlementMode, private_beta: entitlementMode === 'plus', features: entitlementMode === 'plus' ? ['live_portfolio', 'monthly_contribution_planner', 'monthly_checkin', 'profile_rebuild', 'future_projection', 'plan_alignment'] : ['live_portfolio', 'plan_creation', 'basic_implementation'], ask_monthly_limit: entitlementMode === 'plus' ? null : 10, ask_usage: null, ask_usage_available: true, availability: { live_portfolio: true, monthly_checkin: true } });
+  if (path.endsWith('/account/entitlements')) return json({ tier: entitlementMode, status: entitlementMode === 'plus' ? 'trial' : 'active', effective_tier: entitlementMode, private_beta: entitlementMode === 'plus', features: entitlementMode === 'plus' ? ['live_portfolio', 'monthly_contribution_planner', 'monthly_checkin', 'profile_rebuild', 'future_projection', 'plan_alignment', 'ask_arbor_full'] : ['live_portfolio', 'plan_creation', 'basic_implementation'], ask_monthly_limit: entitlementMode === 'plus' ? null : 10, ask_usage: null, ask_usage_available: true, availability: { live_portfolio: true, monthly_checkin: true } });
   if (path.endsWith('/v2/next-action')) return json({ key: 'review_monthly_contribution', title: 'Review your contribution', explanation: 'Local fixture', button_label: 'Review', blocking: false, destination: 'plan' });
   if (path.endsWith('/v2/future-projection')) return json({ starting_value_php: '10000.00', monthly_contribution_php: '10000.00', annual_planning_rate_pct: '5.500', inflation_planning_rate_pct: '3.0', whole_months: 120, target_date: '2036-09-28', projected_value_php: '342000.00', goal_target_php: '500000.00', difference_to_goal_php: '-158000.00', illustrative: true });
   if (path.endsWith('/v2/monthly-plan')) return json(breakdown);
@@ -133,6 +135,17 @@ await context.route('**/*', async route => {
   }
   if (path.endsWith('/v2/portfolio') && method === 'GET') {
     const response = portfolio();
+    if (marketScreenshot) {
+      response.holdings.push({ ...response.holdings[0], ...catalog[3], id: '00000000-0000-4000-8000-000000000104',
+        units: '1.25', cost_basis_php: '6000.00', opening_units: '1.25', opening_cost_php: '6000.00',
+        value_php: '7800.00', unit_price: '125.00', unit_price_currency: 'USD', recorded_gain_php: '1800.00', recorded_gain_percentage: '30.00' });
+      response.known_value_php = '17800.00'; response.total_value_php = '17800.00';
+      response.recorded_cost_php = '16000.00'; response.recorded_gain_php = '1800.00'; response.recorded_gain_percentage = '11.25';
+      response.provider_values_php.gotrade = '17800.00'; response.data_sources.push('exchangerate_api');
+      response.sleeves = response.sleeves.map(row => row.sleeve === 'technology_tilt'
+        ? {...row, known_value_php: '7800.00', current_percentage: '43.82', difference_pp: '33.82'}
+        : row.sleeve === 'global_equity' ? {...row, current_percentage: '56.18', difference_pp: '-23.82'} : row);
+    }
     if (entitlementMode === 'free') { response.sleeves = []; response.provider_values_php = {}; }
     return json(response);
   }
@@ -172,6 +185,29 @@ async function shot(name, width, theme = 'light') {
     await page.evaluate(() => window.scrollTo(0, 0));
   }
 }
+async function scrolledViewportShot(name, width) {
+  await page.setViewportSize({ width, height: 760 });
+  const geometry = await page.evaluate(() => {
+    const dialog = document.querySelector('dialog[open]');
+    if (dialog) {
+      dialog.scrollTop = dialog.scrollHeight;
+      const edge = dialog.getBoundingClientRect();
+      const last = dialog.querySelector('.sheet-body')?.lastElementChild?.getBoundingClientRect();
+      return { kind: 'dialog', surfaceBottom: edge.bottom, contentBottom: last?.bottom ?? edge.bottom, viewportBottom: innerHeight };
+    }
+    window.scrollTo(0, document.documentElement.scrollHeight);
+    const nav = document.querySelector('nav[aria-label="Mobile navigation"]');
+    const main = document.querySelector('#app-content');
+    return { kind: 'page', surfaceBottom: nav?.getBoundingClientRect().top ?? innerHeight,
+      contentBottom: main?.lastElementChild?.getBoundingClientRect().bottom ?? 0, viewportBottom: innerHeight };
+  });
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  assert.ok(geometry.contentBottom <= geometry.surfaceBottom + 2,
+    `${name}: final content is obscured (${JSON.stringify(geometry)})`);
+  const file = `${output}/${name}.png`;
+  await page.screenshot({ path: file, fullPage: false, animations: 'disabled', style: 'nextjs-portal{display:none!important}' });
+  shots.push(file);
+}
 try {
   await page.goto(`${origin}/#login`);
   await page.getByRole('heading', { name: 'Welcome back' }).waitFor();
@@ -182,7 +218,7 @@ try {
     const readings = [];
     await page.getByRole('region', { name: 'Portfolio value graph' }).waitFor();
     await page.getByRole('heading', { name: 'Where you could be headed' }).waitFor();
-    for (const width of [1440, 1024, 960, 900, 820, 768, 390, 320]) {
+    for (const width of [1440, 1280, 1024, 999, 960, 900, 820, 768, 430, 390, 320]) {
       await shot(`home-${width}`, width);
       const reading = await page.evaluate(() => {
         const box = selector => {
@@ -194,8 +230,11 @@ try {
         return { width: innerWidth, portfolio: box('.home-portfolio'), utility: box('.home-utility-stack'), goal: box('.home-goal'), monthly: box('.home-monthly'), pending: box('.home-utility-stack .pending-recording'), projection: box('.home-projection'), activity: box('.home-activity'), plan: box('.home-plan'), plotHeight: Math.round(document.querySelector('.home-portfolio .chart-plot')?.getBoundingClientRect().height ?? 0) };
       });
       assert.ok(reading.activity.height < 160, `${width}: empty Recent activity should stay compact`);
+      assert.equal(reading.pending, null, `${width}: pending recording belongs on Monthly, not Home`);
       if (width >= 1000) {
         assert.ok(Math.abs(reading.portfolio.top - reading.utility.top) <= 2, `${width}: Portfolio and utility stack should share the first row`);
+        assert.ok(Math.abs(reading.portfolio.bottom - reading.utility.bottom) <= 2, `${width}: Portfolio and utility stack should share the bottom edge`);
+        assert.ok(Math.abs(reading.portfolio.bottom - reading.monthly.bottom) <= 2, `${width}: Monthly card should finish the first row`);
         assert.ok(Math.abs(reading.projection.top - reading.plan.top) <= 2, `${width}: Projection and plan should share the second row`);
         assert.ok(Math.abs(reading.projection.bottom - reading.plan.bottom) <= 2, `${width}: paired Projection and plan cards should match height`);
         assert.ok(reading.activity.top >= Math.max(reading.projection.bottom, reading.plan.bottom), `${width}: Recent activity should follow the second row`);
@@ -206,6 +245,58 @@ try {
       readings.push(reading);
     }
     for (const width of [1024, 768, 390]) await shot(`home-dark-${width}`, width, 'dark');
+    await page.evaluate(() => { location.hash = 'home/monthly'; });
+    await page.getByRole('heading', { name: 'Finish recording your investment' }).waitFor();
+    for (const action of ['Record investment', 'Not yet', 'I didn’t invest', 'I already recorded this'])
+      assert.ok(await page.getByRole('button', { name: action, exact: true }).count(), `Monthly pending action: ${action}`);
+    for (const width of [1440, 1280, 1024, 960, 900, 820, 768, 430, 390, 320]) await shot(`monthly-pending-${width}`, width);
+    for (const width of [1024, 768, 390]) await shot(`monthly-pending-dark-${width}`, width, 'dark');
+    await page.getByRole('button', { name: 'Review contribution' }).click();
+    await page.getByRole('region', { name: 'Monthly investment breakdown' }).waitFor();
+    for (const width of [768, 390, 320]) await scrolledViewportShot(`monthly-bottom-${width}`, width);
+    await page.getByRole('button', { name: 'Record investment', exact: true }).click();
+    await page.getByLabel('Investment date', { exact: true }).fill(today);
+    await page.getByLabel('Shares received').fill('0.5');
+    await page.getByLabel('Actual amount paid (PHP)').fill('100.00');
+    for (const width of [390, 360, 320]) await scrolledViewportShot(`record-form-bottom-${width}`, width);
+    await page.getByRole('button', { name: 'Review investment' }).click();
+    await page.getByRole('button', { name: 'Confirm and save' }).waitFor();
+    assert.equal(entries.length, 0, 'recording Review does not write');
+    for (const width of [390, 360, 320]) await scrolledViewportShot(`record-confirm-bottom-${width}`, width);
+    await page.getByRole('button', { name: 'Close' }).click();
+    entitlementMode = 'free';
+    await page.reload();
+    await page.getByRole('heading', { name: 'Finish recording your investment' }).waitFor();
+    assert.equal(await page.getByRole('heading', { name: 'Finish recording your investment' }).count(), 1, 'Free sees one factual pending surface');
+    assert.ok(await page.getByRole('button', { name: 'Record investment', exact: true }).count(), 'Free can resume factual recording');
+    assert.ok(await page.getByRole('link', { name: 'Explore Arbor Plus' }).count(), 'Plus monthly calculator remains locked');
+    await page.evaluate(() => { location.hash = 'home'; });
+    const freeMonthlyLink = page.getByRole('link', { name: 'Explore Arbor Plus monthly plan' });
+    await freeMonthlyLink.waitFor();
+    await freeMonthlyLink.click();
+    await page.getByRole('heading', { name: 'Finish recording your investment' }).waitFor();
+    entitlementMode = 'plus'; marketScreenshot = true;
+    await page.evaluate(() => { location.hash = 'portfolio'; });
+    await page.reload();
+    await page.getByRole('button', { name: 'View VGT' }).waitFor();
+    await shot('portfolio-vt-vgt-1440', 1440);
+    for (const symbol of ['VT', 'VGT']) {
+      const row = page.getByRole('button', { name: `View ${symbol}` });
+      const rowShot = `${output}/portfolio-${symbol.toLowerCase()}-price.png`;
+      await row.screenshot({ path: rowShot, animations: 'disabled' }); shots.push(rowShot);
+      await row.click();
+      await shot(`${symbol.toLowerCase()}-holding-detail`, 390);
+      if (symbol === 'VT') for (const width of [390, 320]) await scrolledViewportShot(`vt-detail-activity-bottom-${width}`, width);
+      await page.getByRole('button', { name: 'Close' }).click();
+    }
+    await page.evaluate(() => { location.hash = 'ask'; });
+    await page.getByRole('heading', { name: 'Ask Arbor' }).waitFor();
+    await page.getByText('About your Arbor answers').click();
+    await page.getByText('Arbor Plus · Portfolio-aware explanations').waitFor();
+    await shot('ask-plus-390', 390);
+    await page.evaluate(() => { location.hash = 'settings/plus'; });
+    await page.getByText('Arbor Plus Trial').first().waitFor();
+    await shot('settings-plus-trial-390', 390);
     assert.equal(pageErrors, 0, 'browser page errors'); assert.equal(consoleErrors, 0, 'browser console errors'); assert.equal(blockedExternal, 0, 'unhandled external requests');
     console.log(JSON.stringify({ fixtureOnly: true, screenshots: shots, readings, pageErrors, consoleErrors, blockedExternal }));
   } else if (tabletGraphOnly) {
@@ -387,15 +478,16 @@ try {
     await page.getByRole('tab', { name: 'Learn' }).click();
     await shot('learn-before-profile-mobile', 390);
   } else {
-  await page.getByRole('button', { name: /Finish recording your investment/ }).waitFor();
-  await shot('home-one-unfinished', 390);
+  assert.equal(await page.locator('.home-utility-stack .pending-recording').count(), 0, 'Home never shows pending recording');
+  await shot('home-with-pending-elsewhere', 390);
+  await page.evaluate(() => { location.hash = 'home/monthly'; });
+  await page.getByRole('heading', { name: 'Finish recording your investment' }).waitFor();
+  await shot('monthly-one-unfinished', 390);
   pending.push({ id: '00000000-0000-4000-8000-000000000202', product_id: 'pdax_btc', provider: 'pdax', source: 'monthly', status: 'pending', started_at: now, resolved_at: null });
   await page.evaluate(() => window.dispatchEvent(new Event('arbor-pending-changed')));
-  await page.getByRole('button', { name: /Finish recording investments/ }).waitFor();
-  await shot('home-several-unfinished', 1440);
-  await page.getByRole('button', { name: /Finish recording investments/ }).click();
-  await shot('home-return-cue-expanded', 390);
-  await page.evaluate(() => { location.hash = 'home/monthly'; });
+  await page.locator('.pending-recording li').nth(1).waitFor();
+  await shot('monthly-several-unfinished', 1440);
+  await shot('monthly-return-cue-expanded', 390);
   await page.getByRole('button', { name: 'Review contribution' }).click();
   await page.getByText('Your contribution breakdown').waitFor();
   await page.getByRole('button', { name: /Continue with Gotrade/ }).waitFor();
@@ -448,8 +540,8 @@ try {
   await page.getByRole('button', { name: 'View VT' }).waitFor();
   await shot('phase2c-portfolio-plus-desktop', 1440);
   await shot('phase2c-portfolio-plus-laptop', 1024);
-  await page.getByRole('button', { name: 'View VT' }).getByText('US$100 per share').waitFor();
-  await page.getByRole('button', { name: 'View Bitcoin' }).getByText('₱2,000,000 per BTC').waitFor();
+  await page.getByRole('button', { name: 'View VT' }).getByText('US$100.00 per share').waitFor();
+  await page.getByRole('button', { name: 'View Bitcoin' }).getByText('₱2,000,000.00 per BTC').waitFor();
   await shot('phase2c-portfolio-plus-tablet', 768);
   await shot('phase2c-portfolio-plus-mobile', 390);
   await shot('phase2c-portfolio-plus-320', 320);
@@ -463,7 +555,7 @@ try {
   assert.ok(gainColors.every(Boolean) && gainColors[0] !== gainColors[1] && gainColors[0] !== gainColors[2], 'loss, zero gain, and current value need distinct dark-mode treatments');
   await shot('phase2c-portfolio-plus-mobile', 390);
   await page.getByRole('button', { name: 'View Bitcoin' }).click();
-  await page.getByText('₱2,000,000 per BTC', { exact: true }).waitFor();
+  await page.getByText('₱2,000,000.00 per BTC', { exact: true }).waitFor();
   await shot('phase2c-btc-detail-mobile', 390);
   await page.getByRole('button', { name: 'Close' }).click();
   await page.getByRole('button', { name: 'View VT' }).click();
@@ -474,7 +566,7 @@ try {
   const vtEntry = entries.find(entry => entry.product_id === 'gotrade_vt');
   assert.ok(vtEntry, 'synthetic VT addition must exist for gain-color review');
   const originalCost = vtEntry.amount_paid_php;
-  for (const [cost, tone, expected] of [['500', 'positive', '+₱2,000'], ['2500', 'zero', '₱0 · 0%']]) {
+  for (const [cost, tone, expected] of [['500', 'positive', '+₱2,000.00'], ['2500', 'zero', '₱0.00 · 0%']]) {
     vtEntry.amount_paid_php = cost;
     await page.reload();
     for (const theme of ['light', 'dark']) {

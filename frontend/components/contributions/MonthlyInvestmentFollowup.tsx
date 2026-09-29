@@ -9,10 +9,8 @@ import { monthlyMoney, type MonthlyPlan } from "@/lib/monthlyPlan";
 import { monthLabel } from "@/lib/monthlyCheckin";
 import { investmentAction, recordingRows } from "@/lib/monthlyInvestments";
 import DatedInvestmentFlow from "../portfolio/DatedInvestmentFlow";
-import PendingRecordingResume from "./PendingRecordingResume";
-import { pendingApi, pendingChanged, type PendingRecording } from "@/lib/pendingRecordings";
 
-type Selection = { product: PortfolioProduct | null; plannedAmount?: string; pendingId?: string };
+type Selection = { product: PortfolioProduct | null; plannedAmount?: string };
 
 /** Investment dates use the Philippine calendar. Check-in months remain their own UTC authority. */
 export function MonthlyInvestmentFollowup({ userId, plan, completed }: { userId: string; plan: MonthlyPlan | null; completed: boolean }) {
@@ -21,7 +19,6 @@ export function MonthlyInvestmentFollowup({ userId, plan, completed }: { userId:
   const [reload, setReload] = useState(0);
   const [selection, setSelection] = useState<Selection | null>(null);
   const [saved, setSaved] = useState<InvestmentEntryDraft | null>(null);
-  const [resolutionFailed, setResolutionFailed] = useState("");
   const [month, setMonth] = useState(() => manilaInvestmentToday().slice(0, 7));
   useEffect(() => {
     const controller = new AbortController();
@@ -29,27 +26,21 @@ export function MonthlyInvestmentFollowup({ userId, plan, completed }: { userId:
       .catch(() => { if (!controller.signal.aborted) setError("We couldn’t load your investments. Please retry before recording anything."); });
     return () => controller.abort();
   }, [userId, reload]);
+  useEffect(() => {
+    const changed = () => setReload(value => value + 1);
+    window.addEventListener("arbor-investment-recorded", changed);
+    return () => window.removeEventListener("arbor-investment-recorded", changed);
+  }, []);
   function recorded(draft: InvestmentEntryDraft) {
-    const pendingId = selection?.pendingId;
     setSelection(null);
     setSaved(draft);
     setMonth(draft.investment_date.slice(0, 7));
     setReload(value => value + 1);
-    if (pendingId) void pendingApi.resolve(userId, pendingId, "recorded")
-      .then(() => { setResolutionFailed(""); pendingChanged(); })
-      .catch(() => setResolutionFailed(pendingId));
-  }
-  function recordPending(item: PendingRecording) {
-    const product = portfolio?.catalog.find(row => row.product_id === item.product_id && row.provider === item.provider);
-    if (!product) { setError("This investment is unavailable in the current catalogue. You can dismiss its reminder without changing your holdings."); return; }
-    setSaved(null); setResolutionFailed(""); setSelection({ product, pendingId: item.id });
   }
   const rows = recordingRows(plan, portfolio?.catalog ?? []);
   return <section id="monthly-record-investment" className="monthly-record" aria-label="Record actual investments">
-    <PendingRecordingResume userId={userId} onRecord={recordPending}/>
     {completed && <header><h3>Record what you actually invested</h3><p>Enter the units shown by your provider. Arbor won’t estimate them from today’s price. Your check-in and investments are separate records.</p></header>}
     {completed && saved && <div className="monthly-record-success" role="status"><strong>Investment recorded</strong><div className="investment-line"><InvestmentIdentity product={saved.product_id}/><p>{investmentIdentity(saved.product_id).shortName} · {saved.units} {saved.product_id.endsWith("_btc") ? "BTC" : "units"}<br/><ProviderIdentity provider={saved.provider}/></p></div><div><button type="button" className="entry-secondary min-h-11" onClick={() => { setSaved(null); setSelection({ product: null }); }}>Record another</button><button type="button" className="entry-link min-h-11" onClick={() => setSaved(null)}>Done</button></div></div>}
-    {resolutionFailed && <p role="alert" className="monthly-error">Your investment was saved, but its reminder could not be cleared. Do not record the investment again. <button type="button" className="entry-link min-h-11" onClick={() => void pendingApi.resolve(userId, resolutionFailed, "recorded").then(() => { setResolutionFailed(""); pendingChanged(); }).catch(() => setError("The reminder is still waiting. Retry or choose ‘I already recorded this’."))}>Retry clearing reminder</button></p>}
     {error && <p role="alert" className="monthly-error">{error} <button type="button" className="entry-link min-h-11" onClick={() => { setError(""); setReload(value => value + 1); }}>Retry</button></p>}
     {!portfolio && !error && <p role="status">Loading supported investments…</p>}
     {completed && portfolio && <>

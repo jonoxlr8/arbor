@@ -201,7 +201,7 @@ function PlanChat({ v2, preProfile, requestedDraft }: { v2: boolean; preProfile:
     <div className="chat-thread min-w-0">
       {/* Intro */}
       <div className="text-sm">
-        {access?.value?.private_beta && <p className="ask-tier">Plus Trial</p>}
+        {access?.value?.private_beta && <p className="ask-tier">Arbor Plus Trial</p>}
         {currentUsage && !limited && <p role="status" className="mb-2 text-sm text-slate-600">{currentUsage.remaining} Free questions remaining this month.</p>}
         {limited && <div role="status" className="mb-4 rounded-xl border border-slate-200 p-4"><p className="text-slate-700">{FREE_LIMIT_MESSAGE}</p><a className="entry-link mt-2 inline-flex min-h-11 items-center" href="#settings/plus">Explore Arbor Plus</a></div>}
         {access?.value?.ask_usage_available === false && <p role="status" className="mb-3 text-sm text-slate-600">Ask Arbor usage is temporarily unavailable. Your saved plan remains accessible.</p>}
@@ -261,7 +261,7 @@ function PlanChat({ v2, preProfile, requestedDraft }: { v2: boolean; preProfile:
           </div>
         )}
       <div ref={bottom}/>
-      <details className="chat-about"><summary className="text-xs text-slate-500">About your Arbor answers</summary><p className="text-sm leading-6 text-slate-700">{preProfile ? "General investing education is available before you choose a plan. Your personal portfolio and plan answers become available after setup." : livePortfolio ? "Understand your selected plan and recorded holdings. Values may include amounts you entered." : "About your target plan—not actual holdings."} No live market, tax or trading advice. Each question stands alone.</p></details>
+      <details className="chat-about"><summary className="text-xs text-slate-500">About your Arbor answers</summary>{livePortfolio && access?.value?.features.includes("ask_arbor_full") && <p className="eyebrow plus-eyebrow">Arbor Plus · Portfolio-aware explanations</p>}<p className="text-sm leading-6 text-slate-700">{preProfile ? "General investing education is available before you choose a plan. Your personal portfolio and plan answers become available after setup." : livePortfolio ? "Understand your selected plan and recorded holdings. Values may include amounts you entered." : "About your target plan—not actual holdings."} No live market, tax or trading advice. Each question stands alone.</p></details>
       {/* Input */}
       <div className="chat-composer">
         {error && error !== FREE_LIMIT_MESSAGE && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-red-800">{error}</p>}

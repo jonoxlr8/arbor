@@ -8,13 +8,10 @@ import { monthlyApi, monthLabel, checkinDate, type MonthlyState } from "@/lib/mo
 import PortfolioHistoryChart from "../portfolio/PortfolioHistoryChart";
 import { DataAttribution, PortfolioGain } from "../portfolio/LivePortfolio";
 import Allocation from "../portfolio/Allocation";
-import DatedInvestmentFlow from "../portfolio/DatedInvestmentFlow";
 import { planTargets } from "@/lib/planImplementation";
 import { recentLedgerActivity } from "@/lib/portfolioActivity";
 import InvestmentIdentity from "../InvestmentIdentity";
 import HomeGoal from "./HomeGoal";
-import PendingRecordingResume from "../contributions/PendingRecordingResume";
-import { pendingApi, pendingChanged, type PendingRecording } from "@/lib/pendingRecordings";
 
 export default function V2Home({ value, userId, onPlanChange }: { value: PlanV2; userId?: string; onPlanChange?: (value:PlanV2)=>void }) {
   const access = useAccountAccess();
@@ -27,10 +24,6 @@ export default function V2Home({ value, userId, onPlanChange }: { value: PlanV2;
   const [portfolio, setPortfolio] = useState<LivePortfolioData | null>(null);
   const [entries, setEntries] = useState<InvestmentEntry[]>([]);
   const [entriesError, setEntriesError] = useState(false);
-  const [portfolioRevision, setPortfolioRevision] = useState(0);
-  const [pendingToRecord, setPendingToRecord] = useState<PendingRecording | null>(null);
-  const [pendingRecordError, setPendingRecordError] = useState(false);
-  const [pendingResolutionError, setPendingResolutionError] = useState(false);
   useEffect(() => {
     if (!available || !userId) return;
     const controller = new AbortController();
@@ -52,36 +45,24 @@ export default function V2Home({ value, userId, onPlanChange }: { value: PlanV2;
     return () => { current.abort();clearInterval(timer);window.removeEventListener("arbor-monthly-changed",read);document.removeEventListener("visibilitychange",visible); };
   }, [monthlyAllowed,userId]);
   const currentMonthly = monthlyAllowed && !monthlyError ? monthly : null;
-  const pendingProduct = portfolio?.catalog.find(p => p.product_id === pendingToRecord?.product_id && p.provider === pendingToRecord.provider);
-  function recordPending(item: PendingRecording) {
-    if (!portfolio?.catalog.some(p => p.product_id === item.product_id && p.provider === item.provider)) {
-      setPendingRecordError(true);
-      return;
-    }
-    setPendingRecordError(false);
-    setPendingToRecord(item);
-  }
   return <div className="space-y-6">
     <div className="home-dashboard">
     <div className="home-grid">
-      {available && userId ? <HomePortfolio key={`${userId}:${portfolioRevision}`} userId={userId} onLoaded={setPortfolio} /> : <section className="home-metric home-portfolio" aria-label="Portfolio overview"><header><h2>Portfolio</h2><span className="access-badge">Preview</span></header>
+      {available && userId ? <HomePortfolio userId={userId} onLoaded={setPortfolio} /> : <section className="home-metric home-portfolio" aria-label="Portfolio overview"><header><h2>Portfolio</h2><span className="access-badge">Preview</span></header>
         <div className="home-history-empty"><span aria-hidden="true">◷</span><strong>Your investments.<br/>One clear view.</strong><p>{!implementationAllowed ? "Your saved profile and current path are ready to review. Tracking stays separate from your plan." : "Tracking isn’t available right now. Your chosen plan and ways to invest are ready to explore."}</p></div>
         <a className="entry-link" href="#portfolio">Explore your portfolio →</a>
       </section>}
-      <HomeGoal value={value} portfolio={portfolio} userId={userId} onPlanChange={onPlanChange} monthly={plusMonthly &&
-        <a className="home-metric home-monthly" aria-label={`Review monthly contribution: ${formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP")}`} href={value.plan.path === "short_term" || !value.plan.readiness.actionable_contribution_guidance_allowed ? "#home/plan" : "#home/monthly"}><p>Monthly contribution</p><strong>{formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP")}</strong><span aria-hidden="true">›</span>{currentMonthly?.current && <small className="completed-label">Recorded for {monthLabel(currentMonthly.month).split(" ")[0]}</small>}</a>
-      } pending={userId ? <PendingRecordingResume userId={userId} compact monthlyAvailable={monthlyAllowed === true} onRecord={portfolio ? recordPending : undefined}/> : null}/>
+      <HomeGoal value={value} portfolio={portfolio} userId={userId} onPlanChange={onPlanChange} monthly={
+        <a className="home-metric home-monthly" aria-label={plusMonthly ? `Review monthly plan: ${formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP")}` : "Explore Arbor Plus monthly plan"} href="#home/monthly">
+          <span className="eyebrow plus-eyebrow">Arbor Plus</span>
+          <span className="home-monthly-main"><span>Monthly plan</span>{plusMonthly && <strong>{formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP")}</strong>}</span>
+          <span className="home-monthly-foot">{plusMonthly && currentMonthly?.current && <small className="completed-label">Recorded for {monthLabel(currentMonthly.month).split(" ")[0]}</small>}<span>{plusMonthly ? "View monthly plan →" : "Explore monthly planning →"}</span></span>
+        </a>
+      }/>
     </div>
     <div className="home-bottom"><HomeActivity state={currentMonthly} error={monthlyError || entriesError} portfolio={portfolio} entries={entries}/><HomePlanContext value={value} /></div>
     </div>
     {portfolio && <div className="home-data-attribution"><DataAttribution sources={portfolio.data_sources ?? []}/></div>}
-    {pendingRecordError && <p role="alert">This unfinished investment is unavailable in the current catalogue. You can dismiss its reminder without changing your holdings.</p>}
-    {pendingResolutionError && <p role="alert">Your investment was saved, but its unfinished reminder could not be cleared. Do not record it again; return later to dismiss the reminder.</p>}
-    {pendingToRecord && portfolio && pendingProduct && userId && <DatedInvestmentFlow portfolio={portfolio} userId={userId}
-      initialProduct={pendingProduct}
-      onClose={() => setPendingToRecord(null)} onOpeningOnly={() => setPendingToRecord(null)}
-      onSaved={() => { const id = pendingToRecord.id; setPendingToRecord(null); setPortfolioRevision(n => n + 1);
-        void pendingApi.resolve(userId, id, "recorded").then(() => { setPendingResolutionError(false); pendingChanged(); }).catch(() => setPendingResolutionError(true)); }} />}
   </div>;
 }
 

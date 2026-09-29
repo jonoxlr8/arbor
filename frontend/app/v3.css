@@ -44,6 +44,7 @@
 .app-shell .entry-link, .arbor-sheet .entry-link, .onboarding-consumer .entry-link { color:var(--v3-green); font-size:12px; font-weight:600; }
 .app-shell .arbor-panel, .arbor-sheet .arbor-panel { border:1px solid var(--line); border-radius:var(--v3-radius); background:var(--surface); box-shadow:var(--v3-shadow); }
 .app-shell .eyebrow, .onboarding-consumer .choice-eyebrow { color:var(--v3-muted); font-size:10px; letter-spacing:.11em; }
+.app-shell .plus-eyebrow { color:var(--v3-green); }
 .app-shell :is(input,select,textarea):focus-visible, .arbor-sheet :is(input,select,textarea):focus-visible,
 .onboarding-consumer :is(input,select,textarea):focus-visible { outline:2px solid var(--v3-green); outline-offset:2px; }
 .app-shell :is(.text-emerald-700,.text-emerald-600) { color:var(--v3-positive); }
@@ -53,7 +54,7 @@
 .home-dashboard { --home-section-gap:12px; --home-related-gap:8px; display:grid; grid-template-columns:minmax(0,1.5fr) minmax(290px,1fr); gap:var(--home-section-gap); align-items:start; }
 .home-dashboard > .home-grid, .home-dashboard > .home-bottom { display:contents; }
 .home-dashboard .home-portfolio { grid-column:1; grid-row:1; align-self:stretch; min-height:0; }
-.home-dashboard .home-utility-stack { grid-column:2; grid-row:1; display:grid; align-content:start; gap:var(--home-related-gap); min-width:0; }
+.home-dashboard .home-utility-stack { grid-column:2; grid-row:1; display:grid; grid-template-rows:minmax(0,3fr) minmax(0,2fr); align-self:stretch; gap:var(--home-related-gap); min-width:0; }
 .home-dashboard .home-projection { grid-column:1; grid-row:2; }
 .home-dashboard .home-plan { grid-column:2; grid-row:2; }
 .home-dashboard .home-activity { grid-column:1/-1; grid-row:3; }
@@ -68,17 +69,18 @@
 .home-dashboard .home-portfolio .compact-chart .chart-plot:has(.chart-no-history) { height:150px; }
 .home-dashboard .home-portfolio .compact-chart > p[role="status"] { margin-top:8px; font-size:11px; }
 .home-dashboard .home-portfolio > .entry-link { min-height:32px; }
-.home-dashboard .home-goal { padding:16px 18px; }
+.home-dashboard .home-goal { display:flex; flex-direction:column; justify-content:space-between; padding:16px 18px; }
 .home-dashboard .home-goal h2 { font-size:15px; font-weight:700; }
 .home-dashboard .home-goal .goal-amount { margin:8px 0 2px; font-size:clamp(20px,2.2vw,27px); }
 .home-dashboard .home-goal .goal-amount span { font-size:12px; }
 .home-dashboard .home-goal p:not(.eyebrow) { font-size:11px; }
 .home-dashboard .home-goal .goal-track { margin-top:10px; height:7px; }
-.home-dashboard .home-utility-stack > .home-monthly { min-height:60px; padding:12px 17px; display:flex; align-items:center; gap:8px; }
-.home-dashboard .home-monthly > p { flex:1; min-width:0; font-size:12px; }
-.home-dashboard .home-monthly > strong { white-space:nowrap; margin:0; font-size:19px; }
-.home-dashboard .home-monthly > small { margin:0; padding:0; }
-.home-dashboard .pending-compact { min-height:64px; }
+.home-dashboard .home-utility-stack > .home-monthly { min-height:60px; padding:12px 17px; display:flex; flex-direction:column; align-items:stretch; justify-content:space-between; gap:8px; }
+.home-dashboard .home-monthly-main, .home-dashboard .home-monthly-foot { display:flex; justify-content:space-between; align-items:baseline; gap:8px; min-width:0; }
+.home-dashboard .home-monthly-main > span { font-size:13px; font-weight:600; }
+.home-dashboard .home-monthly-main > strong { white-space:nowrap; font-size:19px; }
+.home-dashboard .home-monthly-foot { font-size:11px; color:var(--v3-muted); }
+.home-dashboard .home-monthly-foot > span:last-child { margin-left:auto; color:var(--v3-green); font-weight:600; }
 .home-dashboard .home-projection h2 { font-size:15px; font-weight:700; }
 .home-dashboard .home-projection .projection-value { margin-top:10px; font-size:clamp(30px,3vw,39px); font-weight:700; }
 .home-dashboard .home-projection .projection-facts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:14px 0; }
@@ -165,6 +167,7 @@
 .holding-money { font-size:15px; }
 .holding-money small { margin-top:3px; font-size:10px; }
 .portfolio-insights, .portfolio-plus-preview, .portfolio-history-list { border:1px solid var(--line); border-radius:var(--v3-radius); box-shadow:var(--v3-shadow); }
+.portfolio-insights > summary { gap:8px; }
 .portfolio-empty { border:1px solid var(--line); border-radius:var(--v3-radius); padding:28px; box-shadow:var(--v3-shadow); }
 .portfolio-empty h3 { font-size:18px; }
 .portfolio-empty p { margin:8px auto 0; }
@@ -266,7 +269,7 @@
 .implementation-sleeve { margin-top:17px; }
 .implementation-sleeve > header { margin-bottom:8px; }
 .record-return { margin-top:18px; }
-.monthly-investing { max-width:960px; }
+.monthly-page, .monthly-investing { max-width:960px; margin-inline:auto; }
 .monthly-investing > header { padding:18px 20px; border:1px solid var(--feature-line); border-radius:var(--v3-radius); background:var(--feature-surface); box-shadow:var(--v3-shadow); }
 .monthly-investing h2 { margin-top:4px; font-size:clamp(23px,2.8vw,29px); font-weight:700; }
 .monthly-investing > header > p:last-child { margin-top:4px; font-size:12px; color:var(--v3-muted); }
@@ -308,13 +311,13 @@
   .home-dashboard { grid-template-columns:minmax(0,1fr); }
   .home-dashboard :is(.home-portfolio,.home-utility-stack,.home-projection,.home-activity,.home-plan) { grid-column:1; grid-row:auto; align-self:start; }
   .home-dashboard .home-portfolio { order:0; }
-  .home-dashboard .home-utility-stack { order:1; }
+  .home-dashboard .home-utility-stack { order:1; grid-template-rows:none; }
   .home-dashboard .home-projection { order:2; }
   .home-dashboard .home-activity { order:3; }
   .home-dashboard .home-plan { order:4; }
   .home-dashboard .home-utility-stack > .home-goal { order:0; }
   .home-dashboard .home-utility-stack > .home-monthly { order:1; }
-  .home-dashboard .home-utility-stack > .pending-recording { order:2; }
+  .home-dashboard .home-goal { display:block; }
   .home-dashboard .home-portfolio { min-height:0; }
   .home-dashboard .home-projection, .home-dashboard .home-plan { height:auto; }
   .home-dashboard .home-plan .allocation-layout { flex:none; }
@@ -354,7 +357,7 @@
   .home-dashboard :is(.home-portfolio,.home-goal,.home-projection,.home-plan,.home-activity) { padding:15px 16px; }
   .home-dashboard .home-portfolio > strong { font-size:34px; }
   .home-dashboard .home-utility-stack > .home-monthly { min-height:58px; padding:10px 15px; }
-  .home-dashboard .home-monthly > strong { font-size:17px; }
+  .home-dashboard .home-monthly-main > strong { font-size:17px; }
   .home-dashboard .home-plan .allocation-ring { width:112px; height:112px; padding:12px; }
   .home-dashboard .home-plan .allocation-legend > div { font-size:10px; }
   .home-dashboard .home-projection .projection-facts { grid-template-columns:repeat(2,minmax(0,1fr)); }

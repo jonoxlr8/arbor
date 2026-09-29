@@ -21,15 +21,17 @@ export function decimalText(value: string): string {
   return whole + (fraction ? `.${fraction}` : "");
 }
 export const nonzero = (value: string) => decimalText(value) !== "0";
-/** Peso display only. Round decimal text to cents without converting money to a float. */
-export function formatPhpMoney(value: string): string {
+/** Display only. Round decimal text to cents without converting money to a float. */
+function formatCentMoney(value: string, symbol: string): string {
   const negative = value.startsWith("-");
   const [whole, fraction = ""] = decimalText(negative ? value.slice(1) : value).split(".");
   const cents = BigInt(whole) * BigInt(100) + BigInt(fraction.slice(0, 2).padEnd(2, "0")) + (Number(fraction[2] ?? "0") >= 5 ? BigInt(1) : BigInt(0));
   const digits = cents.toString().padStart(3, "0");
-  const pesos = digits.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return `${negative && cents !== BigInt(0) ? "−" : ""}₱${pesos}.${digits.slice(-2)}`;
+  const amount = digits.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${negative && cents !== BigInt(0) ? "−" : ""}${symbol}${amount}.${digits.slice(-2)}`;
 }
+export const formatPhpMoney = (value: string): string => formatCentMoney(value, "₱");
+export const formatUsdQuote = (value: string): string => formatCentMoney(value, "US$");
 export function formatContributionMoney(value: string, currency: string) {
   if (currency === "PHP") return formatPhpMoney(value);
   const negative = value.startsWith("-");

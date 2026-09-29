@@ -53,11 +53,11 @@ test("provider navigation follows persisted start; ledger save precedes pending 
   const monthly = readFileSync("components/contributions/MonthlyInvesting.tsx", "utf8");
   const providerContinue = readFileSync("components/contributions/ProviderContinue.tsx", "utf8");
   const ways = readFileSync("components/portfolio/PlanImplementation.tsx", "utf8");
-  const followup = readFileSync("components/contributions/MonthlyInvestmentFollowup.tsx", "utf8");
+  const pending = readFileSync("components/contributions/MonthlyPendingRecording.tsx", "utf8");
   assert.ok(providerContinue.indexOf("await pendingApi.start") < providerContinue.indexOf("window.location.assign(destination!)"));
   assert.match(monthly, /ProviderContinue/);
   assert.match(ways, /ProviderContinue/);
-  assert.match(followup, /pendingApi\.resolve\(userId, pendingId, "recorded"\)/);
+  assert.ok(pending.indexOf('onSaved={() =>') < pending.indexOf('pendingApi.resolve(userId, id, "recorded")'));
   assert.doesNotMatch(providerContinue, /pendingApi\.start.*checkin|pendingApi\.start.*calculate/);
-  assert.match(followup, /Do not record the investment again/);
+  assert.match(pending, /Do not record it again/);
 });

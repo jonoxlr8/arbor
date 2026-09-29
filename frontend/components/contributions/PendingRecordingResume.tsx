@@ -32,7 +32,7 @@ export default function PendingRecordingResume({ userId, compact = false, monthl
   return <section className={compact ? "pending-recording pending-recording-compact" : "pending-recording"} aria-label="Unfinished investment recordings">
     {compact ? <button type="button" className="pending-recording-toggle" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>
       {items.length === 1 && <InvestmentIdentity product={items[0].product_id}/>}<span><strong>{items.length === 1 ? "Finish recording your investment" : "Finish recording investments"}</strong><small>{items.length === 1 ? `${investmentIdentity(items[0].product_id).shortName} · ${providerName(items[0].provider)}` : `${items.length} waiting`}</small></span><span aria-hidden="true">›</span>
-    </button> : <header><h3>Finish recording</h3><p>Only record units if you actually invested through your provider.</p></header>}
+    </button> : <header><h3>Finish recording your investment</h3><p>Only record units if you actually invested through your provider.</p></header>}
     {error && <p role="alert">{error} <button type="button" className="entry-link min-h-11" onClick={() => setRevision(value => value + 1)}>Retry</button></p>}
     {expanded && <ul>{items.map(item => <li key={item.id}>
       <div className="investment-line"><InvestmentIdentity product={item.product_id}/><div><strong>{investmentIdentity(item.product_id).shortName}</strong><ProviderIdentity provider={item.provider}/></div></div>

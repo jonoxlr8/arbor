@@ -71,7 +71,10 @@ test("round product identities use issuer/product families rather than a shared 
   assert.match(render(createElement(InvestmentIdentity,{product:"gotrade_vt"})),/data-identity="vt"/);
 });
 test("unit-price display groups exact API decimals and uses product-appropriate units",()=>{
-  assert.equal(investmentUnitPrice("gotrade_vt","100","USD"),"US$100 per share");
+  assert.equal(investmentUnitPrice("gotrade_vt","100","USD"),"US$100.00 per share");
+  assert.equal(investmentUnitPrice("gotrade_vgt","125","USD"),"US$125.00 per share");
+  assert.equal(investmentUnitPrice("gotrade_bnd","282.5","USD"),"US$282.50 per share");
+  assert.equal(investmentUnitPrice("gotrade_vt","123.4567","USD"),"US$123.46 per share");
   assert.equal(investmentUnitPrice("gcash_global_equity","1234.56","PHP"),"₱1,234.56 per unit");
   assert.equal(investmentUnitPrice("pdax_btc","2000000","PHP"),"₱2,000,000.00 per BTC");
   assert.equal(investmentUnitPrice("pdax_btc","2000000.12345678","PHP"),"₱2,000,000.12 per BTC");
