@@ -6,14 +6,16 @@ import { formatContributionMoney } from "@/lib/contributions";
 import { useAccountAccess } from "../AccountAccess";
 import { monthlyApi, monthLabel, checkinDate, type MonthlyState } from "@/lib/monthlyCheckin";
 import PortfolioHistoryChart from "../portfolio/PortfolioHistoryChart";
-import { DataAttribution, PortfolioGain } from "../portfolio/LivePortfolio";
+import { DataAttribution } from "../portfolio/LivePortfolio";
 import Allocation from "../portfolio/Allocation";
 import { planTargets } from "@/lib/planImplementation";
 import { recentLedgerActivity } from "@/lib/portfolioActivity";
 import InvestmentIdentity from "../InvestmentIdentity";
 import HomeGoal from "./HomeGoal";
+import InvestmentActivitySheet from "../portfolio/InvestmentActivitySheet";
+import { closePortfolioSheet } from "@/lib/appNavigation";
 
-export default function V2Home({ value, userId, onPlanChange }: { value: PlanV2; userId?: string; onPlanChange?: (value:PlanV2)=>void }) {
+export default function V2Home({ value, userId, section = "", onPlanChange }: { value: PlanV2; userId?: string; section?: string; onPlanChange?: (value:PlanV2)=>void }) {
   const access = useAccountAccess();
   const available = access?.value?.availability?.live_portfolio === true && access.value.features.includes("live_portfolio");
   const implementationAllowed = value.plan.path === "long_term" && value.plan.readiness.actionable_contribution_guidance_allowed;
@@ -22,6 +24,7 @@ export default function V2Home({ value, userId, onPlanChange }: { value: PlanV2;
   const [monthly, setMonthly] = useState<MonthlyState | null>(null);
   const [monthlyError, setMonthlyError] = useState(false);
   const [portfolio, setPortfolio] = useState<LivePortfolioData | null>(null);
+  const [portfolioVersion, setPortfolioVersion] = useState(0);
   const [entries, setEntries] = useState<InvestmentEntry[]>([]);
   const [entriesError, setEntriesError] = useState(false);
   useEffect(() => {
@@ -48,21 +51,23 @@ export default function V2Home({ value, userId, onPlanChange }: { value: PlanV2;
   return <div className="space-y-6">
     <div className="home-dashboard">
     <div className="home-grid">
-      {available && userId ? <HomePortfolio userId={userId} onLoaded={setPortfolio} /> : <section className="home-metric home-portfolio" aria-label="Portfolio overview"><header><h2>Portfolio</h2><span className="access-badge">Preview</span></header>
+      {available && userId ? <HomePortfolio key={portfolioVersion} userId={userId} onLoaded={setPortfolio} /> : <section className="home-metric home-portfolio" aria-label="Portfolio overview"><header><h2>Portfolio</h2><span className="access-badge">Preview</span></header>
         <div className="home-history-empty"><span aria-hidden="true">◷</span><strong>Your investments.<br/>One clear view.</strong><p>{!implementationAllowed ? "Your saved profile and current path are ready to review. Tracking stays separate from your plan." : "Tracking isn’t available right now. Your chosen plan and ways to invest are ready to explore."}</p></div>
         <a className="entry-link" href="#portfolio">Explore your portfolio →</a>
       </section>}
       <HomeGoal value={value} portfolio={portfolio} userId={userId} onPlanChange={onPlanChange} monthly={
         <a className="home-metric home-monthly" aria-label={plusMonthly ? `Review monthly plan: ${formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP")}` : "Explore Arbor Plus monthly plan"} href="#home/monthly">
           <span className="eyebrow plus-eyebrow">Arbor Plus</span>
-          <span className="home-monthly-main"><span>Monthly plan</span>{plusMonthly && <strong>{formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP")}</strong>}</span>
-          <span className="home-monthly-foot">{plusMonthly && currentMonthly?.current && <small className="completed-label">Recorded for {monthLabel(currentMonthly.month).split(" ")[0]}</small>}<span>{plusMonthly ? "View monthly plan →" : "Explore monthly planning →"}</span></span>
+          <span className="home-monthly-heading">Monthly plan</span>
+          <span className="home-monthly-main">{plusMonthly && <strong className="home-financial-amount">{formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP")}</strong>}{plusMonthly && currentMonthly && <small className="completed-label">{currentMonthly.current ? "Recorded" : "Not recorded"} for {monthLabel(currentMonthly.month).split(" ")[0]}</small>}</span>
+          <span className="home-monthly-foot">{plusMonthly ? "Open monthly plan →" : "Explore monthly planning →"}</span>
         </a>
       }/>
     </div>
     <div className="home-bottom"><HomeActivity state={currentMonthly} error={monthlyError || entriesError} portfolio={portfolio} entries={entries}/><HomePlanContext value={value} /></div>
     </div>
     {portfolio && <div className="home-data-attribution"><DataAttribution sources={portfolio.data_sources ?? []}/></div>}
+    {section === "activity" && portfolio && userId && <InvestmentActivitySheet portfolio={portfolio} userId={userId} onClose={closePortfolioSheet} onChanged={() => setPortfolioVersion(version => version + 1)}/>}
   </div>;
 }
 
@@ -81,7 +86,7 @@ export function HomePlanContext({ value }: { value: PlanV2 }) {
 
 export function HomeActivity({state,error=false,portfolio=null,entries=[]}:{state:MonthlyState|null;error?:boolean;portfolio?:LivePortfolioData|null;entries?:InvestmentEntry[]}) {
   const events = recentLedgerActivity(entries,portfolio?.catalog ?? [],state);
-  return <section className="home-activity"><header><h2>Recent activity</h2><a href="#portfolio/history" aria-label="View all recorded activity">View all →</a></header>
+  return <section className="home-activity"><header><h2>Recent activity</h2><a href="#home/activity" aria-label="View all recorded activity">View all →</a></header>
     {events.length ? <>{error && <p role="status">Some activity is temporarily unavailable.</p>}<ul>{events.map(row=><li key={row.key}>{row.product_id ? <InvestmentIdentity product={row.product_id}/> : <time className="activity-date" dateTime={new Date(row.at).toISOString()}><small>{new Date(row.at).toLocaleDateString("en-PH",{month:"short",timeZone:"UTC"})}</small>{new Date(row.at).getUTCDate()}</time>}<div><strong>{row.title}</strong><small>{row.detail}</small>{row.product_id && <time dateTime={new Date(row.at).toISOString()}>{new Date(row.at).toLocaleDateString("en-PH",{month:"short",day:"numeric",timeZone:"UTC"})}</time>}</div>{row.amount !== null && <span>{formatContributionMoney(row.amount,"PHP")}</span>}</li>)}</ul></>
       : <div className="activity-empty">{error ? <p role="status">Activity is temporarily unavailable. Open your monthly contribution to retry.</p> : <p>Your investment activity will appear here.</p>}</div>}
     {state?.current && <p className="activity-note">Recorded as invested {checkinDate(state.current.completed_at)}. Holdings are tracked separately.</p>}
@@ -101,13 +106,12 @@ function HomePortfolio({ userId, onLoaded }: { userId: string; onLoaded: (portfo
   if (!portfolio) return <section className="home-metric home-portfolio arbor-skeleton" role="status"><span className="sr-only">Checking your recorded portfolio…</span><i/><i/></section>;
   return <section className="home-metric home-portfolio" aria-label="Portfolio overview"><header><h2>{portfolio.holdings.length ? portfolio.complete ? "Portfolio value" : "Known portfolio value" : "Portfolio"}</h2><a className="entry-link" href="#portfolio" aria-label="View portfolio">↗</a></header>
     {portfolio.holdings.length ? <>
-      <strong>{formatContributionMoney(portfolio.known_value_php,"PHP")}</strong>
-      <PortfolioGain portfolio={portfolio}/>
-      <PortfolioHistoryChart history={portfolio.history} knownValue={portfolio.known_value_php} complete={portfolio.complete} holdingsCount={portfolio.holdings.length} compact/>
+      <PortfolioHistoryChart history={portfolio.history} knownValue={portfolio.known_value_php} currentUsdValue={portfolio.total_value_usd}
+        currentRecordedCostPhp={portfolio.recorded_cost_php} currentGainPhp={portfolio.recorded_gain_php} currentGainPercentage={portfolio.recorded_gain_percentage}
+        complete={portfolio.complete} holdingsCount={portfolio.holdings.length} compact/>
       {(!portfolio.complete || portfolio.stale_count > 0) && <a className="entry-link" href="#portfolio">{!portfolio.complete ? "Some values are unavailable · Review →" : "Cached values · Check dates →"}</a>}
     </> : <>
-      <strong>{formatContributionMoney("0","PHP")}</strong>
-      <PortfolioHistoryChart history={portfolio.history} knownValue={portfolio.known_value_php} complete={portfolio.complete} holdingsCount={portfolio.holdings.length} compact/>
+      <PortfolioHistoryChart history={portfolio.history} knownValue={portfolio.known_value_php} currentUsdValue={portfolio.total_value_usd} complete={portfolio.complete} holdingsCount={portfolio.holdings.length} compact/>
       <a className="entry-primary" href="#portfolio/add">+ Add Investment</a>
     </>}
   </section>;

@@ -21,7 +21,7 @@ export function TrackingAvailability() {
   </div>;
 }
 
-export default function PlanImplementation({ value, onRecord, intro = true, userId, onPlanChange }: { value: PlanV2; onRecord?: () => void; intro?: boolean; userId?: string; onPlanChange?: (value: PlanV2) => void }) {
+export default function PlanImplementation({ value, onRecord, intro = true, inSheet = false, userId, onPlanChange }: { value: PlanV2; onRecord?: () => void; intro?: boolean; inSheet?: boolean; userId?: string; onPlanChange?: (value: PlanV2) => void }) {
   const [choosing,setChoosing]=useState<Sleeve|null>(null);
   const access=useAccountAccess();
   const pendingAvailable=access?.value?.features.includes("monthly_contribution_planner") === true && access.value.availability?.monthly_checkin === true;
@@ -35,7 +35,7 @@ export default function PlanImplementation({ value, onRecord, intro = true, user
         <a className="entry-link" href="#home/plan">Plan details <span aria-hidden="true">↗</span></a>
       </div><Allocation weights={planTargets(value)} />
     </div>}
-    <header className="ways-heading"><div><h2>Ways to invest</h2><p>Explore options for each part of your plan.</p></div><span>Choose your provider</span></header>
+    {!inSheet && <header className="ways-heading"><div><h2>Ways to invest</h2><p>Explore options for each part of your plan.</p></div><span>Choose your provider</span></header>}
     {value.plan.readiness.readiness === "getting_ready" && <p className="implementation-caution">Your readiness check flags a financial-foundation consideration. Review your saved plan before exploring a contribution.</p>}
     {groups.map(group => <section className="implementation-sleeve" key={group.role} data-sleeve={group.role}>
       <header><h3><span className="allocation-dot" style={{ background: sleeveColors[group.role] }}/>{SLEEVE_LABELS[group.role]}</h3><span>{group.percentage_points}% target</span></header>
@@ -59,7 +59,7 @@ export default function PlanImplementation({ value, onRecord, intro = true, user
     </section>)}
     <p className="implementation-footnote">Options are listed by provider name, not ranked. Choose your implementation, then continue to your provider. Invest outside Arbor and return to record your actual units and PHP paid. Funds and ETFs differ in holdings, fees and structure; check availability and terms with your provider.</p>
     <div className="record-return"><div><h3>{onRecord ? "Already invested?" : "Your choices. Your provider."}</h3><p>You invest through your provider. Arbor does not place trades or move money.</p>{onRecord && <small>Come back to record what you own—not a broker transaction.</small>}</div>
-      {onRecord && <p className="text-sm">Use + Add Investment above to start tracking what you own.</p>}
+      {onRecord && <p className="text-sm">{inSheet ? "Close this sheet and use + Add Investment to start tracking what you own." : "Use + Add Investment above to start tracking what you own."}</p>}
     </div>
     {choosing&&userId&&onPlanChange&&<ImplementationPicker value={value} userId={userId} sleeve={choosing} onClose={()=>setChoosing(null)} onSaved={onPlanChange}/>}
   </section>;

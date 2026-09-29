@@ -43,7 +43,7 @@ function PlanV2Shell({ value, userId, onSignOut, signingOut, logoutError, onPlan
   }
   return <AppShell active={active} pageTitle={(active === "home" && section === "monthly") || (active === "portfolio" && section === "contribution") ? "Monthly plan" : undefined} name={value.profile.full_name} onSignOut={onSignOut} signingOut={signingOut} logoutError={logoutError}>
     {choosing && userId && onPlanChange ? <PlusFeature feature="profile_rebuild" title="Review and rebuild your investment profile" onBack={() => setChoosing(false)}><InvestmentProfileEditor value={value} userId={userId} initialMode={editMode} onCancel={() => setChoosing(false)} onSaved={plan => { onPlanChange(plan); setChoosing(false); }} /></PlusFeature> : <>
-      {((active === "home" && section === "monthly") || (active === "portfolio" && section === "contribution")) && userId && onPlanChange ? <div className="monthly-page"><MonthlyPendingRecording userId={userId}/><PlusFeature feature="monthly_contribution_planner" title="Monthly plan"><MonthlyInvesting value={value} userId={userId} onPlanChange={onPlanChange}/></PlusFeature></div> : active === "home" && (section === "plan" ? <><a href="#home" className="entry-link min-h-11 inline-flex items-center">‹ Home</a><V2PlanContent value={value}/></> : <V2Home value={value} userId={userId} onPlanChange={onPlanChange}/>)}
+      {((active === "home" && section === "monthly") || (active === "portfolio" && section === "contribution")) && userId && onPlanChange ? <div className="monthly-page"><MonthlyPendingRecording userId={userId}/><PlusFeature feature="monthly_contribution_planner" title="Monthly plan"><MonthlyInvesting value={value} userId={userId} onPlanChange={onPlanChange}/></PlusFeature></div> : active === "home" && (section === "plan" ? <><a href="#home" className="entry-link min-h-11 inline-flex items-center">‹ Home</a><V2PlanContent value={value}/></> : <V2Home value={value} userId={userId} section={section} onPlanChange={onPlanChange}/>)}
       {active === "settings" && userId && onPlanChange && <section id="section-investment" className="settings-list" aria-label="Account and plan settings">
         <p className="settings-group-label">Account</p>
         <div className="settings-account-header"><span aria-hidden="true">{value.profile.full_name.trim().slice(0,1)}</span><div><strong>{value.profile.full_name}</strong><small>Your Arbor account</small></div></div>
@@ -67,7 +67,7 @@ export function V2Destination({ value, active, userId, section = "", onPlanChang
   if (active === "portfolio" && userId && !access?.value) return <AccessLoading />;
   const tracking = access?.value?.availability?.live_portfolio === true && access.value.features.includes("live_portfolio");
   if (active === "portfolio") return <div className="space-y-5">
-    {tracking && userId ? <LivePortfolio key={section} value={value} userId={userId} section={section} onPlanChange={onPlanChange}/> : <>
+    {tracking && userId ? <LivePortfolio key={section === "add" ? "add" : "portfolio"} value={value} userId={userId} section={section} onPlanChange={onPlanChange}/> : <>
       <PlanImplementation value={value} userId={userId} onPlanChange={onPlanChange}/>
       <TrackingAvailability/>
     </>}

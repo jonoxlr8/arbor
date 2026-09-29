@@ -16,8 +16,40 @@ export function destinationFromHash(hash: string): Destination {
 // Hash navigation deliberately keeps the authenticated owner and its requests alive.
 // No session values or financial information are placed in the URL.
 export function subscribeNavigation(callback: () => void) {
-  window.addEventListener("hashchange", callback);
-  return () => window.removeEventListener("hashchange", callback);
+  const listener = (event: Event) => {
+    if ("newURL" in event && "oldURL" in event) {
+      const change = event as HashChangeEvent;
+      const next = new URL(change.newURL).hash;
+      if (next === "#portfolio/ways" || next === "#portfolio/history" || next === "#home/activity") {
+        sheetOpeningHash = new URL(change.oldURL).hash;
+        sheetTargetHash = next;
+      } else {
+        sheetOpeningHash = null;
+        sheetTargetHash = null;
+      }
+    }
+    callback();
+  };
+  window.addEventListener("hashchange", listener);
+  return () => window.removeEventListener("hashchange", listener);
+}
+let sheetOpeningHash: string | null = null;
+let sheetTargetHash: string | null = null;
+
+export function closePortfolioSheet() {
+  const target = window.location.hash;
+  const opener = sheetTargetHash === target ? sheetOpeningHash : null;
+  if (opener !== null) {
+    window.history.back();
+    window.setTimeout(() => {
+      const launcher = document.querySelector<HTMLElement>(`[href="${target}"]`);
+      launcher?.focus();
+    }, 50);
+    return;
+  }
+  // A direct bookmarked sheet has no in-app opener to return to.
+  window.history.replaceState(window.history.state, "", target.startsWith("#home/") ? "#home" : "#portfolio");
+  window.dispatchEvent(new HashChangeEvent("hashchange", { oldURL: window.location.href, newURL: window.location.href }));
 }
 export function navigationSnapshot() { return destinationFromHash(window.location.hash); }
 export function serverNavigationSnapshot(): Destination { return "home"; }

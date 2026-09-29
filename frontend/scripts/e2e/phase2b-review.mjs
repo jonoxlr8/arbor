@@ -8,7 +8,9 @@ const askOnly = process.argv.includes('--ask-only');
 const datedOnly = process.argv.includes('--dated-only');
 const tabletGraphOnly = process.argv.includes('--tablet-graph-only');
 const homeLayoutOnly = process.argv.includes('--home-layout-only');
-const output = homeLayoutOnly ? '/private/tmp/arbor-home-layout-review' : tabletGraphOnly ? '/private/tmp/arbor-tablet-graph-review' : datedOnly ? '/private/tmp/arbor-dated-review' : askOnly ? '/private/tmp/arbor-ask-learn-review' : '/private/tmp/arbor-phase2b-retention-review';
+const historyOnly = process.argv.includes('--history-only');
+const sheetOnly = process.argv.includes('--sheet-only');
+const output = sheetOnly ? '/private/tmp/arbor-sheet-review' : historyOnly ? '/private/tmp/arbor-history-review' : homeLayoutOnly ? '/private/tmp/arbor-home-layout-review' : tabletGraphOnly ? '/private/tmp/arbor-tablet-graph-review' : datedOnly ? '/private/tmp/arbor-dated-review' : askOnly ? '/private/tmp/arbor-ask-learn-review' : '/private/tmp/arbor-phase2b-retention-review';
 await mkdir(output, { recursive: true });
 const user = { id: '00000000-0000-4000-8000-000000000001', aud: 'authenticated', role: 'authenticated', email: 'phase2b@example.test', created_at: '2026-09-01T00:00:00Z', app_metadata: { provider: 'email' }, user_metadata: {} };
 const encoded = value => Buffer.from(JSON.stringify(value)).toString('base64url');
@@ -19,6 +21,15 @@ const part = type => dateParts.find(value => value.type === type).value;
 const today = `${part('year')}-${part('month')}-${part('day')}`;
 const month = today.slice(0, 7);
 const now = new Date().toISOString();
+const observedDay = offset => new Date(Date.now() - offset * 86400000).toISOString().slice(0,10);
+const observed = (offset,value,cost,gain,pct) => ({day:observedDay(offset),value_php:value,
+  value_usd:offset===50?null:(Number(value)/50).toFixed(2),captured_at:`${observedDay(offset)}T12:00:00Z`,
+  recorded_cost_php:cost,recorded_gain_php:gain,recorded_gain_percentage:pct,
+  cost_complete:cost !== null,cost_context_captured:offset !== 50});
+let historyFixture = [observed(50,'9000.00',null,null,null),observed(10,'10000.00','10000.00','0.00','0.00'),
+  observed(6,'16000.00','16000.00','0.00','0.00'),observed(3,'16500.00','15000.00','1500.00','10.00'),
+  observed(1,'14000.00','15000.00','-1000.00','-6.67'),observed(0,'15000.00','14000.00','1000.00','7.14')];
+let historyCurrent = { value:'15000.00', cost:'14000.00', gain:'1000.00', percentage:'7.14' };
 const weights = [{ role: 'global_equity', percentage_points: 80 }, { role: 'defensive', percentage_points: 0 }, { role: 'technology_tilt', percentage_points: 10 }, { role: 'crypto', percentage_points: 10 }];
 const plan = { strategy_engine_version: '2.0', profile: { strategy_engine_version: '2.0', full_name: 'Phase Two QA', country: 'Philippines', currency: 'PHP', emergency_savings: 'three_to_six_months', high_interest_debt: 'none', goal_target: 500000, goal_name: 'Home', goal_date: '2036-09-28', current_portfolio_value: 0, monthly_investment: 10000, horizon: 'ten_plus_years', risk_response: 'hold', saved_preferences: { technology_tilt: 0, bitcoin: 0 }, selected_approach: 'Aggressive', explicit_customization: { technology_tilt: 10, bitcoin: 10 }, implementation_choices: { global_equity: 'gotrade_vt', crypto: 'pdax_btc' } }, plan: { plan_basis: 'user_selected', strategy_engine_version: '2.0', selection: { risk_response: 'hold', horizon: 'ten_plus_years', requested_strategy: 'Growth', horizon_maximum_strategy: 'Aggressive', selected_strategy: 'Growth', is_short_term: false, cap_applied: false, reason: 'requested_strategy_retained' }, readiness: { readiness: 'ready', core_strategy_can_be_shown: true, actionable_contribution_guidance_allowed: true, technology_satellite_readiness_eligible: true, bitcoin_satellite_readiness_eligible: true, message_requirement: 'none' }, inflation_pct: 3, preference_result: { technology_tilt: { requested_percentage_points: 0, effective_percentage_points: 0, strategy_cap_percentage_points: 10, reasons: [] }, bitcoin: { requested_percentage_points: 0, effective_percentage_points: 0, strategy_cap_percentage_points: 10, reasons: [] }, effective_target: { strategy_engine_version: '2.0', base_strategy: 'Aggressive', allocation: { weights: [{ role: 'global_equity', percentage_points: 100 }, { role: 'defensive', percentage_points: 0 }, { role: 'technology_tilt', percentage_points: 0 }, { role: 'crypto', percentage_points: 0 }] } } }, dormant_selected_approach: null, historical_allocation_preserved: false, customization: { technology_tilt: 10, bitcoin: 10, provenance: 'user_selected' }, final_allocation: weights, path: 'long_term', selected_strategy: 'Aggressive', base_allocation: [{ role: 'global_equity', percentage_points: 100 }, { role: 'defensive', percentage_points: 0 }], planning_return_pct: 5.5 }, historical_plan: null, revision: '96613c4986b48f5b2b5e2a255b90a1ffa9be405441b583c34b5a3b02247d3176', profile_warning: null };
 const catalog = [
@@ -40,6 +51,7 @@ const pending = [{ id: '00000000-0000-4000-8000-000000000201', product_id: 'gotr
 const entries = [];
 const keys = new Map();
 let pageErrors = 0, consoleErrors = 0, expectedMissingProfile404 = 0, blockedExternal = 0;
+let snapshotRequests = 0, pendingWrites = 0;
 const browser = await chromium.launch({ channel: 'chrome' });
 const context = await browser.newContext({ viewport: { width: 1440, height: 950 }, colorScheme: 'light', reducedMotion: 'reduce' });
 const page = await context.newPage();
@@ -122,6 +134,7 @@ await context.route('**/*', async route => {
   }
   if (path.endsWith('/v2/pending-recordings') && method === 'GET') return json({ items: pending.filter(item => item.status === 'pending') });
   if (path.endsWith('/v2/pending-recordings') && method === 'POST') {
+    pendingWrites++;
     const body = request.postDataJSON();
     const existing = pending.find(item => item.product_id === body.product_id && item.provider === body.provider && item.status === 'pending');
     if (existing) return json(existing, 201);
@@ -135,6 +148,18 @@ await context.route('**/*', async route => {
   }
   if (path.endsWith('/v2/portfolio') && method === 'GET') {
     const response = portfolio();
+    if (historyOnly) {
+      response.history = historyFixture;
+      response.known_value_php = historyCurrent.value; response.total_value_php = historyCurrent.value;
+      response.total_value_usd = (Number(historyCurrent.value)/50).toFixed(2);
+      response.recorded_cost_php = historyCurrent.cost; response.recorded_gain_php = historyCurrent.gain;
+      response.recorded_gain_percentage = historyCurrent.percentage;
+      response.holdings[0].units = '3'; response.holdings[0].value_php = historyCurrent.value;
+      response.holdings[0].cost_basis_php = historyCurrent.cost; response.holdings[0].recorded_gain_php = historyCurrent.gain;
+      response.holdings[0].recorded_gain_percentage = historyCurrent.percentage;
+      response.provider_values_php.gotrade = historyCurrent.value;
+      response.sleeves[0].known_value_php = historyCurrent.value;
+    }
     if (marketScreenshot) {
       response.holdings.push({ ...response.holdings[0], ...catalog[3], id: '00000000-0000-4000-8000-000000000104',
         units: '1.25', cost_basis_php: '6000.00', opening_units: '1.25', opening_cost_php: '6000.00',
@@ -149,7 +174,7 @@ await context.route('**/*', async route => {
     if (entitlementMode === 'free') { response.sleeves = []; response.provider_values_php = {}; }
     return json(response);
   }
-  if (path.endsWith('/v2/portfolio/snapshot')) return json({ recorded: false, history: [] });
+  if (path.endsWith('/v2/portfolio/snapshot')) { snapshotRequests++; return json({ recorded: false, history: historyOnly ? historyFixture : [] }); }
   if (path.endsWith('/v2/portfolio/entries') && method === 'GET') {
     const selected = url.searchParams.get('month'); const rows = entries.filter(e => !selected || e.investment_date.startsWith(selected));
     return json({ entries: rows, page: Number(url.searchParams.get('page') || 0), has_more: false });
@@ -172,7 +197,7 @@ async function shot(name, width, theme = 'light') {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
   const offenders = overflow > 0 ? await page.evaluate(() => { const element = document.querySelector('.monthly-amount-input'); const chain = []; let current = element; while (current && chain.length < 9) { const r = current.getBoundingClientRect(); chain.push(`${current.tagName}.${String(current.className).slice(0, 35)} x=${Math.round(r.x)} w=${Math.round(r.width)}`); current = current.parentElement; } return chain; }) : [];
   assert.ok(overflow <= 0, `${name}: horizontal overflow ${overflow}px at ${offenders.join(', ')}`);
-  const file = `${output}/${name}.png`; await page.screenshot({ path: file, fullPage: true, animations: 'disabled', style: 'nextjs-portal{display:none!important}' }); shots.push(file);
+  const file = `${output}/${name}.png`; await page.screenshot({ path: file, fullPage: await page.locator('dialog[open]').count() === 0, animations: 'disabled', style: 'nextjs-portal{display:none!important}' }); shots.push(file);
   if (width < 1024) {
     const reachable = await page.evaluate(() => {
       const nav = document.querySelector('nav[aria-label="Mobile navigation"]');
@@ -193,7 +218,8 @@ async function scrolledViewportShot(name, width) {
       dialog.scrollTop = dialog.scrollHeight;
       const edge = dialog.getBoundingClientRect();
       const last = dialog.querySelector('.sheet-body')?.lastElementChild?.getBoundingClientRect();
-      return { kind: 'dialog', surfaceBottom: edge.bottom, contentBottom: last?.bottom ?? edge.bottom, viewportBottom: innerHeight };
+      return { kind: 'dialog', surfaceBottom: edge.bottom, contentBottom: last?.bottom ?? edge.bottom, viewportBottom: innerHeight,
+        remainingScroll: dialog.scrollHeight - dialog.clientHeight - dialog.scrollTop };
     }
     window.scrollTo(0, document.documentElement.scrollHeight);
     const nav = document.querySelector('nav[aria-label="Mobile navigation"]');
@@ -204,17 +230,360 @@ async function scrolledViewportShot(name, width) {
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   assert.ok(geometry.contentBottom <= geometry.surfaceBottom + 2,
     `${name}: final content is obscured (${JSON.stringify(geometry)})`);
+  if (geometry.kind === 'dialog') {
+    assert.ok(geometry.remainingScroll <= 2, `${name}: dialog did not reach its final content (${JSON.stringify(geometry)})`);
+    assert.ok(geometry.contentBottom <= geometry.viewportBottom - 8, `${name}: dialog end is clipped by viewport (${JSON.stringify(geometry)})`);
+    await page.locator('dialog .sheet-body > :last-child').scrollIntoViewIfNeeded();
+  }
   const file = `${output}/${name}.png`;
   await page.screenshot({ path: file, fullPage: false, animations: 'disabled', style: 'nextjs-portal{display:none!important}' });
   shots.push(file);
 }
 try {
+  if (sheetOnly) plan.profile.goal_target = 36000000;
   await page.goto(`${origin}/#login`);
   await page.getByRole('heading', { name: 'Welcome back' }).waitFor();
   await page.getByLabel('Email address').fill(user.email);
   await page.getByLabel('Password').fill('fixture-only-password');
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
-  if (homeLayoutOnly) {
+  if (sheetOnly) {
+    await page.evaluate(() => { location.hash = 'home'; });
+    await page.getByRole('region', { name: 'Portfolio value graph' }).waitFor();
+    const geometry = async () => page.evaluate(() => {
+      const box = selector => { const element = document.querySelector(selector); const rect = element?.getBoundingClientRect(); return rect ? {top:rect.top,bottom:rect.bottom,height:rect.height} : null; };
+      return {portfolio:box('.home-portfolio'),utility:box('.home-utility-stack'),goal:box('.home-goal'),monthly:box('.home-monthly'),projection:box('.home-projection'),plan:box('.home-plan'),activity:box('.home-activity')};
+    });
+    for (const width of [1440,1280,1024,960,900,820,768,430,390,360,320]) {
+      await shot(`home-${width}`,width);
+      const parts=await geometry();
+      if(width>=1000) assert.ok(Math.abs(parts.portfolio.bottom-parts.utility.bottom)<=2,`${width}: right stack matches Portfolio`);
+      else assert.ok(parts.portfolio.top<parts.goal.top && parts.goal.top<parts.monthly.top && parts.monthly.top<parts.projection.top && parts.projection.top<parts.plan.top && parts.plan.top<parts.activity.top,`${width}: stacked Home order`);
+      const moneyLayout=await page.evaluate(()=>{
+        const current=document.querySelector('.home-goal .home-financial-amount');
+        const target=document.querySelector('.home-goal .home-financial-target');
+        const monthly=document.querySelector('.home-monthly .home-financial-amount');
+        return {current:Number.parseFloat(getComputedStyle(current).fontSize),target:Number.parseFloat(getComputedStyle(target).fontSize),monthly:Number.parseFloat(getComputedStyle(monthly).fontSize),overflow:document.documentElement.scrollWidth-innerWidth,
+          targetOverflow:target.scrollWidth-target.clientWidth};
+      });
+      assert.ok(Math.abs(moneyLayout.current-moneyLayout.monthly)<=1,`${width}: Goal current and Monthly typography match (${JSON.stringify(moneyLayout)})`);
+      assert.ok(moneyLayout.target>=moneyLayout.monthly*.8,`${width}: Goal target remains a prominent amount`);
+      assert.ok(moneyLayout.overflow<=1 && moneyLayout.targetOverflow<=1,`${width}: long Goal target does not overflow (${JSON.stringify(moneyLayout)})`);
+    }
+    for (const width of [1024,390]) await shot(`home-dark-${width}`,width,'dark');
+    await shot('home-plan-then-activity-mobile',390);
+    await scrolledViewportShot('home-bottom-390',390);
+    const beforeHomeWays={entries:entries.length,pending:pending.length,snapshots:snapshotRequests,pendingWrites};
+    const homeWaysScroll=await page.locator('.home-plan-actions a[href="#portfolio/ways"]').evaluate(element=>{element.scrollIntoView({block:'center'});return scrollY;});
+    await page.locator('.home-plan-actions a[href="#portfolio/ways"]').click();
+    await page.getByRole('dialog',{name:'Ways to invest'}).waitFor();
+    await shot('home-ways-open-390',390);
+    assert.deepEqual({entries:entries.length,pending:pending.length,snapshots:snapshotRequests,pendingWrites},beforeHomeWays,'Home Ways launcher is read-only');
+    await page.getByRole('dialog',{name:'Ways to invest'}).getByRole('button',{name:'Close'}).click();
+    await page.getByRole('heading',{name:'Your plan'}).waitFor();
+    assert.equal(new URL(page.url()).hash,'#home','Home Ways Close returns to Home');
+    await page.waitForTimeout(80);
+    assert.equal(await page.evaluate(()=>document.activeElement?.getAttribute('href')),'#portfolio/ways','Home Ways launcher receives focus after close');
+    const waysReturnScroll=await page.evaluate(()=>scrollY);
+    assert.ok(Math.abs(waysReturnScroll-homeWaysScroll)<200,`Home Ways close preserves a useful scroll position despite fixture viewport resize: ${homeWaysScroll} → ${waysReturnScroll}`);
+    for(let index=0;index<10;index++) entries.push({id:`fixture-activity-${index}`,holding_id:'00000000-0000-4000-8000-000000000101',product_id:'gotrade_vt',provider:'gotrade',
+      investment_date:observedDay(index),units:'0.1',amount_paid_php:'500.00',recorded_at:now,updated_at:now,revision:1,voided_at:index===9?now:null});
+    const recent=page.getByRole('link',{name:'View all recorded activity'});
+    const homeActivityScroll=await recent.evaluate(element=>{element.scrollIntoView({block:'center'});return scrollY;});
+    await recent.click();
+    await page.getByRole('dialog',{name:'Investment activity'}).waitFor();
+    assert.equal(await page.getByRole('dialog',{name:'Investment activity'}).locator('.activity-entry').count(),10);
+    assert.match(await page.getByRole('dialog',{name:'Investment activity'}).locator('.activity-entry').last().innerText(),/voided/);
+    await page.getByRole('dialog',{name:'Investment activity'}).getByRole('button',{name:'Edit or void'}).first().click();
+    await page.getByRole('dialog',{name:'Investment activity'}).getByRole('button',{name:'Edit',exact:true}).first().waitFor();
+    await page.getByRole('dialog',{name:'Investment activity'}).getByRole('button',{name:'Void',exact:true}).first().waitFor();
+    await page.getByRole('button',{name:'All investment activity'}).click();
+    await page.getByRole('dialog',{name:'Investment activity'}).locator('.investment-line').first().waitFor();
+    assert.equal(new URL(page.url()).hash,'#home/activity');
+    assert.equal(await page.locator('.home-dashboard').count(),1,'Home remains beneath the activity sheet');
+    await shot('home-activity-open-390',390);
+    for(const width of [1440,1024,768,430,390,320]) await shot(`activity-${width}`,width);
+    for(const width of [390,320]) await scrolledViewportShot(`activity-bottom-${width}`,width);
+    for(const width of [1024,768,390]) await shot(`activity-dark-${width}`,width,'dark');
+    await page.getByRole('dialog',{name:'Investment activity'}).getByRole('button',{name:'Close'}).click();
+    await page.getByRole('heading',{name:'Recent activity'}).waitFor();
+    assert.equal(new URL(page.url()).hash,'#home');
+    await page.waitForTimeout(80);
+    assert.equal(await page.evaluate(()=>document.activeElement?.getAttribute('href')),'#home/activity','Home launcher receives focus after close');
+    assert.ok(Math.abs(await page.evaluate(()=>scrollY)-homeActivityScroll)<200,'Home Activity close preserves a useful scroll position despite fixture viewport resize');
+    await recent.click();
+    await page.getByRole('dialog',{name:'Investment activity'}).waitFor();
+    await page.goBack();
+    await page.getByRole('heading',{name:'Recent activity'}).waitFor();
+    assert.equal(await page.getByRole('dialog',{name:'Investment activity'}).count(),0,'browser Back closes Home activity');
+    assert.equal(new URL(page.url()).hash,'#home');
+    await page.evaluate(()=>{location.hash='portfolio';});
+    await page.getByRole('heading',{name:'Holdings'}).waitFor();
+    for(const width of [1440,768,390,320]) {
+      await shot(`portfolio-order-${width}`,width);
+      const order=await page.evaluate(()=>['.portfolio-value','#section-holdings','[data-sheet-launcher="ways"]','.portfolio-insights,[class="portfolio-plus-preview"]','[data-sheet-launcher="history"]','.portfolio-data'].map(selector=>document.querySelector(selector)?.getBoundingClientRect().top));
+      assert.ok(order.every(Number.isFinite) && order.every((top,index)=>index===0 || top>order[index-1]),`${width}: Portfolio section order ${JSON.stringify(order)}`);
+    }
+    await scrolledViewportShot('portfolio-bottom-390',390);
+    await page.getByRole('link',{name:'Investment activity'}).click();
+    await page.getByRole('dialog',{name:'Investment activity'}).waitFor();
+    await page.keyboard.press('Escape');
+    await page.getByRole('heading',{name:'Holdings'}).waitFor();
+    assert.equal(new URL(page.url()).hash,'#portfolio');
+    await page.waitForTimeout(80);
+    assert.equal(await page.evaluate(()=>document.activeElement?.getAttribute('data-sheet-launcher')),'history','Portfolio launcher receives focus after Escape');
+    const before={entries:entries.length,pending:pending.length,snapshots:snapshotRequests,pendingWrites};
+    await page.getByRole('link',{name:'Ways to invest'}).click();
+    const ways=page.getByRole('dialog',{name:'Ways to invest'});
+    await ways.waitFor();
+    await ways.locator('.implementation-option').first().waitFor();
+    for(const width of [1440,1024,768,430,390,320]) await shot(`ways-${width}`,width);
+    for(const width of [390,320]) await scrolledViewportShot(`ways-bottom-${width}`,width);
+    for(const width of [1024,768,390]) await shot(`ways-dark-${width}`,width,'dark');
+    assert.deepEqual({entries:entries.length,pending:pending.length,snapshots:snapshotRequests,pendingWrites},before,'opening Ways is read-only');
+    await page.goBack();
+    await page.getByRole('heading',{name:'Holdings'}).waitFor();
+    assert.equal(await page.getByRole('dialog',{name:'Ways to invest'}).count(),0,'browser Back closes Ways');
+    await page.evaluate(()=>{location.hash='portfolio/ways';});
+    await ways.waitFor();await page.reload();await ways.waitFor();
+    await ways.getByRole('button',{name:'Close'}).click();
+    assert.equal(new URL(page.url()).hash,'#portfolio','direct Ways bookmark closes to Portfolio rather than leaving app');
+    entitlementMode='free';await page.reload();
+    await page.getByRole('heading',{name:'Holdings'}).waitFor();
+    await page.locator('.portfolio-value').waitFor();
+    const freeOrder=await page.evaluate(()=>['[data-sheet-launcher="ways"]','.portfolio-plus-preview','[data-sheet-launcher="history"]','.portfolio-data'].map(selector=>document.querySelector(selector)?.getBoundingClientRect().top));
+    assert.ok(freeOrder.every(Number.isFinite) && freeOrder.every((top,index)=>index===0 || top>freeOrder[index-1]),`Free Portfolio keeps the same factual/Plus section order: ${JSON.stringify(freeOrder)} at ${new URL(page.url()).hash}`);
+    await page.getByRole('link',{name:'Investment activity'}).click();
+    await page.getByRole('dialog',{name:'Investment activity'}).waitFor();
+    assert.equal(await page.getByText('Plan Alignment').count(),0,'Free is not sent Plus analysis');
+    assert.equal(pageErrors,0,'browser page errors');assert.equal(consoleErrors,0,'browser console errors');assert.equal(blockedExternal,0,'unhandled external requests');
+    console.log(JSON.stringify({fixtureOnly:true,screenshots:shots,pageErrors,consoleErrors,blockedExternal,before,after:{entries:entries.length,pending:pending.length,snapshots:snapshotRequests,pendingWrites}}));
+  } else if (historyOnly) {
+    const capture = async name => { const file=`${output}/${name}.png`; await page.screenshot({path:file,fullPage:false,animations:'disabled',style:'nextjs-portal{display:none!important}'});shots.push(file); };
+    const chart = () => page.locator('.portfolio-chart').first();
+    const layout = () => chart().evaluate(element => {
+      const rect = node => { const box=node.getBoundingClientRect();return {top:box.top,bottom:box.bottom,height:box.height}; };
+      return {card:rect(element.closest('.home-portfolio,.portfolio-value')),plot:rect(element.querySelector('.chart-plot')),
+        range:rect(element.querySelector('.chart-range'))};
+    });
+    const assertStable = (before,after,label) => {
+      for(const part of ['card','plot','range']) {
+        assert.ok(Math.abs(before[part].height-after[part].height)<=0.1,`${label}: ${part} height shifted by ${after[part].height-before[part].height}px; ${JSON.stringify({before,after})}`);
+        if(part !== 'card') assert.ok(Math.abs((before[part].top-before.card.top)-(after[part].top-after.card.top))<=0.1,
+          `${label}: ${part} moved within its card`);
+      }
+      assert.ok(Math.abs(before.card.top-after.card.top)<=1,`${label}: card position moved by more than browser subpixel reflow`);
+    };
+    const inspect = async (fraction, type='mouse') => {
+      const box=await chart().locator('.chart-plot').boundingBox();
+      assert.ok(box,'chart plot exists');
+      const x=box.x+8+(box.width-16)*fraction, y=box.y+box.height/2;
+      if(type==='mouse') await page.mouse.move(x,y);
+      else {
+        await chart().locator('.chart-plot').dispatchEvent('pointerdown',{pointerType:'touch',pointerId:7,clientX:x,clientY:y,bubbles:true});
+        await page.waitForTimeout(420);
+        await chart().locator('.chart-plot').dispatchEvent('pointermove',{pointerType:'touch',pointerId:7,clientX:x+4,clientY:y,bubbles:true});
+        await chart().locator('.chart-plot').dispatchEvent('pointerup',{pointerType:'touch',pointerId:7,clientX:x+4,clientY:y,bubbles:true});
+      }
+      await chart().locator('.chart-selected-date[data-selected="true"]').waitFor();
+      assert.equal(await chart().locator('.chart-inspection-tooltip').count(),0,'inspection has no floating card');
+    };
+    await page.getByRole('region',{name:'Portfolio value graph'}).waitFor();
+    for(const width of [1440,1280,1024,768,430,390,360,320]) {
+      await shot(`home-range-${width}`,width);
+      const geometry=await page.evaluate(()=>{
+        const box=s=>document.querySelector(s)?.getBoundingClientRect();
+        return {portfolio:box('.home-portfolio'),stack:box('.home-utility-stack'),overflow:document.documentElement.scrollWidth-innerWidth};
+      });
+      assert.ok(geometry.overflow<=0,`Home ${width} horizontal overflow`);
+      if(width>=1000) assert.ok(Math.abs(geometry.portfolio.bottom-geometry.stack.bottom)<=2,`Home ${width} paired height`);
+    }
+    await page.setViewportSize({width:1440,height:900});
+    assert.equal(await chart().getAttribute('data-gain'),'positive');
+    assert.equal(await chart().locator('.chart-selected-date[data-selected="true"]').count(),0);
+    await capture('fidelity-home-idle');
+    const homeIdleLayout=await layout();
+    const homeHighY=await chart().locator('.chart-extreme-high').evaluate(guide=>guide.getBoundingClientRect().top);
+    const homeLabelWidth=await chart().locator('.chart-extreme-text').first().evaluate(label=>label.getBoundingClientRect().width);
+    assert.ok(homeLabelWidth<180,'Home high label backing hugs its text');
+    await chart().getByRole('button',{name:'1W portfolio history'}).click();
+    assert.equal(await chart().getAttribute('data-gain'),'positive','range movement cannot change recorded-cost gain');
+    await chart().getByRole('button',{name:'1M portfolio history'}).click();
+    await inspect(.7);assert.match(await chart().locator('.chart-value').innerText(),/₱16,500\.00/);
+    assert.match(await chart().locator('.chart-gain').innerText(),/\+₱1,500\.00/);
+    assertStable(homeIdleLayout,await layout(),'Home desktop inspection');
+    assert.equal(await chart().locator('.chart-extrema').count(),0,'Home high/low hide while inspecting');
+    const homeHighDotY=await chart().locator('.recharts-reference-dot circle').evaluate(dot=>{const box=dot.getBoundingClientRect();return box.top+box.height/2});
+    assert.ok(Math.abs(homeHighY-homeHighDotY)<=2,'Home high guide meets plotted high');
+    await capture('fidelity-home-hover');
+    await page.mouse.move(220,55);
+    assertStable(homeIdleLayout,await layout(),'Home desktop hover exit');
+    for(const width of [1280,1024]) {
+      await page.setViewportSize({width,height:900});
+      await page.waitForTimeout(120);
+      const before=await layout();await inspect(.7);assertStable(before,await layout(),`Home ${width} inspection`);
+      assert.equal(await chart().locator('.chart-extrema').count(),0);
+      await page.mouse.move(220,55);assertStable(before,await layout(),`Home ${width} exit`);
+    }
+    await page.setViewportSize({width:1440,height:900});
+    await page.evaluate(()=>{location.hash='portfolio';});
+    await page.getByRole('heading',{name:'Holdings'}).waitFor();
+    assert.match(await chart().locator('.chart-value').innerText(),/₱15,000\.00/);
+    assert.match(await chart().locator('.chart-gain').innerText(),/\+₱1,000\.00/);
+    assert.equal(await chart().locator('.chart-selected-date[data-selected="true"]').count(),0);
+    await capture('fidelity-portfolio-idle-positive');
+    const portfolioIdleLayout=await layout();
+    const guideY=await chart().locator('.chart-extrema').evaluate(extrema=>({
+      high:extrema.querySelector('.chart-extreme-high').getBoundingClientRect().top,
+      low:extrema.querySelector('.chart-extreme-low').getBoundingClientRect().top,
+    }));
+    await inspect(.7);assert.match(await chart().locator('.chart-value').innerText(),/₱16,500\.00/);
+    assert.match(await chart().locator('.chart-gain').innerText(),/\+₱1,500\.00/);
+    assert.match(await chart().locator('.chart-selected-date').innerText(),/Sep/);
+    assertStable(portfolioIdleLayout,await layout(),'Portfolio desktop inspection');
+    assert.equal(await chart().locator('.chart-extrema').count(),0,'Portfolio high/low hide while inspecting');
+    const highDotY=await chart().locator('.recharts-reference-dot circle').evaluate(dot=>{const box=dot.getBoundingClientRect();return box.top+box.height/2});
+    assert.ok(Math.abs(guideY.high-highDotY)<=2,`high guide differs from plotted high by ${guideY.high-highDotY}px`);
+    await capture('fidelity-portfolio-hover-positive');
+    await inspect(0);
+    await page.waitForFunction(()=>document.querySelector('.portfolio-chart .chart-value')?.textContent?.includes('₱10,000.00'));
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    const lowDotY=await chart().locator('.recharts-reference-dot circle').evaluate(dot=>{const box=dot.getBoundingClientRect();return box.top+box.height/2});
+    assert.ok(Math.abs(guideY.low-lowDotY)<=2,`low guide differs from plotted low by ${guideY.low-lowDotY}px`);
+    await inspect(.9);assert.match(await chart().locator('.chart-value').innerText(),/₱14,000\.00/);
+    assert.equal(await chart().locator('.chart-gain').getAttribute('data-gain'),'negative');
+    assert.match(await chart().locator('.chart-gain').innerText(),/−₱1,000\.00/);
+    await capture('fidelity-portfolio-hover-negative');
+    await page.mouse.move(220,55);
+    assert.equal(await chart().locator('.chart-selected-date[data-selected="true"]').count(),0,'hover exit restores current headline');
+    assert.match(await chart().locator('.chart-value').innerText(),/₱15,000\.00/);
+    assertStable(portfolioIdleLayout,await layout(),'Portfolio desktop hover exit');
+    for(const width of [1280,1024]) {
+      await page.setViewportSize({width,height:900});
+      await page.waitForTimeout(120);
+      const before=await layout();await inspect(.7);assertStable(before,await layout(),`Portfolio ${width} inspection`);
+      await page.mouse.move(220,55);assertStable(before,await layout(),`Portfolio ${width} exit`);
+    }
+    await page.setViewportSize({width:1440,height:900});
+    await chart().getByRole('button',{name:'All portfolio history'}).click();
+    assert.equal(await chart().locator('.chart-plot .chart-extrema .chart-extreme-high').count(),1);
+    assert.equal(await chart().locator('.chart-plot .chart-extrema .chart-extreme-low').count(),1);
+    assert.doesNotMatch(await chart().locator('.chart-extrema').innerText(),/High|Low/);
+    const selectedPill=await chart().locator('.chart-range button[aria-pressed="true"]').boundingBox();
+    const chartWidth=(await chart().boundingBox()).width;
+    assert.ok(selectedPill.width<chartWidth/10,'desktop selected range pill hugs its label');
+    await capture('fidelity-portfolio-all-guides');
+    await chart().getByRole('button',{name:'5Y portfolio history'}).click();await capture('fidelity-portfolio-5y');
+    await chart().getByRole('button',{name:'All portfolio history'}).click();
+    await chart().getByRole('button',{name:'Switch portfolio display to USD'}).click();
+    assert.equal(await chart().getAttribute('data-currency'),'USD');
+    assert.match(await chart().innerText(),/USD history from/);
+    assert.match(await chart().locator('.chart-value').innerText(),/US\$300\.00/);
+    assert.match(await chart().locator('.chart-gain').innerText(),/\+₱1,000\.00/);
+    assert.match(await chart().locator('.chart-gain').innerText(),/PHP gain/);
+    await capture('fidelity-portfolio-usd');
+    await chart().getByRole('button',{name:'Switch portfolio display to PHP'}).click();
+    await chart().getByRole('button',{name:'1M portfolio history'}).click();
+    await chart().getByRole('button',{name:'1W portfolio history'}).click();
+    assert.equal(await chart().getAttribute('data-gain'),'positive');
+    assert.match(await chart().locator('.chart-gain').innerText(),/\+₱1,000\.00/);
+    await capture('fidelity-falling-range-positive-gain');
+    await chart().getByRole('button',{name:'1D portfolio history'}).click();
+    await chart().getByText('Not enough history in this range yet.',{exact:false}).waitFor();
+    assert.equal(await chart().locator('.chart-extrema').count(),0,'one point has no high/low pair');
+    assert.equal(await chart().locator('.chart-plot').evaluate(plot=>getComputedStyle(plot).backgroundColor),'rgba(0, 0, 0, 0)','single point has no tinted inner panel');
+    await capture('fidelity-portfolio-1d-single');
+    await page.setViewportSize({width:390,height:900});await capture('fidelity-portfolio-single-390');
+    await page.setViewportSize({width:1440,height:900});
+    await chart().getByRole('button',{name:'All portfolio history'}).click();
+    await inspect(0); assert.match(await chart().locator('.chart-value').innerText(),/₱9,000\.00/);
+    await chart().getByText('Gain/loss unavailable').waitFor(); await capture('fidelity-portfolio-old-unknown-cost');
+    await chart().locator('.chart-plot').focus(); await chart().locator('.chart-plot').press('ArrowRight');
+    await chart().locator('.chart-selected-date[data-selected="true"]').waitFor(); await chart().locator('.chart-plot').press('Escape');
+    assert.equal(await chart().locator('.chart-selected-date[data-selected="true"]').count(),0,'Escape dismisses keyboard inspection');
+    await chart().getByRole('button',{name:'1M portfolio history'}).click();
+    for(const width of [768,430,390,360,320]) {
+      await shot(`portfolio-range-${width}`,width);
+      await page.waitForTimeout(120);
+      const mobileIdle=await layout();
+      const rangeTops=await chart().locator('.chart-range button').evaluateAll(buttons=>buttons.map(button=>Math.round(button.getBoundingClientRect().top)));
+      assert.equal(new Set(rangeTops).size,1,`all six ranges occupy one row at ${width}`);
+      if(width===390) await capture('fidelity-portfolio-mobile-idle');
+      if(width===320) await capture('fidelity-portfolio-ranges-320');
+      await inspect(.7,'touch'); await capture(`fidelity-portfolio-touch-${width}`);
+      assert.equal(await chart().locator('.chart-selected-date[data-selected="true"]').count(),1,'touch selection persists after release');
+      assertStable(mobileIdle,await layout(),`Portfolio ${width} touch inspection`);
+      assert.equal(await chart().locator('.chart-extrema').count(),0);
+      const scroll=await page.evaluate(()=>{window.scrollTo(0,200);return scrollY});
+      assert.ok(scroll>0,`normal vertical scrolling at ${width}`);
+      await page.evaluate(()=>window.scrollTo(0,0));
+    }
+    await page.setViewportSize({width:390,height:900});
+    await page.getByRole('heading',{name:'Holdings'}).click();
+    const tapBox=await chart().locator('.chart-plot').boundingBox();
+    const tapX=tapBox.x+tapBox.width*.7,tapY=tapBox.y+tapBox.height/2;
+    await chart().locator('.chart-plot').dispatchEvent('pointerdown',{pointerType:'touch',pointerId:9,clientX:tapX,clientY:tapY,bubbles:true});
+    await chart().locator('.chart-plot').dispatchEvent('pointerup',{pointerType:'touch',pointerId:9,clientX:tapX,clientY:tapY,bubbles:true});
+    await chart().locator('.chart-selected-date[data-selected="true"]').waitFor();
+    await page.getByRole('heading',{name:'Holdings'}).click();
+    const dragBox=await chart().locator('.chart-plot').boundingBox();
+    const startX=dragBox.x+8+(dragBox.width-16)*.7, endX=dragBox.x+8+(dragBox.width-16)*.4;
+    const dragY=dragBox.y+dragBox.height/2;
+    const touchEvent=(type,x)=>chart().locator('.chart-plot').dispatchEvent(type,{pointerType:'touch',pointerId:8,clientX:x,clientY:dragY,bubbles:true});
+    await touchEvent('pointerdown',startX);await page.waitForTimeout(420);
+    await touchEvent('pointermove',endX);await touchEvent('pointerup',endX);
+    await chart().locator('.chart-gain[data-gain="zero"]').waitFor();
+    await capture('fidelity-portfolio-touch-drag-zero-gain');
+    const cdp=await context.newCDPSession(page);
+    await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:startX,y:dragY}]});
+    await page.waitForTimeout(430);
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:endX,y:dragY}]});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    await chart().locator('.chart-gain[data-gain="zero"]').waitFor();
+    await capture('fidelity-portfolio-native-touch-drag-zero-gain');
+    await page.evaluate(()=>window.scrollTo(0,0));
+    const scrollBox=await chart().locator('.chart-plot').boundingBox();
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:scrollBox.x+20,y:scrollBox.y+100}]});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:scrollBox.x+20,y:scrollBox.y+20}]});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    await page.waitForTimeout(100);
+    assert.ok(await page.evaluate(()=>scrollY)>0,'native vertical touch gesture still scrolls the page');
+    await page.evaluate(()=>window.scrollTo(0,0));
+    await page.getByRole('heading',{name:'Holdings'}).click();
+    assert.equal(await chart().locator('.chart-selected-date[data-selected="true"]').count(),0,'outside tap dismisses touch selection');
+    await inspect(.7,'touch');await chart().getByRole('button',{name:'1W portfolio history'}).click();
+    assert.equal(await chart().locator('.chart-selected-date[data-selected="true"]').count(),0,'range change dismisses touch selection');
+    await page.evaluate(()=>{location.hash='home';});
+    await page.setViewportSize({width:390,height:900});
+    await capture('fidelity-home-mobile-idle');
+    const homeMobileIdle=await layout();
+    await inspect(.7,'touch');assertStable(homeMobileIdle,await layout(),'Home mobile touch inspection');
+    assert.equal(await chart().locator('.chart-extrema').count(),0);
+    await capture('fidelity-home-mobile-touch');
+    for(const width of [1024,768,390]) {
+      await page.setViewportSize({width,height:900});await page.emulateMedia({colorScheme:'dark'});
+      await inspect(.7,'touch');await capture(`fidelity-home-dark-touch-${width}`);
+    }
+    await page.evaluate(()=>{location.hash='portfolio';}); await page.setViewportSize({width:390,height:900});
+    await chart().getByRole('button',{name:'1M portfolio history'}).click();
+    await capture('fidelity-dark-positive-idle');
+    await inspect(.7,'touch');await capture('fidelity-dark-historical-selection');
+    historyCurrent={value:'15000.00',cost:'16000.00',gain:'-1000.00',percentage:'-6.25'};
+    historyFixture=[...historyFixture.slice(0,-1),observed(0,'15000.00','16000.00','-1000.00','-6.25')];
+    await page.reload();await chart().waitFor();
+    assert.equal(await chart().getAttribute('data-gain'),'negative');await capture('fidelity-dark-negative');
+    await page.emulateMedia({colorScheme:'light'});await capture('fidelity-portfolio-idle-negative');
+    await page.setViewportSize({width:1440,height:900});await capture('fidelity-portfolio-idle-negative-desktop');
+    await page.setViewportSize({width:390,height:900});
+    historyCurrent={value:'15000.00',cost:'15000.00',gain:'0.00',percentage:'0.00'};
+    historyFixture=[observed(5,'10000.00','10000.00','0.00','0.00'),observed(0,'15000.00','15000.00','0.00','0.00')];
+    await page.reload();await chart().waitFor();
+    assert.equal(await chart().getAttribute('data-gain'),'zero');
+    assert.match(await chart().locator('.chart-gain').innerText(),/₱0\.00/);
+    await capture('fidelity-portfolio-neutral-contribution');
+    assert.equal(pageErrors,0,'browser page errors');assert.equal(consoleErrors,0,'browser console errors');assert.equal(blockedExternal,0,'unhandled external requests');
+    console.log(JSON.stringify({fixtureOnly:true,screenshots:shots,pageErrors,consoleErrors,blockedExternal}));
+  } else if (homeLayoutOnly) {
     const readings = [];
     await page.getByRole('region', { name: 'Portfolio value graph' }).waitFor();
     await page.getByRole('heading', { name: 'Where you could be headed' }).waitFor();
@@ -239,7 +608,7 @@ try {
         assert.ok(Math.abs(reading.projection.bottom - reading.plan.bottom) <= 2, `${width}: paired Projection and plan cards should match height`);
         assert.ok(reading.activity.top >= Math.max(reading.projection.bottom, reading.plan.bottom), `${width}: Recent activity should follow the second row`);
       } else {
-        const sequence = [reading.portfolio, reading.goal, reading.monthly, reading.pending, reading.projection, reading.activity, reading.plan].filter(Boolean);
+        const sequence = [reading.portfolio, reading.goal, reading.monthly, reading.pending, reading.projection, reading.plan, reading.activity].filter(Boolean);
         assert.ok(sequence.every((section, index) => index === 0 || section.top >= sequence[index - 1].top), `${width}: Home sections should follow reading order`);
       }
       readings.push(reading);
@@ -624,7 +993,7 @@ try {
   await page.reload();
   await page.getByRole('heading', { name: 'No investments recorded yet.' }).waitFor();
   await shot('phase2c-empty-portfolio', 390);
-  await page.locator('.portfolio-ways-details summary').click();
+  await page.getByRole('link', { name: 'Ways to invest' }).click();
   await page.getByRole('heading', { name: 'Ways to invest' }).waitFor();
   await shot('phase2c-free-ways-empty', 390);
   await shot('phase2c-dark-portfolio', 390, 'dark');

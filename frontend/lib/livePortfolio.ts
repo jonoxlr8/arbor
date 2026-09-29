@@ -40,12 +40,17 @@ export type InvestmentEntryDraft = { provider: string; product_id: string; inves
 export type RecordedEntryResult = { entry_id: string; holding_id: string; replayed: boolean };
 export const supportsManualValue = (h: { product_id: string }) => ["gcash_global_equity", "gcash_technology", "gcash_defensive", "dragonfi_global_equity", "dragonfi_technology", "dragonfi_defensive"].includes(h.product_id);
 export const validManualValue = (v: string) => /^\d{1,16}(?:\.\d{1,2})?$/.test(v) && /[1-9]/.test(v);
-export type PortfolioHistory = { day: string; value_php: string; captured_at: string };
+export type PortfolioHistory = { day: string; value_php: string; captured_at: string;
+  value_usd?: string | null;
+  recorded_cost_php?: string | null; recorded_gain_php?: string | null;
+  recorded_gain_percentage?: string | null; cost_complete?: boolean;
+  cost_context_captured?: boolean };
 export type LivePortfolioData = {
   currency: "PHP"; holdings: PortfolioHolding[]; catalog: PortfolioProduct[]; history: PortfolioHistory[];
   recorded_cost_php?: string | null; recorded_gain_php?: string | null; recorded_gain_percentage?: string | null;
   data_sources?: string[];
   known_value_php: string; total_value_php: string | null; complete: boolean; unavailable_count: number; stale_count: number;
+  total_value_usd?: string | null;
   provider_values_php: Record<string, string>; valued_at: string;
   sleeves: { sleeve: Sleeve; known_value_php: string; current_percentage: string | null; target_percentage: number | null; difference_pp: string | null }[];
 };
@@ -78,13 +83,21 @@ export function isInvestmentActivity(v: unknown): v is { entries: InvestmentEntr
       (e.amount_paid_php === null || money(e.amount_paid_php)) && timestamp(e.recorded_at) && timestamp(e.updated_at) && Number.isInteger(e.revision) && e.revision > 0 &&
       (e.voided_at === null || timestamp(e.voided_at)));
 }
-export const isHistory = (v: unknown): v is PortfolioHistory[] => Array.isArray(v) && v.every(h => h && /^\d{4}-\d{2}-\d{2}$/.test(h.day) && money(h.value_php) && timestamp(h.captured_at));
+export const isHistory = (v: unknown): v is PortfolioHistory[] => Array.isArray(v) && v.every(h => h && day(h.day) && money(h.value_php) && timestamp(h.captured_at) &&
+  (h.value_usd === undefined || h.value_usd === null || money(h.value_usd)) &&
+  (h.recorded_cost_php === undefined || h.recorded_cost_php === null || money(h.recorded_cost_php)) &&
+  (h.recorded_gain_php === undefined || h.recorded_gain_php === null || decimal(h.recorded_gain_php)) &&
+  (h.recorded_gain_percentage === undefined || h.recorded_gain_percentage === null || decimal(h.recorded_gain_percentage)) &&
+  (h.cost_complete === undefined || typeof h.cost_complete === "boolean") &&
+  (h.cost_context_captured === undefined || typeof h.cost_context_captured === "boolean") &&
+  (h.cost_complete !== true || h.recorded_cost_php != null && h.recorded_gain_php != null));
 export function isPortfolio(value: unknown): value is LivePortfolioData {
   if (!value || typeof value !== "object") return false;
   const sources = (value as LivePortfolioData).data_sources;
   if (sources !== undefined && (!Array.isArray(sources) || !sources.every(s => ["marketstack", "coinranking", "exchangerate_api", "toap"].includes(s)))) return false;
   const p = value as LivePortfolioData;
   return p.currency === "PHP" && money(p.known_value_php) && (p.total_value_php === null || money(p.total_value_php)) &&
+    (p.total_value_usd === undefined || p.total_value_usd === null || money(p.total_value_usd) && p.complete) &&
     (p.recorded_cost_php === undefined || p.recorded_cost_php === null || money(p.recorded_cost_php)) &&
     (p.recorded_gain_php === undefined || p.recorded_gain_php === null || decimal(p.recorded_gain_php)) &&
     (p.recorded_gain_percentage === undefined || p.recorded_gain_percentage === null || decimal(p.recorded_gain_percentage)) &&

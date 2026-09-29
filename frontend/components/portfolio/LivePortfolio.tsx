@@ -12,9 +12,10 @@ import { investmentIdentity, investmentUnitPrice, providerName } from "@/lib/inv
 import PlanImplementation from "./PlanImplementation";
 import DatedInvestmentFlow from "./DatedInvestmentFlow";
 import HoldingActivity from "./HoldingActivity";
-import InvestmentHistory from "./InvestmentHistory";
+import InvestmentActivitySheet from "./InvestmentActivitySheet";
 import { useAccountAccess } from "../AccountAccess";
 import PortfolioHistoryChart from "./PortfolioHistoryChart";
+import { closePortfolioSheet } from "@/lib/appNavigation";
 
 const inputClass = "mt-1 min-h-12 w-full min-w-0 rounded-xl border border-slate-300 bg-white p-3 text-slate-900";
 const blank = (): HoldingDraft => ({ provider: "", product_id: "", units: null, cost_basis_php: null, manual_value_php: null });
@@ -52,7 +53,7 @@ export default function LivePortfolio({ value, userId, section = "", onPlanChang
   const [portfolio, setPortfolio] = useState<LivePortfolioData | null>(null);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
-  const [captureOnRead, setCaptureOnRead] = useState(true);
+  const [captureOnRead, setCaptureOnRead] = useState(section !== "ways" && section !== "history");
   const [busy, setBusy] = useState(false);
   const [historyError, setHistoryError] = useState(false);
   const [detail, setDetail] = useState<PortfolioHolding | null>(null);
@@ -65,7 +66,7 @@ export default function LivePortfolio({ value, userId, section = "", onPlanChang
   const [opening, setOpening] = useState<{ holding: PortfolioHolding; units: string; cost: string } | null>(null);
   const portfolioLoaded = portfolio !== null;
   useEffect(() => {
-    if (section === "holdings" || section === "ways") document.getElementById(`section-${section}`)?.scrollIntoView({ block: "start" });
+    if (section === "holdings") document.getElementById(`section-${section}`)?.scrollIntoView({ block: "start" });
   }, [portfolioLoaded, section]);
   useEffect(() => {
     const controller = new AbortController();
@@ -105,9 +106,13 @@ export default function LivePortfolio({ value, userId, section = "", onPlanChang
           <AssetIdentity product={h.product_id} sleeve={h.sleeve}/><span className="holding-copy"><strong>{investmentIdentity(h.product_id,h.display_name).shortName}</strong>{investmentIdentity(h.product_id).category === "etf" && <span className="holding-full-name">{investmentIdentity(h.product_id).fullName}</span>}<span className="mt-1 block"><ProviderBrand provider={h.provider} name={h.provider_name}/></span><small>{h.units === null ? "Units not recorded" : `${decimalText(h.units)} ${h.sleeve === "crypto" ? "BTC" : supportsManualValue(h) ? "units" : "shares"}`} · {h.unit_price && h.unit_price_currency ? investmentUnitPrice(h.product_id, h.unit_price, h.unit_price_currency) : "Unit price unavailable"}</small></span><span className="holding-money">{h.value_php === null ? "Value unavailable" : money(h.value_php)}<small><RecordedGain holding={h}/></small></span><span className="row-chevron" aria-hidden="true">›</span>
         </button>)}</div>}
       </section>
+      {value.plan.path === "long_term" && value.plan.readiness.actionable_contribution_guidance_allowed && <nav className="portfolio-secondary-actions" aria-label="Ways to invest"><a href="#portfolio/ways" data-sheet-launcher="ways">Ways to invest <span aria-hidden="true">→</span></a></nav>}
       {plusAlignment && <details id="section-allocation" className="portfolio-insights" open={section === "allocation" || section === "insights"}><summary className="min-h-11 cursor-pointer font-semibold text-slate-900"><span className="eyebrow plus-eyebrow">Arbor Plus</span><span>Portfolio insights</span></summary><div className="pt-4">{portfolio.complete && portfolio.sleeves.some(s => s.current_percentage !== null) && <Allocation weights={portfolio.sleeves.filter(s => s.current_percentage !== null).map(s => ({role:s.sleeve, percentage_points:Number(s.current_percentage)}))} label="Current allocation"/>}<PlanAlignment portfolio={portfolio}/>{!!portfolio.holdings.length && <details className="provider-totals"><summary className="min-h-11 cursor-pointer text-sm text-slate-600">Value by provider</summary><dl className="detail-facts">{Object.entries(portfolio.provider_values_php).map(([provider, value]) => <div key={provider}><dt>{providerName(provider)}</dt><dd>{money(value)}{portfolio.holdings.some(h => h.provider === provider && h.value_php === null) ? " · incomplete" : ""}</dd></div>)}</dl></details>}</div></details>}
       {plusAlignment === false && <section className="portfolio-plus-preview"><h2 className="text-lg font-semibold text-slate-900">Understand your portfolio</h2><p className="mt-2 text-sm text-slate-600">See how your recorded holdings compare with the plan you chose with Arbor Plus.</p><a className="entry-link mt-3 inline-flex min-h-11 items-center" href="#settings/plus">Explore Arbor Plus →</a></section>}
-      <details id="section-history" className="portfolio-history-list" open={section === "history"}><summary className="min-h-11 cursor-pointer font-semibold text-slate-900">Investment activity</summary><p className="mt-3 text-sm text-slate-600">Investment dates belong to activity; recorded portfolio values are separate observations.</p><InvestmentHistory userId={userId}/><details className="mt-5"><summary className="min-h-11 cursor-pointer text-sm font-semibold">Recorded portfolio values</summary><dl className="detail-facts">{[...portfolio.history].reverse().map(point => <div key={point.day}><dt>{point.day}</dt><dd>{money(point.value_php)}</dd></div>)}</dl>{!portfolio.history.length && <p className="mt-3 text-sm text-slate-600">No portfolio observations recorded yet.</p>}</details></details>
+      <nav className="portfolio-secondary-actions" aria-label="Investment activity">
+        <a href="#portfolio/history" data-sheet-launcher="history">Investment activity <span aria-hidden="true">→</span></a>
+      </nav>
+      {section === "history" && <InvestmentActivitySheet portfolio={portfolio} userId={userId} onClose={closePortfolioSheet} onChanged={refresh}/>}
       {detail && <Sheet title={investmentIdentity(detail.product_id, detail.display_name).shortName} onClose={() => setDetail(null)}>
         <div className="holding-detail-identity flex items-center gap-3"><AssetIdentity product={detail.product_id} sleeve={detail.sleeve}/><div><strong>{investmentIdentity(detail.product_id,detail.display_name).shortName}</strong><small>{investmentIdentity(detail.product_id,detail.display_name).fullName}</small><ProviderBrand provider={detail.provider} name={detail.provider_name}/></div></div>
         <p className="mt-6 text-4xl font-semibold">{detail.value_php === null ? "Value unavailable" : money(detail.value_php)}</p><p className="mt-2 text-sm text-slate-600">{freshnessText(detail)}</p>
@@ -147,7 +152,7 @@ export default function LivePortfolio({ value, userId, section = "", onPlanChang
         <p className="form-footnote">Arbor records what you already own. No purchase date is invented and no trade is placed.</p><button className="entry-primary min-h-11 w-full" disabled={busy}>{busy ? "Saving…" : "Save opening position"}</button><button type="button" className="entry-link min-h-11" disabled={busy} onClick={() => setDraft(null)}>Cancel</button>
       {error && <p role="alert" className="text-sm">{error}</p>}</form>}</Sheet>}
       {deleting && <Sheet title="Remove holding" busy={busy} onClose={() => setDeleting(null)}><section aria-label="Confirm removal"><h3 className="font-semibold text-slate-900">Remove {deleting.display_name} from Arbor?</h3><p className="mt-2 text-sm text-slate-600">This removes the record, not the investment in your provider account. Recorded history stays unchanged.</p><button className="entry-primary mt-4 min-h-11" disabled={busy} onClick={() => void mutate(() => portfolioApi.remove(userId, deleting.id))}>Remove from Arbor</button><button className="entry-link ml-4 min-h-11" disabled={busy} onClick={() => setDeleting(null)}>Cancel</button>{error && <p role="alert">{error}</p>}</section></Sheet>}
-      {value.plan.path === "long_term" && value.plan.readiness.actionable_contribution_guidance_allowed && <details id="section-ways" className="portfolio-ways-details" open={section==="ways"}><summary>Ways to invest your plan</summary><PlanImplementation value={value} intro={false} userId={userId} onPlanChange={onPlanChange} onRecord={() => setEntryProduct(null)}/></details>}
+      {section === "ways" && value.plan.path === "long_term" && value.plan.readiness.actionable_contribution_guidance_allowed && <Sheet title="Ways to invest" wide onClose={closePortfolioSheet}><PlanImplementation value={value} intro={false} inSheet userId={userId} onPlanChange={onPlanChange} onRecord={() => { closePortfolioSheet(); setEntryProduct(null); }}/></Sheet>}
       <footer className="portfolio-data"><details><summary>About prices &amp; data</summary><p>Reference values may exclude fees or spreads. A value entered by you is not an official fund NAV. Provider names belong to their owners; Arbor is not affiliated with or endorsed by them.</p></details><DataAttribution sources={portfolio.data_sources ?? []} /></footer>
     </>}
   </div>;
@@ -164,9 +169,9 @@ export function DataAttribution({ sources }: { sources: string[] }) {
 }
 
 export function PortfolioSummary({ portfolio: p }: { portfolio: LivePortfolioData }) {
-  return <section><p className="text-sm text-slate-600">{p.complete ? "Portfolio value" : "Known portfolio value · PHP"}</p><p className="value-number mt-2 break-words font-semibold text-slate-900">{money(p.known_value_php)}</p>
-    <PortfolioGain portfolio={p}/>
-    <PortfolioHistoryChart history={p.history} knownValue={p.known_value_php} complete={p.complete} holdingsCount={p.holdings.length}/>
+  return <section><PortfolioHistoryChart history={p.history} knownValue={p.known_value_php} currentUsdValue={p.total_value_usd}
+    currentRecordedCostPhp={p.recorded_cost_php} currentGainPhp={p.recorded_gain_php} currentGainPercentage={p.recorded_gain_percentage}
+    complete={p.complete} holdingsCount={p.holdings.length}/>
     {p.unavailable_count > 0 && <p role="status" className="mt-2 text-sm text-slate-600">Plus {p.unavailable_count} unavailable holding(s). This is not the complete portfolio value.</p>}
     {p.stale_count > 0 && <p role="status" className="mt-2 text-sm text-slate-600">{p.stale_count} holding(s) use cached prices. Check each holding for its price date.</p>}
   </section>;

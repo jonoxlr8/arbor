@@ -37,24 +37,25 @@ test("empty history does not fabricate returns or chart points", () => {
   assert.match(html,/No investments recorded yet/); assert.match(html,/chart-plot/); assert.doesNotMatch(html, /12.4%|performance return/i);
   assert.match(html,/No portfolio history yet/); assert.match(html,/chart-no-history-empty_zero/); assert.doesNotMatch(html,/chart-flat-line|<line|linearGradient/);
 });
-test("current-only graph does not repeat the Portfolio summary amount", () => {
+test("current-only graph has one value headline and no invented history", () => {
   const html = render(createElement(PortfolioHistoryChart,{history:[],knownValue:"12800",holdingsCount:1}));
   assert.match(html,/Current value · No history yet/);
   assert.match(html,/chart-no-history-current_only/); assert.doesNotMatch(html,/chart-flat-line|<line|linearGradient/);
-  assert.doesNotMatch(html,/₱12,800/);
+  assert.equal((html.match(/₱12,800\.00/g) ?? []).length,1);
 });
 test("single observation has exact recorded amount, not a synthetic graph", () => {
-  const html = render(createElement(PortfolioHistoryChart,{history:[{day:"2026-09-24",value_php:"8000",captured_at:"2026-09-24T00:00:00Z"}]}));
-  assert.match(html,/₱8,000/); assert.match(html,/one recorded portfolio value/); assert.match(html,/chart-plot/); assert.doesNotMatch(html,/Portfolio value change/);
+  const html = render(createElement(PortfolioHistoryChart,{history:[{day:"2026-09-24",value_php:"8000",captured_at:"2026-09-24T00:00:00Z"}],knownValue:"8000"}));
+  assert.match(html,/₱8,000/); assert.match(html,/Not enough history in this range yet/); assert.match(html,/chart-plot/); assert.doesNotMatch(html,/Portfolio value change/);
 });
-test("history ranges require two real observations within the selected range", () => {
+test("all six history ranges remain available with sparse genuine observations", () => {
   const history = [
     {day:"2026-01-01",value_php:"100",captured_at:"2026-01-01T00:00:00Z"},
     {day:"2026-09-26",value_php:"120",captured_at:"2026-09-26T00:00:00Z"},
   ];
   const html = render(createElement(PortfolioHistoryChart,{history,knownValue:"120",holdingsCount:1}));
-  assert.match(html,/>All</);
-  assert.doesNotMatch(html,/>1M</); assert.doesNotMatch(html,/>3M</); assert.doesNotMatch(html,/>1Y</);
+  for (const label of ["1D", "1W", "1M", "1Y", "5Y", "All"]) assert.match(html,new RegExp(`>${label}<`));
+  assert.doesNotMatch(html,/>3M</);
+  assert.match(html,/Not enough history in this range yet/);
   const supported = render(createElement(PortfolioHistoryChart,{history:[...history,{day:"2026-09-20",value_php:"110",captured_at:"2026-09-20T00:00:00Z"}],knownValue:"120",holdingsCount:1}));
   assert.match(supported,/>1M</);
 });
@@ -82,6 +83,34 @@ test("unavailable current allocation does not draw a misleading zero-value bar",
 test("sheets rely on native modal focus/inert behavior and restore focus", () => {
   const source=readFileSync("components/ui/Sheet.tsx","utf8");
   assert.match(source,/showModal\(\)/);assert.match(source,/previous.focus\(\)/);assert.match(source,/onCancel/);assert.match(source,/aria-labelledby/);
+  assert.match(source,/arbor-sheet-wide/);
+});
+test("factual activity and implementation are sheet launchers, not inline expanded sections", () => {
+  const portfolio=readFileSync("components/portfolio/LivePortfolio.tsx","utf8");
+  const home=readFileSync("components/app/V2Home.tsx","utf8");
+  const activitySheet=readFileSync("components/portfolio/InvestmentActivitySheet.tsx","utf8");
+  assert.match(portfolio,/data-sheet-launcher="history"/);
+  assert.match(portfolio,/data-sheet-launcher="ways"/);
+  assert.match(portfolio,/section === "history" && <InvestmentActivitySheet/);
+  assert.match(portfolio,/section === "ways" .* <Sheet title="Ways to invest"/);
+  assert.doesNotMatch(portfolio,/<details id="section-history"|<details id="section-ways"/);
+  assert.match(home,/href="#home\/activity"/);
+  assert.match(home,/href="#portfolio\/ways"/);
+  assert.match(home,/section === "activity" && portfolio && userId && <InvestmentActivitySheet/);
+  assert.match(activitySheet,/<Sheet title="Investment activity"/);
+  assert.doesNotMatch(home,/Recent activity.*Arbor Plus/);
+});
+test("Portfolio hierarchy places ways before Plus insights and activity before final data disclosure", () => {
+  const portfolio=readFileSync("components/portfolio/LivePortfolio.tsx","utf8");
+  const positions=["portfolio-value",'id="section-holdings"','data-sheet-launcher="ways"','className="portfolio-insights"','data-sheet-launcher="history"','className="portfolio-data"'].map(marker=>portfolio.indexOf(marker));
+  assert.ok(positions.every(position=>position>=0));
+  assert.deepEqual(positions,[...positions].sort((left,right)=>left-right));
+});
+test("sheet URLs preserve Back navigation and a direct-link close fallback", () => {
+  const navigation=readFileSync("lib/appNavigation.ts","utf8");
+  assert.match(navigation,/sheetOpeningHash/);
+  assert.match(navigation,/window\.history\.back\(\)/);
+  assert.match(navigation,/window\.history\.replaceState/);
 });
 test("dated investment action is present without a client feature override", () => {
   const source=readFileSync("components/portfolio/LivePortfolio.tsx","utf8");
