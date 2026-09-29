@@ -113,6 +113,31 @@ def test_missing_fx_partial_valuation_no_false_percentages_or_zero_total():
     assert "not your complete" in explain_portfolio("current portfolio",result)
 
 
+@pytest.mark.parametrize("product", ("gotrade_vt", "gotrade_vgt", "gotrade_bnd"))
+def test_every_gotrade_etf_needs_both_verified_quote_and_fx(product):
+    position = holding(product, "1")
+    etf = price(product, "100")
+    fx = price("usd_php", "50")
+    complete = valued([position], [etf, fx])
+    assert complete.holdings[0].value_php == Decimal("5000.00")
+    assert complete.holdings[0].freshness == "fresh"
+    for missing in ([etf], [fx]):
+        incomplete = valued([position], missing)
+        assert incomplete.holdings[0].value_php is None
+        assert incomplete.holdings[0].unit_price is None
+        assert incomplete.total_value_php is None
+
+
+@pytest.mark.parametrize("product", ("gotrade_vt", "gotrade_vgt"))
+def test_factual_etf_recording_does_not_require_current_market_quote(product):
+    entry = InvestmentEntryInput(provider="gotrade", product_id=product,
+                                 investment_date=date(2026, 9, 24), units="1.25",
+                                 amount_paid_php="6250.00", idempotency_key=uuid4())
+    assert entry.units == Decimal("1.25")
+    assert entry.amount_paid_php == Decimal("6250.00")
+    assert valued([holding(product, "1.25")], []).holdings[0].freshness == "unavailable"
+
+
 @pytest.mark.parametrize("age,status", [(0,"fresh"),(600,"fresh"),(601,"stale"),(3600,"stale"),(3601,"unavailable")])
 def test_bitcoin_provider_parity_shared_reference_and_allocation(age, status):
     products = ("gcrypto_btc", "coins_btc", "pdax_btc")

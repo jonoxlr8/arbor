@@ -41,7 +41,9 @@ class VendorHTTP:
 class Marketstack:
     source = "marketstack"
     keys = tuple(ETF_SYMBOLS.values())
-    interval = 86400
+    # EOD publication can follow an early daily poll. Retry within the existing
+    # four-day valuation window instead of leasing the stale observation all day.
+    interval = 21600
 
     def __init__(self, http, key):
         self.http, self.key = http, key

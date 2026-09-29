@@ -129,10 +129,24 @@ def test_bitcoin_refresh_safety_margin(age, expected):
     assert price_limits("btc_php") == (600, 3600)
 
 
-def test_bitcoin_refresh_margin_does_not_change_daily_sources():
+def test_bitcoin_refresh_margin_preserves_other_source_cadences():
     from app.market_data.toap import TOAP
 
-    assert Marketstack.interval == ExchangeRate.interval == TOAP.interval == 86400
+    assert Marketstack.interval == 21600
+    assert ExchangeRate.interval == TOAP.interval == 86400
+
+
+def test_marketstack_retries_early_poll_before_old_eod_expires():
+    cache = Cache()
+    for symbol, key in (("VT", "gotrade_vt"), ("VGT", "gotrade_vgt"), ("BND", "gotrade_bnd")):
+        cache.rows[key] = ReferencePrice(price_key=key, value="100", as_of=NOW-timedelta(days=3,hours=20),
+            fetched_at=NOW-timedelta(hours=6), currency="USD", kind="etf_eod", source="marketstack")
+    calls = []
+    source = adapter("marketstack", handler("marketstack", calls))
+    assert refresh(cache, [source], NOW) == {"marketstack": "updated"}
+    assert cache.intervals == [21600]
+    assert len(calls) == 1
+    assert all(cache.rows[key].as_of == NOW for key in source.keys)
 
 
 def test_refresh_isolates_sources_and_two_users_do_not_fetch():
