@@ -1,10 +1,10 @@
-"""Factual tracking must return every retained owner-scoped observation."""
+"""Factual tracking must page every canonical owner-scoped history point."""
 from types import SimpleNamespace
 
 from app.services.portfolio_store import PortfolioStore
 
 
-def test_all_history_pages_remain_owner_scoped_and_keep_sql_gain_fields():
+def test_all_history_pages_use_owner_rpc_and_keep_sql_gain_fields():
     rows = [dict(day=f"2026-01-{(index % 28) + 1:02d}", value_php="100.00",
                  recorded_cost_php="100.00", recorded_gain_php="0.00",
                  recorded_gain_percentage="0.00", cost_complete=True,
@@ -13,38 +13,23 @@ def test_all_history_pages_remain_owner_scoped_and_keep_sql_gain_fields():
     requests = []
 
     class Query:
-        def select(self, columns):
-            requests.append(("columns", columns))
-            return self
-
-        def eq(self, field, owner):
-            requests.append(("owner", field, owner))
-            return self
-
-        def order(self, field):
-            requests.append(("order", field))
-            return self
-
-        def range(self, start, end):
-            requests.append(("range", start, end))
-            self.start, self.end = start, end
-            return self
+        def __init__(self, arguments):
+            self.start = arguments["p_offset"]
+            self.end = self.start + arguments["p_limit"]
 
         def execute(self):
-            return SimpleNamespace(data=rows[self.start:self.end + 1])
+            return SimpleNamespace(data=rows[self.start:self.end])
 
-    def table(name):
-        requests.append(("table", name))
-        return Query()
+    def rpc(name, arguments):
+        requests.append(("rpc", name, arguments))
+        return Query(arguments)
 
     store = object.__new__(PortfolioStore)
     store.owner = "dedicated-owner"
-    store.client = SimpleNamespace(table=table)
+    store.client = SimpleNamespace(rpc=rpc)
     actual = store.history()
     assert len(actual) == 1003
     assert actual[-1]["recorded_gain_php"] == "0.00"
-    assert ("range", 0, 999) in requests
-    assert ("range", 1000, 1999) in requests
-    assert requests.count(("owner", "user_id", "dedicated-owner")) == 2
-    assert requests.count(("table", "arbor_portfolio_history")) == 2
-    assert any(row[0] == "columns" and "recorded_cost_php" in row[1] for row in requests)
+    # No user ID is passed by the client; the SQL RPC derives it from auth.uid().
+    assert ("rpc", "arbor_reconstructed_portfolio_history", {"p_offset": 0, "p_limit": 1000}) in requests
+    assert ("rpc", "arbor_reconstructed_portfolio_history", {"p_offset": 1000, "p_limit": 1000}) in requests

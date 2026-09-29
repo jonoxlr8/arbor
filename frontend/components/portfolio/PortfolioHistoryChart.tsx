@@ -28,7 +28,7 @@ const displayedGain = (gain: string, pct: string | null | undefined): GainDispla
   return { amount, percentage, text: `${amount}${percentage ? ` · ${percentage}` : ""}`, tone };
 };
 export function historicalGainDisplay(point: PortfolioHistory) {
-  if (!point.cost_context_captured) return unavailableGain("Gain/loss unavailable");
+  if (point.origin !== "reconstructed" && !point.cost_context_captured) return unavailableGain("Gain/loss unavailable");
   if (!point.cost_complete || point.recorded_cost_php == null || point.recorded_gain_php == null)
     return unavailableGain("Recorded cost needed");
   return displayedGain(point.recorded_gain_php, point.recorded_gain_percentage);
@@ -48,10 +48,16 @@ export default function PortfolioHistoryChart({ history, knownValue = "0", curre
   const state = portfolioGraphState({ history, knownValue, complete, holdingsCount });
   const allRangePoints = historyRange(state.history, range);
   const points = supportedHistorySegment(allRangePoints, currency);
+  const earliestRecorded = state.history.find(point => point.earliest_recorded_date)?.earliest_recorded_date;
+  const coverageLimitation = range === 0 && currency === "PHP" && earliestRecorded &&
+    state.history[0]?.day > earliestRecorded ? `Complete history begins ${dateLabel(state.history[0].day)}. Earlier values are unavailable.` : null;
   const partialUsd = currency === "USD" && allRangePoints.length > points.length;
   const inspectable = complete && points.length > 0;
   const extrema = historyExtrema(points, currency);
   const plotted = points.map(point => ({ timestamp: Date.parse(`${point.day}T00:00:00Z`), plotValue: Number(historyValue(point, currency)) }));
+  const plottedWithGaps = plotted.flatMap((point, index) => index && points[index].segment !== undefined &&
+    points[index - 1].segment !== undefined && points[index].segment !== points[index - 1].segment
+      ? [{ timestamp: (plotted[index - 1].timestamp + point.timestamp) / 2, plotValue: null }, point] : [point]);
   const active = selected === null ? null : points[selected] ?? null;
   const currentGain = !holdingsCount ? null : !complete ? unavailableGain("Gain/loss unavailable") :
     currentRecordedCostPhp == null ? unavailableGain("Recorded cost needed") :
@@ -126,7 +132,7 @@ export default function PortfolioHistoryChart({ history, knownValue = "0", curre
     setCurrency(next); setSelected(null);
   } };
   const status = !complete ? state.summary : state.kind === "empty_zero" || state.kind === "current_only" ? null :
-    !points.length ? currency === "USD" && partialUsd ? "Historical USD values need a captured exchange rate. PHP history remains available." :
+    !points.length ? currency === "USD" && partialUsd ? "USD history is unavailable in this range. PHP history remains available." :
       "No recorded portfolio value in this range. Current value is shown without a historical trend." :
     points.length === 1 ? "Not enough history in this range yet." : null;
 
@@ -145,13 +151,15 @@ export default function PortfolioHistoryChart({ history, knownValue = "0", curre
         {currency === "USD" && <span className="chart-gain-currency" aria-hidden="true">PHP gain</span>}
       </div>}
       <div className="chart-selected-date" data-selected={active ? "true" : "false"} aria-hidden={!active}>
-        {active ? <time dateTime={active.day}>{dateLabel(active.day)}</time> : "\u00a0"}
+        {active ? <><time dateTime={active.day}>{dateLabel(active.day)}</time>
+          {active.origin && <span> · {active.origin === "reconstructed" ? "Reconstructed" : "Observed"}</span>}</> : "\u00a0"}
       </div>
     </div>
     {status && <p className="chart-status" role="status">{status}</p>}
-    {partialUsd && !!points.length && <p className="chart-usd-limitation" role="status">USD history from {dateLabel(points[0].day)}<span className="sr-only">. Older PHP observations have no captured exchange rate and are not converted using today&apos;s rate.</span></p>}
+    {coverageLimitation && <p className="chart-usd-limitation" role="status">{coverageLimitation}</p>}
+    {partialUsd && !!points.length && <p className="chart-usd-limitation" role="status">USD history from {dateLabel(points[0].day)}<span className="sr-only">. Earlier dates lack approved historical FX or captured FX context and are not converted using today&apos;s rate.</span></p>}
     <div ref={plot} className="chart-plot min-w-0" tabIndex={inspectable ? 0 : undefined} role={inspectable ? "group" : undefined}
-      aria-label={inspectable ? `Inspect ${points.length} genuine portfolio observations. Use left and right arrow keys.` : undefined}
+      aria-label={inspectable ? `Inspect ${points.length} historical portfolio values. Use left and right arrow keys.` : undefined}
       aria-describedby={active ? `${gradient}-headline` : undefined}
       onKeyDown={event => { if (!inspectable) return; if (event.key === "Escape") setSelected(null);
         if (event.key === "ArrowRight" || event.key === "ArrowLeft") { event.preventDefault(); setSelected(Math.max(0, Math.min(points.length - 1, (selected ?? (event.key === "ArrowRight" ? -1 : points.length)) + (event.key === "ArrowRight" ? 1 : -1)))); } }}
@@ -159,7 +167,7 @@ export default function PortfolioHistoryChart({ history, knownValue = "0", curre
       onPointerLeave={event => { if (event.pointerType === "mouse") setSelected(null); }}>
       {!complete || state.kind === "empty_zero" || points.length === 0 ? <div className={`chart-no-history chart-no-history-${state.kind}`}><span className="chart-no-history-marker"/><span>{state.kind === "empty_zero" ? "No investments recorded yet. No portfolio history yet." : !complete ? "Complete portfolio value unavailable" : state.kind === "current_only" ? "Current value · No history yet" : "Current value · No history in this range"}</span></div> :
       points.length === 1 ? <div className="chart-single-observation"><span className="chart-single-dot" aria-hidden="true"/><time dateTime={points[0].day}>{dateLabel(points[0].day)}</time></div> :
-      <><ResponsiveContainer width="100%" height="100%"><AreaChart data={plotted} margin={{ left: 8, right: 8, top: plotTop, bottom: plotBottom }}>
+      <><ResponsiveContainer width="100%" height="100%"><AreaChart data={plottedWithGaps} margin={{ left: 8, right: 8, top: plotTop, bottom: plotBottom }}>
         <defs><linearGradient id={`${gradient}-fill`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="currentColor" stopOpacity={0.18}/><stop offset="100%" stopColor="currentColor" stopOpacity={0.01}/></linearGradient></defs>
         <XAxis type="number" scale="time" domain={[plotted[0].timestamp, plotted[plotted.length - 1].timestamp]} dataKey="timestamp" hide />
         <YAxis type="number" domain={[domainMin, domainMax]} allowDataOverflow hide width={0}/>

@@ -1,6 +1,6 @@
 import type { PortfolioHistory } from "./livePortfolio";
 
-// Snapshot values are PHP cents. Keep money and ratios out of binary floating point.
+// History values are PHP cents. Keep money and ratios out of binary floating point.
 function cents(value: string): bigint | null {
   const match = /^(\d+)(?:\.(\d+))?$/.exec(value);
   if (!match || /[1-9]/.test((match[2] ?? "").slice(2))) return null;
@@ -19,7 +19,7 @@ export function historyRange(history: PortfolioHistory[], days = 0, today = new 
 }
 export type ChartCurrency = "PHP" | "USD";
 export const historyValue = (point: PortfolioHistory, currency: ChartCurrency) => currency === "PHP" ? point.value_php : point.value_usd ?? null;
-// A missing historical FX observation breaks the USD series. Never bridge the gap.
+// A missing approved historical FX value breaks the USD series. Never bridge the gap.
 export function supportedHistorySegment(points: PortfolioHistory[], currency: ChartCurrency) {
   if (currency === "PHP") return points;
   const lastMissing = points.findLastIndex(point => point.value_usd == null);

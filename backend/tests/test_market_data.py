@@ -89,13 +89,19 @@ def test_php_resolution_fails_closed(currencies):
 
 
 class Cache:
-    def __init__(self): self.rows={};self.claims=set();self.intervals=[]
+    def __init__(self): self.rows={};self.claims=set();self.intervals=[];self.history={}
     def read(self,keys): return {k:self.rows[k] for k in keys if k in self.rows}
     def claim(self,source,interval):
         self.intervals.append(interval)
         if source in self.claims:return False
         self.claims.add(source);return True
     def write(self,prices): self.rows.update({p.price_key:p for p in prices})
+    def write_history(self,observations):
+        for item in observations:
+            key=(item.price_key,item.observed_at)
+            if key in self.history and self.history[key].value != item.value:
+                raise MarketDataError("historical_nav_conflict")
+            self.history.setdefault(key,item)
 
 
 @pytest.mark.parametrize("kind", ["marketstack", "exchangerate_api", "coinranking"])

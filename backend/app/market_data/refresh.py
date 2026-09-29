@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 from .models import MarketDataError
 from .toap import NAVBatch
+from .nav_history import daily_nav_observations
 
 
 def refresh(cache, adapters, now=None):
@@ -40,6 +41,14 @@ def refresh(cache, adapters, now=None):
                 cache.write(accepted)
             status[adapter.source] = "updated" if accepted else "older_data_ignored"
             if isinstance(batch, NAVBatch):
+                if prices:
+                    # Additive history capture never blocks the existing live NAV
+                    # cache. Failures are explicit; the database guard rejects a
+                    # conflicting same-day value without changing its old row.
+                    try:
+                        cache.write_history(daily_nav_observations(prices))
+                    except MarketDataError as error:
+                        status[f"{adapter.source}/history"] = str(error)
                 if batch.errors:
                     status[adapter.source] = "partial" if prices else "unavailable"
                     for product, reason in batch.errors.items():

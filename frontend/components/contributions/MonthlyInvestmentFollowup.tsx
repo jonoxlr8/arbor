@@ -79,9 +79,10 @@ export function MonthlyInvestmentActivity({ userId, month, onMonthChange, reload
     catch { if (currentKey.current === requestKey) setError("Couldn’t load more investment activity."); }
     finally { setBusy(false); }
   }
+  const visibleEntries = entries.filter(entry => !entry.voided_at);
   return <section className="monthly-investment-activity" aria-label="Investment activity by month"><header><div><h3>Recorded investment activity</h3><p>By investment date in the Philippines—not linked to a check-in.</p></div><label>Month<input type="month" aria-label="Investment activity month" value={month} onChange={event => { if (/^\d{4}-(0[1-9]|1[0-2])$/.test(event.target.value)) onMonthChange(event.target.value); }} /></label></header>
     {error && <p role="alert">{error}</p>}
-    {!error && (loadedKey !== requestKey ? <p role="status">Loading recorded investments…</p> : entries.length ? <ul>{entries.map(entry => <li key={entry.id}><InvestmentIdentity product={entry.product_id}/><span><time dateTime={entry.investment_date}>{entry.investment_date}</time><strong>{investmentAction(entry)} {investmentIdentity(entry.product_id).shortName}</strong><small>{entry.units} {entry.product_id.endsWith("_btc") ? "BTC" : "units"}</small><ProviderIdentity provider={entry.provider}/></span></li>)}</ul> : <p>No investments recorded for {monthLabel(month)}.</p>)}
+    {!error && (loadedKey !== requestKey ? <p role="status">Loading recorded investments…</p> : visibleEntries.length ? <ul>{visibleEntries.map(entry => <li key={entry.id}><InvestmentIdentity product={entry.product_id}/><span><time dateTime={entry.investment_date}>{entry.investment_date}</time><strong>{investmentAction(entry)} {investmentIdentity(entry.product_id).shortName}</strong><small>{entry.units} {entry.product_id.endsWith("_btc") ? "BTC" : "units"}</small><ProviderIdentity provider={entry.provider}/></span></li>)}</ul> : <p>No investments recorded for {monthLabel(month)}.</p>)}
     {loadedKey === requestKey && hasMore && <button type="button" className="entry-secondary min-h-11" disabled={busy} onClick={() => void more()}>{busy ? "Loading…" : "Show more"}</button>}
   </section>;
 }

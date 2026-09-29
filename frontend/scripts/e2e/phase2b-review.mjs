@@ -1,5 +1,6 @@
 // Isolated synthetic browser review. All non-loopback requests are intercepted.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
@@ -8,9 +9,15 @@ const askOnly = process.argv.includes('--ask-only');
 const datedOnly = process.argv.includes('--dated-only');
 const tabletGraphOnly = process.argv.includes('--tablet-graph-only');
 const homeLayoutOnly = process.argv.includes('--home-layout-only');
-const historyOnly = process.argv.includes('--history-only');
+const reconstructionOnly = process.argv.includes('--reconstruction-only');
+const realNavOnly = process.argv.includes('--real-nav-only');
+const historyOnly = process.argv.includes('--history-only') || reconstructionOnly || realNavOnly;
 const sheetOnly = process.argv.includes('--sheet-only');
-const output = sheetOnly ? '/private/tmp/arbor-sheet-review' : historyOnly ? '/private/tmp/arbor-history-review' : homeLayoutOnly ? '/private/tmp/arbor-home-layout-review' : tabletGraphOnly ? '/private/tmp/arbor-tablet-graph-review' : datedOnly ? '/private/tmp/arbor-dated-review' : askOnly ? '/private/tmp/arbor-ask-learn-review' : '/private/tmp/arbor-phase2b-retention-review';
+const output = realNavOnly ? '/private/tmp/arbor-real-nav-browser-review' : sheetOnly ? '/private/tmp/arbor-sheet-review' : reconstructionOnly ? '/private/tmp/arbor-reconstruction-review' : historyOnly ? '/private/tmp/arbor-history-review' : homeLayoutOnly ? '/private/tmp/arbor-home-layout-review' : tabletGraphOnly ? '/private/tmp/arbor-tablet-graph-review' : datedOnly ? '/private/tmp/arbor-dated-review' : askOnly ? '/private/tmp/arbor-ask-learn-review' : '/private/tmp/arbor-phase2b-retention-review';
+const realNavPath = process.env.ARBOR_REAL_NAV_FIXTURE;
+if (realNavOnly && (!realNavPath?.startsWith('/private/tmp/arbor-nav-qualification.') || !realNavPath.endsWith('/real-nav-browser.json')))
+  throw new Error('Real-NAV browser review requires a task-owned local fixture file');
+const realNavFixture = realNavOnly ? JSON.parse(readFileSync(realNavPath, 'utf8')) : null;
 await mkdir(output, { recursive: true });
 const user = { id: '00000000-0000-4000-8000-000000000001', aud: 'authenticated', role: 'authenticated', email: 'phase2b@example.test', created_at: '2026-09-01T00:00:00Z', app_metadata: { provider: 'email' }, user_metadata: {} };
 const encoded = value => Buffer.from(JSON.stringify(value)).toString('base64url');
@@ -29,7 +36,24 @@ const observed = (offset,value,cost,gain,pct) => ({day:observedDay(offset),value
 let historyFixture = [observed(50,'9000.00',null,null,null),observed(10,'10000.00','10000.00','0.00','0.00'),
   observed(6,'16000.00','16000.00','0.00','0.00'),observed(3,'16500.00','15000.00','1500.00','10.00'),
   observed(1,'14000.00','15000.00','-1000.00','-6.67'),observed(0,'15000.00','14000.00','1000.00','7.14')];
+if (reconstructionOnly) historyFixture = historyFixture.map((point,index) => index === 0 ? point : ({
+  ...point,origin:'reconstructed',captured_at:null,cost_context_captured:false,segment:0,
+  source_dates:[{price_key:'usd_php',source:'bsp',observation_date:point.day,
+    observed_at:`${point.day}T00:00:00Z`,rate:'50',fetched_at:now,
+    provenance:'https://www.bsp.gov.ph/statistics/external/day99_data.aspx',valuation_date:point.day}],
+}));
+if (realNavOnly) {
+  assert.ok(Array.isArray(realNavFixture.history) && realNavFixture.history.length > 1);
+  historyFixture = realNavFixture.history;
+  assert.ok(historyFixture.some(point => point.source_dates?.some(source => source.source === 'toap')));
+}
 let historyCurrent = { value:'15000.00', cost:'14000.00', gain:'1000.00', percentage:'7.14' };
+if (realNavOnly) {
+  const latest = historyFixture.at(-1);
+  historyCurrent = { value:latest.value_php, cost:latest.recorded_cost_php,
+    gain:latest.recorded_gain_php, percentage:latest.recorded_gain_percentage,
+    usd:latest.value_usd };
+}
 const weights = [{ role: 'global_equity', percentage_points: 80 }, { role: 'defensive', percentage_points: 0 }, { role: 'technology_tilt', percentage_points: 10 }, { role: 'crypto', percentage_points: 10 }];
 const plan = { strategy_engine_version: '2.0', profile: { strategy_engine_version: '2.0', full_name: 'Phase Two QA', country: 'Philippines', currency: 'PHP', emergency_savings: 'three_to_six_months', high_interest_debt: 'none', goal_target: 500000, goal_name: 'Home', goal_date: '2036-09-28', current_portfolio_value: 0, monthly_investment: 10000, horizon: 'ten_plus_years', risk_response: 'hold', saved_preferences: { technology_tilt: 0, bitcoin: 0 }, selected_approach: 'Aggressive', explicit_customization: { technology_tilt: 10, bitcoin: 10 }, implementation_choices: { global_equity: 'gotrade_vt', crypto: 'pdax_btc' } }, plan: { plan_basis: 'user_selected', strategy_engine_version: '2.0', selection: { risk_response: 'hold', horizon: 'ten_plus_years', requested_strategy: 'Growth', horizon_maximum_strategy: 'Aggressive', selected_strategy: 'Growth', is_short_term: false, cap_applied: false, reason: 'requested_strategy_retained' }, readiness: { readiness: 'ready', core_strategy_can_be_shown: true, actionable_contribution_guidance_allowed: true, technology_satellite_readiness_eligible: true, bitcoin_satellite_readiness_eligible: true, message_requirement: 'none' }, inflation_pct: 3, preference_result: { technology_tilt: { requested_percentage_points: 0, effective_percentage_points: 0, strategy_cap_percentage_points: 10, reasons: [] }, bitcoin: { requested_percentage_points: 0, effective_percentage_points: 0, strategy_cap_percentage_points: 10, reasons: [] }, effective_target: { strategy_engine_version: '2.0', base_strategy: 'Aggressive', allocation: { weights: [{ role: 'global_equity', percentage_points: 100 }, { role: 'defensive', percentage_points: 0 }, { role: 'technology_tilt', percentage_points: 0 }, { role: 'crypto', percentage_points: 0 }] } } }, dormant_selected_approach: null, historical_allocation_preserved: false, customization: { technology_tilt: 10, bitcoin: 10, provenance: 'user_selected' }, final_allocation: weights, path: 'long_term', selected_strategy: 'Aggressive', base_allocation: [{ role: 'global_equity', percentage_points: 100 }, { role: 'defensive', percentage_points: 0 }], planning_return_pct: 5.5 }, historical_plan: null, revision: '96613c4986b48f5b2b5e2a255b90a1ffa9be405441b583c34b5a3b02247d3176', profile_warning: null };
 const catalog = [
@@ -160,6 +184,21 @@ await context.route('**/*', async route => {
       response.provider_values_php.gotrade = historyCurrent.value;
       response.sleeves[0].known_value_php = historyCurrent.value;
     }
+    if (realNavOnly) {
+      response.holdings = [{ ...catalog[2], id:'00000000-0000-4000-8000-000000000103',
+        units:realNavFixture.units, cost_basis_php:historyCurrent.cost, opening_units:'0',
+        opening_cost_php:null, has_entries:true, manual_value_php:null, manual_value_updated_at:null,
+        value_php:historyCurrent.value, freshness:'fresh', as_of:`${historyFixture.at(-1).day}T00:00:00Z`,
+        updated_at:now, created_at:now, valuation_source:'nav',
+        unit_price:realNavFixture.latest_nav, unit_price_currency:'PHP',
+        recorded_gain_php:historyCurrent.gain,
+        recorded_gain_percentage:historyCurrent.percentage }];
+      response.total_value_usd = historyCurrent.usd;
+      response.provider_values_php = { gcash:historyCurrent.value };
+      response.data_sources = ['toap','bsp'];
+      response.sleeves = response.sleeves.map(row => ({...row,
+        known_value_php:row.sleeve==='global_equity'?historyCurrent.value:'0.00'}));
+    }
     if (marketScreenshot) {
       response.holdings.push({ ...response.holdings[0], ...catalog[3], id: '00000000-0000-4000-8000-000000000104',
         units: '1.25', cost_basis_php: '6000.00', opening_units: '1.25', opening_cost_php: '6000.00',
@@ -176,7 +215,7 @@ await context.route('**/*', async route => {
   }
   if (path.endsWith('/v2/portfolio/snapshot')) { snapshotRequests++; return json({ recorded: false, history: historyOnly ? historyFixture : [] }); }
   if (path.endsWith('/v2/portfolio/entries') && method === 'GET') {
-    const selected = url.searchParams.get('month'); const rows = entries.filter(e => !selected || e.investment_date.startsWith(selected));
+    const selected = url.searchParams.get('month'); const rows = entries.filter(e => !e.voided_at && (!selected || e.investment_date.startsWith(selected)));
     return json({ entries: rows, page: Number(url.searchParams.get('page') || 0), has_more: false });
   }
   if (path.endsWith('/v2/portfolio/entries') && method === 'POST') {
@@ -246,7 +285,52 @@ try {
   await page.getByLabel('Email address').fill(user.email);
   await page.getByLabel('Password').fill('fixture-only-password');
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
-  if (sheetOnly) {
+  if (realNavOnly) {
+    const first = historyFixture[0];
+    assert.equal(first.day,'2026-08-18');
+    assert.ok(first.source_dates.some(source => source.source==='toap' && source.observation_date==='2026-08-18'));
+    assert.ok(first.source_dates.some(source => source.source==='bsp' && source.observation_date==='2026-08-18'));
+    assert.equal(historyFixture.some(point => point.day==='2026-09-29' && point.value_php==='99999'),false);
+    await page.evaluate(() => { location.hash='portfolio'; });
+    const chart = page.locator('.portfolio-chart').first();
+    await page.getByRole('heading',{name:'Holdings'}).waitFor();
+    await page.locator('.holding-row').filter({hasText:'ATRAM'}).waitFor();
+    await chart.getByRole('button',{name:'All portfolio history'}).click();
+    await shot('real-nav-portfolio-all-php',1440);
+    const inspect = async (type, expectedDate) => {
+      await chart.locator('.chart-plot').scrollIntoViewIfNeeded();
+      const box=await chart.locator('.chart-plot').boundingBox();
+      const x=box.x+8,y=box.y+box.height/2;
+      if(type==='touch') {
+        await chart.locator('.chart-plot').dispatchEvent('pointerdown',{pointerType:'touch',pointerId:17,clientX:x,clientY:y,bubbles:true});
+        await page.waitForTimeout(420);
+        await chart.locator('.chart-plot').dispatchEvent('pointermove',{pointerType:'touch',pointerId:17,clientX:x+4,clientY:y,bubbles:true});
+        await chart.locator('.chart-plot').dispatchEvent('pointerup',{pointerType:'touch',pointerId:17,clientX:x+4,clientY:y,bubbles:true});
+      } else await page.mouse.move(x,y);
+      await chart.locator('.chart-selected-date[data-selected="true"]').waitFor();
+      assert.ok((await chart.locator('.chart-selected-date').innerText()).includes(expectedDate));
+    };
+    await inspect('mouse','Aug 18, 2026');
+    assert.ok((await chart.locator('.chart-value').innerText()).includes(first.value_php));
+    await shot('real-nav-portfolio-aug18-hover-php',1440);
+    await chart.getByRole('button',{name:'Switch portfolio display to USD'}).click();
+    const usdFirst=historyFixture[historyFixture.findLastIndex(point=>point.value_usd===null)+1];
+    assert.equal(usdFirst.day,'2026-09-01');
+    await inspect('mouse','Sep 1, 2026');
+    assert.ok((await chart.locator('.chart-value').innerText()).includes(usdFirst.value_usd));
+    assert.ok((await chart.locator('.chart-usd-limitation').innerText()).includes('USD history from Sep 1, 2026'));
+    await shot('real-nav-portfolio-sep1-hover-usd',1440);
+    await page.setViewportSize({width:390,height:900});
+    await inspect('touch','Sep 1, 2026');
+    await shot('real-nav-portfolio-sep1-touch-usd-390',390);
+    await page.evaluate(() => { location.hash='home'; });
+    await page.getByRole('region',{name:'Portfolio value graph'}).waitFor();
+    await shot('real-nav-home-390',390);
+    assert.equal(pageErrors,0);assert.equal(consoleErrors,0);assert.equal(blockedExternal,0);
+    console.log(JSON.stringify({fixtureOnly:true,realImportedNav:true,
+      sourceDates:first.source_dates.map(source=>({source:source.source,observation_date:source.observation_date})),
+      screenshots:shots,pageErrors,consoleErrors,blockedExternal}));
+  } else if (sheetOnly) {
     await page.evaluate(() => { location.hash = 'home'; });
     await page.getByRole('region', { name: 'Portfolio value graph' }).waitFor();
     const geometry = async () => page.evaluate(() => {
@@ -291,11 +375,11 @@ try {
     const homeActivityScroll=await recent.evaluate(element=>{element.scrollIntoView({block:'center'});return scrollY;});
     await recent.click();
     await page.getByRole('dialog',{name:'Investment activity'}).waitFor();
-    assert.equal(await page.getByRole('dialog',{name:'Investment activity'}).locator('.activity-entry').count(),10);
-    assert.match(await page.getByRole('dialog',{name:'Investment activity'}).locator('.activity-entry').last().innerText(),/voided/);
-    await page.getByRole('dialog',{name:'Investment activity'}).getByRole('button',{name:'Edit or void'}).first().click();
+    assert.equal(await page.getByRole('dialog',{name:'Investment activity'}).locator('.activity-entry').count(),9);
+    assert.doesNotMatch(await page.getByRole('dialog',{name:'Investment activity'}).innerText(),/voided|deleted investment/i);
+    await page.getByRole('dialog',{name:'Investment activity'}).getByRole('button',{name:'Edit or delete'}).first().click();
     await page.getByRole('dialog',{name:'Investment activity'}).getByRole('button',{name:'Edit',exact:true}).first().waitFor();
-    await page.getByRole('dialog',{name:'Investment activity'}).getByRole('button',{name:'Void',exact:true}).first().waitFor();
+    await page.getByRole('dialog',{name:'Investment activity'}).getByRole('button',{name:'Delete',exact:true}).first().waitFor();
     await page.getByRole('button',{name:'All investment activity'}).click();
     await page.getByRole('dialog',{name:'Investment activity'}).locator('.investment-line').first().waitFor();
     assert.equal(new URL(page.url()).hash,'#home/activity');
@@ -581,6 +665,37 @@ try {
     assert.equal(await chart().getAttribute('data-gain'),'zero');
     assert.match(await chart().locator('.chart-gain').innerText(),/₱0\.00/);
     await capture('fidelity-portfolio-neutral-contribution');
+    if (reconstructionOnly) {
+      // The SQL fixture proves the immutable stale snapshot remains in storage.
+      // This API fixture proves the browser renders only the corrected canonical series.
+      const reconstructed=(day,value,usd,cost,gain,pct)=>({day,value_php:value,value_usd:usd,
+        captured_at:null,origin:'reconstructed',segment:0,earliest_recorded_date:'2026-08-18',
+        cost_complete:true,cost_context_captured:false,
+        recorded_cost_php:cost,recorded_gain_php:gain,recorded_gain_percentage:pct,
+        source_dates:[{price_key:'usd_php',source:'bsp',observation_date:day,
+          observed_at:`${day}T00:00:00Z`,fetched_at:now,rate:'50',
+          provenance:'https://www.bsp.gov.ph/statistics/external/day99_data.aspx',valuation_date:day}]});
+      historyCurrent={value:'15000.00',cost:'14000.00',gain:'1000.00',percentage:'7.14'};
+      historyFixture=[reconstructed('2026-08-18','10000.00','200.00','10000.00','0.00','0.00'),
+        reconstructed('2026-08-25','11000.00','220.00','10000.00','1000.00','10.00')];
+      await page.reload();await chart().waitFor();
+      await chart().getByRole('button',{name:'All portfolio history'}).click();
+      await inspect(0);
+      assert.match(await chart().locator('.chart-value').innerText(),/₱10,000\.00/);
+      assert.match(await chart().locator('.chart-selected-date').innerText(),/Aug 18, 2026/);
+      assert.match(await chart().locator('.chart-gain').innerText(),/₱0\.00/);
+      assert.doesNotMatch(await chart().innerText(),/99,999/);
+      await capture('corrected-all-php');
+      await chart().getByRole('button',{name:'Switch portfolio display to USD'}).click();
+      await inspect(0);
+      assert.match(await chart().locator('.chart-value').innerText(),/US\$200\.00/);
+      await capture('corrected-all-usd');
+      historyFixture=[historyFixture[1]];
+      await page.reload();await chart().waitFor();
+      await chart().getByRole('button',{name:'All portfolio history'}).click();
+      await chart().getByText('Complete history begins Aug 25, 2026. Earlier values are unavailable.').waitFor();
+      await capture('incomplete-earlier-coverage');
+    }
     assert.equal(pageErrors,0,'browser page errors');assert.equal(consoleErrors,0,'browser console errors');assert.equal(blockedExternal,0,'unhandled external requests');
     console.log(JSON.stringify({fixtureOnly:true,screenshots:shots,pageErrors,consoleErrors,blockedExternal}));
   } else if (homeLayoutOnly) {

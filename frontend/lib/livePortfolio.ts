@@ -40,7 +40,11 @@ export type InvestmentEntryDraft = { provider: string; product_id: string; inves
 export type RecordedEntryResult = { entry_id: string; holding_id: string; replayed: boolean };
 export const supportsManualValue = (h: { product_id: string }) => ["gcash_global_equity", "gcash_technology", "gcash_defensive", "dragonfi_global_equity", "dragonfi_technology", "dragonfi_defensive"].includes(h.product_id);
 export const validManualValue = (v: string) => /^\d{1,16}(?:\.\d{1,2})?$/.test(v) && /[1-9]/.test(v);
-export type PortfolioHistory = { day: string; value_php: string; captured_at: string;
+export type PortfolioHistory = { day: string; value_php: string; captured_at: string | null;
+  origin?: "observed" | "reconstructed"; segment?: number; earliest_recorded_date?: string | null;
+  source_dates?: { price_key: string; source: "bsp" | "marketstack" | "coinranking" | "toap"; observation_date: string;
+    observed_at?: string; fetched_at?: string; provenance?: string; rate?: string; kind?: "nav";
+    reference_id?: string; unit_class?: string; valuation_date: string }[];
   value_usd?: string | null;
   recorded_cost_php?: string | null; recorded_gain_php?: string | null;
   recorded_gain_percentage?: string | null; cost_complete?: boolean;
@@ -83,7 +87,16 @@ export function isInvestmentActivity(v: unknown): v is { entries: InvestmentEntr
       (e.amount_paid_php === null || money(e.amount_paid_php)) && timestamp(e.recorded_at) && timestamp(e.updated_at) && Number.isInteger(e.revision) && e.revision > 0 &&
       (e.voided_at === null || timestamp(e.voided_at)));
 }
-export const isHistory = (v: unknown): v is PortfolioHistory[] => Array.isArray(v) && v.every(h => h && day(h.day) && money(h.value_php) && timestamp(h.captured_at) &&
+export const isHistory = (v: unknown): v is PortfolioHistory[] => Array.isArray(v) && v.every(h => h && day(h.day) && money(h.value_php) &&
+  (h.origin === undefined ? timestamp(h.captured_at) : h.origin === "observed" ? timestamp(h.captured_at) : h.origin === "reconstructed" && h.captured_at === null) &&
+  (h.segment === undefined || Number.isInteger(h.segment) && h.segment >= 0) &&
+  (h.earliest_recorded_date === undefined || h.earliest_recorded_date === null || day(h.earliest_recorded_date)) &&
+  (h.source_dates === undefined || Array.isArray(h.source_dates) && h.source_dates.every((s: NonNullable<PortfolioHistory["source_dates"]>[number]) =>
+    s && typeof s.price_key === "string" && ["bsp", "marketstack", "coinranking", "toap"].includes(s.source) && day(s.observation_date) && day(s.valuation_date) &&
+    (s.observed_at === undefined || timestamp(s.observed_at)) && (s.fetched_at === undefined || timestamp(s.fetched_at)) &&
+    (s.provenance === undefined || typeof s.provenance === "string") && (s.rate === undefined || money(s.rate)) &&
+    (s.kind === undefined || s.kind === "nav") && (s.reference_id === undefined || typeof s.reference_id === "string") &&
+    (s.unit_class === undefined || typeof s.unit_class === "string"))) &&
   (h.value_usd === undefined || h.value_usd === null || money(h.value_usd)) &&
   (h.recorded_cost_php === undefined || h.recorded_cost_php === null || money(h.recorded_cost_php)) &&
   (h.recorded_gain_php === undefined || h.recorded_gain_php === null || decimal(h.recorded_gain_php)) &&
@@ -94,7 +107,7 @@ export const isHistory = (v: unknown): v is PortfolioHistory[] => Array.isArray(
 export function isPortfolio(value: unknown): value is LivePortfolioData {
   if (!value || typeof value !== "object") return false;
   const sources = (value as LivePortfolioData).data_sources;
-  if (sources !== undefined && (!Array.isArray(sources) || !sources.every(s => ["marketstack", "coinranking", "exchangerate_api", "toap"].includes(s)))) return false;
+  if (sources !== undefined && (!Array.isArray(sources) || !sources.every(s => ["marketstack", "coinranking", "exchangerate_api", "toap", "bsp"].includes(s)))) return false;
   const p = value as LivePortfolioData;
   return p.currency === "PHP" && money(p.known_value_php) && (p.total_value_php === null || money(p.total_value_php)) &&
     (p.total_value_usd === undefined || p.total_value_usd === null || money(p.total_value_usd) && p.complete) &&

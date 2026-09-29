@@ -8,6 +8,8 @@ import pytest
 from app.market_data import __main__ as cli
 from app.market_data.cache import SharedCache
 from app.market_data.models import MarketDataError, manual_nav
+from app.market_data.nav_history import nav_observation, detail_reference
+from app.market_data.models import TOAP_FUNDS
 from test_market_data import NOW
 
 
@@ -144,3 +146,18 @@ def test_cli_malformed_key_is_sanitized(monkeypatch, capsys):
     output = capsys.readouterr()
     assert "malformed-sensitive-value" not in output.out + output.err
     assert "Reference-data operation failed" in output.err
+
+
+def test_historical_nav_conflict_is_reported_without_raw_response(capsys):
+    product = "gcash_global_equity"
+    item = nav_observation(product, TOAP_FUNDS[product], "100", NOW.date(), NOW,
+                           detail_reference(product))
+    def respond(request):
+        assert request.method == "POST"
+        return httpx.Response(400, json={"code": "P0001",
+            "message": "Conflicting historical NAV requires operator review",
+            "details": "do-not-expose-provider-data"})
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        with pytest.raises(MarketDataError, match="^historical_nav_conflict$"):
+            SharedCache(client, URL, MODERN).write_history([item])
+    assert "do-not-expose-provider-data" not in capsys.readouterr().out

@@ -164,6 +164,8 @@ def test_daily_cache_and_shared_lease_prevent_duplicate_fetches(source):
     cache, calls = Cache(), []
     a = source_adapter(source, calls)
     assert refresh(cache, [a], NOW)[source] == "updated"
+    assert len(cache.history) == 3
+    assert all(item.source == "toap" and item.kind == "nav" for item in cache.history.values())
     assert refresh(cache, [a], NOW + timedelta(hours=1))[source] == "cached"
     assert refresh(cache, [a], NOW + timedelta(days=1))[source] == "cooldown"
     assert len(calls) == 1 and set(cache.intervals) == {86400}
@@ -171,6 +173,19 @@ def test_daily_cache_and_shared_lease_prevent_duplicate_fetches(source):
     before = dict(cache.rows)
     assert refresh(cache, [a], NOW + timedelta(days=1))[source] == "cached"
     assert len(calls) == 2 and cache.rows == before  # weekend unchanged date, no timestamp laundering
+    assert len(cache.history) == 3  # still Friday's genuine NAV, not a fake weekend row
+
+
+def test_conflicting_same_day_nav_reports_history_failure_without_replacing_old_observation():
+    cache, calls = Cache(), []
+    adapter = source_adapter("atram_nav", calls)
+    assert refresh(cache, [adapter], NOW)["atram_nav"] == "updated"
+    old_history = dict(cache.history)
+    cache.claims.clear()
+    changed = source_adapter("atram_nav", calls, html("atram_nav").replace("144.123456789012", "145"))
+    status = refresh(cache, [changed], NOW + timedelta(days=1))
+    assert status["atram_nav/history"] == "historical_nav_conflict"
+    assert cache.history == old_history
 
 
 def test_calendar_day_cadence_avoids_cron_jitter_and_uses_philippines_midnight():

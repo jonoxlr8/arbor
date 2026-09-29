@@ -84,3 +84,7 @@ test("Home recent activity prefers record-change time over backdated investment 
   assert.equal(result[0].key,"entry:old");assert.match(result[0].detail,/Investment date 2025-09-15/);
   assert.equal(result[0].amount,null);
 });
+test("Home recent activity omits soft-deleted investments",()=>{
+  const entry={id:"deleted",holding_id:"h",product_id:"gotrade_vt",provider:"gotrade",investment_date:"2026-09-27",units:"1",amount_paid_php:"100",recorded_at:"2026-09-27T10:00:00Z",updated_at:"2026-09-28T10:00:00Z",revision:2,voided_at:"2026-09-28T10:00:00Z"} satisfies InvestmentEntry;
+  assert.deepEqual(recentLedgerActivity([entry],[],null),[]);
+});

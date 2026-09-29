@@ -17,10 +17,10 @@ export function recentPortfolioActivity(holdings: PortfolioHolding[], monthly: M
 }
 
 export function recentLedgerActivity(entries: InvestmentEntry[], catalog: PortfolioProduct[], monthly: MonthlyState | null) {
-  const events: { key: string; at: number; title: string; detail: string; amount: string | null; product_id?: string; provider?: string }[] = entries.map(entry => {
+  const events: { key: string; at: number; title: string; detail: string; amount: string | null; product_id?: string; provider?: string }[] = entries.filter(entry => !entry.voided_at).map(entry => {
     const product = catalog.find(item => item.product_id === entry.product_id && item.provider === entry.provider);
     const label = investmentIdentity(entry.product_id, product?.display_name).shortName;
-    const action = entry.voided_at ? "Voided" : entry.revision > 1 ? "Corrected" : "Added to";
+    const action = entry.revision > 1 ? "Corrected" : "Added to";
     return { key: `entry:${entry.id}`, at: Date.parse(entry.updated_at), title: `${action} ${label}`,
       detail: `${entry.units} ${entry.product_id.endsWith("_btc") ? "BTC" : "units"} · ${providerName(entry.provider)} · Investment date ${entry.investment_date}`,
       amount: null, product_id: entry.product_id, provider: entry.provider };

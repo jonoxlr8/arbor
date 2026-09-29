@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 import {chromium} from 'playwright';
 
-const origin='http://localhost:3000';
+const origin=process.env.ARBOR_REVIEW_ORIGIN ?? 'http://localhost:3000';
 const phase2a=process.argv.includes('--phase2a');
 const output=phase2a?'/private/tmp/arbor-phase2a-review':'/private/tmp/arbor-phase1-review';
 await mkdir(output,{recursive:true});
@@ -51,7 +51,7 @@ page.on('pageerror',()=>pageErrors++);
 page.on('console',m=>{if(m.type()==='error')consoleErrors++;});
 await context.route('**/*',async route=>{
   const request=route.request(),url=new URL(request.url()),path=url.pathname,method=request.method();
-  if(['localhost','127.0.0.1'].includes(url.hostname) && url.port==='3000') return route.continue();
+  if(url.origin===origin && ['localhost','127.0.0.1'].includes(url.hostname)) return route.continue();
   if(method==='OPTIONS') return route.fulfill({status:204,headers});
   const json=(body,status=200)=>route.fulfill({status,json:body,headers});
   if(path.endsWith('/auth/v1/token'))return json(session);
@@ -63,7 +63,7 @@ await context.route('**/*',async route=>{
   if(path.endsWith('/v2/future-projection'))return json({starting_value_php:empty?'0.00':'12000.00',monthly_contribution_php:'2000.00',annual_planning_rate_pct:'5.500',inflation_planning_rate_pct:'3.0',whole_months:120,target_date:'2036-09-28',projected_value_php:'342000.00',goal_target_php:'500000.00',difference_to_goal_php:'-158000.00',illustrative:true});
   if(path.endsWith('/v2/portfolio') && method==='GET')return json(portfolio());
   if(path.endsWith('/v2/portfolio/snapshot'))return json({recorded:false,history});
-  if(path.endsWith('/v2/portfolio/entries') && method==='GET')return json({entries:entry?[entry]:[],page:Number(url.searchParams.get('page')||0),has_more:false});
+  if(path.endsWith('/v2/portfolio/entries') && method==='GET')return json({entries:entry&&!entry.voided_at?[entry]:[],page:Number(url.searchParams.get('page')||0),has_more:false});
   if(path.endsWith('/v2/portfolio/entries') && method==='POST'){
     const body=request.postDataJSON();
     if(entry && body.idempotency_key===entry.idempotency_key)return json({entry_id:entry.id,holding_id:entry.holding_id,replayed:true},201);
@@ -154,7 +154,7 @@ try{
   await shot('holding-detail',390);
   await page.getByRole('button',{name:'Add more'}).click();
   await page.getByLabel('Shares received').fill('0.52314');
-  await page.getByLabel('Actual total paid (PHP, optional)').fill('2000');
+  await page.getByLabel('Actual amount paid (PHP)').fill('2000');
   await page.getByRole('button',{name:'Review investment'}).click();
   await shot('add-to-existing',390);
   await page.getByRole('button',{name:'Confirm and save'}).click();
@@ -169,11 +169,11 @@ try{
   await page.getByRole('button',{name:'Confirm correction'}).click();
   await page.getByRole('button',{name:'View VT'}).waitFor();
   await page.getByRole('button',{name:'View VT'}).click();
-  await page.getByRole('button',{name:'Void',exact:true}).click();
-  await shot('void-confirmation',320);
-  await page.getByRole('button',{name:'Confirm void'}).click();
-  await page.getByRole('button',{name:'History'}).click();
-  await page.getByText('voided',{exact:false}).waitFor();
+  await page.getByRole('button',{name:'Delete',exact:true}).click();
+  await shot('delete-confirmation',320);
+  await page.getByRole('button',{name:'Delete investment'}).click();
+  await page.locator('a[href="#portfolio/history"]').click();
+  await page.getByText('No dated additions recorded yet.').waitFor();
   assert.equal(pageErrors,0);assert.equal(consoleErrors,0);assert.equal(blockedExternal,0);
   console.log(JSON.stringify({screenshots:shots,pageErrors,consoleErrors,blockedExternal,fixtureOnly:true}));
 }finally{await browser.close();}

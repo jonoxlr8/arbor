@@ -340,6 +340,26 @@ test("historical header formats backend gain without reconstructing historical c
   assert.deepEqual(historicalGainDisplay({...base,cost_context_captured:false,recorded_cost_php:null,recorded_gain_php:null}),
     {amount:"Gain/loss unavailable",percentage:null,text:"Gain/loss unavailable",tone:"unknown"});
 });
+test("reconstructed cost and source provenance remain explicit without legacy inference",()=>{
+  const reconstructed={day:"2026-08-18",value_php:"10000.00",value_usd:"200.00",captured_at:null,
+    origin:"reconstructed" as const,segment:0,recorded_cost_php:"10000.00",
+    recorded_gain_php:"0.00",recorded_gain_percentage:"0.00",cost_complete:true,cost_context_captured:false,
+    source_dates:[{price_key:"usd_php",source:"bsp" as const,observation_date:"2026-08-18",
+      observed_at:"2026-08-18T00:00:00Z",fetched_at:"2026-09-29T00:00:00Z",rate:"50",
+      provenance:"https://www.bsp.gov.ph/statistics/external/day99_data.aspx",valuation_date:"2026-08-18"}]};
+  assert.equal(isPortfolio({...portfolioFixture,history:[reconstructed],data_sources:["bsp"]}),true);
+  const fundSource={price_key:"gcash_technology",source:"toap" as const,kind:"nav" as const,
+    observation_date:"2026-08-18",observed_at:"2026-08-18T00:00:00Z",
+    fetched_at:"2026-09-29T00:00:00Z",valuation_date:"2026-08-18",
+    provenance:"https://uitf.com.ph/daily_navpu.php?bank_id=31",
+    unit_class:"A PHP Unit Class",reference_id:"ATRAM Global Technology Feeder Fund (A PHP Unit Class)"};
+  assert.equal(isPortfolio({...portfolioFixture,history:[{...reconstructed,source_dates:[fundSource]}],data_sources:["toap"]}),true);
+  assert.equal(historicalGainDisplay(reconstructed).tone,"zero");
+  assert.equal(isPortfolio({...portfolioFixture,history:[{...reconstructed,source_dates:[{...reconstructed.source_dates[0],rate:"NaN"}]}]}),false);
+  const legacy={...reconstructed,origin:"observed" as const,captured_at:"2026-08-18T00:00:00Z",
+    cost_complete:false,recorded_cost_php:null,recorded_gain_php:null,value_usd:null,source_dates:[]};
+  assert.equal(historicalGainDisplay(legacy).amount,"Gain/loss unavailable");
+});
 test("default 1M with no genuine recent points does not create a flat trend",()=>{
   const history=[{day:"2020-01-01",value_php:"100.00",captured_at:"2020-01-01T00:00:00Z"},
     {day:"2020-02-01",value_php:"120.00",captured_at:"2020-02-01T00:00:00Z"}];

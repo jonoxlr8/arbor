@@ -68,7 +68,12 @@ def get_portfolio(response: Response, user_id: str = Depends(get_current_user_id
         if holding["id"] not in metadata:
             raise HTTPException(503, "Portfolio records are temporarily unavailable. Please retry.")
         holding.update(metadata[holding["id"]])
-    return {**result, "catalog": catalog(), "history": store.history()}
+    history = store.history()
+    historical_sources = {item.get("source") for point in history
+                          for item in point.get("source_dates", [])}
+    result["data_sources"] = sorted(set(result.get("data_sources", [])) |
+                                    (historical_sources & {"bsp", "marketstack", "coinranking", "toap"}))
+    return {**result, "catalog": catalog(), "history": history}
 
 
 @router.post("/holdings", status_code=201)
@@ -118,7 +123,7 @@ def investment_activity(holding_id: UUID | None = None, page: int = Query(defaul
                         recent: bool = False,
                         user_id: str = Depends(get_current_user_id), authorization: str | None = Header(default=None)):
     rows = PortfolioStore(user_id, authorization).activity(holding_id, page, month, recent)
-    return {"entries": rows, "page": page, "has_more": len(rows) == 20}
+    return {"entries": rows[:20], "page": page, "has_more": len(rows) > 20}
 
 
 @router.put("/entries/{entry_id}")

@@ -9,5 +9,5 @@ export function recordingRows(plan: MonthlyPlan | null, catalog: PortfolioProduc
 }
 
 export function investmentAction(entry: InvestmentEntry) {
-  return entry.voided_at ? "Voided" : entry.revision > 1 ? "Corrected" : "Recorded";
+  return entry.voided_at ? "Deleted" : entry.revision > 1 ? "Corrected" : "Recorded";
 }

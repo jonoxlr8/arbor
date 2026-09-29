@@ -60,10 +60,10 @@ test("uncertain save retries the same idempotency key and malformed success is n
     /load your portfolio correctly/);
 });
 
-test("correction and void are not presented as another purchase or a sale", () => {
+test("correction and deletion are not presented as another purchase or a sale", () => {
   assert.equal(investmentAction(entry), "Recorded");
   assert.equal(investmentAction({ ...entry, revision: 2 }), "Corrected");
-  assert.equal(investmentAction({ ...entry, voided_at: "2026-09-28T02:00:00Z" }), "Voided");
+  assert.equal(investmentAction({ ...entry, voided_at: "2026-09-28T02:00:00Z" }), "Deleted");
 });
 
 test("monthly flow uses one existing ledger save and never copies planned PHP into actual cost", () => {

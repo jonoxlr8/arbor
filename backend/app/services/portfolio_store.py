@@ -116,7 +116,8 @@ class PortfolioStore:
 
     @storage_errors
     def activity(self, holding_id=None, page=0, month=None, recent=False):
-        query = self.client.table("arbor_investment_entry_values").select("*").eq("user_id", self.owner)
+        query = (self.client.table("arbor_investment_entry_values").select("*")
+                 .eq("user_id", self.owner).is_("voided_at", "null"))
         if holding_id is not None:
             query = query.eq("holding_id", str(holding_id))
         if month is not None:
@@ -124,9 +125,9 @@ class PortfolioStore:
             query = query.gte("investment_date", f"{month}-01").lte(
                 "investment_date", f"{month}-{monthrange(year, number)[1]:02d}")
         if recent:
-            return query.order("updated_at", desc=True).order("id", desc=True).range(page * 20, page * 20 + 19).execute().data
+            return query.order("updated_at", desc=True).order("id", desc=True).range(page * 20, page * 20 + 20).execute().data
         return (query.order("investment_date", desc=True).order("recorded_at", desc=True).order("id", desc=True)
-                .range(page * 20, page * 20 + 19).execute().data)
+                .range(page * 20, page * 20 + 20).execute().data)
 
     @storage_errors
     def correct_opening(self, holding_id, request: OpeningPositionCorrection):
@@ -154,16 +155,15 @@ class PortfolioStore:
 
     @storage_errors
     def history(self):
-        # A snapshot is at most daily, but All must not silently stop at a year.
-        # Page under the authenticated owner filter rather than trusting the
-        # PostgREST default row limit.
+        # The owner RPC merges corrected-ledger valuations with compatible
+        # immutable observations. The SQL function owns deterministic day order
+        # and pagination rather than relying on an unordered outer RPC range.
         rows = []
         page_size = 1000
         while True:
-            page = (self.client.table("arbor_portfolio_history")
-                    .select("day,value_php,captured_at,recorded_cost_php,recorded_gain_php,recorded_gain_percentage,cost_complete,cost_context_captured,value_usd")
-                    .eq("user_id", self.owner).order("day")
-                    .range(len(rows), len(rows) + page_size - 1).execute().data)
+            page = self.client.rpc("arbor_reconstructed_portfolio_history", {
+                "p_offset": len(rows), "p_limit": page_size,
+            }).execute().data
             rows.extend(page)
             if len(page) < page_size:
                 return rows
