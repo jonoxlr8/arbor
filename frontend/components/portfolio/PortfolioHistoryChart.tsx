@@ -5,6 +5,7 @@ import { formatContributionMoney, formatUsdQuote } from "@/lib/contributions";
 import type { PortfolioHistory } from "@/lib/livePortfolio";
 import { historyChartSeries, historyExtrema, historyRange, historyRangeStart, historyValue, portfolioPeriodGain, supportedHistoryPoints, type ChartCurrency } from "@/lib/portfolioHistory";
 import { portfolioGraphState } from "@/lib/portfolioGraphState";
+import { roundedStepAfter } from "./roundedStepCurve";
 
 const ranges = [[7, "1W"], [30, "1M"], [90, "3M"], [180, "6M"], [365, "1Y"], [1826, "5Y"], [0, "All"]] as const;
 const rangeNames: Record<number, string> = { 7: "Past week", 30: "Past month", 90: "Past 3 months", 180: "Past 6 months", 365: "Past year", 1826: "Past 5 years", 0: "All time" };
@@ -172,10 +173,10 @@ export default function PortfolioHistoryChart({ history, knownValue = "0", curre
       {!complete || state.kind === "empty_zero" || plotted.length === 0 ? <div className={`chart-no-history chart-no-history-${state.kind}`}><span className="chart-no-history-marker"/><span>{state.kind === "empty_zero" ? "No investments recorded yet. No portfolio history yet." : !complete ? "Complete portfolio value unavailable" : state.kind === "current_only" ? "Current value · No history yet" : "Current value · No history in this range"}</span></div> :
       plotted.length === 1 ? <div className="chart-single-observation"><span className="chart-single-dot" aria-hidden="true"/>{points[0] && <time dateTime={points[0].day}>{dateLabel(points[0].day)}</time>}</div> :
       <><ResponsiveContainer width="100%" height="100%"><AreaChart data={plotted} margin={{ left: 8, right: 8, top: plotTop, bottom: plotBottom }}>
-        <defs><linearGradient id={`${gradient}-fill`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="currentColor" stopOpacity={0.18}/><stop offset="100%" stopColor="currentColor" stopOpacity={0.01}/></linearGradient></defs>
+        <defs><linearGradient id={`${gradient}-fill`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="currentColor" stopOpacity={0.14}/><stop offset="100%" stopColor="currentColor" stopOpacity={0.01}/></linearGradient></defs>
         <XAxis type="number" scale="time" domain={[axisStart, axisEnd]} dataKey="timestamp" hide />
         <YAxis type="number" domain={[domainMin, domainMax]} allowDataOverflow hide width={0}/>
-        <Area type="stepAfter" fill={`url(#${gradient}-fill)`} dataKey="plotValue" stroke="currentColor" strokeWidth={2.5} dot={false} isAnimationActive={false}/>
+        <Area type={roundedStepAfter} fill={`url(#${gradient}-fill)`} dataKey="plotValue" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" dot={false} isAnimationActive={false}/>
         {active && <><ReferenceLine x={Date.parse(`${active.day}T00:00:00Z`)} stroke="var(--v3-muted)" strokeOpacity={0.8} strokeWidth={1.5}/>
           <ReferenceDot x={Date.parse(`${active.day}T00:00:00Z`)} y={Number(historyValue(active, currency))} r={6}
             fill={`var(--chart-${selectedGain?.tone ?? "unknown"})`} stroke="var(--surface)" strokeWidth={2}/></>}

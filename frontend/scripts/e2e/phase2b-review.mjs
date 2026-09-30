@@ -8,6 +8,7 @@ const origin = process.env.ARBOR_REVIEW_ORIGIN ?? 'http://127.0.0.1:3000';
 const waysOnly = process.argv.includes('--ways-only');
 const askOnly = process.argv.includes('--ask-only');
 const datedOnly = process.argv.includes('--dated-only');
+const activityOnly = process.argv.includes('--activity-only');
 const tabletGraphOnly = process.argv.includes('--tablet-graph-only');
 const homeLayoutOnly = process.argv.includes('--home-layout-only');
 const reconstructionOnly = process.argv.includes('--reconstruction-only');
@@ -15,7 +16,7 @@ const realNavOnly = process.argv.includes('--real-nav-only');
 const periodOnly = process.argv.includes('--period-only');
 const historyOnly = process.argv.includes('--history-only') || reconstructionOnly || realNavOnly || periodOnly;
 const sheetOnly = process.argv.includes('--sheet-only');
-const output = waysOnly ? '/private/tmp/arbor-provider-link-review' : periodOnly ? '/private/tmp/arbor-period-chart-review' : realNavOnly ? '/private/tmp/arbor-real-nav-browser-review' : sheetOnly ? '/private/tmp/arbor-sheet-review' : reconstructionOnly ? '/private/tmp/arbor-reconstruction-review' : historyOnly ? '/private/tmp/arbor-history-review' : homeLayoutOnly ? '/private/tmp/arbor-home-layout-review' : tabletGraphOnly ? '/private/tmp/arbor-tablet-graph-review' : datedOnly ? '/private/tmp/arbor-dated-review' : askOnly ? '/private/tmp/arbor-ask-learn-review' : '/private/tmp/arbor-phase2b-retention-review';
+const output = activityOnly ? '/private/tmp/arbor-activity-review' : waysOnly ? '/private/tmp/arbor-provider-link-review' : periodOnly ? '/private/tmp/arbor-period-chart-review' : realNavOnly ? '/private/tmp/arbor-real-nav-browser-review' : sheetOnly ? '/private/tmp/arbor-sheet-review' : reconstructionOnly ? '/private/tmp/arbor-reconstruction-review' : historyOnly ? '/private/tmp/arbor-history-review' : homeLayoutOnly ? '/private/tmp/arbor-home-layout-review' : tabletGraphOnly ? '/private/tmp/arbor-tablet-graph-review' : datedOnly ? '/private/tmp/arbor-dated-review' : askOnly ? '/private/tmp/arbor-ask-learn-review' : '/private/tmp/arbor-phase2b-retention-review';
 const realNavPath = process.env.ARBOR_REAL_NAV_FIXTURE;
 if (realNavOnly && (!realNavPath?.startsWith('/private/tmp/arbor-nav-qualification.') || !realNavPath.endsWith('/real-nav-browser.json')))
   throw new Error('Real-NAV browser review requires a task-owned local fixture file');
@@ -81,6 +82,19 @@ let showOpening = true;
 let hasProfile = true;
 const pending = [{ id: '00000000-0000-4000-8000-000000000201', product_id: 'gotrade_vt', provider: 'gotrade', source: 'monthly', status: 'pending', started_at: now, resolved_at: null }];
 const entries = [];
+if (activityOnly) {
+  const fixture = (id, product_id, provider, investment_date, units, amount_paid_php, revision = 1, voided_at = null) => ({
+    id, holding_id: product_id === 'pdax_btc' ? '00000000-0000-4000-8000-000000000102' : product_id === 'gcash_global_equity' ? '00000000-0000-4000-8000-000000000103' : '00000000-0000-4000-8000-000000000101',
+    product_id, provider, investment_date, units, amount_paid_php, revision, voided_at,
+    recorded_at: `${investment_date}T10:00:00Z`, updated_at: revision > 1 ? now : `${investment_date}T10:00:00Z`,
+  });
+  entries.push(fixture('older-vt','gotrade_vt','gotrade','2026-09-21','0.5','6500.00',2),
+    fixture('btc','pdax_btc','pdax','2026-09-28','0.00015','300.00'),
+    fixture('fund','gcash_global_equity','gcash','2026-09-27','10','900.00'),
+    fixture('vt','gotrade_vt','gotrade','2026-09-26','0.25','3200.00'),
+    fixture('older-fund','gcash_global_equity','gcash','2026-09-20','2','200.00'),
+    fixture('deleted','gotrade_vt','gotrade','2026-09-29','1','1000.00',2,now));
+}
 const keys = new Map();
 let pageErrors = 0, consoleErrors = 0, expectedMissingProfile404 = 0, blockedExternal = 0;
 let snapshotRequests = 0, pendingWrites = 0;
@@ -229,7 +243,9 @@ await context.route('**/*', async route => {
   if (path.endsWith('/v2/portfolio/snapshot')) { snapshotRequests++; return json({ recorded: false, history: historyOnly ? historyFixture : [] }); }
   if (path.endsWith('/v2/portfolio/entries') && method === 'GET') {
     const selected = url.searchParams.get('month'); const rows = entries.filter(e => !e.voided_at && (!selected || e.investment_date.startsWith(selected)));
-    return json({ entries: rows, page: Number(url.searchParams.get('page') || 0), has_more: false });
+    if (activityOnly) rows.sort((a,b)=>b.investment_date.localeCompare(a.investment_date)||b.recorded_at.localeCompare(a.recorded_at)||b.id.localeCompare(a.id));
+    const pageNumber = Number(url.searchParams.get('page') || 0);
+    return json({ entries: activityOnly ? rows.slice(pageNumber*20,pageNumber*20+20) : rows, page: pageNumber, has_more: activityOnly && rows.length > pageNumber*20+20 });
   }
   if (path.endsWith('/v2/portfolio/entries') && method === 'POST') {
     const body = request.postDataJSON();
@@ -298,7 +314,41 @@ try {
   await page.getByLabel('Email address').fill(user.email);
   await page.getByLabel('Password').fill('fixture-only-password');
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
-  if (waysOnly) {
+  if (activityOnly) {
+    await page.evaluate(() => { location.hash = 'home'; });
+    await page.getByRole('heading',{name:'Recent activity'}).waitFor();
+    await page.getByText('Corrected VT').waitFor();
+    for (const width of [1440,390]) {
+      await page.setViewportSize({width,height:900});
+      const card=page.locator('.home-activity');
+      const homeRows=await card.locator('li').allTextContents();
+      assert.equal(homeRows.length,4);
+      assert.deepEqual(homeRows.map(text=>text.match(/2026-09-\d\d/)?.[0]),['2026-09-28','2026-09-27','2026-09-26','2026-09-21']);
+      assert.match(homeRows[0],/Bitcoin.*0\.00015 BTC.*₱300\.00.*PDAX/s);
+      assert.match(homeRows[1],/ATRAM Global Equity Opportunity.*10 units.*₱900\.00.*GFunds/s);
+      assert.match(homeRows[3],/Corrected VT.*0\.5 units.*₱6,500\.00.*Gotrade/s);
+      assert.doesNotMatch(homeRows.join(' '),/2026-09-29|2026-09-20/);
+      await card.screenshot({path:`${output}/home-recent-activity-${width}.png`,animations:'disabled'});
+      shots.push(`${output}/home-recent-activity-${width}.png`);
+      await card.getByRole('link',{name:'View all recorded activity'}).click();
+      const dialog=page.getByRole('dialog',{name:'Investment activity'});
+      await dialog.waitFor();
+      const fullRows=await dialog.locator('.investment-line').allTextContents();
+      assert.equal(fullRows.length,5);
+      for (let index=0;index<4;index++) {
+        const date=homeRows[index].match(/2026-09-\d\d/)?.[0];
+        assert.ok(fullRows[index].includes(date));
+        for (const value of ['Bitcoin','ATRAM Global Equity Opportunity','VT'].filter(item=>homeRows[index].includes(item))) assert.ok(fullRows[index].includes(value));
+      }
+      assert.match(fullRows[3],/Corrected VT/);
+      assert.doesNotMatch(fullRows.join(' '),/2026-09-29/);
+      await dialog.screenshot({path:`${output}/full-investment-activity-${width}.png`,animations:'disabled'});
+      shots.push(`${output}/full-investment-activity-${width}.png`);
+      await dialog.getByRole('button',{name:'Close'}).click();
+    }
+    assert.equal(pageErrors,0);assert.equal(consoleErrors,0);assert.equal(blockedExternal,0);
+    console.log(JSON.stringify({fixtureOnly:true,screenshots:shots,pageErrors,consoleErrors,blockedExternal}));
+  } else if (waysOnly) {
     await page.setViewportSize({width:390,height:900});
     await page.evaluate(() => { location.hash='home'; });
     const homeWays=page.locator('.home-plan-actions a[href="#portfolio/ways"]');
@@ -413,6 +463,7 @@ try {
     await assertGain('+₱5,000.00');
     await shotPeriod('portfolio-1m-usd-touch-mobile');
     await chart.getByRole('button',{name:'1W portfolio history'}).click();await assertGain('+₱5,000.00');
+    historyFixture=[...historyFixture.slice(0,-1),observed(0,'26000.00','20000.00','6000.00','30.00')];
     historyCurrent={value:'26000.00',cost:'20000.00',gain:'6000.00',percentage:'30.00'};
     await page.reload();await chart.waitFor();
     await chart.getByRole('button',{name:'1W portfolio history'}).click();await assertGain('−₱1,000.00');
@@ -433,15 +484,22 @@ try {
     const pathCoordinates=async()=>{
       const path=await chart.locator('.recharts-area-curve').getAttribute('d');
       assert.equal((path.match(/M/g)||[]).length,1,'step chart remains one connected series');
-      return [...path.matchAll(/[ML](-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/g)].map(match=>({x:Number(match[1]),y:Number(match[2])}));
+      assert.ok(path.includes('Q'),'genuine changes have presentation-only rounded corners');
+      assert.equal(await chart.locator('.recharts-area-curve').getAttribute('stroke-linecap'),'round');
+      const commands=path.match(/[MLQ][^MLQZ]*/g)||[];
+      const anchors=[];
+      let previous=null;
+      for(const command of commands){
+        const values=(command.slice(1).match(/-?\d+(?:\.\d+)?/g)||[]).map(Number);
+        const end={x:values.at(-2),y:values.at(-1)};
+        if(command[0]==='M'||command[0]==='L'&&previous&&Math.abs(end.y-previous.y)<.1)anchors.push(end);
+        previous=end;
+      }
+      return anchors;
     };
     const assertHoldThenJump=async(count)=>{
       const coordinates=await pathCoordinates();
-      assert.equal(coordinates.length,2*count-1,'each pair of genuine points gets a hold and a jump');
-      for(let index=0;index<coordinates.length-2;index+=2){
-        assert.ok(Math.abs(coordinates[index].y-coordinates[index+1].y)<.1,'previous value stays flat until next genuine date');
-        assert.ok(Math.abs(coordinates[index+1].x-coordinates[index+2].x)<.1,'new value appears at next genuine date');
-      }
+      assert.equal(coordinates.length,count,'one horizontal hold reaches each genuine timestamp or boundary');
       return coordinates;
     };
     const assertMissingNotSelected=async(type)=>{
@@ -462,7 +520,7 @@ try {
     await assertGain('+₱40,000.00');
     assert.equal(await chart.locator('.chart-plot').getAttribute('aria-label'),'Inspect 3 historical portfolio values. Use left and right arrow keys.');
     const phpSteps=await assertHoldThenJump(5);
-    assert.ok(Math.abs((phpSteps[4].x-phpSteps[2].x)-(phpSteps[6].x-phpSteps[4].x))<1,'two-day spans keep equal calendar-time width');
+    assert.ok(Math.abs((phpSteps[2].x-phpSteps[1].x)-(phpSteps[3].x-phpSteps[2].x))<1,'two-day spans keep equal calendar-time width');
     await shotPeriod('gap-portfolio-php-desktop');
     await assertMissingNotSelected('mouse');
     await chart.locator('.chart-plot').focus();await chart.locator('.chart-plot').press('Escape');
@@ -483,6 +541,8 @@ try {
     await page.evaluate(()=>{location.hash='portfolio';});await chart.waitFor();
     await chart.getByRole('button',{name:'Switch portfolio display to USD'}).click();
     await assertGain('+₱40,000.00');await assertHoldThenJump(5);await shotPeriod('gap-portfolio-usd-390');
+    await page.setViewportSize({width:1440,height:950});await shotPeriod('gap-portfolio-usd-desktop');
+    await page.setViewportSize({width:390,height:900});
     await assertMissingNotSelected('touch');
     historyFixture=[baseline,sep6,sep10];
     await page.reload();await chart.waitFor();

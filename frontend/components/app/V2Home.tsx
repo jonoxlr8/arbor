@@ -4,7 +4,7 @@ import type { PlanV2 } from "@/lib/types/planV2";
 import { portfolioApi, type LivePortfolioData, type InvestmentEntry } from "@/lib/livePortfolio";
 import { formatContributionMoney } from "@/lib/contributions";
 import { useAccountAccess } from "../AccountAccess";
-import { monthlyApi, monthLabel, checkinDate, type MonthlyState } from "@/lib/monthlyCheckin";
+import { monthlyApi, monthLabel, type MonthlyState } from "@/lib/monthlyCheckin";
 import PortfolioHistoryChart from "../portfolio/PortfolioHistoryChart";
 import { DataAttribution } from "../portfolio/LivePortfolio";
 import Allocation from "../portfolio/Allocation";
@@ -30,7 +30,7 @@ export default function V2Home({ value, userId, section = "", onPlanChange }: { 
   useEffect(() => {
     if (!available || !userId) return;
     const controller = new AbortController();
-    portfolioApi.activity(userId, undefined, 0, controller.signal, { recent: true }).then(result => { if (!controller.signal.aborted) { setEntries(result.entries); setEntriesError(false); } }).catch(() => { if (!controller.signal.aborted) setEntriesError(true); });
+    portfolioApi.activity(userId, undefined, 0, controller.signal).then(result => { if (!controller.signal.aborted) { setEntries(result.entries); setEntriesError(false); } }).catch(() => { if (!controller.signal.aborted) setEntriesError(true); });
     return () => controller.abort();
   }, [available, userId, portfolio]);
   useEffect(() => {
@@ -64,7 +64,7 @@ export default function V2Home({ value, userId, section = "", onPlanChange }: { 
         </a>
       }/>
     </div>
-    <div className="home-bottom"><HomeActivity state={currentMonthly} error={monthlyError || entriesError} portfolio={portfolio} entries={entries}/><HomePlanContext value={value} /></div>
+    <div className="home-bottom"><HomeActivity error={entriesError} entries={entries}/><HomePlanContext value={value} /></div>
     </div>
     {portfolio && <div className="home-data-attribution"><DataAttribution sources={portfolio.data_sources ?? []}/></div>}
     {section === "activity" && portfolio && userId && <InvestmentActivitySheet portfolio={portfolio} userId={userId} onClose={closePortfolioSheet} onChanged={() => setPortfolioVersion(version => version + 1)}/>}
@@ -84,12 +84,11 @@ export function HomePlanContext({ value }: { value: PlanV2 }) {
   </section>;
 }
 
-export function HomeActivity({state,error=false,portfolio=null,entries=[]}:{state:MonthlyState|null;error?:boolean;portfolio?:LivePortfolioData|null;entries?:InvestmentEntry[]}) {
-  const events = recentLedgerActivity(entries,portfolio?.catalog ?? [],state);
+export function HomeActivity({error=false,entries=[]}:{error?:boolean;entries?:InvestmentEntry[]}) {
+  const events = recentLedgerActivity(entries);
   return <section className="home-activity"><header><h2>Recent activity</h2><a href="#home/activity" aria-label="View all recorded activity">View all →</a></header>
-    {events.length ? <>{error && <p role="status">Some activity is temporarily unavailable.</p>}<ul>{events.map(row=><li key={row.key}>{row.product_id ? <InvestmentIdentity product={row.product_id}/> : <time className="activity-date" dateTime={new Date(row.at).toISOString()}><small>{new Date(row.at).toLocaleDateString("en-PH",{month:"short",timeZone:"UTC"})}</small>{new Date(row.at).getUTCDate()}</time>}<div><strong>{row.title}</strong><small>{row.detail}</small>{row.product_id && <time dateTime={new Date(row.at).toISOString()}>{new Date(row.at).toLocaleDateString("en-PH",{month:"short",day:"numeric",timeZone:"UTC"})}</time>}</div>{row.amount !== null && <span>{formatContributionMoney(row.amount,"PHP")}</span>}</li>)}</ul></>
-      : <div className="activity-empty">{error ? <p role="status">Activity is temporarily unavailable. Open your monthly contribution to retry.</p> : <p>Your investment activity will appear here.</p>}</div>}
-    {state?.current && <p className="activity-note">Recorded as invested {checkinDate(state.current.completed_at)}. Holdings are tracked separately.</p>}
+    {events.length ? <>{error && <p role="status">Some activity is temporarily unavailable.</p>}<ul>{events.map(row=><li key={row.key}><InvestmentIdentity product={row.product_id}/><div><strong>{row.title}</strong><small>{row.detail}</small><time dateTime={row.date}>{row.date}</time></div></li>)}</ul></>
+      : <div className="activity-empty">{error ? <p role="status">Investment activity is temporarily unavailable. Please try again later.</p> : <p>Your investment activity will appear here.</p>}</div>}
   </section>;
 }
 

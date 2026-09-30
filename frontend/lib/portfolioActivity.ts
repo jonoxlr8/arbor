@@ -1,6 +1,26 @@
-import type { PortfolioHolding, InvestmentEntry, PortfolioProduct } from "./livePortfolio";
+import type { PortfolioHolding, InvestmentEntry } from "./livePortfolio";
 import type { MonthlyState } from "./monthlyCheckin";
 import { investmentIdentity, providerName } from "./investmentIdentity";
+import { decimalText, formatContributionMoney } from "./contributions";
+
+// The API pages active entries by investment date, recorded time, then ID.
+export function datedInvestmentEntries(entries: InvestmentEntry[]) {
+  return entries.filter(entry => !entry.voided_at).sort((a, b) =>
+    b.investment_date.localeCompare(a.investment_date) ||
+    b.recorded_at.localeCompare(a.recorded_at) || b.id.localeCompare(a.id));
+}
+
+export function investmentEntryUnits(entry: InvestmentEntry) {
+  return `${decimalText(entry.units)} ${entry.product_id.endsWith("_btc") ? "BTC" : "units"}`;
+}
+
+export function investmentEntryCost(entry: InvestmentEntry) {
+  return entry.amount_paid_php === null ? "Actual cost not recorded" : formatContributionMoney(entry.amount_paid_php, "PHP");
+}
+
+export function investmentEntryAction(entry: InvestmentEntry) {
+  return entry.revision > 1 ? "Corrected" : "Added";
+}
 
 export function recentPortfolioActivity(holdings: PortfolioHolding[], monthly: MonthlyState | null) {
   const events = holdings.flatMap(h => {
@@ -16,17 +36,15 @@ export function recentPortfolioActivity(holdings: PortfolioHolding[], monthly: M
   return events.sort((a,b)=>b.at-a.at).slice(0,4);
 }
 
-export function recentLedgerActivity(entries: InvestmentEntry[], catalog: PortfolioProduct[], monthly: MonthlyState | null) {
-  const events: { key: string; at: number; title: string; detail: string; amount: string | null; product_id?: string; provider?: string }[] = entries.filter(entry => !entry.voided_at).map(entry => {
-    const product = catalog.find(item => item.product_id === entry.product_id && item.provider === entry.provider);
-    const label = investmentIdentity(entry.product_id, product?.display_name).shortName;
-    const action = entry.revision > 1 ? "Corrected" : "Added to";
-    return { key: `entry:${entry.id}`, at: Date.parse(entry.updated_at), title: `${action} ${label}`,
-      detail: `${entry.units} ${entry.product_id.endsWith("_btc") ? "BTC" : "units"} · ${providerName(entry.provider)} · Investment date ${entry.investment_date}`,
-      amount: null, product_id: entry.product_id, provider: entry.provider };
+export function recentLedgerActivity(entries: InvestmentEntry[]) {
+  return datedInvestmentEntries(entries).slice(0, 4).map(entry => {
+    const label = investmentIdentity(entry.product_id).shortName;
+    const action = investmentEntryAction(entry);
+    return { key: `entry:${entry.id}`, date: entry.investment_date,
+      title: `${action === "Added" ? "Added to" : action} ${label}`,
+      detail: `${investmentEntryUnits(entry)} · ${investmentEntryCost(entry)} · ${providerName(entry.provider)}`,
+      product_id: entry.product_id, provider: entry.provider };
   });
-  for (const row of monthly?.history ?? []) events.push({key:`monthly:${row.month}`,at:Date.parse(row.undone_at ?? row.completed_at),title:row.undone_at ? "Contribution undone" : "Contribution recorded",detail:"Monthly check-in",amount:row.amount_php});
-  return events.sort((a,b)=>b.at-a.at).slice(0,4);
 }
 
 // A check-in is not a transaction. Only show a follow-up, never mutate holdings.

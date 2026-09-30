@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {historyChartSeries,historyExtrema,historyRange,portfolioPeriodGain,portfolioValueChange,portfolioValueChangeFromStart,supportedHistoryPoints,valueChangeDisclosure} from "./portfolioHistory";
-import {recentPortfolioActivity,recentLedgerActivity,holdingsUpdatedAfter} from "./portfolioActivity";
+import {recentPortfolioActivity,recentLedgerActivity,datedInvestmentEntries,investmentEntryAction,investmentEntryCost,investmentEntryUnits,holdingsUpdatedAfter} from "./portfolioActivity";
 import type {PortfolioHistory,PortfolioHolding,InvestmentEntry} from "./livePortfolio";
 
 const point=(day:string,value_php:string):PortfolioHistory=>({day,value_php,captured_at:`${day}T12:00:00Z`});
@@ -156,21 +156,44 @@ test("monthly completion follow-up uses timestamps, never increases a holding va
 });
 test("Bitcoin ledger activity uses BTC units and corrections are not new purchases",()=>{
   const entry={id:"one",holding_id:"holding",product_id:"pdax_btc",provider:"pdax",investment_date:"2026-09-25",units:"0.01",amount_paid_php:null,recorded_at:"2026-09-26T00:00:00Z",updated_at:"2026-09-27T00:00:00Z",revision:2,voided_at:null} satisfies InvestmentEntry;
-  const events=recentLedgerActivity([entry],[],null);
+  const events=recentLedgerActivity([entry]);
   assert.match(events[0].title,/Corrected Bitcoin/);
-  assert.match(events[0].detail,/0\.01 BTC/);
-  assert.equal(events[0].amount,null);
+  assert.match(events[0].detail,/0\.01 BTC · Actual cost not recorded/);
+  assert.equal(investmentEntryUnits(entry),"0.01 BTC");
+  assert.equal(investmentEntryAction(entry),"Corrected");
   assert.equal(events[0].product_id,"pdax_btc");
   assert.equal(events[0].provider,"pdax");
 });
-test("Home recent activity prefers record-change time over backdated investment date",()=>{
+test("Home and full activity share dated order even after a backdated correction",()=>{
   const older={id:"old",holding_id:"h",product_id:"gotrade_vt",provider:"gotrade",investment_date:"2025-09-15",units:"0.5",amount_paid_php:null,recorded_at:"2026-09-28T10:00:00Z",updated_at:"2026-09-28T10:00:00Z",revision:1,voided_at:null} satisfies InvestmentEntry;
   const newerByInvestmentDate={...older,id:"newer-date",investment_date:"2026-09-27",recorded_at:"2026-09-27T10:00:00Z",updated_at:"2026-09-27T10:00:00Z"};
-  const result=recentLedgerActivity([newerByInvestmentDate,older],[],null);
-  assert.equal(result[0].key,"entry:old");assert.match(result[0].detail,/Investment date 2025-09-15/);
-  assert.equal(result[0].amount,null);
+  const result=recentLedgerActivity([older,newerByInvestmentDate]);
+  assert.deepEqual(result.map(row=>row.key),datedInvestmentEntries([older,newerByInvestmentDate]).map(row=>`entry:${row.id}`));
+  assert.equal(result[0].key,"entry:newer-date");
+  assert.equal(result[0].date,"2026-09-27");
 });
 test("Home recent activity omits soft-deleted investments",()=>{
   const entry={id:"deleted",holding_id:"h",product_id:"gotrade_vt",provider:"gotrade",investment_date:"2026-09-27",units:"1",amount_paid_php:"100",recorded_at:"2026-09-27T10:00:00Z",updated_at:"2026-09-28T10:00:00Z",revision:2,voided_at:"2026-09-28T10:00:00Z"} satisfies InvestmentEntry;
-  assert.deepEqual(recentLedgerActivity([entry],[],null),[]);
+  assert.deepEqual(recentLedgerActivity([entry]),[]);
+  assert.deepEqual(datedInvestmentEntries([entry]),[]);
+});
+test("compact Home matches the first four full entries across BTC, fund, ETF, corrections and deletion",()=>{
+  const base={id:"etf",holding_id:"h",product_id:"gotrade_vt",provider:"gotrade",investment_date:"2026-09-27",units:"0.5",amount_paid_php:"6500",recorded_at:"2026-09-29T10:00:00Z",updated_at:"2026-09-29T10:00:00Z",revision:1,voided_at:null} satisfies InvestmentEntry;
+  const rows:InvestmentEntry[]=[
+    {...base,id:"old",investment_date:"2026-08-01",updated_at:"2026-09-30T10:00:00Z"},
+    {...base,id:"fund",product_id:"gcash_global_equity",provider:"gcash",investment_date:"2026-09-28",units:"10",amount_paid_php:"900"},
+    {...base,id:"btc",product_id:"pdax_btc",provider:"pdax",investment_date:"2026-09-29",units:"0.00015",amount_paid_php:"300",revision:2},
+    {...base,id:"deleted",investment_date:"2026-09-30",voided_at:"2026-09-30T11:00:00Z"},
+    base,{...base,id:"tie",recorded_at:base.recorded_at},
+  ];
+  const full=datedInvestmentEntries(rows);
+  const home=recentLedgerActivity(rows);
+  assert.deepEqual(home.map(row=>row.key),full.slice(0,4).map(row=>`entry:${row.id}`));
+  assert.deepEqual(full.map(row=>row.id),["btc","fund","tie","etf","old"]);
+  assert.match(home[0].title,/Corrected Bitcoin/);
+  assert.match(home[0].detail,/0\.00015 BTC · ₱300\.00 · PDAX/);
+  assert.match(home[1].title,/ATRAM Global Equity Opportunity/);
+  assert.match(home[2].title,/VT/);
+  assert.equal(investmentEntryCost(rows[0]),"₱6,500.00");
+  assert.equal(full.length,5);
 });

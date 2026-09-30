@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { portfolioApi, type InvestmentEntry, type PortfolioHolding } from "@/lib/livePortfolio";
 import { decimalText, formatContributionMoney } from "@/lib/contributions";
 import { manilaInvestmentToday } from "@/lib/investmentEntries";
+import { datedInvestmentEntries, investmentEntryAction, investmentEntryCost, investmentEntryUnits } from "@/lib/portfolioActivity";
 
 const field = "mt-1 min-h-11 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900";
 type Page = { entries: InvestmentEntry[]; page: number; has_more: boolean };
@@ -48,14 +49,14 @@ export default function HoldingActivity({ holding, userId, onChanged }: { holdin
     catch (cause) { setError(cause instanceof Error ? cause.message : "Couldn’t delete this investment."); }
     finally { setBusy(false); }
   }
-  const visibleEntries = pages.flatMap(page => page.entries).filter(entry => !entry.voided_at);
+  const visibleEntries = datedInvestmentEntries(pages.flatMap(page => page.entries));
   return <section className="holding-activity" aria-label="Investment activity">
     <h3 className="text-lg font-semibold">Investment activity</h3>
     <p className="mt-1 text-sm text-slate-600">These are dated additions you recorded in Arbor, not broker transactions.</p>
     {holding.opening_units && Number(holding.opening_units) > 0 && <div className="activity-entry"><strong>Opening recorded position</strong><small>Acquisition date unknown · {decimalText(holding.opening_units)} units · {holding.opening_cost_php == null ? "Cost unknown" : `Known cost ${formatContributionMoney(holding.opening_cost_php,"PHP")}`}</small></div>}
     {visibleEntries.map(entry => <div className="activity-entry" key={entry.id}>
-      <strong>{entry.investment_date} · Added investment</strong>
-      <small>{decimalText(entry.units)} units · {entry.amount_paid_php === null ? "Actual paid not recorded" : formatContributionMoney(entry.amount_paid_php,"PHP")} · Recorded in Arbor {new Date(entry.recorded_at).toLocaleString("en-PH",{dateStyle:"medium",timeStyle:"short"})}</small>
+      <strong>{entry.investment_date} · {investmentEntryAction(entry)} investment</strong>
+      <small>{investmentEntryUnits(entry)} · {investmentEntryCost(entry)} · Recorded in Arbor {new Date(entry.recorded_at).toLocaleString("en-PH",{dateStyle:"medium",timeStyle:"short"})}</small>
       <div className="activity-actions"><button type="button" className="entry-link min-h-11" onClick={() => start(entry)}>Edit</button><button type="button" className="entry-link min-h-11" onClick={() => { setVoiding(entry); setEditing(null); setError(""); }}>Delete</button></div>
     </div>)}
     {!visibleEntries.length && <p className="mt-4 text-sm text-slate-600">No dated additions recorded yet.</p>}
