@@ -54,7 +54,12 @@ test("provider navigation follows persisted start; ledger save precedes pending 
   const providerContinue = readFileSync("components/contributions/ProviderContinue.tsx", "utf8");
   const ways = readFileSync("components/portfolio/PlanImplementation.tsx", "utf8");
   const pending = readFileSync("components/contributions/MonthlyPendingRecording.tsx", "utf8");
-  assert.ok(providerContinue.indexOf("await pendingApi.start") < providerContinue.indexOf("window.location.assign(destination!)"));
+  assert.ok(providerContinue.indexOf('window.open("about:blank", "_blank")') < providerContinue.indexOf("await pendingApi.start"));
+  assert.ok(providerContinue.indexOf("await pendingApi.start") < providerContinue.indexOf("link.click()"));
+  assert.match(providerContinue, /providerTab\.opener = null/);
+  assert.match(providerContinue, /link\.rel = "noopener noreferrer"/);
+  assert.match(providerContinue, /link\.referrerPolicy = "no-referrer"/);
+  assert.match(providerContinue, /providerTab\.close\(\)/);
   assert.match(monthly, /ProviderContinue/);
   assert.match(ways, /ProviderContinue/);
   assert.ok(pending.indexOf('onSaved={() =>') < pending.indexOf('pendingApi.resolve(userId, id, "recorded")'));

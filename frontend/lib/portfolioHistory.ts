@@ -10,20 +10,70 @@ function decimal(value: bigint) {
   const absolute = value < BigInt(0) ? -value : value;
   return `${value < BigInt(0) ? "-" : ""}${absolute / BigInt(100)}.${String(absolute % BigInt(100)).padStart(2, "0")}`;
 }
-export function historyRange(history: PortfolioHistory[], days = 0, today = new Date().toISOString().slice(0, 10)) {
-  const sorted = [...history].sort((a, b) => a.day.localeCompare(b.day));
+export function historyRangeStart(days: number, today = new Date().toISOString().slice(0, 10)) {
   const end = Date.parse(`${today}T00:00:00Z`);
   const start = new Date(end);
   if (days === 1826) start.setUTCFullYear(start.getUTCFullYear() - 5);
-  return sorted.filter(p => !days || Date.parse(`${p.day}T00:00:00Z`) >= (days === 1826 ? start.getTime() : end - (days - 1) * 86400000) && p.day <= today);
+  return days === 1826 ? start.toISOString().slice(0, 10) : new Date(end - (days - 1) * 86400000).toISOString().slice(0, 10);
+}
+export function historyRange(history: PortfolioHistory[], days = 0, today = new Date().toISOString().slice(0, 10)) {
+  const sorted = [...history].sort((a, b) => a.day.localeCompare(b.day));
+  const start = days ? historyRangeStart(days, today) : null;
+  return sorted.filter(p => start === null || (p.day >= start && p.day <= today));
 }
 export type ChartCurrency = "PHP" | "USD";
 export const historyValue = (point: PortfolioHistory, currency: ChartCurrency) => currency === "PHP" ? point.value_php : point.value_usd ?? null;
-// A missing approved historical FX value breaks the USD series. Never bridge the gap.
-export function supportedHistorySegment(points: PortfolioHistory[], currency: ChartCurrency) {
-  if (currency === "PHP") return points;
-  const lastMissing = points.findLastIndex(point => point.value_usd == null);
-  return points.slice(lastMissing + 1);
+// Both charts draw/inspect only genuine supported observations. The step curve
+// handles visual hold-forward; it never creates an intermediate value.
+export function supportedHistoryPoints(points: PortfolioHistory[], currency: ChartCurrency) {
+  return currency === "PHP" ? points : points.filter(point => point.value_usd != null);
+}
+// Display coordinates only. Boundary holds are never history, hover targets, or gain inputs.
+export function historyChartSeries(history: PortfolioHistory[], days: number, currency: ChartCurrency,
+  today = new Date().toISOString().slice(0, 10), currentValue?: string | null) {
+  const supported = supportedHistoryPoints(historyRange(history, 0, today), currency);
+  const start = days ? historyRangeStart(days, today) : supported[0]?.day;
+  if (!start) return [];
+  const prior = supported.findLast(point => point.day < start);
+  const inside = supported.filter(point => point.day >= start);
+  const coordinates = [
+    ...(prior ? [{ day: start, value: historyValue(prior, currency)! }] : []),
+    ...inside.map(point => ({ day: point.day, value: historyValue(point, currency)! })),
+  ];
+  if (coordinates.length && coordinates[coordinates.length - 1].day < today)
+    coordinates.push({ day: today, value: currentValue ?? coordinates[coordinates.length - 1].value });
+  return coordinates.map(point => ({ timestamp: Date.parse(`${point.day}T00:00:00Z`), plotValue: Number(point.value) }));
+}
+export function historicalRecordedGain(point: PortfolioHistory): string | null {
+  return (point.origin === "reconstructed" || point.cost_context_captured) && point.cost_complete &&
+    point.recorded_cost_php != null && point.recorded_gain_php != null ? point.recorded_gain_php : null;
+}
+function subtractDecimal(end: string, baseline: string): string | null {
+  const pattern = /^(-?)(\d+)(?:\.(\d+))?$/;
+  const left = pattern.exec(end), right = pattern.exec(baseline);
+  if (!left || !right) return null;
+  const scale = Math.max(left[3]?.length ?? 0, right[3]?.length ?? 0, 2);
+  const units = (parts: RegExpExecArray) => (parts[1] ? -BigInt(1) : BigInt(1)) *
+    (BigInt(parts[2]) * BigInt(10) ** BigInt(scale) + BigInt((parts[3] ?? "").padEnd(scale, "0")));
+  const difference = units(left) - units(right);
+  const absolute = difference < BigInt(0) ? -difference : difference;
+  const fraction = String(absolute % BigInt(10) ** BigInt(scale)).padStart(scale, "0").replace(/0+$/, "");
+  return `${difference < BigInt(0) ? "-" : ""}${absolute / BigInt(10) ** BigInt(scale)}${fraction ? `.${fraction}` : ""}`;
+}
+export function portfolioPeriodGain(input: { history: PortfolioHistory[]; days: number;
+  currentGainPhp: string | null; currentComplete: boolean; selected?: PortfolioHistory | null; today?: string }): string | null {
+  const { history, days, currentGainPhp, currentComplete, selected = null,
+    today = new Date().toISOString().slice(0, 10) } = input;
+  const endGain = selected ? historicalRecordedGain(selected) : currentComplete ? currentGainPhp : null;
+  if (endGain === null) return null;
+  if (days === 0) return endGain;
+  const boundary = historyRangeStart(days, today);
+  // PHP recorded gain is independent of the chart's display currency. A PHP-only
+  // point can be the accounting baseline even when its USD value is unavailable.
+  const baseline = historyRange(history, 0, today)
+    .findLast(point => point.day < boundary && historicalRecordedGain(point) !== null);
+  const baselineGain = baseline ? historicalRecordedGain(baseline) : null;
+  return baselineGain === null ? null : subtractDecimal(endGain, baselineGain);
 }
 function valueChange(firstPoint: PortfolioHistory, lastPoint: PortfolioHistory, currency: ChartCurrency) {
   const firstValue = historyValue(firstPoint, currency), lastValue = historyValue(lastPoint, currency);

@@ -59,7 +59,7 @@ test("monthly UI has no browser financial persistence, allocation engine or hold
   const providerContinue=readFileSync("components/contributions/ProviderContinue.tsx","utf8");
   assert.doesNotMatch(source,/localStorage|sessionStorage|portfolioApi\.(save|capture|remove)|Math\.round/);
   assert.match(source,/monthlyPlanApi.calculate/);assert.match(source,/recordable_amount/);assert.match(source,/does not hold or carry it forward automatically/);
-  assert.match(source,/ProviderContinue/);assert.match(providerContinue,/await pendingApi\.start/);assert.match(providerContinue,/window\.location\.assign\(destination!\)/);assert.doesNotMatch(source,/href="#portfolio\/add"/);
+  assert.match(source,/ProviderContinue/);assert.match(providerContinue,/await pendingApi\.start/);assert.match(providerContinue,/link\.click\(\)/);assert.doesNotMatch(providerContinue,/window\.location\.assign/);assert.doesNotMatch(source,/href="#portfolio\/add"/);
   assert.match(source,/record the actual units you received/);
   assert.match(source,/MonthlyInvestmentFollowup/);
 });

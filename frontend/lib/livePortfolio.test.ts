@@ -53,15 +53,15 @@ test("portfolio gain displays only backend-computed complete recorded-cost amoun
   assert.equal(portfolioGainDisplay({...fixture,complete:false,total_value_php:null}).text,"Gain/loss unavailable");
   assert.match(html(createElement(PortfolioSummary,{portfolio:fixture})),/Portfolio value graph/);
 });
-test("one genuine observation is a dated point, not a flat historical line",()=>{
+test("one genuine observation stays inspectable while its value holds visually",()=>{
   const markup=html(createElement(PortfolioHistoryChart,{history:[{day:"2026-09-25",value_php:"10000.00",captured_at:"2026-09-25T00:00:00Z"}],knownValue:"10000.00",complete:true,holdingsCount:1}));
-  assert.match(markup,/chart-single-observation/);
-  assert.match(markup,/dateTime="2026-09-25"/);
+  assert.match(markup,/Inspect 1 historical portfolio values/);
+  assert.match(markup,/recharts-responsive-container/);
   assert.doesNotMatch(markup,/chart-flat-line|\+0%/);
 });
 test("a first investment at unchanged value has zero gain; empty portfolios show none",()=>{
   const first={...portfolioFixture,known_value_php:"10000.00",total_value_php:"10000.00",recorded_cost_php:"10000.00",recorded_gain_php:"0.00",recorded_gain_percentage:"0"};
-  assert.match(html(createElement(PortfolioSummary,{portfolio:first})),/₱0\.00 · 0%/);
+  assert.match(html(createElement(PortfolioSummary,{portfolio:first})),/Period gain\/loss unavailable/);
   const empty={...first,holdings:[]};
   assert.doesNotMatch(html(createElement(PortfolioSummary,{portfolio:empty})),/Gain\/loss against recorded cost/);
 });
@@ -280,14 +280,15 @@ test("stale or incomplete holdings cannot fall through to hypothetical manual en
 });
 test("multiple observed history points have accessible values and range controls",()=>{
   const markup=html(createElement(PortfolioHistoryChart,{history:[
+    {day:"2026-08-20",value_php:"5000.00",captured_at:"2026-08-20T00:00:00Z",recorded_cost_php:"5000.00",recorded_gain_php:"0.00",cost_complete:true,cost_context_captured:true},
     {day:"2026-09-23",value_php:"5000.00",captured_at:"2026-09-23T00:00:00Z"},
     {day:"2026-09-24",value_php:"5600.00",captured_at:"2026-09-24T00:00:00Z"},
-  ],knownValue:"5600.00",currentRecordedCostPhp:"5000.00",currentGainPhp:"600.00",currentGainPercentage:"12.00"}));
+  ],knownValue:"5600.00",holdingsCount:1,currentRecordedCostPhp:"5000.00",currentGainPhp:"600.00",currentGainPercentage:"12.00"}));
   assert.match(markup,/₱5,600/);assert.match(markup,/\+₱600\.00/);
   assert.match(markup,/chart-extreme-low/);
   assert.doesNotMatch(markup,/Portfolio value change|chart-inspection-tooltip/);
-  for(const range of [">1D<",">1W<",">1M<",">1Y<",">5Y<",">All<"])assert.ok(markup.includes(range));
-  assert.ok(!markup.includes(">3M<"));
+  for(const range of [">1W<",">1M<",">3M<",">6M<",">1Y<",">5Y<",">All<"])assert.ok(markup.includes(range));
+  assert.ok(!markup.includes(">1D<"));
 });
 test("historical gain fields are validated and old cost context stays unknown",()=>{
   const old={day:"2026-09-20",value_php:"10000.00",captured_at:"2026-09-20T00:00:00Z",
@@ -301,30 +302,32 @@ test("historical gain fields are validated and old cost context stays unknown",(
   assert.equal(isPortfolio({...portfolioFixture,history:[{...complete,value_usd:"NaN"}]}),false);
   assert.equal(isPortfolio({...portfolioFixture,complete:false,total_value_usd:"100.00"}),false);
   const markup=html(createElement(PortfolioHistoryChart,{history:[old,complete],knownValue:"10000.00",holdingsCount:1}));
-  assert.match(markup,/1D portfolio history/);assert.match(markup,/1W portfolio history/);
-  assert.match(markup,/1M portfolio history/);assert.match(markup,/1Y portfolio history/);assert.match(markup,/5Y portfolio history/);assert.match(markup,/All portfolio history/);
+  assert.match(markup,/1W portfolio history/);assert.match(markup,/3M portfolio history/);
+  assert.match(markup,/1M portfolio history/);assert.match(markup,/6M portfolio history/);assert.match(markup,/1Y portfolio history/);assert.match(markup,/5Y portfolio history/);assert.match(markup,/All portfolio history/);
+  assert.doesNotMatch(markup,/1D portfolio history/);
   assert.doesNotMatch(markup,/Portfolio value change|Arbor Plus/);
 });
-test("chart color follows current recorded-cost gain, never contribution or range direction",()=>{
+test("Portfolio chart color follows selected-period recorded-cost gain, never contribution or value direction",()=>{
   const base={day:"2026-09-20",value_php:"15000.00",captured_at:"2026-09-20T00:00:00Z",
     recorded_cost_php:"12000.00",recorded_gain_php:"3000.00",recorded_gain_percentage:"25.00",cost_complete:true,cost_context_captured:true};
-  const rising=[{...base,value_php:"10000.00",recorded_gain_php:"0.00"},{...base,day:"2026-09-29"}];
+  const prior={...base,day:"2026-08-20",value_php:"12000.00",recorded_gain_php:"0.00",recorded_gain_percentage:"0.00"};
+  const rising=[prior,{...base,value_php:"10000.00",recorded_gain_php:"0.00"},{...base,day:"2026-09-29"}];
   const current={history:rising,knownValue:"15000.00",holdingsCount:1,currentRecordedCostPhp:"12000.00",currentGainPhp:"3000.00",currentGainPercentage:"25.00"};
   const positive=html(createElement(PortfolioHistoryChart,current));
-  assert.match(positive,/data-gain="positive"/);assert.match(positive,/\+₱3,000\.00/);assert.match(positive,/\+25\.00%/);
+  assert.match(positive,/data-gain="positive"/);assert.match(positive,/\+₱3,000\.00/);assert.doesNotMatch(positive,/\+25\.00%/);
   assert.match(positive,/chart-selected-date" data-selected="false"/);
   assert.match(positive,/chart-extreme-high" style="top:calc\(/);
   assert.match(positive,/chart-extreme-high.*₱15,000\.00/);assert.match(positive,/chart-extreme-low.*₱10,000\.00/);
   assert.doesNotMatch(positive,/>High|>Low|Portfolio value change/);
   const negative=html(createElement(PortfolioHistoryChart,{...current,currentGainPhp:"-1500.00",currentGainPercentage:"-10.00"}));
-  assert.match(negative,/data-gain="negative"/);assert.match(negative,/−₱1,500\.00/);assert.match(negative,/−10\.00%/);
+  assert.match(negative,/data-gain="negative"/);assert.match(negative,/−₱1,500\.00/);assert.doesNotMatch(negative,/−10\.00%/);
   const contribution=html(createElement(PortfolioHistoryChart,{...current,currentRecordedCostPhp:"15000.00",currentGainPhp:"0.00",currentGainPercentage:"0.00"}));
-  assert.match(contribution,/data-gain="zero"/);assert.match(contribution,/₱0\.00/);assert.match(contribution,/>0%/);assert.doesNotMatch(contribution,/\+₱5,000\.00/);
-  const falling=[base,{...base,day:"2026-09-29",value_php:"13500.00",recorded_gain_php:"1500.00"}];
+  assert.match(contribution,/data-gain="zero"/);assert.match(contribution,/₱0\.00/);assert.doesNotMatch(contribution,/>0%|\+₱5,000\.00/);
+  const falling=[prior,base,{...base,day:"2026-09-29",value_php:"13500.00",recorded_gain_php:"1500.00"}];
   const opposite=html(createElement(PortfolioHistoryChart,{...current,history:falling,knownValue:"13500.00",currentGainPhp:"1500.00",currentGainPercentage:"12.50"}));
   assert.match(opposite,/data-gain="positive"/);assert.match(opposite,/\+₱1,500\.00/);assert.doesNotMatch(opposite,/−₱1,500\.00|Portfolio value change/);
   const unknown=html(createElement(PortfolioHistoryChart,{...current,currentRecordedCostPhp:null,currentGainPhp:null}));
-  assert.match(unknown,/data-gain="unknown"/);assert.match(unknown,/Recorded cost needed/);
+  assert.match(unknown,/data-gain="unknown"/);assert.match(unknown,/Period gain\/loss unavailable/);
 });
 test("historical header formats backend gain without reconstructing historical cost",()=>{
   const base={day:"2026-09-29",value_php:"15000.00",captured_at:"2026-09-29T00:00:00Z",
@@ -360,13 +363,14 @@ test("reconstructed cost and source provenance remain explicit without legacy in
     cost_complete:false,recorded_cost_php:null,recorded_gain_php:null,value_usd:null,source_dates:[]};
   assert.equal(historicalGainDisplay(legacy).amount,"Gain/loss unavailable");
 });
-test("default 1M with no genuine recent points does not create a flat trend",()=>{
+test("default 1M can carry an older genuine value without a new inspectable point",()=>{
   const history=[{day:"2020-01-01",value_php:"100.00",captured_at:"2020-01-01T00:00:00Z"},
     {day:"2020-02-01",value_php:"120.00",captured_at:"2020-02-01T00:00:00Z"}];
   const markup=html(createElement(PortfolioHistoryChart,{history,knownValue:"120.00",holdingsCount:1}));
   assert.match(markup,/No recorded portfolio value in this range/);
-  assert.match(markup,/Current value · No history in this range/);
-  assert.doesNotMatch(markup,/Portfolio value change|linearGradient/);
+  assert.match(markup,/No recorded portfolio value in this range/);
+  assert.match(markup,/recharts-responsive-container/);
+  assert.doesNotMatch(markup,/Inspect [1-9]|Portfolio value change/);
 });
 
 test("review explains invalid dates, units, cost and unconfirmed conversion", () => {

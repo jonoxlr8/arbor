@@ -5,15 +5,17 @@ import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
 const origin = process.env.ARBOR_REVIEW_ORIGIN ?? 'http://127.0.0.1:3000';
+const waysOnly = process.argv.includes('--ways-only');
 const askOnly = process.argv.includes('--ask-only');
 const datedOnly = process.argv.includes('--dated-only');
 const tabletGraphOnly = process.argv.includes('--tablet-graph-only');
 const homeLayoutOnly = process.argv.includes('--home-layout-only');
 const reconstructionOnly = process.argv.includes('--reconstruction-only');
 const realNavOnly = process.argv.includes('--real-nav-only');
-const historyOnly = process.argv.includes('--history-only') || reconstructionOnly || realNavOnly;
+const periodOnly = process.argv.includes('--period-only');
+const historyOnly = process.argv.includes('--history-only') || reconstructionOnly || realNavOnly || periodOnly;
 const sheetOnly = process.argv.includes('--sheet-only');
-const output = realNavOnly ? '/private/tmp/arbor-real-nav-browser-review' : sheetOnly ? '/private/tmp/arbor-sheet-review' : reconstructionOnly ? '/private/tmp/arbor-reconstruction-review' : historyOnly ? '/private/tmp/arbor-history-review' : homeLayoutOnly ? '/private/tmp/arbor-home-layout-review' : tabletGraphOnly ? '/private/tmp/arbor-tablet-graph-review' : datedOnly ? '/private/tmp/arbor-dated-review' : askOnly ? '/private/tmp/arbor-ask-learn-review' : '/private/tmp/arbor-phase2b-retention-review';
+const output = waysOnly ? '/private/tmp/arbor-provider-link-review' : periodOnly ? '/private/tmp/arbor-period-chart-review' : realNavOnly ? '/private/tmp/arbor-real-nav-browser-review' : sheetOnly ? '/private/tmp/arbor-sheet-review' : reconstructionOnly ? '/private/tmp/arbor-reconstruction-review' : historyOnly ? '/private/tmp/arbor-history-review' : homeLayoutOnly ? '/private/tmp/arbor-home-layout-review' : tabletGraphOnly ? '/private/tmp/arbor-tablet-graph-review' : datedOnly ? '/private/tmp/arbor-dated-review' : askOnly ? '/private/tmp/arbor-ask-learn-review' : '/private/tmp/arbor-phase2b-retention-review';
 const realNavPath = process.env.ARBOR_REAL_NAV_FIXTURE;
 if (realNavOnly && (!realNavPath?.startsWith('/private/tmp/arbor-nav-qualification.') || !realNavPath.endsWith('/real-nav-browser.json')))
   throw new Error('Real-NAV browser review requires a task-owned local fixture file');
@@ -47,6 +49,11 @@ if (realNavOnly) {
   historyFixture = realNavFixture.history;
   assert.ok(historyFixture.some(point => point.source_dates?.some(source => source.source === 'toap')));
 }
+if (periodOnly) {
+  const gains = [[1900,'1000'],[400,'2000'],[60,'3000'],[35,'4000'],[31,'5000'],[10,'6000'],[8,'7000'],[6,'8000'],[2,'9000'],[1,'10000'],[0,'12000']];
+  historyFixture = gains.map(([offset,gain]) => ({...observed(offset,(20000+Number(gain)).toFixed(2),'20000.00',`${gain}.00`,null),
+    value_usd:offset===2?null:((20000+Number(gain))/50).toFixed(2),segment:offset>=6?0:1}));
+}
 let historyCurrent = { value:'15000.00', cost:'14000.00', gain:'1000.00', percentage:'7.14' };
 if (realNavOnly) {
   const latest = historyFixture.at(-1);
@@ -54,6 +61,7 @@ if (realNavOnly) {
     gain:latest.recorded_gain_php, percentage:latest.recorded_gain_percentage,
     usd:latest.value_usd };
 }
+if (periodOnly) historyCurrent = {value:'32000.00',cost:'20000.00',gain:'12000.00',percentage:'60.00'};
 const weights = [{ role: 'global_equity', percentage_points: 80 }, { role: 'defensive', percentage_points: 0 }, { role: 'technology_tilt', percentage_points: 10 }, { role: 'crypto', percentage_points: 10 }];
 const plan = { strategy_engine_version: '2.0', profile: { strategy_engine_version: '2.0', full_name: 'Phase Two QA', country: 'Philippines', currency: 'PHP', emergency_savings: 'three_to_six_months', high_interest_debt: 'none', goal_target: 500000, goal_name: 'Home', goal_date: '2036-09-28', current_portfolio_value: 0, monthly_investment: 10000, horizon: 'ten_plus_years', risk_response: 'hold', saved_preferences: { technology_tilt: 0, bitcoin: 0 }, selected_approach: 'Aggressive', explicit_customization: { technology_tilt: 10, bitcoin: 10 }, implementation_choices: { global_equity: 'gotrade_vt', crypto: 'pdax_btc' } }, plan: { plan_basis: 'user_selected', strategy_engine_version: '2.0', selection: { risk_response: 'hold', horizon: 'ten_plus_years', requested_strategy: 'Growth', horizon_maximum_strategy: 'Aggressive', selected_strategy: 'Growth', is_short_term: false, cap_applied: false, reason: 'requested_strategy_retained' }, readiness: { readiness: 'ready', core_strategy_can_be_shown: true, actionable_contribution_guidance_allowed: true, technology_satellite_readiness_eligible: true, bitcoin_satellite_readiness_eligible: true, message_requirement: 'none' }, inflation_pct: 3, preference_result: { technology_tilt: { requested_percentage_points: 0, effective_percentage_points: 0, strategy_cap_percentage_points: 10, reasons: [] }, bitcoin: { requested_percentage_points: 0, effective_percentage_points: 0, strategy_cap_percentage_points: 10, reasons: [] }, effective_target: { strategy_engine_version: '2.0', base_strategy: 'Aggressive', allocation: { weights: [{ role: 'global_equity', percentage_points: 100 }, { role: 'defensive', percentage_points: 0 }, { role: 'technology_tilt', percentage_points: 0 }, { role: 'crypto', percentage_points: 0 }] } } }, dormant_selected_approach: null, historical_allocation_preserved: false, customization: { technology_tilt: 10, bitcoin: 10, provenance: 'user_selected' }, final_allocation: weights, path: 'long_term', selected_strategy: 'Aggressive', base_allocation: [{ role: 'global_equity', percentage_points: 100 }, { role: 'defensive', percentage_points: 0 }], planning_return_pct: 5.5 }, historical_plan: null, revision: '96613c4986b48f5b2b5e2a255b90a1ffa9be405441b583c34b5a3b02247d3176', profile_warning: null };
 const catalog = [
@@ -76,6 +84,7 @@ const entries = [];
 const keys = new Map();
 let pageErrors = 0, consoleErrors = 0, expectedMissingProfile404 = 0, blockedExternal = 0;
 let snapshotRequests = 0, pendingWrites = 0;
+const providerReferrers = [];
 const browser = await chromium.launch({ channel: 'chrome' });
 const context = await browser.newContext({ viewport: { width: 1440, height: 950 }, colorScheme: 'light', reducedMotion: 'reduce' });
 const page = await context.newPage();
@@ -125,6 +134,10 @@ function portfolio() {
 await context.route('**/*', async route => {
   const request = route.request(), url = new URL(request.url()), path = url.pathname, method = request.method();
   if (url.origin === origin) return route.continue();
+  if (waysOnly && ['https://www.heygotrade.com/', 'https://pdax.ph/'].includes(url.href)) {
+    providerReferrers.push(request.headers().referer ?? null);
+    return route.fulfill({contentType:'text/html',body:'<title>Provider navigation fixture</title>'});
+  }
   const json = (body, status = 200) => route.fulfill({ status, json: body, headers });
   if (method === 'OPTIONS') return route.fulfill({ status: 204, headers });
   if (path.endsWith('/auth/v1/token')) return json(session);
@@ -285,7 +298,249 @@ try {
   await page.getByLabel('Email address').fill(user.email);
   await page.getByLabel('Password').fill('fixture-only-password');
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
-  if (realNavOnly) {
+  if (waysOnly) {
+    await page.setViewportSize({width:390,height:900});
+    await page.evaluate(() => { location.hash='home'; });
+    const homeWays=page.locator('.home-plan-actions a[href="#portfolio/ways"]');
+    await homeWays.waitFor();
+    assert.equal(await homeWays.getAttribute('target'),null,'Home launcher stays in Arbor');
+    await homeWays.click();
+    const ways=page.getByRole('dialog',{name:'Ways to invest'});
+    await ways.waitFor();
+    assert.equal(new URL(page.url()).hash,'#portfolio/ways');
+    await shot('home-ways-mobile',390);
+    const direct=ways.getByRole('button',{name:'Continue with Gotrade (opens in a new tab)'});
+    await direct.waitFor();
+    const beforeHome=pendingWrites;
+    const homePopupEvent=page.waitForEvent('popup');
+    await direct.click();
+    const homePopup=await homePopupEvent;
+    await homePopup.waitForLoadState();
+    await homePopup.waitForURL('https://www.heygotrade.com/');
+    assert.equal(await homePopup.evaluate(()=>window.opener),null);
+    assert.equal(pendingWrites,beforeHome+1);
+    assert.equal(new URL(page.url()).hash,'#portfolio/ways','Arbor remains open after Home provider link');
+    await homePopup.close();
+    await ways.getByRole('button',{name:'Close'}).click();
+    assert.equal(new URL(page.url()).hash,'#home');
+    await page.evaluate(() => { location.hash='portfolio'; });
+    const portfolioWays=page.locator('a[data-sheet-launcher="ways"]');
+    await portfolioWays.waitFor();
+    assert.equal(await portfolioWays.getAttribute('target'),null,'Portfolio launcher stays in Arbor');
+    await portfolioWays.click();
+    await ways.waitFor();
+    await shot('portfolio-ways-mobile',390);
+    const before=pendingWrites;
+    const continueButton=ways.getByRole('button',{name:'Continue with PDAX (opens in a new tab)'});
+    await continueButton.waitFor();
+    const portfolioPopupEvent=page.waitForEvent('popup');
+    await continueButton.click();
+    const portfolioPopup=await portfolioPopupEvent;
+    await portfolioPopup.waitForURL('https://pdax.ph/');
+    assert.equal(await portfolioPopup.evaluate(()=>window.opener),null);
+    assert.equal(pendingWrites,before+1,'pending return cue saved before provider navigation');
+    assert.equal(new URL(page.url()).hash,'#portfolio/ways','Arbor remains open after Portfolio provider link');
+    await portfolioPopup.close();
+    assert.deepEqual(providerReferrers,[null,null],'provider visits disclose no Arbor referrer');
+    assert.equal(pageErrors,0);assert.equal(consoleErrors,0);assert.equal(blockedExternal,0);
+    console.log(JSON.stringify({fixtureOnly:true,screenshots:shots,pendingWrites:pendingWrites-before,pageErrors,consoleErrors,blockedExternal}));
+  } else if (periodOnly) {
+    await page.evaluate(() => { location.hash='portfolio'; });
+    const chart=page.locator('.portfolio-chart').first();
+    await page.getByRole('heading',{name:'Holdings'}).waitFor();
+    const shotPeriod=async name=>{const file=`${output}/${name}.png`;await page.screenshot({path:file,animations:'disabled'});shots.push(file);};
+    const gainText=()=>chart.locator('.chart-gain').innerText();
+    const assertGain=async amount=>assert.ok((await gainText()).includes(amount),`expected ${amount}, got ${await gainText()}`);
+    const selectDay=async (offset,type='mouse')=>{
+      const first=Date.parse(`${observedDay(29)}T00:00:00Z`),last=Date.parse(`${observedDay(0)}T00:00:00Z`);
+      const target=Date.parse(`${observedDay(offset)}T00:00:00Z`);
+      const box=await chart.locator('.chart-plot').boundingBox();
+      const x=box.x+8+(box.width-16)*(target-first)/(last-first),y=box.y+box.height/2;
+      if(type==='mouse') await page.mouse.move(x,y);
+      else {
+        await chart.locator('.chart-plot').dispatchEvent('pointerdown',{pointerType:'touch',pointerId:77,clientX:x,clientY:y,bubbles:true});
+        await page.waitForTimeout(410);
+        await chart.locator('.chart-plot').dispatchEvent('pointerup',{pointerType:'touch',pointerId:77,clientX:x,clientY:y,bubbles:true});
+      }
+      await chart.locator('.chart-selected-date[data-selected="true"]').waitFor();
+    };
+    const expected=[['1W','+₱5,000.00'],['1M','+₱7,000.00'],['3M','+₱10,000.00'],['6M','+₱10,000.00'],['1Y','+₱10,000.00'],['5Y','+₱11,000.00'],['All','+₱12,000.00']];
+    assert.deepEqual(await chart.locator('.chart-range button').allTextContents(),expected.map(([label])=>label));
+    for(const [label,amount] of expected){await chart.getByRole('button',{name:`${label} portfolio history`}).click();await assertGain(amount);}
+    await chart.getByRole('button',{name:'1M portfolio history'}).click();
+    assert.equal(await chart.locator('.chart-gain strong').count(),0,'period percentage is suppressed');
+    assert.equal(((await chart.locator('.recharts-area-curve').getAttribute('d')).match(/M/g)||[]).length,1,
+      'PHP line connects genuine points across missing dates and segment changes');
+    await shotPeriod('portfolio-1m-php-desktop');
+    await chart.getByRole('button',{name:'Switch portfolio display to USD'}).click();
+    for(const [label,amount] of expected){await chart.getByRole('button',{name:`${label} portfolio history`}).click();await assertGain(amount);}
+    await chart.getByRole('button',{name:'1M portfolio history'}).click();
+    const path=await chart.locator('.recharts-area-curve').getAttribute('d');
+    assert.equal((path.match(/M/g)||[]).length,1,'one connected curve across missing FX and segment boundaries');
+    assert.equal(await chart.locator('.chart-plot').getAttribute('aria-label'),
+      'Inspect 5 historical portfolio values. Use left and right arrow keys.');
+    await assertGain('+₱7,000.00');
+    await shotPeriod('portfolio-1m-usd-connected-desktop');
+    await selectDay(6);
+    await assertGain('+₱3,000.00');
+    const xSix=Number(await chart.locator('.recharts-reference-dot circle').getAttribute('cx'));
+    assert.ok((await chart.locator('.chart-selected-date').innerText()).includes(new Date(`${observedDay(6)}T00:00:00Z`).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'})));
+    await shotPeriod('portfolio-1m-usd-hover');
+    await selectDay(1);
+    const xOne=Number(await chart.locator('.recharts-reference-dot circle').getAttribute('cx'));
+    const plotWidth=(await chart.locator('.chart-plot').boundingBox()).width;
+    assert.ok(Math.abs((xOne-xSix)/(plotWidth-16)-5/29)<.03,'five elapsed days preserve calendar spacing in the 30-day window');
+    await selectDay(2);
+    assert.ok((await chart.locator('.chart-selected-date').innerText()).includes(new Date(`${observedDay(1)}T00:00:00Z`).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'})),
+      'missing USD date selects nearest genuine observation');
+    await page.mouse.move(20,20);await assertGain('+₱7,000.00');
+    await chart.locator('.chart-plot').focus();await chart.locator('.chart-plot').press('ArrowRight');
+    assert.equal(await chart.locator('.chart-selected-date[data-selected="true"]').count(),1);
+    await chart.locator('.chart-plot').press('Escape');await assertGain('+₱7,000.00');
+    await chart.getByRole('button',{name:'Switch portfolio display to PHP'}).click();
+    await page.setViewportSize({width:390,height:850});
+    await shotPeriod('portfolio-1m-php-mobile');
+    await chart.getByRole('button',{name:'Switch portfolio display to USD'}).click();
+    await selectDay(6,'touch');await assertGain('+₱3,000.00');
+    const dragBox=await chart.locator('.chart-plot').boundingBox();
+    const firstTime=Date.parse(`${observedDay(29)}T00:00:00Z`),lastTime=Date.parse(`${observedDay(0)}T00:00:00Z`);
+    const touchX=offset=>dragBox.x+8+(dragBox.width-16)*(Date.parse(`${observedDay(offset)}T00:00:00Z`)-firstTime)/(lastTime-firstTime);
+    const touchY=dragBox.y+dragBox.height/2;
+    await chart.locator('.chart-plot').dispatchEvent('pointerdown',{pointerType:'touch',pointerId:78,clientX:touchX(6),clientY:touchY,bubbles:true});
+    await page.waitForTimeout(410);
+    await chart.locator('.chart-plot').dispatchEvent('pointermove',{pointerType:'touch',pointerId:78,clientX:touchX(1),clientY:touchY,bubbles:true});
+    await chart.locator('.chart-plot').dispatchEvent('pointerup',{pointerType:'touch',pointerId:78,clientX:touchX(1),clientY:touchY,bubbles:true});
+    await assertGain('+₱5,000.00');
+    await shotPeriod('portfolio-1m-usd-touch-mobile');
+    await chart.getByRole('button',{name:'1W portfolio history'}).click();await assertGain('+₱5,000.00');
+    historyCurrent={value:'26000.00',cost:'20000.00',gain:'6000.00',percentage:'30.00'};
+    await page.reload();await chart.waitFor();
+    await chart.getByRole('button',{name:'1W portfolio history'}).click();await assertGain('−₱1,000.00');
+    await shotPeriod('portfolio-week-loss-mobile');
+    historyFixture=[observed(8,'10000.00','10000.00','0.00','0.00'),observed(0,'60000.00','60000.00','0.00','0.00')];
+    historyCurrent={value:'60000.00',cost:'60000.00',gain:'0.00',percentage:'0.00'};
+    await page.reload();await chart.waitFor();await chart.getByRole('button',{name:'1W portfolio history'}).click();
+    await assertGain('₱0.00');assert.equal(await chart.getAttribute('data-gain'),'zero');
+    await shotPeriod('portfolio-contribution-neutral-mobile');
+    // Exact Sep 6–8 regression on today's relative calendar: a missing Sep 7
+    // must be a horizontal hold followed by a vertical jump, not a blank or slope.
+    const gapPoint=(offset,value,cost,gain,usd,segment)=>({...observed(offset,value,cost,gain,null),value_usd:usd,segment});
+    const baseline=gapPoint(35,'850000.00','830000.00','20000.00','17000.00',0);
+    const sep6=gapPoint(24,'900000.00','870000.00','30000.00','18000.00',0);
+    const sep7=gapPoint(23,'915000.00','870000.00','45000.00',null,1);
+    const sep8=gapPoint(22,'930000.00','880000.00','50000.00','18600.00',1);
+    const sep10=gapPoint(20,'940000.00','880000.00','60000.00','18800.00',1);
+    const pathCoordinates=async()=>{
+      const path=await chart.locator('.recharts-area-curve').getAttribute('d');
+      assert.equal((path.match(/M/g)||[]).length,1,'step chart remains one connected series');
+      return [...path.matchAll(/[ML](-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/g)].map(match=>({x:Number(match[1]),y:Number(match[2])}));
+    };
+    const assertHoldThenJump=async(count)=>{
+      const coordinates=await pathCoordinates();
+      assert.equal(coordinates.length,2*count-1,'each pair of genuine points gets a hold and a jump');
+      for(let index=0;index<coordinates.length-2;index+=2){
+        assert.ok(Math.abs(coordinates[index].y-coordinates[index+1].y)<.1,'previous value stays flat until next genuine date');
+        assert.ok(Math.abs(coordinates[index+1].x-coordinates[index+2].x)<.1,'new value appears at next genuine date');
+      }
+      return coordinates;
+    };
+    const assertMissingNotSelected=async(type)=>{
+      const box=await chart.locator('.chart-plot').boundingBox();
+      const x=box.x+8+(box.width-16)*.25,y=box.y+box.height/2;
+      if(type==='touch'){
+        await chart.locator('.chart-plot').dispatchEvent('pointerdown',{pointerType:'touch',pointerId:79,clientX:x,clientY:y,bubbles:true});
+        await page.waitForTimeout(410);
+        await chart.locator('.chart-plot').dispatchEvent('pointerup',{pointerType:'touch',pointerId:79,clientX:x,clientY:y,bubbles:true});
+      } else await page.mouse.move(x,y);
+      await chart.locator('.chart-selected-date[data-selected="true"]').waitFor();
+      assert.ok(!(await chart.locator('.chart-selected-date').innerText()).includes(new Date(`${sep7.day}T00:00:00Z`).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'})),
+        'unsupported Sep 7 is never selected');
+    };
+    historyFixture=[baseline,sep6,sep8,sep10];
+    historyCurrent={value:'940000.00',cost:'880000.00',gain:'60000.00',percentage:'6.82'};
+    await page.setViewportSize({width:1440,height:950});await page.reload();await chart.waitFor();
+    await assertGain('+₱40,000.00');
+    assert.equal(await chart.locator('.chart-plot').getAttribute('aria-label'),'Inspect 3 historical portfolio values. Use left and right arrow keys.');
+    const phpSteps=await assertHoldThenJump(5);
+    assert.ok(Math.abs((phpSteps[4].x-phpSteps[2].x)-(phpSteps[6].x-phpSteps[4].x))<1,'two-day spans keep equal calendar-time width');
+    await shotPeriod('gap-portfolio-php-desktop');
+    await assertMissingNotSelected('mouse');
+    await chart.locator('.chart-plot').focus();await chart.locator('.chart-plot').press('Escape');
+    await chart.locator('.chart-plot').press('ArrowRight');await chart.locator('.chart-plot').press('ArrowRight');
+    assert.ok((await chart.locator('.chart-selected-date').innerText()).includes(new Date(`${sep8.day}T00:00:00Z`).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'})));
+    await page.setViewportSize({width:390,height:900});await chart.locator('.chart-plot').press('Escape');
+    await assertMissingNotSelected('touch');await shotPeriod('gap-portfolio-php-touch-390');
+    await page.evaluate(()=>{location.hash='home';});await chart.waitFor();
+    await assertHoldThenJump(5);await shotPeriod('gap-home-php-390');
+    await page.setViewportSize({width:1440,height:950});await shotPeriod('gap-home-php-desktop');
+    historyFixture=[baseline,sep6,sep7,sep8,sep10];
+    await page.reload();await chart.waitFor();
+    await chart.getByRole('button',{name:'Switch portfolio display to USD'}).click();
+    assert.equal(await chart.locator('.chart-plot').getAttribute('aria-label'),'Inspect 3 historical portfolio values. Use left and right arrow keys.');
+    await assertHoldThenJump(5);await shotPeriod('gap-home-usd-desktop');
+    await page.setViewportSize({width:390,height:900});await assertMissingNotSelected('touch');
+    await shotPeriod('gap-home-usd-touch-390');
+    await page.evaluate(()=>{location.hash='portfolio';});await chart.waitFor();
+    await chart.getByRole('button',{name:'Switch portfolio display to USD'}).click();
+    await assertGain('+₱40,000.00');await assertHoldThenJump(5);await shotPeriod('gap-portfolio-usd-390');
+    await assertMissingNotSelected('touch');
+    historyFixture=[baseline,sep6,sep10];
+    await page.reload();await chart.waitFor();
+    await assertHoldThenJump(4);
+    assert.equal(await chart.locator('.chart-plot').getAttribute('aria-label'),'Inspect 2 historical portfolio values. Use left and right arrow keys.');
+    await shotPeriod('gap-portfolio-four-day-hold-390');
+    historyFixture=[baseline,sep6,sep7,sep8,sep10];
+    await page.evaluate(()=>{location.hash='home';});await chart.waitFor();
+    assert.deepEqual(await chart.locator('.chart-range button').allTextContents(),expected.map(([label])=>label));
+    const homeExpected=[['1W','₱0.00'],['1M','+₱40,000.00'],['3M','Period gain/loss unavailable'],
+      ['6M','Period gain/loss unavailable'],['1Y','Period gain/loss unavailable'],
+      ['5Y','Period gain/loss unavailable'],['All','+₱60,000.00']];
+    for(const [label,amount] of homeExpected){await chart.getByRole('button',{name:`${label} portfolio history`}).click();await assertGain(amount);}
+    await chart.getByRole('button',{name:'1M portfolio history'}).click();await assertGain('+₱40,000.00');
+    await shotPeriod('home-seven-ranges-390');
+    await chart.getByRole('button',{name:'Switch portfolio display to USD'}).click();
+    for(const [label,amount] of homeExpected){await chart.getByRole('button',{name:`${label} portfolio history`}).click();await assertGain(amount);}
+    await chart.getByRole('button',{name:'1M portfolio history'}).click();await assertGain('+₱40,000.00');
+    await page.setViewportSize({width:1440,height:950});await shotPeriod('home-seven-ranges-desktop');
+    const oldPrior=gapPoint(130,'10000.00','9000.00','1000.00','200.00',0);
+    const oldFirst=gapPoint(80,'12000.00','9000.00','3000.00','240.00',0);
+    const oldMissing=gapPoint(75,'13000.00','9000.00','4000.00',null,1);
+    const oldNext=gapPoint(65,'14000.00','9000.00','5000.00','280.00',1);
+    const oldMissingTwo=gapPoint(55,'15000.00','9000.00','6000.00',null,2);
+    const oldLast=gapPoint(40,'16000.00','9000.00','7000.00','320.00',2);
+    historyFixture=[oldPrior,oldFirst,oldMissing,oldNext,oldMissingTwo,oldLast];
+    historyCurrent={value:'16000.00',cost:'9000.00',gain:'7000.00',percentage:'77.78'};
+    await page.evaluate(()=>{location.hash='portfolio';});await page.reload();await chart.waitFor();
+    await chart.getByRole('button',{name:'3M portfolio history'}).click();
+    await chart.getByRole('button',{name:'Switch portfolio display to USD'}).click();
+    assert.equal(await chart.locator('.chart-plot').getAttribute('aria-label'),'Inspect 3 historical portfolio values. Use left and right arrow keys.');
+    await assertHoldThenJump(5);
+    await shotPeriod('older-disjoint-gaps-usd-desktop');
+    historyFixture=[oldFirst,oldMissing,oldNext,oldMissingTwo,oldLast];
+    await page.reload();await chart.waitFor();await chart.getByRole('button',{name:'3M portfolio history'}).click();
+    await chart.getByRole('button',{name:'Switch portfolio display to USD'}).click();
+    const noPrior=await pathCoordinates();
+    assert.ok(noPrior[0].x>20,'first supported point begins after the range boundary; no value carries backward');
+    await shotPeriod('no-backward-carry-usd-desktop');
+    await page.evaluate(()=>{location.hash='ask';});
+    await page.getByRole('tab',{name:'Learn'}).click();
+    for(const [category,glyph] of [['Basics','facets'],['ETFs','globe'],['Funds','layers'],['Crypto','coin'],['Arbor',null]]){
+      await page.getByRole('button',{name:category,exact:true}).click();
+      const mark=page.locator(`.learn-mark-${category.toLowerCase()}`).first();
+      await mark.waitFor();
+      assert.equal(await mark.locator('svg').count(),1,`${category} has a vector mark`);
+      if(glyph) assert.equal(await mark.locator('svg').getAttribute('data-glyph'),glyph);
+      else assert.ok(await mark.locator('svg path').count(),`${category} uses the Arbor brand mark`);
+    }
+    await shotPeriod('learn-arbor-mark-desktop');
+    await page.setViewportSize({width:390,height:900});await shotPeriod('learn-arbor-mark-390');
+    await page.getByRole('button',{name:'All',exact:true}).click();
+    await page.setViewportSize({width:1440,height:950});await shotPeriod('learn-marks-desktop');
+    await page.setViewportSize({width:390,height:900});await shotPeriod('learn-marks-390');
+    await page.emulateMedia({colorScheme:'dark'});await shotPeriod('learn-marks-dark-390');
+    assert.equal(pageErrors,0);assert.equal(consoleErrors,0);assert.equal(blockedExternal,0);
+    console.log(JSON.stringify({fixtureOnly:true,screenshots:shots,pageErrors,consoleErrors,blockedExternal}));
+  } else if (realNavOnly) {
     const first = historyFixture[0];
     assert.equal(first.day,'2026-08-18');
     assert.ok(first.source_dates.some(source => source.source==='toap' && source.observation_date==='2026-08-18'));
@@ -314,7 +569,7 @@ try {
     assert.ok((await chart.locator('.chart-value').innerText()).includes(first.value_php));
     await shot('real-nav-portfolio-aug18-hover-php',1440);
     await chart.getByRole('button',{name:'Switch portfolio display to USD'}).click();
-    const usdFirst=historyFixture[historyFixture.findLastIndex(point=>point.value_usd===null)+1];
+    const usdFirst=historyFixture.find(point=>point.value_usd!==null);
     assert.equal(usdFirst.day,'2026-09-01');
     await inspect('mouse','Sep 1, 2026');
     assert.ok((await chart.locator('.chart-value').innerText()).includes(usdFirst.value_usd));
@@ -571,13 +826,7 @@ try {
     assert.equal(await chart().getAttribute('data-gain'),'positive');
     assert.match(await chart().locator('.chart-gain').innerText(),/\+₱1,000\.00/);
     await capture('fidelity-falling-range-positive-gain');
-    await chart().getByRole('button',{name:'1D portfolio history'}).click();
-    await chart().getByText('Not enough history in this range yet.',{exact:false}).waitFor();
-    assert.equal(await chart().locator('.chart-extrema').count(),0,'one point has no high/low pair');
-    assert.equal(await chart().locator('.chart-plot').evaluate(plot=>getComputedStyle(plot).backgroundColor),'rgba(0, 0, 0, 0)','single point has no tinted inner panel');
-    await capture('fidelity-portfolio-1d-single');
-    await page.setViewportSize({width:390,height:900});await capture('fidelity-portfolio-single-390');
-    await page.setViewportSize({width:1440,height:900});
+    assert.equal(await chart().getByRole('button',{name:'1D portfolio history'}).count(),0);
     await chart().getByRole('button',{name:'All portfolio history'}).click();
     await inspect(0); assert.match(await chart().locator('.chart-value').innerText(),/₱9,000\.00/);
     await chart().getByText('Gain/loss unavailable').waitFor(); await capture('fidelity-portfolio-old-unknown-cost');
@@ -590,7 +839,7 @@ try {
       await page.waitForTimeout(120);
       const mobileIdle=await layout();
       const rangeTops=await chart().locator('.chart-range button').evaluateAll(buttons=>buttons.map(button=>Math.round(button.getBoundingClientRect().top)));
-      assert.equal(new Set(rangeTops).size,1,`all six ranges occupy one row at ${width}`);
+      assert.equal(new Set(rangeTops).size,1,`all seven ranges occupy one row at ${width}`);
       if(width===390) await capture('fidelity-portfolio-mobile-idle');
       if(width===320) await capture('fidelity-portfolio-ranges-320');
       await inspect(.7,'touch'); await capture(`fidelity-portfolio-touch-${width}`);

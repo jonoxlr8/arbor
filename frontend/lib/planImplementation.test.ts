@@ -108,8 +108,18 @@ test("official destinations fail closed for unknown providers or supplied URLs",
 test("external links name the provider and new tab with safe rel, no selection or ranking", () => {
   const html=render(createElement(PlanImplementation,{value:plan()}));
   assert.equal((html.match(/target="_blank" rel="noopener noreferrer"/g)??[]).length,6);
+  assert.equal((html.match(/class="provider-open" href="https:\/\//g)??[]).length,6);
   assert.match(html,/Open GFunds \(opens in a new tab\)/);assert.match(html,/provider name, not ranked/);
+  assert.match(html, /href="#home\/plan"[^>]*>Plan details/);
+  assert.doesNotMatch(html, /href="#home\/plan"[^>]*target="_blank"/);
   assert.doesNotMatch(html,/GCash \/|Recommended|best for|aria-pressed="true"|checked=""/);
+});
+test("Ways launchers keep Home and Portfolio navigation inside Arbor", () => {
+  const home=withAccess(true,false,createElement(V2Home,{value:plan(),userId:"test"}));
+  assert.match(home, /href="#portfolio\/ways"[^>]*>Ways to invest/);
+  assert.doesNotMatch(home, /href="#portfolio\/ways"[^>]*target="_blank"/);
+  const portfolio=readFileSync("components/portfolio/LivePortfolio.tsx","utf8");
+  assert.match(portfolio, /<a href="#portfolio\/ways" data-sheet-launcher="ways">/);
 });
 test("return flow calls existing recording action only when provided", () => {
   const value=plan();const off=render(createElement(PlanImplementation,{value}));

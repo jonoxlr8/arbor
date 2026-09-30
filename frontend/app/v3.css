@@ -157,7 +157,7 @@
 .compact-chart .chart-gain > strong { font-size:12px; }
 .compact-chart .chart-selected-date { font-size:11px; }
 .portfolio-chart .chart-status,.portfolio-chart .chart-usd-limitation { margin-top:6px; color:var(--v3-muted); font-size:11px; line-height:1.4; }
-.portfolio-chart .chart-range { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); width:100%; margin:8px auto 0; padding:0; gap:2px; background:transparent; }
+.portfolio-chart .chart-range { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); width:100%; margin:8px auto 0; padding:0; gap:2px; background:transparent; }
 .app-shell .portfolio-chart .chart-range button { justify-self:center; width:auto; min-width:36px; min-height:36px; padding:4px 10px; border-radius:24px; color:var(--v3-muted); font-size:12px; }
 .app-shell .portfolio-chart .chart-range button[aria-pressed="true"] { background:var(--muted-surface); color:var(--foreground); box-shadow:none; font-weight:700; }
 .portfolio-chart .chart-plot { position:relative; touch-action:pan-y; cursor:crosshair; color:var(--chart-positive); background:none; }

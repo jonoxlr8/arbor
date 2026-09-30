@@ -2,10 +2,16 @@
 
 import { useState } from "react";
 import { learnCategories, learnLessons, safeLessonSource, type Lesson } from "@/lib/learnLessons";
+import ArborIdentityIcon from "@/components/ArborIdentityIcon";
+import { ArborMark } from "@/components/Logo";
+import type { IdentityGlyph } from "@/lib/investmentIdentity";
 
-const categoryMark: Record<Lesson["category"], string> = {
-  Basics: "✦", ETFs: "E", Funds: "F", Crypto: "₿", Arbor: "A",
+const categoryGlyph: Record<Exclude<Lesson["category"], "Arbor">, IdentityGlyph> = {
+  Basics: "facets", ETFs: "globe", Funds: "layers", Crypto: "coin",
 };
+const categoryMark = (category: Lesson["category"]) => category === "Arbor" ?
+  <ArborMark className="learn-arbor-mark" /> :
+  <ArborIdentityIcon glyph={categoryGlyph[category]} />;
 
 export default function LearnSection({ onAsk }: { onAsk: (draft: string) => void }) {
   const [category, setCategory] = useState<(typeof learnCategories)[number]>("All");
@@ -26,7 +32,7 @@ export default function LearnSection({ onAsk }: { onAsk: (draft: string) => void
   return <div className="learn-library">
     <div className="learn-filters" aria-label="Lesson categories">{learnCategories.map(item => <button key={item} type="button" aria-pressed={category === item} onClick={() => setCategory(item)}>{item}</button>)}</div>
     <div className="learn-list">{learnLessons.filter(item => category === "All" || item.category === category).map(item => <button key={item.id} className="learn-row" onClick={() => setSelected(item.id)}>
-      <span className={`learn-mark learn-mark-${item.category.toLowerCase()}`} aria-hidden="true">{categoryMark[item.category]}</span>
+      <span className={`learn-mark learn-mark-${item.category.toLowerCase()}`} aria-hidden="true">{categoryMark(item.category)}</span>
       <span className="learn-row-copy"><strong>{item.title}</strong><small>{item.summary}</small></span><span className="learn-chevron" aria-hidden="true">›</span>
     </button>)}</div>
   </div>;

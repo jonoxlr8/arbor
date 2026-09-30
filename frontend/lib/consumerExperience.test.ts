@@ -47,14 +47,14 @@ test("single observation has exact recorded amount, not a synthetic graph", () =
   const html = render(createElement(PortfolioHistoryChart,{history:[{day:"2026-09-24",value_php:"8000",captured_at:"2026-09-24T00:00:00Z"}],knownValue:"8000"}));
   assert.match(html,/₱8,000/); assert.match(html,/Not enough history in this range yet/); assert.match(html,/chart-plot/); assert.doesNotMatch(html,/Portfolio value change/);
 });
-test("all six history ranges remain available with sparse genuine observations", () => {
+test("all seven history ranges remain available with sparse genuine observations", () => {
   const history = [
     {day:"2026-01-01",value_php:"100",captured_at:"2026-01-01T00:00:00Z"},
     {day:"2026-09-26",value_php:"120",captured_at:"2026-09-26T00:00:00Z"},
   ];
   const html = render(createElement(PortfolioHistoryChart,{history,knownValue:"120",holdingsCount:1}));
-  for (const label of ["1D", "1W", "1M", "1Y", "5Y", "All"]) assert.match(html,new RegExp(`>${label}<`));
-  assert.doesNotMatch(html,/>3M</);
+  for (const label of ["1W", "1M", "3M", "6M", "1Y", "5Y", "All"]) assert.match(html,new RegExp(`>${label}<`));
+  assert.doesNotMatch(html,/>1D</);
   assert.match(html,/Not enough history in this range yet/);
   const supported = render(createElement(PortfolioHistoryChart,{history:[...history,{day:"2026-09-20",value_php:"110",captured_at:"2026-09-20T00:00:00Z"}],knownValue:"120",holdingsCount:1}));
   assert.match(supported,/>1M</);
