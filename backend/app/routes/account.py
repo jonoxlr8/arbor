@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Response, Request
 from app.auth import get_current_user_id
 from app.config import live_portfolio_enabled
 from app.services.entitlements import get_entitlements
@@ -20,3 +20,27 @@ def account_entitlements(response: Response, user_id: str = Depends(get_current_
             raise
         return {**value.model_dump(), "availability": availability, "ask_usage": None, "ask_usage_available": False}
     return {**value.model_dump(), "availability": availability, "ask_usage": usage, "ask_usage_available": True}
+
+
+@router.get("/account/export")
+def account_export(request: Request, authorization: str | None = Header(default=None)):
+    from datetime import datetime, timezone
+    from fastapi.responses import JSONResponse
+    from app.services.account_export import verified_identity, limits, read_export
+    from app.schemas.account_export import validate_export
+    headers = {"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"}
+    try:
+        if request.query_params:
+            raise HTTPException(400, "Export does not accept account selectors.")
+        owner, session = verified_identity(authorization)
+        with limits.acquire(owner):
+            try:
+                body = validate_export(read_export(authorization), owner)
+            except ValueError:
+                raise HTTPException(503, "A complete export could not be verified. Please retry.") from None
+        day = datetime.now(timezone.utc).date().isoformat()
+        headers["Content-Disposition"] = f'attachment; filename="arbor-account-export-{day}.json"'
+        return JSONResponse(body, headers=headers)
+    except HTTPException as exc:
+        return JSONResponse({"detail": exc.detail}, status_code=exc.status_code,
+                            headers={**headers, **(exc.headers or {})})
