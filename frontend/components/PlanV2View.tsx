@@ -1,4 +1,5 @@
 "use client";
+import AccountPrivacy from "./account/AccountPrivacy";
 import ChangePassword from "./ChangePassword";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import AppShell from "./app/AppShell";
@@ -81,6 +82,7 @@ export function V2Destination({ value, active, userId, section = "", onPlanChang
     <p className="settings-group-label">Security</p>
     {userId && <details><summary><SettingsIcon kind="account"/><span>Change password<small className="block mt-1">Account &amp; security</small></span></summary><ChangePassword userId={userId}/></details>}
     <p className="settings-group-label">About and data</p>
+    {userId && <AccountPrivacy key={userId} userId={userId}/> }
     <details><summary><SettingsIcon kind="help"/><span>Help &amp; disclosures</span></summary><p className="mt-2 text-sm text-slate-600">Ask Arbor can explain your plan and how existing tools work. You make your own investment decisions; projections are hypothetical. Arbor does not execute trades or hold your money.</p><a className="entry-link" href="#ask">Ask about Arbor →</a><p className="mt-3 text-xs text-slate-500">Arbor’s category and provider icons are original graphics. Investment and provider names are shown for identification only and do not imply affiliation, sponsorship or endorsement.</p></details>
   </div>;
   return <V2PlanContent value={value} />;

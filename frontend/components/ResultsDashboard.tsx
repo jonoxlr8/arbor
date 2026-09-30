@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import AccountPrivacy from "./account/AccountPrivacy";
 import AppShell from "@/components/app/AppShell";
 import HomeOverview from "@/components/app/HomeOverview";
 import { AppearanceSettings } from "@/components/app/Appearance";
@@ -37,7 +38,7 @@ export default function ResultsDashboard(props: ResultsDashboardProps) {
 }
 
 function LegacyDashboard({
-  plan: initialPlan,
+  userId, plan: initialPlan,
   onSignOut, signingOut, logoutError,
 }: ResultsDashboardProps) {
   const active = useSyncExternalStore(subscribeNavigation, navigationSnapshot, serverNavigationSnapshot);
@@ -122,6 +123,7 @@ function LegacyDashboard({
       <div hidden={active !== "settings"} className="app-destination space-y-6">
         <AccountPlans />
         <AppearanceSettings />
+        {userId && <AccountPrivacy key={userId} userId={userId}/>}
         <section className="arbor-panel">
           <h2 className="text-xl font-semibold text-slate-900">Your investment profile</h2>
           <dl className="mt-5 grid gap-5 sm:grid-cols-2">
