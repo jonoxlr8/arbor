@@ -18,9 +18,9 @@ test("public destinations survive refresh and unknown/authenticated hashes safel
 });
 test("landing has clear start/login paths without invented financial data or app navigation", () => {
   const html = render("landing");
-  assert.match(html, /Invest with clarity/); assert.match(html, /Keep the longer view/);
+  assert.match(html, /Invest with a plan/); assert.match(html, /Get started/);
   assert.match(html, /href="#signup"/); assert.match(html, /href="#login"/);
-  assert.match(html, /Your holdings stay with your provider/);
+  assert.match(html, /Arbor does not hold your money or place trades/);
   assert.doesNotMatch(html, /Mobile navigation|Primary navigation|Sign out|Projected wealth/);
 });
 test("public entry has no country question", () => {

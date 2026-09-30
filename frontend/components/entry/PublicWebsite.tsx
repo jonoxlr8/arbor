@@ -3,144 +3,84 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Logo, { ArborMark } from "@/components/Logo";
-import ProviderIdentity from "@/components/ProviderIdentity";
-import InvestmentIdentity from "@/components/InvestmentIdentity";
-import { investmentIdentity, providerName } from "@/lib/investmentIdentity";
-import { PLAN_OPTIONS, providerDestination } from "@/lib/planImplementation";
+import ArborIdentityIcon from "@/components/ArborIdentityIcon";
 import { AppearanceSelect } from "@/components/app/Appearance";
 import { entryLinks } from "@/lib/publicEntry";
 import { publicFaqs, publicSections } from "@/lib/publicWebsite";
-import imageSizes from "@/public/product/vision/sizes.json";
 
-function Arrow() { return <span aria-hidden="true">↗</span>; }
-function StartLink({ children = "Get started free" }: { children?: React.ReactNode }) {
-  return <a className="m-button" href={entryLinks.signup}>{children}<Arrow /></a>;
+function StartLink() {
+  return <a className="m-button" href={entryLinks.signup}>Get started <span aria-hidden="true">↗</span></a>;
 }
-function ProductImage({ name, alt, hero = false }: { name: keyof typeof imageSizes; alt: string; hero?: boolean }) {
-  const { width, height } = imageSizes[name];
-  const mobile = imageSizes[`${name}-mobile` as keyof typeof imageSizes];
-  const sizes = name === "fund-value" ? "(max-width: 600px) 260px, (max-width: 1100px) 245px, 290px" : name === "ask" ? "(max-width: 600px) 280px, (max-width: 900px) 290px, 330px" : "(max-width: 760px) 90vw, 650px";
-  // Mobile crops are already compressed at their native 390px width. Serve the
-  // exact WebP instead of upscaling it through a second optimizer/srcset.
-  return <picture>{mobile && <source media="(max-width: 600px)" srcSet={`/product/vision/${name}-mobile.webp`} width={mobile.width} height={mobile.height}/>}
-    <Image src={`/product/vision/${name}.webp`} width={width} height={height} alt={alt}
-    sizes={hero || name === "portfolio" || name === "ways" ? "(max-width: 760px) 94vw, (max-width: 1280px) 90vw, 1120px" : sizes}
-    loading={hero ? "eager" : "lazy"} fetchPriority={hero ? "high" : undefined} /></picture>;
+function DemoImage({ name, width, height, alt, priority = false, sizes = "(max-width: 768px) 90vw, 1120px" }: {
+  name: string; width: number; height: number; alt: string; priority?: boolean; sizes?: string;
+}) {
+  // Small local PNGs stay crisp; the release key refreshes updated public captures.
+  return <Image unoptimized src={`/product/v3-demo/${name}.png?v=3a28f3c`} width={width} height={height} alt={alt} sizes={sizes}
+    loading={priority ? "eager" : "lazy"} fetchPriority={priority ? "high" : undefined} />;
 }
-
 export default function PublicWebsite() {
   const [menu, setMenu] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
+  const header = useRef<HTMLElement>(null);
   useEffect(() => {
-    // Auth restoration can finish after the browser's initial fragment scroll.
     const id = window.location.hash.slice(1);
     if (publicSections.some(([section]) => section === id) || id === "disclosures") document.getElementById(id)?.scrollIntoView();
   }, []);
+  useEffect(() => {
+    const close = (event: PointerEvent) => { if (!header.current?.contains(event.target as Node)) setMenu(false); };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, []);
+  useEffect(() => {
+    if (menu) header.current?.querySelector<HTMLAnchorElement>("#public-navigation a")?.focus();
+  }, [menu]);
   return <div className="marketing-site" onKeyDown={event => {
     if (event.key === "Escape" && menu) { setMenu(false); menuButton.current?.focus(); }
   }}>
     <a className="m-skip" href="#public-content">Skip to content</a>
-    <header className="m-header">
-      <div className="m-nav-wrap">
-        <a className="m-logo" href={entryLinks.landing} aria-label="Arbor welcome"><Logo /></a>
-        <nav id="public-navigation" className="m-navigation" data-open={menu} aria-label="Public navigation">
-          {publicSections.map(([id,label]) => <a key={id} href={`#${id}`} onClick={() => setMenu(false)}>{label}</a>)}
-          <a className="m-mobile-signin" href={entryLinks.login} onClick={() => setMenu(false)}>Sign in</a>
-        </nav>
-        <div className="m-nav-actions"><a className="m-signin" href={entryLinks.login}>Sign in</a><StartLink />
-          <button ref={menuButton} type="button" className="m-menu" aria-label={menu ? "Close menu" : "Open menu"} aria-controls="public-navigation" aria-expanded={menu} onClick={() => setMenu(!menu)}><span/ ><span/ ></button>
-        </div>
+    <header ref={header} className="m-header"><div className="m-nav-wrap">
+      <a className="m-logo" href={entryLinks.landing} aria-label="Arbor welcome"><Logo /></a>
+      <nav id="public-navigation" className="m-navigation" data-open={menu} aria-label="Public navigation">
+        {publicSections.map(([id, label]) => <a key={id} href={`#${id}`} onClick={() => setMenu(false)}>{label}</a>)}
+        <a className="m-mobile-signin" href={entryLinks.login} onClick={() => setMenu(false)}>Sign in</a>
+      </nav>
+      <div className="m-nav-actions"><a className="m-signin" href={entryLinks.login}>Sign in</a><StartLink />
+        <button ref={menuButton} type="button" className="m-menu" aria-label={menu ? "Close menu" : "Open menu"} aria-controls="public-navigation" aria-expanded={menu} onClick={() => setMenu(!menu)}><span /><span /></button>
       </div>
-    </header>
+    </div></header>
     <main id="public-content" tabIndex={-1}>
-      <section className="m-hero" aria-labelledby="hero-title">
-        <div className="m-container m-hero-copy">
-          <p className="m-eyebrow"><span className="m-leaf-dot"/> AI investment companion · Philippines-first</p>
-          <h1 id="hero-title">Invest with clarity.<br/><span>Keep the longer view.</span></h1>
-          <p className="m-lead">Choose your plan. See ways to put it into practice.<br className="m-desktop-break"/> Keep a clearer picture of what comes next.</p>
-          <div className="m-actions"><StartLink/><a className="m-text-link" href="#how-it-works">See how Arbor works <span aria-hidden="true">↓</span></a></div>
-          <p className="m-fine">Arbor Plus is free during private beta. No credit card.</p>
-        </div>
-        <figure className="m-hero-product m-container">
-          <p className="m-preview-label">Inside Arbor <span>Product preview · Illustrative data</span></p>
-          <div className="m-browser"><div className="m-browser-bar" aria-hidden="true"><span/><span/><span/><small>arbor.ph</small></div>
-            <ProductImage name="home" hero alt="Arbor Home preview with one next step, a selected plan and an illustrative portfolio summary."/>
-          </div>
-          <figcaption>Actual Arbor interface · Illustrative data. Example history shows recorded values, not investment returns. Portfolio tracking and monthly check-ins are available in private beta.</figcaption>
-        </figure>
+      <section className="m-hero" aria-labelledby="hero-title"><div className="m-container m-hero-copy">
+        <p className="m-eyebrow"><span className="m-leaf-dot" /> Your investment companion</p>
+        <h1 id="hero-title">Invest with a plan<br /><span>you understand.</span></h1>
+        <p className="m-lead">Choose your investment approach, track what you own, and plan your next contribution—all in one clear view.</p>
+        <div className="m-actions"><StartLink /><a className="m-text-link" href="#how-it-works">See how Arbor works <span aria-hidden="true">↓</span></a></div>
+        <p className="m-fine">Philippines-first · Private beta · Plus trial included</p>
+      </div><figure className="m-hero-product m-container">
+        <div className="m-browser m-hero-desktop"><DemoImage name="home-desktop" width={1440} height={1000} priority alt="Arbor Home: a portfolio chart, goal, monthly contribution and selected investment plan. Illustrative demo." /></div>
+        <div className="m-hero-phone"><DemoImage name="home-mobile" width={390} height={850} priority sizes="(max-width: 600px) 84vw, 250px" alt="Arbor Home on mobile with illustrative portfolio history and goal progress." /></div>
+        <figcaption>Illustrative demo—not actual investment performance.</figcaption>
+      </figure></section>
+      <section id="how-it-works" className="m-container m-section" aria-labelledby="works-title">
+        <div className="m-heading-row"><div><p className="m-eyebrow">From wondering to knowing</p><h2 id="works-title">A little clarity.<br />A way forward.</h2></div><p className="m-section-lead">You invest through your provider. Arbor helps you plan, track, and understand.</p></div>
+        <ol className="m-journey"><li><span className="m-step-number">01</span><h3>Choose your approach</h3><p>Start with your goal, timeline and preferences. Compare simple approaches and choose the plan that fits you.</p></li><li><span className="m-step-number">02</span><h3>Invest with your provider</h3><p>Explore supported Ways to invest, then continue with the provider you choose. Your money stays with them.</p></li><li><span className="m-step-number">03</span><h3>Track and keep going</h3><p>Record what you actually invested. Follow your progress, understand the numbers and plan your next contribution.</p></li></ol>
       </section>
-
-      <section id="how-it-works" className="m-container m-section m-approach" aria-labelledby="approach-title">
-        <div><p className="m-eyebrow">Your choices. A clearer picture.</p><h2 id="approach-title">Your plan.<br/>Not a black box.</h2></div>
-        <div className="m-approach-story"><p className="m-section-lead">Start with what matters to you. Compare standardized long-term approaches and choose one you understand.</p><p>Arbor helps you check your financial readiness and explore your assumptions. You make the choice—and stay in control.</p>
-          <ol className="m-steps"><li><span>01</span><strong>Choose your approach</strong></li><li><span>02</span><strong>Make it your plan</strong></li><li><span>03</span><strong>See ways to invest</strong></li></ol>
-        </div>
-      </section>
-
-      <section id="customize-plan" className="m-record m-section" aria-labelledby="customize-title"><div className="m-container m-record-layout">
-        <div><p className="m-eyebrow">Your plan, your choice</p><h2 id="customize-title">Keep it simple.<br/>Or make it yours.</h2><p className="m-section-lead">Your core plan is complete as-is.</p><p>Choose None, 5% or 10% for extra Technology or Bitcoin exposure. Nothing is added for you.</p><p>Arbor calculates the final mix from your choices. You review it, then confirm your plan.</p><p className="m-note">Technology may overlap with your global investments. Bitcoin can have much larger price swings. Both are optional.</p></div>
-        <figure className="m-phone"><ProductImage name="customize" alt="Arbor Customize your plan preview with separate None, 5% and 10% choices for Technology and Bitcoin, both explicitly chosen by the user."/><figcaption>Optional customization · Included in Free</figcaption></figure>
-      </div><div className="m-container m-onboarding-sequence"><figure><ProductImage name="approaches" alt="Compare four standardized approaches. Nothing is selected for you."/><figcaption>01 · Choose your approach</figcaption></figure><figure><ProductImage name="final-plan" alt="Final plan review with the user’s explicit 80% Global Equity, 10% Technology and 10% Bitcoin example allocation."/><figcaption>02 · Review and make it your plan</figcaption></figure></div></section>
-
-      <section id="product-portfolio" className="m-portfolio m-section" aria-labelledby="portfolio-title">
-        <div className="m-container">
-          <div className="m-section-heading"><p className="m-eyebrow">Your plan to your portfolio</p><h2 id="portfolio-title">Everything you own.<br/>One clearer view.</h2><p className="m-section-lead">Track your recorded investments and compare them with the targets you chose.<br/>Invest through your provider. Record what you own in Arbor.</p></div>
-          <figure className="m-current-portfolio"><ProductImage name="portfolio" alt="Arbor Portfolio with a prominent recorded-value graph, VT, VGT, Bitcoin and an ATRAM holding. Illustrative local demo, not investment returns."/><figcaption>Illustrative recorded-value history · Your holdings stay with your provider. Arbor does not connect to your broker or place trades.</figcaption></figure>
-          <div className="m-portfolio-stage">
-            <figure className="m-holdings-preview"><div className="m-preview-heading"><span>One view. Your investments.</span><small>Product preview</small></div><ProductImage name="holdings" alt="Actual holdings view: an ATRAM fund held through GFunds, Vanguard VT through Gotrade and Bitcoin through PDAX. Values are illustrative."/><figcaption>Enter holdings or the current value shown in your fund app. No broker connection or automatic account sync.</figcaption></figure>
-            <figure className="m-fund-preview"><ProductImage name="fund-value" alt="Actual Add Investment form for an ATRAM fund: current PHP value first, fund units optional."/><figcaption>Simple fund-value entry</figcaption></figure>
-          </div>
-          <div className="m-provider-list" aria-label="Supported provider examples">{['gcash','gotrade','dragonfi','gcrypto','coins_ph','pdax'].map(provider => <ProviderIdentity key={provider} provider={provider}/>)}</div>
-          <p className="m-fine m-centered">Arbor Plus tracking is available in private beta. Selected supported products only. Names identify providers, not partnerships. Icons are original Arbor illustrations.</p>
-          <div className="m-alignment"><div><p className="m-eyebrow">Understand the mix</p><h3>Your holdings.<br/>Your chosen targets.</h3><p>See how your recorded allocation compares with your plan. A comparison to understand—not a signal to trade.</p></div><figure><ProductImage name="allocation" alt="Arbor’s current allocation view with labeled percentages. This example mix describes recorded holdings, not a recommended plan."/><figcaption>Illustrative current allocation · Not an investment recommendation</figcaption></figure></div>
-        </div>
-      </section>
-
-      <section id="ways-to-invest" className="m-container m-section m-ways" aria-labelledby="ways-title">
-        <div className="m-section-heading"><p className="m-eyebrow">From understanding to doing</p><h2 id="ways-title">Ways to invest<br/>the plan you choose.</h2><p className="m-section-lead">Recognizable investments. Official provider links.<br/>The decision stays yours.</p></div>
-        <figure className="m-ways-screen"><ProductImage name="ways" alt="Current empty Portfolio showing the selected approach and factual Ways to invest, with separate investment and provider identities."/><figcaption>Options follow the parts of your chosen plan. You choose one investment and provider for each part—never a provider ranking.</figcaption></figure>
-        <div className="m-supported-options" aria-label="Supported investment examples">{[...PLAN_OPTIONS.global_equity, ...PLAN_OPTIONS.crypto].map(option => <div className="m-supported-option" key={option.product}>
-          <InvestmentIdentity product={option.product}/><div><strong>{investmentIdentity(option.product).shortName}</strong><ProviderIdentity provider={option.provider}/></div>
-          <a href={providerDestination(option.provider)!} target="_blank" rel="noopener noreferrer" aria-label={`Open ${providerName(option.provider)} (opens in a new tab)`}><Arrow/></a>
-        </div>)}</div>
-        <p className="m-fine m-centered">Supported examples, not recommendations. Availability and fees vary. Provider and fund names are for identification only; Arbor is not affiliated with or endorsed by these providers.</p>
-      </section>
-
-      <section id="record-investment" className="m-record m-section" aria-labelledby="record-title"><div className="m-container m-record-layout">
-        <div><p className="m-eyebrow">Add Investment · Arbor Plus</p><h2 id="record-title">What you own.<br/>Clearly organized.</h2><p className="m-section-lead">Find your investment in a simple catalogue.</p><p>For supported funds, enter the current peso value shown in your provider app. For ETFs or Bitcoin, record the shares or amount you hold.</p><p className="m-note">A holding record—not a purchase, broker import or transaction confirmation.</p><a className="m-text-link" href="#pricing">See what’s included <Arrow/></a></div>
-        <figure className="m-phone"><ProductImage name="catalogue" alt="Current Add Investment catalogue with All, Funds, ETFs and Bitcoin filters, fund-manager identities and separate provider names."/><figcaption>Actual catalogue · Selected supported investments only</figcaption></figure>
+      <section id="features" className="m-history m-section" aria-labelledby="features-title"><div className="m-container">
+        <div className="m-heading-row"><div><p className="m-eyebrow">Your portfolio, in perspective</p><h2 id="features-title">See your journey.<br />Understand your progress.</h2></div><div><p className="m-section-lead">Follow how your recorded portfolio has changed over time. Explore a week, a month or the whole journey in PHP or USD.</p><p className="m-history-note">Contributions stay separate from investment gain.</p></div></div>
+        <figure className="m-history-visual"><div className="m-history-desktop"><DemoImage name="portfolio-history" width={1176} height={459} alt="The current Arbor Portfolio chart with rounded steps, PHP and USD views, and 1W, 1M, 3M, 6M, 1Y, 5Y and All ranges. Illustrative values." /></div><div className="m-history-mobile"><DemoImage name="portfolio-mobile" width={390} height={850} alt="Arbor Portfolio on mobile showing selected-period gain and the seven current history ranges, with illustrative data." /></div><figcaption>Illustrative demo—not actual investment performance.</figcaption></figure>
+        <ul className="m-history-details"><li><span>01</span><strong>Your timeframe</strong><p>1W · 1M · 3M · 6M · 1Y · 5Y · All</p></li><li><span>02</span><strong>Your perspective</strong><p>PHP or USD portfolio view</p></li><li><span>03</span><strong>Your actual progress</strong><p>Gain/loss for the selected period</p></li></ul>
       </div></section>
-
-      <section id="monthly-contribution" className="m-container m-section m-monthly" aria-labelledby="monthly-title">
-        <div className="m-monthly-copy"><p className="m-eyebrow">Invest this month · Arbor Plus</p><h2 id="monthly-title">A clear month.<br/>A longer view.</h2><p className="m-section-lead">Know what this month’s contribution looks like.</p><p>Arbor uses your chosen plan and recorded portfolio to calculate a breakdown. See exact amounts by provider, with amounts below a minimum visible.</p><p className="m-note">Your saved implementation choices organize the result. You review the amounts and invest outside Arbor.</p>
-          <div className="m-monthly-loop"><span>Review</span><span aria-hidden="true">→</span><span>Submit</span><span aria-hidden="true">→</span><span>Update holdings</span></div><p className="m-fine">After investing through your provider, choose “Submit monthly contribution” to record your check-in. Then update the holdings you received. Arbor does not place trades or increase your portfolio value from a check-in.</p>
-        </div>
-        <figure className="m-contribution-preview"><ProductImage name="contribution" alt="Arbor’s monthly breakdown groups the user’s assigned amounts by provider. Illustrative calculation, no trade placed."/><ProductImage name="contribution-submit" alt="Submit monthly contribution records a check-in only after investing through a provider. Holdings are updated separately."/><figcaption>Example calculation, not a buy list. You invest through your provider.</figcaption></figure>
+      <section id="arbor-plus" className="m-container m-section m-next" aria-labelledby="next-title">
+        <div className="m-next-copy"><p className="m-eyebrow">Arbor Plus · Monthly planning</p><h2 id="next-title">Make the next<br />contribution easier.</h2><p className="m-section-lead">See how your next contribution fits the plan you chose.</p><p>Arbor can calculate a contribution breakdown based on the plan you chose. Review it, choose whether to follow it, and invest through your provider.</p><div className="m-next-flow"><span>Plan</span><span aria-hidden="true">→</span><span>Invest</span><span aria-hidden="true">→</span><span>Record</span></div><p className="m-fine">Invest with your provider, then return to Arbor to record what you bought.</p></div>
+        <div className="m-monthly-visuals"><figure className="m-monthly-primary"><div className="m-monthly-desktop"><DemoImage name="monthly-desktop" width={760} height={773} sizes="(max-width: 900px) 90vw, 650px" alt="Actual Arbor Monthly planning result: a PHP 15,000 contribution calculated from the illustrative portfolio and chosen 80/10/10 plan." /></div><div className="m-monthly-mobile"><DemoImage name="monthly-mobile" width={358} height={905} alt="Arbor Monthly breakdown showing the calculated amounts for the illustrative PHP 15,000 contribution." /></div><figcaption>Illustrative demo—not actual investment performance.</figcaption></figure><figure className="m-ways-visual"><DemoImage name="ways-detail" width={326} height={144} alt="Ways to invest continuation: the chosen VGT investment through Gotrade. Provider eligibility and terms apply." /><figcaption>Then choose your provider path.</figcaption></figure></div>
+        <div className="m-plus-details"><p><strong>A plan that stays understandable.</strong> Compare your portfolio with your selected targets through Plan Alignment.</p><p><strong>A longer view.</strong> Explore Projection &amp; What If illustrations using your assumptions.</p><p className="m-fine">Private-beta members currently receive an Arbor Plus trial. Subscription checkout is not available yet.</p></div>
       </section>
-
-      <section id="ask-arbor" className="m-ask m-section" aria-labelledby="ask-title"><div className="m-container m-ask-layout">
-        <figure className="m-phone"><ProductImage name="ask" alt="Actual Ask Arbor conversation explaining a sample portfolio value, including which fund amount was entered manually."/><figcaption>Illustrative conversation · Portfolio context preview</figcaption></figure>
-        <div><span className="m-companion-mark"><ArborMark className="h-10 w-12"/></span><p className="m-eyebrow">Meet Ask Arbor</p><h2 id="ask-title">Less jargon.<br/>More understanding.</h2><p className="m-section-lead">Your plan, in plain language.</p><p>Ask about the approach you chose, how a contribution was calculated or your next step in Arbor. Clear explanations, grounded in your Arbor context.</p>
-          <ul className="m-question-chips" aria-label="Questions you can ask"><li>Why is Technology in my plan?</li><li>How was my contribution calculated?</li><li>What should I do next in Arbor?</li></ul><a className="m-text-link" href={entryLinks.signup}>Get to know your plan <Arrow/></a><p className="m-fine">AI explanations can be mistaken. Ask Arbor does not choose investments or give trading instructions.</p>
-        </div>
-      </div></section>
-
-      <section className="m-container m-section m-trust" aria-labelledby="trust-title"><p className="m-eyebrow">Built around your independence</p><h2 id="trust-title">Your money stays yours.<br/>Your decisions do, too.</h2><div className="m-trust-points"><p><span aria-hidden="true">↗</span>Your investments stay<br/>with your provider.</p><p><span aria-hidden="true">◈</span>Arbor never holds your money<br/>or places trades.</p><p><span aria-hidden="true">✓</span>You choose.<br/>Arbor helps you understand.</p></div></section>
-
-      <section id="pricing" className="m-pricing m-section" aria-labelledby="pricing-title"><div className="m-container"><div className="m-section-heading"><p className="m-eyebrow">A little clarity goes a long way</p><h2 id="pricing-title">Start with a plan.<br/>Grow with perspective.</h2><p className="m-section-lead">All beta users get Arbor Plus free.<br/>No card. No billing date. Just room to explore.</p></div>
-        <div className="m-price-grid">
-          <article className="m-price-free"><p className="m-eyebrow">Arbor Free · At launch</p><h3>Build your plan.<br/>See ways to invest.</h3><p className="m-price">₱0</p><ul><li>Investment profile &amp; readiness checks</li><li>Your choice of standardized plan &amp; targets</li><li>Optional Technology &amp; Bitcoin choices</li><li>Basic projections &amp; next steps</li><li>Ways to invest &amp; official provider links</li><li>10 Ask Arbor questions per month, when public quota support launches</li></ul><a className="m-text-link" href="#faq">Understand the plans <Arrow/></a></article>
-          <article className="m-price-plus"><span className="m-beta-label">Private beta · Free for now</span><p className="m-eyebrow">Arbor Plus</p><h3>Track your portfolio.<br/>Stay aligned over time.</h3><p className="m-price">Free <span>during beta</span></p><ul><li>Everything in Free</li><li>Full Ask Arbor access, under fair use</li><li>Monthly contribution planning &amp; check-ins</li><li>Edit your profile or change your plan</li><li>Holdings, value history &amp; Plan Alignment</li></ul><StartLink/><p className="m-fine">Planned launch price: ₱399/month or ₱3,990/year.<br/>Display only. Payments are not available.</p></article>
-        </div><p className="m-pricing-note">Your feedback will help shape Free and Plus at launch. Availability is controlled by your account’s current access.</p>
-      </div></section>
-
-      <section id="faq" className="m-container m-section m-faq" aria-labelledby="faq-title"><div><p className="m-eyebrow">A few good questions</p><h2 id="faq-title">Clarity starts here.</h2><p>Something else on your mind?<br/><a href="mailto:support@arbor.ph">Talk to us <Arrow/></a></p></div><div>{publicFaqs.map(([question,answer]) => <details key={question}><summary>{question}<span aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></section>
-
-      <section className="m-final m-section"><div className="m-container"><ArborMark className="h-12 w-16"/><h2>A little clarity.<br/>A longer view.</h2><StartLink/><p className="m-fine">Your investing journey, on your terms.</p></div></section>
+      <section id="learn" className="m-learning m-section" aria-labelledby="learn-title"><div className="m-container m-learning-layout"><div><p className="m-eyebrow">Learn + Ask Arbor</p><h2 id="learn-title">Build confidence.<br />One question at a time.</h2><p className="m-section-lead">Short lessons and plain-language explanations, right alongside your plan.</p><p>Learn lives inside Ask Arbor. Explore a lesson or ask what a number in your plan means.</p><p className="m-fine">AI explanations can be mistaken. Your investment decisions stay yours.</p></div><div className="m-learning-panel"><p className="m-learning-label">Illustrative lesson preview</p><ul className="m-learning-categories">{([
+        ["Basics", "facets"], ["ETFs", "globe"], ["Funds", "layers"], ["Crypto", "coin"], ["Arbor", null],
+      ] as const).map(([name, glyph]) => <li key={name}><span className={`m-category-mark m-category-${name.toLowerCase()}`} aria-hidden="true">{glyph ? <ArborIdentityIcon glyph={glyph} /> : <ArborMark />}</span><span>{name}</span></li>)}</ul><p className="m-question">“What’s the difference between<br />portfolio value and investment gain?”</p><p className="m-answer">Portfolio value is what your recorded investments are worth, using available reference values. Adding money can increase that value without creating investment profit.</p><p className="m-fine">Based on Learn: Recorded cost and gain/loss.</p></div></div></section>
+      <section className="m-container m-section m-trust" aria-labelledby="trust-title"><p className="m-eyebrow">Clarity, without giving up control</p><h2 id="trust-title">Your choices. Your money.</h2><div className="m-trust-points"><article><ArborIdentityIcon glyph="facets" /><h3>You stay in control</h3><p>Arbor does not hold your money or place trades. You choose your plan and where to invest.</p></article><article><ArborIdentityIcon glyph="layers" /><h3>Your records matter</h3><p>What you paid stays separate from reference market values. Missing information is shown honestly.</p></article><article><ArborIdentityIcon glyph="globe" /><h3>Built for the long term</h3><p>Keep perspective over years. No trading signals, rankings or promises of returns.</p></article></div><div className="m-supported"><p className="m-fine">A curated set of US ETFs, ATRAM and BPI funds, and Bitcoin through</p><p>GFunds <span>·</span> Gotrade <span>·</span> DragonFi <span>·</span> GCrypto <span>·</span> Coins.ph <span>·</span> PDAX</p><p className="m-fine">Provider names identify supported paths. No partnership or endorsement is implied.</p></div></section>
+      <section id="faq" className="m-container m-section m-faq" aria-labelledby="faq-title"><div><p className="m-eyebrow">Before you begin</p><h2 id="faq-title">A few good<br />questions.</h2><p>Something else on your mind?<br /><a href="mailto:support@arbor.ph">Talk to us ↗</a></p></div><div>{publicFaqs.map(([question, answer]) => <details key={question}><summary>{question}<span aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></section>
+      <section className="m-final m-section"><div className="m-container"><ArborMark /><p className="m-eyebrow">A clearer next step</p><h2>Start with understanding.<br /><span>Keep going with a plan.</span></h2><p>Join the private beta. Keep the decisions yours.</p><StartLink /><a className="m-final-signin" href={entryLinks.login}>Already a member? Sign in</a></div></section>
     </main>
-    <footer className="m-footer"><div className="m-container"><div className="m-footer-top"><div><Logo/><p>An AI investment companion.<br/>Rooted in the long term.</p></div><nav aria-label="Footer product"><h2>Product</h2><a href="#how-it-works">How it works</a><a href="#pricing">Free &amp; Plus</a><a href={entryLinks.login}>Sign in</a></nav><nav aria-label="Footer support"><h2>Support</h2><a href="#faq">Help &amp; FAQ</a><a href="mailto:support@arbor.ph">support@arbor.ph</a><a href="#disclosures">Disclosures</a></nav><div className="m-footer-appearance"><AppearanceSelect/></div></div>
-      <details id="disclosures" className="m-disclosures"><summary>About Arbor, privacy &amp; disclosures</summary><p>Arbor is an educational planning and tracking companion, not a broker, custodian or investment adviser. You make your own investment decisions. Projections and contribution previews are hypothetical; returns are not guaranteed. Reference values can be delayed, incomplete or entered by you.</p><p>Arbor uses the account, profile and holdings information you provide to power its tools. Do not enter brokerage passwords, bank account details or order confirmations. For privacy, account or terms questions, contact <a href="mailto:support@arbor.ph">support@arbor.ph</a>. Full public Privacy and Terms pages are being prepared.</p><p>Provider and investment names are shown for identification only and belong to their respective owners. The identity icons are original Arbor illustrations, not official logos. No affiliation, sponsorship or endorsement is implied.</p></details>
-      <div className="m-footer-bottom"><p>© {new Date().getFullYear()} Arbor</p><p>You choose. Arbor calculates, tracks, simulates and explains.</p></div>
-    </div></footer>
+    <footer className="m-footer"><div className="m-container"><div className="m-footer-top"><div><Logo /><p>Investing, made easier to understand.</p></div><nav aria-label="Footer product"><h2>Explore</h2>{publicSections.map(([id,label]) => <a key={id} href={`#${id}`}>{label}</a>)}</nav><nav aria-label="Footer support"><h2>Support</h2><a href="mailto:support@arbor.ph">support@arbor.ph</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/investment-disclosures">Investment disclosures</a><a href={entryLinks.login}>Sign in</a></nav><div className="m-footer-appearance"><AppearanceSelect /></div></div><details id="disclosures" className="m-disclosures"><summary>Investment information</summary><p>Arbor is an investment planning, tracking and education companion. It is not a broker, bank, custodian or exchange. You make your own investment decisions. Investing involves risk; returns are not guaranteed. Planning illustrations are hypothetical and reference values may be delayed or unavailable.</p><p>Provider and investment names are shown for identification only. No affiliation, sponsorship or endorsement is implied.</p></details><div className="m-footer-bottom"><p>© {new Date().getFullYear()} Arbor</p><p>You choose. Arbor calculates, tracks and explains.</p></div></div></footer>
   </div>;
 }
