@@ -3,6 +3,7 @@ import type { ContributionResult as Result, MappedContribution, MinimumCheck } f
 import { sleeveColors } from "../AssetIdentity";
 
 function ProductRow({ item, amount, minimum, currency }: { item: MappedContribution; amount: string; minimum: MinimumCheck | null; currency: string }) {
+  const practicalInitial = item.product.platform === "Gotrade" && minimum?.purchase_type === "initial" && minimum.kind === "order" && minimum.minimum_currency === "PHP";
   return <div className="min-w-0 border-t border-slate-200 py-4">
     <p className="float-right ml-3 break-all text-xl font-semibold text-slate-900">{money(amount, currency)}</p>
     <p className="mt-1 font-semibold text-slate-900"><span aria-hidden="true" className="allocation-dot" style={{background:sleeveColors[item.sleeve]}}/> {SLEEVE_LABELS[item.sleeve]}</p>
@@ -10,7 +11,9 @@ function ProductRow({ item, amount, minimum, currency }: { item: MappedContribut
     <p className="text-sm text-slate-500">{item.product.platform} · {item.match_quality === "broad" ? "Broad match" : item.match_quality === "unavailable" ? "Unavailable" : "Direct match"}</p>
     <p className="mt-2 text-sm font-semibold text-forest">{!item.actionable ? "Future preview" : minimum?.status === "ready" ? "Minimum check met" : minimum?.status === "below_minimum" ? "Waiting for the minimum" : "Check minimum"}</p>
     {minimum?.status === "below_minimum" && <p className="mt-1 text-sm text-slate-600">{minimum.amount_needed_to_minimum !== null && <>Difference to minimum: {money(minimum.amount_needed_to_minimum, currency)}. </>}
-      {minimum.applicable_minimum !== null && minimum.minimum_currency && <>Provider minimum: {money(minimum.applicable_minimum, minimum.minimum_currency)}.</>}</p>}
+      {minimum.applicable_minimum !== null && minimum.minimum_currency && <>{practicalInitial ? "Arbor practical initial minimum" : "Initial minimum"}: {money(minimum.applicable_minimum, minimum.minimum_currency)}.</>}</p>}
+    {minimum?.status === "below_minimum" && minimum.purchase_type === "initial" && <p>Save toward the minimum before investing. Arbor does not hold or automatically carry this amount forward.</p>}
+    {practicalInitial && <p>Arbor practical initial minimum: PHP100 per product. Gotrade provider order minimum: US$1. Verify additional purchases in app.</p>}
     {minimum?.status === "verify_minimum" && <p className="mt-1 text-sm text-slate-600">Check the provider’s current minimum and eligibility before investing.
       {minimum.applicable_minimum !== null && minimum.minimum_currency && <> Catalog minimum: {money(minimum.applicable_minimum, minimum.minimum_currency)}. No currency or price conversion is assumed.</>}</p>}
     {item.match_quality === "broad" && <p className="mt-1 text-sm text-slate-500">Not a pure broad-market index equivalent.</p>}</details>

@@ -58,8 +58,29 @@ test("monthly UI has no browser financial persistence, allocation engine or hold
   const source=readFileSync("components/contributions/MonthlyInvesting.tsx","utf8");
   const providerContinue=readFileSync("components/contributions/ProviderContinue.tsx","utf8");
   assert.doesNotMatch(source,/localStorage|sessionStorage|portfolioApi\.(save|capture|remove)|Math\.round/);
-  assert.match(source,/monthlyPlanApi.calculate/);assert.match(source,/recordable_amount/);assert.match(source,/does not hold or carry it forward automatically/);
+  assert.match(source,/monthlyPlanApi.calculate/);assert.match(source,/recordable_amount/);assert.match(readFileSync("components/contributions/MonthlyMinimumNotice.tsx","utf8"),/does not hold or carry it forward automatically/);
   assert.match(source,/ProviderContinue/);assert.match(providerContinue,/await pendingApi\.start/);assert.match(providerContinue,/link\.click\(\)/);assert.doesNotMatch(providerContinue,/window\.location\.assign/);assert.doesNotMatch(source,/href="#portfolio\/add"/);
   assert.match(source,/record the actual units you received/);
   assert.match(source,/MonthlyInvestmentFollowup/);
+});
+
+
+import MonthlyMinimumNotice from "../components/contributions/MonthlyMinimumNotice";
+for (const [amount, status] of [["499", "below_minimum"], ["500", "ready"], ["501", "ready"]] as const) {
+  test(`initial PHP500 ${amount} displays the correct minimum state`, () => {
+    const row = { ...monthlyPlanFixture.rows[0], product_id: "gcash_technology", provider_id: "gcash", amount, status, minimum: { purchase_type: "initial" as const, kind: "initial" as const, applicable_minimum: "500", minimum_currency: "PHP", status, amount_needed_to_minimum: status === "below_minimum" ? "1" : "0", reason: status === "below_minimum" ? "below_minimum" : "minimum_met" } };
+    const html = render(createElement(MonthlyMinimumNotice, { row }));
+    if (status === "below_minimum") { assert.match(html, /Save toward the minimum before investing/); assert.match(html, /₱500/); assert.doesNotMatch(html, /Minimum met/); }
+    else { assert.match(html, /Minimum met/); assert.doesNotMatch(html, /Save toward/); }
+  });
+}
+test("unknown additional purchase verifies without minimum-met or a cash-ledger claim", () => {
+  const row = { ...monthlyPlanFixture.rows[0], product_id: "gotrade_vt", provider_id: "gotrade", amount: "10000", status: "verify_minimum" as const, minimum: { purchase_type: "additional" as const, kind: "additional" as const, applicable_minimum: null, minimum_currency: "PHP", status: "verify_minimum" as const, amount_needed_to_minimum: null, reason: "additional_unknown" } };
+  const html = render(createElement(MonthlyMinimumNotice, { row }));
+  assert.match(html, /Check the minimum with Gotrade/); assert.doesNotMatch(html, /Minimum met|PHP100|automatically saved/);
+});
+test("Gotrade practical initial PHP100 is distinct from the USD1 provider order fact", () => {
+  const row = { ...monthlyPlanFixture.rows[0], product_id: "gotrade_vgt", provider_id: "gotrade", amount: "100", status: "ready" as const, minimum: { purchase_type: "initial" as const, kind: "order" as const, applicable_minimum: "100", minimum_currency: "PHP", status: "ready" as const, amount_needed_to_minimum: "0", reason: "minimum_met" } };
+  const html = render(createElement(MonthlyMinimumNotice, { row }));
+  assert.match(html, /Arbor practical initial minimum met/); assert.match(html, /PHP100/); assert.match(html, /separate provider order minimum is US\$1/);
 });

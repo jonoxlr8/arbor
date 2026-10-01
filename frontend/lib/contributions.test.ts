@@ -23,9 +23,9 @@ export const contributionFixture: PlanV2 = {
 };
 const values = { global_equity: "5000", defensive: "2000", technology_tilt: "0", crypto: "0" };
 const input = () => contributionRequest(contributionFixture, "12000", values, "gcash", [], false);
-const product: ContributionProduct = { product_id: "gcash_global_equity", display_name: "ATRAM Global Equity Opportunity Feeder Fund", provider: "ATRAM", platform: "GFunds", sleeve: "global_equity", match_quality: "broad", currency: "PHP", minimum_initial: "1000", minimum_additional: "500", minimum_additional_status: "published", minimum_order: null, minimum_order_quantity: null, minimum_order_currency: null, practical_minimum: null, supports_fractional: null, available_in_ph: true, eligibility_notes: [], last_verified_at: null };
+const product: ContributionProduct = { product_id: "gcash_global_equity", display_name: "ATRAM Global Equity Opportunity Feeder Fund", provider: "ATRAM", platform: "GFunds", sleeve: "global_equity", match_quality: "broad", currency: "PHP", minimum_initial: "500", minimum_additional: null, minimum_additional_status: "verify_in_app", minimum_order: null, minimum_order_quantity: null, minimum_order_currency: null, practical_minimum: null, supports_fractional: null, available_in_ph: true, eligibility_notes: [], last_verified_at: null };
 const mapped: MappedContribution = { sleeve: "global_equity", target_percentage_points: 80, product, match_quality: "broad", state: "active", actionable: true, warnings: [] };
-const minimum: MinimumCheck = { purchase_type: "initial", kind: "initial", applicable_minimum: "1000", minimum_currency: "PHP", status: "ready", amount_needed_to_minimum: "0", reason: "minimum_met" };
+const minimum: MinimumCheck = { purchase_type: "initial", kind: "initial", applicable_minimum: "500", minimum_currency: "PHP", status: "ready", amount_needed_to_minimum: "0", reason: "minimum_met" };
 const common = { contribution_amount: "12000", contribution_currency: "PHP", route_id: "gcash" as const, readiness, path: "long_term" as const, state: "active" as const, reason: "greatest_deficit", warnings: ["Check provider eligibility."], current_portfolio_value: "7000", post_contribution_portfolio_value: "19000" };
 const row: ContributionAllocation = { implementation: mapped, allocated_amount: "12000", candidate_amount: "12000", minimum, allocation_stage: "deficit_fill", reason: "deficit_fill" };
 const plan = (overrides: Partial<ContributionPlan> = {}): ContributionResult => ({ mode: "plan", data: { ...common, status: "invest", allocations: [row], blocked_allocations: [], invested_amount: "12000", verify_minimum_amount: "0", unallocated_amount: "0", reserve_amount: "0", ...overrides } });
@@ -212,3 +212,22 @@ test("every provider combination preserves selected plan and canonical target in
   assert.throws(()=>contributionRequest(value, "1000", values, "gcash", [], false), /Choose a Bitcoin provider/);
   assert.equal(input().context.bitcoin_provider, null);
 });
+
+
+test("GFunds additional purchase displays verification without a false minimum-met claim", () => {
+  const additional: MinimumCheck = { ...minimum, purchase_type: "additional", kind: "additional", applicable_minimum: null, status: "verify_minimum", amount_needed_to_minimum: null, reason: "additional_unknown" };
+  const html = render(recommendation({ minimum: additional, action: "wait", execution_status: "verify_minimum" }));
+  assert.match(html, /Check minimum/);
+  assert.doesNotMatch(html, /Minimum check met|Provider minimum:|Catalog minimum:/);
+});
+
+for (const id of ["gcrypto_btc", "coins_btc", "pdax_btc"]) {
+  test(`${id} displays verification without a numeric execution threshold`, () => {
+    const bitcoin = { ...mapped, product: { ...product, product_id: id, display_name: id, minimum_initial: null, minimum_additional: null, minimum_order: null, minimum_order_quantity: null } };
+    const unknown: MinimumCheck = { ...minimum, kind: "unknown", applicable_minimum: null, minimum_currency: null, status: "verify_minimum", amount_needed_to_minimum: null, reason: "minimum_unknown" };
+    const html = render(recommendation({ selected: bitcoin, minimum: unknown, execution_status: "verify_minimum", action: "wait" }));
+    assert.match(html, /Check minimum/);
+    assert.doesNotMatch(html, /Minimum check met|Provider minimum:|Catalog minimum:/);
+    assert.match(html, /12,000/);
+  });
+}

@@ -5,7 +5,7 @@ import type { Sleeve } from "@/lib/types/contributions";
 import { monthlyPlanApi, monthlyMoney, monthlyPlanConflictCopy, MonthlyPlanConflictError, type MonthlyPlan, type MonthlyPlanInput } from "@/lib/monthlyPlan";
 import { portfolioApi } from "@/lib/livePortfolio";
 import { SLEEVE_LABELS } from "@/lib/contributions";
-import { investmentIdentity, providerName } from "@/lib/investmentIdentity";
+import { investmentIdentity } from "@/lib/investmentIdentity";
 import { useAccountAccess } from "../AccountAccess";
 import { MonthlyCheckin } from "../MonthlyCheckin";
 import type { MonthlyState } from "@/lib/monthlyCheckin";
@@ -15,6 +15,7 @@ import ProviderIdentity from "../ProviderIdentity";
 import ImplementationPicker from "../portfolio/ImplementationPicker";
 import { sleeveColors } from "../AssetIdentity";
 import ProviderContinue from "./ProviderContinue";
+import MonthlyMinimumNotice from "./MonthlyMinimumNotice";
 
 const money=monthlyMoney;
 const emptyValues={global_equity:"0",defensive:"0",technology_tilt:"0",crypto:"0"};
@@ -74,10 +75,7 @@ export default function MonthlyInvesting({value,userId,onPlanChange}:{value:Plan
           {row.provider_id&&<ProviderIdentity provider={row.provider_id}/>}<button className="entry-link" onClick={()=>setChoosing(row.sleeve)}>{row.product_id?"Change investment":"Choose where to invest"}</button>
         </div><strong className="monthly-row-amount">{money(row.amount)}</strong>
         <div className="monthly-row-detail">
-          {row.status==="below_minimum"?<div className="monthly-minimum"><strong>Not enough to invest yet</strong><p>Minimum needed: {row.minimum?.applicable_minimum&&row.minimum.minimum_currency==="PHP"?money(row.minimum.applicable_minimum):"Check with your provider"}. Keep this {money(row.amount)} for a future contribution.</p><small>This is a planning amount you retain. Arbor does not hold or carry it forward automatically.</small></div>
-            :row.status==="verify_minimum"?<p>Check the minimum with {providerName(row.provider_id??"")} before investing. Arbor has not verified a PHP minimum for this purchase.</p>
-            :row.status==="choose_investment"?<p>This amount remains assigned to {SLEEVE_LABELS[row.sleeve]}. You choose the investment and provider.</p>
-            :row.status==="no_amount"?<p>No new amount is assigned here in this breakdown.</p>:<p className="minimum-met">✓ Minimum met</p>}
+          <MonthlyMinimumNotice row={row}/>
           <details><summary>How this amount was calculated</summary><dl><div><dt>Current value</dt><dd>{money(row.current_value)}</dd></div><div><dt>Your target</dt><dd>{row.target_percentage_points}%</dd></div><div><dt>Target after contribution</dt><dd>{money(row.target_value_after_contribution)}</dd></div><div><dt>Gap before assigning this contribution</dt><dd>{money(row.deficit)}</dd></div></dl><p>The same target-gap calculation applies whichever investment you choose. Existing holdings are not sold or changed.</p></details>
         </div>
       </article>)}</div>
