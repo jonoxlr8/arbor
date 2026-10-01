@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import {canCorrectManualFundUnits, validCorrectedFundUnits} from "@/lib/manualFundUnits";
 import type { PlanV2 } from "@/lib/types/planV2";
-import { portfolioApi, portfolioReadError, validHolding, freshnessText, supportsManualValue, validManualValue, type HoldingDraft, type LivePortfolioData, type PortfolioHolding, type PortfolioProduct } from "@/lib/livePortfolio";
+import { portfolioApi, portfolioReadError, validHolding, freshnessText, supportsManualValue, type HoldingDraft, type LivePortfolioData, type PortfolioHolding, type PortfolioProduct } from "@/lib/livePortfolio";
 import { decimalText, formatContributionMoney, SLEEVE_LABELS } from "@/lib/contributions";
 import ProviderBrand from "../ProviderBrand";
 import AssetIdentity, { sleeveColors } from "../AssetIdentity";
@@ -63,9 +64,8 @@ export default function LivePortfolio({ value, userId, section = "", onPlanChang
   const [draft, setDraft] = useState<HoldingDraft | null>(null);
   const [editing, setEditing] = useState<string>();
   const [deleting, setDeleting] = useState<PortfolioHolding | null>(null);
-  const [manual, setManual] = useState<{ holding: PortfolioHolding; value: string } | null>(null);
   const [entryProduct, setEntryProduct] = useState<PortfolioProduct | null | undefined>(section === "add" ? null : undefined);
-  const [opening, setOpening] = useState<{ holding: PortfolioHolding; units: string; cost: string } | null>(null);
+  const [opening, setOpening] = useState<{ holding: PortfolioHolding; units: string; cost: string; unitsOnly?: boolean } | null>(null);
   const portfolioLoaded = portfolio !== null;
   useEffect(() => {
     if (section === "holdings") document.getElementById(`section-${section}`)?.scrollIntoView({ block: "start" });
@@ -90,7 +90,7 @@ export default function LivePortfolio({ value, userId, section = "", onPlanChang
   async function mutate(work: () => Promise<unknown>) {
     if (pending.current) return;
     pending.current = true; setBusy(true); setError("");
-    try { await work(); setDraft(null); setDeleting(null); setManual(null); setOpening(null); setEntryProduct(undefined); setDetail(null); setEditing(undefined); refresh(); }
+    try { await work(); setDraft(null); setDeleting(null); setOpening(null); setEntryProduct(undefined); setDetail(null); setEditing(undefined); refresh(); }
     catch (e) { setError(e instanceof Error ? e.message : "We couldn’t update your record. Please retry."); }
     finally { pending.current = false; setBusy(false); }
   }
@@ -122,28 +122,32 @@ export default function LivePortfolio({ value, userId, section = "", onPlanChang
         {detail.units === null && <p className="text-sm text-slate-600">Arbor uses the value you entered. Add your fund units to enable automatic NAV-based tracking when a usable NAV is available.</p>}
         <div className="mt-6 space-y-3">
         <button className="entry-primary min-h-12 w-full" onClick={() => { setEntryProduct(portfolio.catalog.find(p => p.product_id === detail.product_id && p.provider === detail.provider)); setDetail(null); }}>Add more</button>
-        {supportsManualValue(detail) && <><button className="entry-secondary min-h-11 w-full" onClick={() => { setManual({holding:detail,value:detail.manual_value_php ?? ""}); setDetail(null); }}>Update recorded value</button><p className="text-xs text-slate-600">Update the current value shown by your provider. This does not record another investment.</p></>}
+        {canCorrectManualFundUnits(detail) && <button className="entry-secondary min-h-11 w-full" onClick={() => {
+          setError(""); setOpening({holding:detail,units:"",cost:detail.opening_cost_php ?? "",unitsOnly:true}); setDetail(null);
+        }}>Correct units</button>}
         {detail.opening_units && Number(detail.opening_units) > 0 && <button className="entry-secondary min-h-11 w-full" onClick={() => { setOpening({holding:detail,units:detail.opening_units ?? "0",cost:detail.opening_cost_php ?? ""}); setDetail(null); }}>Correct opening position</button>}
         {!detail.has_entries && <button className="entry-link min-h-11" aria-label={`Remove ${detail.display_name}`} onClick={() => {setDeleting(detail);setDetail(null);}}>Remove opening position</button>}</div>
         <HoldingActivity holding={detail} userId={userId} onChanged={() => { setDetail(null); refresh(); }}/>
       </Sheet>}
-      {opening && <Sheet title="Correct opening position" busy={busy} onClose={() => setOpening(null)}><form className="space-y-4" onSubmit={e => {e.preventDefault(); void mutate(() => portfolioApi.correctOpening(userId,opening.holding.id,opening.holding.updated_at,opening.units,opening.cost || null));}}>
+      {opening && <Sheet title={opening.unitsOnly ? "Correct units" : "Correct opening position"} busy={busy} onClose={() => setOpening(null)}><form className="space-y-4" onSubmit={e => {e.preventDefault();
+        if (opening.unitsOnly && (!validCorrectedFundUnits(opening.units) || error)) return;
+        void mutate(() => portfolioApi.correctOpening(userId,opening.holding.id,opening.holding.updated_at,opening.units,
+          opening.unitsOnly ? opening.holding.opening_cost_php! : opening.cost || null));}}>
+        {opening.unitsOnly ? <>
+          <p className="text-sm text-slate-600">Enter the fund units you already owned. This is not a new investment. Recorded cost stays unchanged; the acquisition date remains unknown.</p>
+          <label className="block text-sm">Fund units<input className={inputClass} inputMode="decimal" required disabled={busy} value={opening.units} onChange={e => setOpening({...opening,units:e.target.value})}/></label>
+          <p className="text-sm">Recorded cost: {opening.holding.opening_cost_php === null ? "Unknown" : money(opening.holding.opening_cost_php!)}.</p>
+          <p className="text-sm text-slate-600">Units allow NAV-based valuation when a usable NAV is available.</p>
+        </> : <>
         <p className="text-sm text-slate-600">This corrects units you already owned before dated additions were recorded. It does not create a purchase or invent an acquisition date.</p>
         <label className="block text-sm">Opening units<input className={inputClass} inputMode="decimal" required value={opening.units} onChange={e => setOpening({...opening,units:e.target.value})}/></label>
         <label className="block text-sm">Known opening cost (PHP, optional)<input className={inputClass} inputMode="decimal" value={opening.cost} onChange={e => setOpening({...opening,cost:e.target.value})}/></label>
         <p className="text-sm">Previously: {decimalText(opening.holding.opening_units ?? "0")} units. Corrected opening: {opening.units || "—"} units. Later dated additions remain separate.</p>
-        <button className="entry-primary min-h-11 w-full" disabled={busy || !/^\d{1,12}(?:\.\d{1,12})?$/.test(opening.units) || opening.cost !== "" && !/^\d{1,16}(?:\.\d{1,2})?$/.test(opening.cost)}>Confirm correction</button>
+        </>}
+        {opening.unitsOnly && error && <div role="alert" className="text-sm"><p>Correction could not be confirmed. Refresh the holding before trying again.</p><button type="button" className="entry-link min-h-11" onClick={() => {setOpening(null);refresh();}}>Refresh and review</button></div>}
+        <button className="entry-primary min-h-11 w-full" disabled={busy || (opening.unitsOnly ? !!error || !validCorrectedFundUnits(opening.units) : !/^\d{1,12}(?:\.\d{1,12})?$/.test(opening.units) || opening.cost !== "" && !/^\d{1,16}(?:\.\d{1,2})?$/.test(opening.cost))}>Confirm correction</button>
       </form></Sheet>}
       {entryProduct !== undefined && <DatedInvestmentFlow portfolio={portfolio} userId={userId} initialProduct={entryProduct ?? undefined} onClose={() => setEntryProduct(undefined)} onSaved={() => { setEntryProduct(undefined); refresh(); }} onOpeningOnly={p => { setEntryProduct(undefined); setDraft({...blank(),product_id:p.product_id,provider:p.provider}); }}/>}
-      {manual && <Sheet title="Current fund value" busy={busy} onClose={() => setManual(null)}><form className="arbor-panel min-w-0 space-y-4" onSubmit={e => { e.preventDefault(); if (!validManualValue(manual.value)) { setError("Enter a positive PHP value with up to 2 decimal places."); return; } void mutate(() => portfolioApi.manualValue(userId, manual.holding.id, manual.value)); }}>
-        <h3 className="font-semibold text-slate-900">{manual.holding.display_name}</h3>
-        <p className="text-sm text-slate-600">Enter the current value shown in {manual.holding.provider === "gcash" ? "GFunds" : "DragonFi"}. This is the whole holding’s value, not a unit price.</p>
-        <label className="block text-sm text-slate-700">Current value (PHP)<input required inputMode="decimal" className={inputClass} disabled={busy} value={manual.value} onChange={e => setManual({ ...manual, value: e.target.value })} /></label>
-        <p className="text-sm text-slate-600">Your value is used for seven days. Arbor has not independently verified it. A usable NAV takes priority only when fund units are recorded.</p>
-        <button disabled={busy} className="entry-primary min-h-11 w-full">{busy ? "Saving value…" : "Save current value"}</button>
-        {manual.holding.manual_value_php && (manual.holding.units !== null ? <button type="button" disabled={busy} className="entry-secondary min-h-11 w-full" onClick={() => void mutate(() => portfolioApi.manualValue(userId, manual.holding.id, null))}>Clear current value — keep holding</button> : <p className="text-sm text-slate-600">To clear this value, first add fund units in Edit record. Otherwise, remove the holding.</p>)}
-        <button type="button" disabled={busy} className="entry-link min-h-11" onClick={() => setManual(null)}>Cancel</button>
-      {error && <p role="alert" className="text-sm">{error}</p>}</form></Sheet>}
       {draft && <Sheet title={editing ? "Edit opening position" : draft.product_id ? `Track existing ${investmentIdentity(draft.product_id).shortName}` : "Track existing fund"} busy={busy} onClose={() => setDraft(null)}>{!draft.product_id ? <InvestmentCatalogue catalog={portfolio.catalog} onSelect={p => { setDraft({...blank(),provider:p.provider,product_id:p.product_id});setError(""); }}/> : <form className="investment-form space-y-4" onSubmit={e => { e.preventDefault(); if (!validHolding(draft, portfolio.catalog)) { setError("For a fund, enter a positive PHP current value or fund units. ETFs and Bitcoin require positive units. PHP amounts support up to 2 decimal places."); return; } void mutate(() => portfolioApi.save(userId, draft, editing)); }}>
         {!editing && <button type="button" className="catalogue-back" onClick={() => {setDraft(blank());setError("");}}>‹ All investments</button>}
         <div className="selected-investment"><AssetIdentity product={draft.product_id} sleeve={portfolio.catalog.find(p=>p.product_id===draft.product_id)?.sleeve ?? "global_equity"}/><div><strong>{investmentIdentity(draft.product_id).fullName}</strong>{investmentIdentity(draft.product_id).unitClass && <small>{investmentIdentity(draft.product_id).unitClass}</small>}<ProviderBrand provider={draft.provider}/></div></div>
