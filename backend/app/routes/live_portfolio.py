@@ -126,6 +126,16 @@ def investment_activity(holding_id: UUID | None = None, page: int = Query(defaul
     return {"entries": rows[:20], "page": page, "has_more": len(rows) > 20}
 
 
+@router.get("/monthly-review")
+def get_monthly_review(response: Response,
+                       month: str | None = Query(default=None, pattern=r"^[0-9]{4}-(0[1-9]|1[0-2])$"),
+                       user_id: str = Depends(get_current_user_id), authorization: str | None = Header(default=None)):
+    require_feature(user_id, "plan_alignment")
+    response.headers["Cache-Control"] = "private, no-store"
+    from app.services.monthly_review import monthly_review
+    return monthly_review(PortfolioStore(user_id, authorization), month)
+
+
 @router.put("/entries/{entry_id}")
 def revise_investment(entry_id: UUID, request: InvestmentRevisionInput,
                       user_id: str = Depends(get_current_user_id), authorization: str | None = Header(default=None)):

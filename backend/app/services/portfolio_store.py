@@ -138,6 +138,29 @@ class PortfolioStore:
         }).execute().data
 
     @storage_errors
+    def review_activity(self, start, end):
+        """All active dated rows in a bounded window, through normal owner JWT/RLS."""
+        rows = []
+        expected = None
+        for offset in range(0, 10001, 1000):
+            result = (self.client.table("arbor_investment_entry_values")
+                .select("id,holding_id,product_id,provider,investment_date,amount_paid_php,updated_at,revision,voided_at", count="exact")
+                .eq("user_id", self.owner).is_("voided_at", "null")
+                .gte("investment_date", start).lt("investment_date", end)
+                .order("investment_date").order("id").range(offset, offset + 999).execute())
+            if result.count is None or result.count > 10000:
+                raise HTTPException(503, "This review exceeds the supported record limit. Your records remain available in Investment activity.")
+            if expected is not None and expected != result.count:
+                raise HTTPException(409, "Your investment records changed. Refresh this review.")
+            expected = result.count
+            rows.extend(result.data)
+            if len(rows) == expected:
+                return rows
+            if len(result.data) != 1000:
+                raise HTTPException(503, "The complete recorded activity could not be verified.")
+        raise HTTPException(503, "The complete recorded activity could not be verified.")
+
+    @storage_errors
     def prices(self, keys):
         if not keys:
             return {}
