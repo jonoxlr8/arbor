@@ -2,7 +2,8 @@
 import { useEffect, useId, useRef, useState, type PointerEvent } from "react";
 import { AreaChart, Area, ReferenceDot, ReferenceLine, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { formatContributionMoney, formatUsdQuote } from "@/lib/contributions";
-import type { PortfolioHistory } from "@/lib/livePortfolio";
+import type { GainDisplayFx, PortfolioHistory } from "@/lib/livePortfolio";
+import { currentGainFxRate, historicalGainFxRate, usdEquivalentOfPhpGain } from "@/lib/gainDisplayFx";
 import { historyChartSeries, historyExtrema, historyRange, historyRangeStart, historyValue, portfolioPeriodGain, supportedHistoryPoints, type ChartCurrency } from "@/lib/portfolioHistory";
 import { portfolioGraphState } from "@/lib/portfolioGraphState";
 import { roundedStepAfter } from "./roundedStepCurve";
@@ -14,9 +15,9 @@ const money = (value: string, currency: ChartCurrency) => currency === "USD" ? f
 const dateLabel = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString("en-PH", {
   month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
 });
-const signedGain = (amount: string) => {
+const signedGain = (amount: string, currency: ChartCurrency = "PHP") => {
   const negative = amount.startsWith("-"), zero = /^-?0(?:\.0+)?$/.test(amount);
-  return `${zero ? "" : negative ? "−" : "+"}${money(negative ? amount.slice(1) : amount, "PHP")}`;
+  return `${zero ? "" : negative ? "−" : "+"}${money(negative ? amount.slice(1) : amount, currency)}`;
 };
 const signedPercent = (percent: string | null) => percent === null ? "—" :
   /^-?0(?:\.0+)?$/.test(percent) ? "0%" : `${percent.startsWith("-") ? "−" : "+"}${Math.abs(Number(percent)).toFixed(2)}%`;
@@ -24,9 +25,9 @@ const signedPercent = (percent: string | null) => percent === null ? "—" :
 type GainTone = "positive" | "negative" | "zero" | "unknown";
 type GainDisplay = { amount: string; percentage: string | null; text: string; tone: GainTone };
 const unavailableGain = (message: string): GainDisplay => ({ amount: message, percentage: null, text: message, tone: "unknown" });
-const displayedGain = (gain: string, pct: string | null | undefined): GainDisplay => {
+const displayedGain = (gain: string, pct: string | null | undefined, currency: ChartCurrency = "PHP"): GainDisplay => {
   const tone = /^-?0(?:\.0+)?$/.test(gain) ? "zero" : gain.startsWith("-") ? "negative" : "positive";
-  const amount = signedGain(gain), percentage = pct == null ? null : signedPercent(pct);
+  const amount = signedGain(gain, currency), percentage = pct == null ? null : signedPercent(pct);
   return { amount, percentage, text: `${amount}${percentage ? ` · ${percentage}` : ""}`, tone };
 };
 export function historicalGainDisplay(point: PortfolioHistory) {
@@ -37,9 +38,11 @@ export function historicalGainDisplay(point: PortfolioHistory) {
 }
 
 type Props = { history: PortfolioHistory[]; knownValue?: string; currentUsdValue?: string | null;
+  currentDisplayFx?: GainDisplayFx | null;
   complete?: boolean; holdingsCount?: number; compact?: boolean;
   currentRecordedCostPhp?: string | null; currentGainPhp?: string | null; currentGainPercentage?: string | null };
 export default function PortfolioHistoryChart({ history, knownValue = "0", currentUsdValue = null,
+  currentDisplayFx = null,
   complete = true, holdingsCount = history.length, compact = false,
   currentRecordedCostPhp = null, currentGainPhp = null, currentGainPercentage = null }: Props) {
   const gradient = useId(), section = useRef<HTMLElement>(null), plot = useRef<HTMLDivElement>(null);
@@ -64,9 +67,12 @@ export default function PortfolioHistoryChart({ history, knownValue = "0", curre
   const periodAmount = holdingsCount ? portfolioPeriodGain({ history: state.history, days: range,
     currentGainPhp, currentComplete: complete && currentRecordedCostPhp != null && currentGainPhp != null,
     selected: active }) : null;
+  const displayPeriodAmount = currency === "USD" && periodAmount !== null ?
+    usdEquivalentOfPhpGain(periodAmount, active ? historicalGainFxRate(active) : currentGainFxRate(currentDisplayFx)) : periodAmount;
   const selectedGain = !holdingsCount ? null :
     periodAmount === null ? unavailableGain("Period gain/loss unavailable") :
-      displayedGain(periodAmount, range === 0 ? (active ? active.recorded_gain_percentage : currentGainPercentage) : null);
+    displayPeriodAmount === null ? unavailableGain("USD gain equivalent unavailable") :
+      displayedGain(displayPeriodAmount, range === 0 ? (active ? active.recorded_gain_percentage : currentGainPercentage) : null, currency);
   const idlePeriodAmount = portfolioPeriodGain({ history: state.history, days: range,
     currentGainPhp, currentComplete: complete && currentRecordedCostPhp != null && currentGainPhp != null });
   // Keep the line stable while scrubbing; the marker and headline reflect the selected point.
@@ -150,10 +156,10 @@ export default function PortfolioHistoryChart({ history, knownValue = "0", curre
           title={currency === "PHP" && (!complete || currentUsdValue == null) ? "USD view needs a complete portfolio and a valid USD/PHP rate" : undefined}
           onClick={() => changeCurrency(currency === "PHP" ? "USD" : "PHP")}>{currency} <span aria-hidden="true">⇄</span></button>
       </div>
-      {selectedGain && <div className="chart-gain" data-gain={selectedGain.tone} aria-label={`${rangeNames[range]} gain/loss against recorded PHP cost: ${selectedGain.text}`}>
-        <span className="sr-only">{`${rangeNames[range]} gain/loss against recorded cost`}</span><span>{selectedGain.amount}</span>
+      {selectedGain && <div className="chart-gain" data-gain={selectedGain.tone} aria-label={`${rangeNames[range]} ${currency === "USD" ? "USD equivalent of PHP gain" : "gain/loss against recorded PHP cost"}: ${selectedGain.text}${currency === "USD" && selectedGain.percentage ? "; percentage based on PHP recorded cost" : ""}`}>
+        <span className="sr-only">{`${rangeNames[range]} gain/loss against recorded PHP cost`}</span><span>{selectedGain.amount}</span>
         {selectedGain.percentage && <strong>{selectedGain.percentage}</strong>}
-        {currency === "USD" && <span className="chart-gain-currency" aria-hidden="true">PHP gain</span>}
+        {currency === "USD" && <span className="chart-gain-currency">USD equivalent of PHP gain{selectedGain.percentage ? " · PHP-based %" : ""}</span>}
       </div>}
       <div className="chart-selected-date" data-selected={active ? "true" : "false"} aria-hidden={!active}>
         {active ? <><time dateTime={active.day}>{dateLabel(active.day)}</time>

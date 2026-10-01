@@ -31,7 +31,27 @@ async function clear() { await unlink(stateFile).catch(error => { if (error.code
 /** Callback receives an isolated test-account page/context, never a personal profile.
  * Do not enable traces, HAR, console/network logging or video around auth.
  */
-export async function withAuthenticatedBrowser(check, {headed = false} = {}) {
+export async function withAuthenticatedBrowser(check, {headed = false, syntheticFixture} = {}) {
+  // Local, fully intercepted UI fixtures never read or cache real credentials.
+  // This qualifies UI behavior, not the hosted Auth service. SQL/REST security
+  // qualification is separate. No production app imports this test-only branch.
+  if (syntheticFixture) {
+    const origin = new URL(syntheticFixture.baseURL);
+    if (!['127.0.0.1', 'localhost'].includes(origin.hostname) || origin.protocol !== 'http:') {
+      throw new SetupError('Synthetic browser fixtures require a loopback HTTP build.');
+    }
+    const { chromium } = await import('playwright');
+    const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/ARBOR_E2E_|SUPABASE|DEBUG/.test(key)));
+    const browser = await chromium.launch({channel:'chrome', headless:!headed, env});
+    try {
+      const context = await browser.newContext({baseURL:origin.origin});
+      await context.route('**/*', route => new URL(route.request().url()).origin === origin.origin ? route.continue() : route.abort());
+      await syntheticFixture.setup(context);
+      const page = await context.newPage();
+      await check({page, context, browser, reused:false});
+    } finally { await browser.close(); }
+    return;
+  }
   const config = await loadConfiguration(); // Fail before any browser/network call.
   if (process.env.DEBUG || process.env.PWDEBUG || process.env.NODE_DEBUG) {
     throw new SetupError("Unset DEBUG, PWDEBUG and NODE_DEBUG for authenticated E2E runs; diagnostic logs may expose session data.");

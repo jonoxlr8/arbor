@@ -151,7 +151,10 @@
 .chart-gain[data-gain="negative"] { color:var(--v3-negative); }
 .chart-gain[data-gain="zero"] { color:var(--foreground); }
 .chart-gain > strong { padding:2px 7px; border-radius:6px; background:color-mix(in srgb,currentColor 11%,transparent); font-size:15px; }
-.chart-gain .chart-gain-currency { order:-1; align-self:center; color:var(--v3-muted); font-size:11px; font-weight:500; }
+.portfolio-chart[data-currency="USD"] .chart-gain { flex-wrap:wrap; }
+.portfolio-chart[data-currency="USD"] .chart-gain > span:not(.sr-only):not(.chart-gain-currency),
+.portfolio-chart[data-currency="USD"] .chart-gain > strong { white-space:nowrap; flex-shrink:0; }
+.chart-gain .chart-gain-currency { order:1; flex-basis:100%; color:var(--v3-muted); font-size:11px; font-weight:500; }
 .chart-selected-date { display:block; min-height:18px; margin-top:4px; color:var(--v3-muted); font-size:13px; line-height:18px; }
 .compact-chart .chart-gain { font-size:14px; }
 .compact-chart .chart-gain > strong { font-size:12px; }

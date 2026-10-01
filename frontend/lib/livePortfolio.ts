@@ -40,7 +40,10 @@ export type InvestmentEntryDraft = { provider: string; product_id: string; inves
 export type RecordedEntryResult = { entry_id: string; holding_id: string; replayed: boolean };
 export const supportsManualValue = (h: { product_id: string }) => ["gcash_global_equity", "gcash_technology", "gcash_defensive", "dragonfi_global_equity", "dragonfi_technology", "dragonfi_defensive"].includes(h.product_id);
 export const validManualValue = (v: string) => /^\d{1,16}(?:\.\d{1,2})?$/.test(v) && /[1-9]/.test(v);
+export type GainDisplayFx = { rate: string; source: "exchangerate_api" | "captured_snapshot";
+  valuation_date: string; as_of: string | null; valued_at?: string; captured_at?: string };
 export type PortfolioHistory = { day: string; value_php: string; captured_at: string | null;
+  display_fx?: GainDisplayFx | null;
   origin?: "observed" | "reconstructed"; segment?: number; earliest_recorded_date?: string | null;
   source_dates?: { price_key: string; source: "bsp" | "marketstack" | "coinranking" | "toap"; observation_date: string;
     observed_at?: string; fetched_at?: string; provenance?: string; rate?: string; kind?: "nav";
@@ -55,6 +58,7 @@ export type LivePortfolioData = {
   data_sources?: string[];
   known_value_php: string; total_value_php: string | null; complete: boolean; unavailable_count: number; stale_count: number;
   total_value_usd?: string | null;
+  display_fx?: GainDisplayFx | null;
   provider_values_php: Record<string, string>; valued_at: string;
   sleeves: { sleeve: Sleeve; known_value_php: string; current_percentage: string | null; target_percentage: number | null; difference_pp: string | null }[];
 };

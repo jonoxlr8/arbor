@@ -106,6 +106,7 @@ function HomePortfolio({ userId, onLoaded }: { userId: string; onLoaded: (portfo
   return <section className="home-metric home-portfolio" aria-label="Portfolio overview"><header><h2>{portfolio.holdings.length ? portfolio.complete ? "Portfolio value" : "Known portfolio value" : "Portfolio"}</h2><a className="entry-link" href="#portfolio" aria-label="View portfolio">↗</a></header>
     {portfolio.holdings.length ? <>
       <PortfolioHistoryChart history={portfolio.history} knownValue={portfolio.known_value_php} currentUsdValue={portfolio.total_value_usd}
+        currentDisplayFx={portfolio.display_fx}
         currentRecordedCostPhp={portfolio.recorded_cost_php} currentGainPhp={portfolio.recorded_gain_php} currentGainPercentage={portfolio.recorded_gain_percentage}
         complete={portfolio.complete} holdingsCount={portfolio.holdings.length} compact/>
       {(!portfolio.complete || portfolio.stale_count > 0) && <a className="entry-link" href="#portfolio">{!portfolio.complete ? "Some values are unavailable · Review →" : "Cached values · Check dates →"}</a>}
