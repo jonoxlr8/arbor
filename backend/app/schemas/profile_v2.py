@@ -19,10 +19,10 @@ class ProfileV2Answers(DomainModel):
     emergency_savings: EmergencySavings
     high_interest_debt: HighInterestDebt
     goal_target: Goal | None = None
-    current_portfolio_value: Money
-    monthly_investment: Money
+    current_portfolio_value: Money | None = None
+    monthly_investment: Money | None = None
     horizon: HorizonBucket
-    risk_response: RiskResponse
+    risk_response: RiskResponse | None = None
 
 
 class ProfileV2Data(ProfileV2Answers):
@@ -49,6 +49,8 @@ class ProfileV2Data(ProfileV2Answers):
 class ProfileV2Create(ProfileV2Data):
     @model_validator(mode="after")
     def selected_path(self):
+        if self.risk_response is None and self.selected_approach is None:
+            raise ValueError("Choose a plan explicitly when no risk assessment is supplied")
         if self.selected_approach is not None:
             if (self.horizon == HorizonBucket.LESS_THAN_3_YEARS) != (self.selected_approach == "short_term"):
                 raise ValueError("The selected approach must match the planning path")

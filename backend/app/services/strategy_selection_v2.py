@@ -26,20 +26,21 @@ class HorizonBucket(str, Enum):
 
 
 class SelectionReason(str, Enum):
+    NOT_ASSESSED = "not_assessed"
     SHORT_TERM_PATH = "short_term_path"
     HORIZON_CAPPED = "horizon_capped"
     REQUESTED_STRATEGY_RETAINED = "requested_strategy_retained"
 
 
 class StrategySelectionInputs(DomainModel):
-    risk_response: RiskResponse
+    risk_response: RiskResponse | None
     horizon: HorizonBucket
 
 
 class StrategySelectionResult(StrategySelectionInputs):
-    requested_strategy: StrategyType
+    requested_strategy: StrategyType | None
     horizon_maximum_strategy: StrategyType | None
-    strategy_path: StrategyPath
+    strategy_path: StrategyPath | None
 
     @computed_field
     @property
@@ -51,17 +52,19 @@ class StrategySelectionResult(StrategySelectionInputs):
     @computed_field
     @property
     def is_short_term(self) -> bool:
-        return isinstance(self.strategy_path, ShortTermPath)
+        return self.horizon == HorizonBucket.LESS_THAN_3_YEARS
 
     @computed_field
     @property
     def cap_applied(self) -> bool:
         # Short term is a different path, not a reduction to a long-term tier.
-        return not self.is_short_term and self.selected_strategy != self.requested_strategy
+        return self.requested_strategy is not None and not self.is_short_term and self.selected_strategy != self.requested_strategy
 
     @computed_field
     @property
     def reason(self) -> SelectionReason:
+        if self.risk_response is None:
+            return SelectionReason.NOT_ASSESSED
         if self.is_short_term:
             return SelectionReason.SHORT_TERM_PATH
         if self.cap_applied:
@@ -90,7 +93,7 @@ def _equity_weight(strategy: StrategyType) -> int:
     return get_base_strategy(strategy).allocation.weight(AssetRole.GLOBAL_EQUITY)
 
 
-def select_strategy(risk_response: RiskResponse, horizon: HorizonBucket) -> StrategySelectionResult:
+def select_strategy(risk_response: RiskResponse | None, horizon: HorizonBucket) -> StrategySelectionResult:
     """Validate both answers, then retain or reduce requested long-term risk.
 
     Buckets are explicit inputs; numeric boundary classification is not inferred.
@@ -98,6 +101,9 @@ def select_strategy(risk_response: RiskResponse, horizon: HorizonBucket) -> Stra
     maximum, selected strategy, portfolio or projection assumption.
     """
     inputs = StrategySelectionInputs(risk_response=risk_response, horizon=horizon)
+    if inputs.risk_response is None:
+        return StrategySelectionResult(risk_response=None, horizon=inputs.horizon, requested_strategy=None,
+            horizon_maximum_strategy=_HORIZON_MAXIMUMS[inputs.horizon], strategy_path=None)
     requested = _REQUESTED_STRATEGIES[inputs.risk_response]
     maximum = _HORIZON_MAXIMUMS[inputs.horizon]
     if maximum is None:

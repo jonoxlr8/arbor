@@ -74,7 +74,7 @@ def restore_profile_v2(row: dict) -> dict:
         return ProfileV2Response(profile=profile, plan=plan, revision=revision,
             historical_plan=state.historical_plan if state else None).model_dump(mode="json")
 
-    if state:
+    if state or profile.risk_response is None:
         selection = select_strategy(profile.risk_response, profile.horizon)
         readiness = evaluate_readiness(profile.emergency_savings, profile.high_interest_debt)
         common = dict(selection=selection, readiness=readiness,

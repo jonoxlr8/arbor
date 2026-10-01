@@ -80,6 +80,11 @@ def test_invest_more_never_adds_extra_risk(horizon):
 def test_invalid_inputs_are_rejected(field, value):
     inputs = {"risk_response": "hold", "horizon": "ten_plus_years"}
     inputs[field] = value
+    if field == "risk_response" and value is None:
+        result = select_strategy(**inputs)
+        assert result.requested_strategy is None
+        assert result.reason == "not_assessed"
+        return
     with pytest.raises(ValidationError):
         select_strategy(**inputs)
 

@@ -150,6 +150,8 @@ def explain(c: V2ChatContext, question: str, intent: str) -> str:
         return "On Home, open Invest this month. Your current sleeve values come from recorded holdings when available; otherwise enter them explicitly. You choose an investment for each target sleeve. Arbor calculates amounts from target gaps and checks known minimums—not an instruction to trade. I cannot calculate a current gap from targets alone or see an unsaved amount edited in the monthly view. Nothing is invested or saved as a transaction."
     if intent == "readiness": return readiness(c)
     if intent == "assessment":
+        if c.assessment is None:
+            return "No market-drop reaction or volatility assessment is saved. " + identity(c)
         check = c.horizon_assessment.value if c.horizon_assessment else "a short-term path"
         return f"Your recorded reaction corresponds to {c.assessment.value} volatility comfort. The informational horizon check returned {check} for {HORIZONS[c.horizon]}. " + identity(c)
     if intent == "preferences":
@@ -179,7 +181,9 @@ def explain(c: V2ChatContext, question: str, intent: str) -> str:
         introduction = ("You chose these investments: " + "; ".join(chosen) + ". Your targets do not change when you change provider. "
                         "Open Portfolio → Ways to invest to review choices and official provider links. Arbor does not rank providers.") if chosen else IMPLEMENTATION
         return introduction + ("\n\nCatalog facts, not personalized selections:\n" + facts if facts else " Supported non-Bitcoin options are GFunds, DragonFi and Gotrade. Bitcoin choices are independently GCrypto, Coins.ph or PDAX; none is selected automatically. These choices do not change your plan targets.") + "\n\nCatalog information is static; confirm current terms in the provider app. Arbor does not place trades."
-    assumptions = f"Saved horizon: {HORIZONS[c.horizon]}. Starting balance assumption: {c.currency} {c.starting_assumption:,.2f}. Monthly contribution assumption: {c.currency} {c.monthly_assumption:,.2f}. " + (f"Goal in today’s {c.currency}: {c.goal:,.2f}." if c.goal is not None else "No goal amount is saved.")
+    starting = f"{c.currency} {c.starting_assumption:,.2f}" if c.starting_assumption is not None else "Not set yet"
+    monthly = f"{c.currency} {c.monthly_assumption:,.2f}" if c.monthly_assumption is not None else "Not set yet"
+    assumptions = f"Saved horizon: {HORIZONS[c.horizon]}. Starting balance assumption: {starting}. Monthly contribution assumption: {monthly}. " + (f"Goal in nominal future {c.currency}: {c.goal:,.2f}." if c.goal is not None else "No goal amount is saved.")
     if intent == "assumptions": return assumptions + " These are planning inputs, not current portfolio values or transactions."
     if intent == "projection":
         if c.path == "short_term": return "Your short-term path has no long-term planning return or allocation. I won’t invent a projection or convert it to Conservative. " + assumptions

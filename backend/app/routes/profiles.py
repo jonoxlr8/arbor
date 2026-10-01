@@ -10,8 +10,8 @@ from app.auth import get_current_user_id
 from app.config import live_portfolio_enabled
 from app.database import get_authenticated_client
 from app.schemas.profile import ProfileCreate
-from app.schemas.profile_v2 import ProfileV2Create, ProfileV2Edit, ProfileV2Answers
-from app.schemas.validation import Goal, MAX_MONEY
+from app.schemas.profile_v2 import ProfileV2Create, ProfileV2Edit, ProfileV2Answers, ProfileV2Data
+from app.schemas.validation import Goal, Money, MAX_MONEY
 from app.services.strategy_v2 import DomainModel
 from app.services.profile_edit_v2 import prepare_profile_edit
 from app.services.profile_v2 import profile_v2_row, restore_profile_v2
@@ -62,6 +62,8 @@ def preview_future_projection(request: FutureProjectionRequest,
     monthly = request.monthly_contribution_php
     if monthly is None:
         monthly = saved["profile"]["monthly_investment"]
+    if monthly is None:
+        raise HTTPException(422, "Set a monthly contribution before projecting, or enter a scenario amount.")
     try:
         return future_value(Decimal(str(portfolio.known_value_php)), Decimal(str(monthly)),
                             plan["selected_strategy"], manila_today(),
@@ -107,6 +109,43 @@ def update_primary_goal(request: GoalUpdate, user_id: str = Depends(get_current_
         raise
     except Exception:
         raise HTTPException(503, "We couldn’t save your goal. Please retry.") from None
+
+
+class BudgetUpdate(DomainModel):
+    monthly_investment: Money | None
+    expected_revision: Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{64}$")]
+
+
+@router.put("/v2/budget")
+def update_monthly_budget(request: BudgetUpdate, user_id: str = Depends(get_current_user_id),
+                        authorization: str | None = Header(default=None)):
+    """Owner-scoped persistent monthly budget; null is unset, zero is an explicit answer."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(401, "Sign in to edit your budget.")
+    client = get_authenticated_client(authorization.split(" ", 1)[1])
+    try:
+        found = client.table("profiles").select("*").eq("user_id", user_id).limit(1).execute().data
+        if not found:
+            raise HTTPException(404, "Profile not found")
+        original = found[0]
+        if original.get("strategy_engine_version") != "2.0":
+            raise HTTPException(409, "A V2 profile is required.")
+        current = restore_profile_v2(original)
+        if request.expected_revision != current["revision"]:
+            raise HTTPException(409, "Your budget changed. Reload and try again.")
+        inputs = dict(original["v2_inputs"])
+        state = dict(inputs.get("plan_state") or {})
+        state["revision_nonce"] = uuid4().hex
+        inputs["plan_state"] = state
+        updated = client.table("profiles").update({"monthly_investment": request.monthly_investment, "v2_inputs": inputs}).eq(
+            "user_id", user_id).eq("v2_inputs", json.dumps(original["v2_inputs"])).execute().data
+        if not updated:
+            raise HTTPException(409, "Your budget changed. Reload and try again.")
+        return restore_profile_v2(updated[0])
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(503, "We couldn’t save your budget. Please retry.") from None
 
 
 @router.get("/profiles/me")
@@ -347,7 +386,7 @@ def create_profile_v2(
 
 
 @router.post("/v2/approaches")
-def explore_approaches(profile: ProfileV2Create, user_id: str = Depends(get_current_user_id)):
+def explore_approaches(profile: ProfileV2Data, user_id: str = Depends(get_current_user_id)):
     """Assessment and equal, canonical model information; no selection or persistence."""
     from app.services.strategy_v2 import StrategyType, get_base_strategy
     from app.services.strategy_selection_v2 import select_strategy

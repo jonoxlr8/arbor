@@ -15,8 +15,8 @@ class V2ChatContext:
     plan_basis: str
     path: str
     approach: StrategyType | None
-    assessment: StrategyType
-    horizon_assessment: StrategyType | None
+    assessment: StrategyType | None
+    horizon_assessment: StrategyType | None | None
     horizon: str
     cap_applied: bool
     readiness: ReadinessState
@@ -26,8 +26,8 @@ class V2ChatContext:
     inflation_pct: Decimal
     currency: str
     goal: Decimal | None
-    starting_assumption: Decimal
-    monthly_assumption: Decimal
+    starting_assumption: Decimal | None
+    monthly_assumption: Decimal | None
     historical_requests: tuple[int, int]
     historical_effective: tuple[int, int] | None
     dormant_approach: StrategyType | None = None
@@ -56,7 +56,7 @@ def build_v2_context(saved: dict) -> V2ChatContext:
     requests = profile.get("saved_preferences", {})
     return V2ChatContext(
         plan_basis=basis, path=path, approach=approach,
-        assessment=StrategyType(plan["selection"]["requested_strategy"]),
+        assessment=StrategyType(plan["selection"]["requested_strategy"]) if plan["selection"]["requested_strategy"] else None,
         horizon_assessment=StrategyType(plan["selection"]["selected_strategy"]) if plan["selection"]["selected_strategy"] else None,
         horizon=plan["selection"]["horizon"], cap_applied=plan["selection"]["cap_applied"],
         readiness=ReadinessState(plan["readiness"]["readiness"]),
@@ -64,8 +64,8 @@ def build_v2_context(saved: dict) -> V2ChatContext:
         target=target, planning_return_pct=Decimal(str(plan["planning_return_pct"])) if path == "long_term" else None,
         inflation_pct=Decimal(str(plan["inflation_pct"])), currency=profile["currency"],
         goal=Decimal(str(profile["goal_target"])) if profile["goal_target"] is not None else None,
-        starting_assumption=Decimal(str(profile["current_portfolio_value"])),
-        monthly_assumption=Decimal(str(profile["monthly_investment"])),
+        starting_assumption=Decimal(str(profile["current_portfolio_value"])) if profile["current_portfolio_value"] is not None else None,
+        monthly_assumption=Decimal(str(profile["monthly_investment"])) if profile["monthly_investment"] is not None else None,
         historical_requests=(requests.get("technology_tilt", 0), requests.get("bitcoin", 0)),
         historical_effective=(target.weight(AssetRole.TECHNOLOGY_TILT), target.weight(AssetRole.CRYPTO))
         if basis == "historical_assessment" and target else None,
