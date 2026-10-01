@@ -186,12 +186,22 @@ class SleeveValue(DomainModel):
     difference_pp: Decimal | None
 
 
+class DisplayFx(DomainModel):
+    """Existing verified quote used by this valuation; display conversion only."""
+    rate: Decimal
+    source: Literal["exchangerate_api"]
+    as_of: datetime
+    valued_at: datetime
+    valuation_date: date
+
+
 class Portfolio(DomainModel):
     currency: Literal["PHP"] = "PHP"
     holdings: tuple[ValuedHolding, ...]
     known_value_php: Decimal
     total_value_php: Decimal | None
     total_value_usd: Decimal | None = None
+    display_fx: DisplayFx | None = None
     recorded_cost_php: Decimal | None
     recorded_gain_php: Decimal | None
     recorded_gain_percentage: Decimal | None
@@ -278,6 +288,12 @@ def _value_portfolio(holdings, market, target, now):
     recorded_gain_percentage = (recorded_gain / recorded_cost * 100 if recorded_gain is not None else None)
     return Portfolio(holdings=tuple(rows), known_value_php=total,
         total_value_php=total if complete else None, total_value_usd=total_usd,
+        display_fx=DisplayFx(rate=fx.value, source=fx.source, as_of=fx.as_of,
+                            valued_at=now, valuation_date=now.date())
+        if complete and fx_usable and getattr(fx, "verified", False) is True
+        and fx.source == "exchangerate_api" and getattr(fx, "kind", None) == "fx"
+        and getattr(fx, "currency", None) == "PHP"
+        and fx.as_of <= getattr(fx, "fetched_at", fx.as_of) else None,
         complete=complete, unavailable_count=missing,
         recorded_cost_php=recorded_cost, recorded_gain_php=recorded_gain,
         recorded_gain_percentage=recorded_gain_percentage,

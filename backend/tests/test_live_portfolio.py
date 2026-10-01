@@ -90,6 +90,33 @@ def test_current_usd_display_uses_decimal_fx_without_changing_php_cost_or_gain()
     assert valued([row], [price("btc_php", "1100000"), price("usd_php", "55", age=345601)]).total_value_usd is None
 
 
+@pytest.mark.parametrize("age,available", [(0, True), (345600, True), (345601, False), (-1, False)])
+def test_gain_display_metadata_uses_the_same_verified_fx_without_accounting_changes(age, available):
+    from app.market_data.models import ReferencePrice
+    fx = ReferencePrice(price_key="usd_php", value="55.123456789", as_of=NOW-timedelta(seconds=age),
+                        fetched_at=max(NOW, NOW-timedelta(seconds=age)), source="exchangerate_api",
+                        currency="PHP", kind="fx", verified=True)
+    row = holding("coins_btc", ".01").model_copy(update={"cost_basis_php": Decimal("10000")})
+    quotes = [price("btc_php", "1100000"), fx]
+    result = valued([row], quotes)
+    assert result.recorded_cost_php == Decimal("10000")
+    assert result.recorded_gain_php == Decimal("1000.00")
+    assert result.recorded_gain_percentage == Decimal("10")
+    if available:
+        assert result.display_fx.rate == fx.value
+        assert result.display_fx.as_of == fx.as_of
+        assert result.display_fx.valued_at == NOW
+        assert result.display_fx.valuation_date == NOW.date()
+        assert result.model_dump(mode="json")["display_fx"]["rate"] == "55.123456789"
+    else:
+        assert result.display_fx is None
+
+
+def test_gain_display_metadata_does_not_claim_unverified_fixture_fx_is_verified():
+    row = holding("coins_btc", ".01")
+    assert valued([row], [price("btc_php", "1100000"), price("usd_php", "55")]).display_fx is None
+
+
 @pytest.mark.parametrize("units", ["0", "-1", "NaN", "Infinity", "-Infinity", "1000000000000", "0.0000000000001", True])
 def test_invalid_units(units):
     with pytest.raises(ValidationError):
