@@ -13,6 +13,7 @@ import PlanImplementation from "./PlanImplementation";
 import DatedInvestmentFlow from "./DatedInvestmentFlow";
 import HoldingActivity from "./HoldingActivity";
 import InvestmentActivitySheet from "./InvestmentActivitySheet";
+import MonthlyReview from "./MonthlyReview";
 import { useAccountAccess } from "../AccountAccess";
 import PortfolioHistoryChart from "./PortfolioHistoryChart";
 import { closePortfolioSheet } from "@/lib/appNavigation";
@@ -53,6 +54,7 @@ export default function LivePortfolio({ value, userId, section = "", onPlanChang
   const [portfolio, setPortfolio] = useState<LivePortfolioData | null>(null);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
+  const [insightsOpen, setInsightsOpen] = useState(section === "allocation" || section === "insights");
   const [captureOnRead, setCaptureOnRead] = useState(section !== "ways" && section !== "history");
   const [busy, setBusy] = useState(false);
   const [historyError, setHistoryError] = useState(false);
@@ -107,7 +109,7 @@ export default function LivePortfolio({ value, userId, section = "", onPlanChang
         </button>)}</div>}
       </section>
       {value.plan.path === "long_term" && value.plan.readiness.actionable_contribution_guidance_allowed && <nav className="portfolio-secondary-actions" aria-label="Ways to invest"><a href="#portfolio/ways" data-sheet-launcher="ways">Ways to invest <span aria-hidden="true">→</span></a></nav>}
-      {plusAlignment && <details id="section-allocation" className="portfolio-insights" open={section === "allocation" || section === "insights"}><summary className="min-h-11 cursor-pointer font-semibold text-slate-900"><span className="eyebrow plus-eyebrow">Arbor Plus</span><span>Portfolio insights</span></summary><div className="pt-4">{portfolio.complete && portfolio.sleeves.some(s => s.current_percentage !== null) && <Allocation weights={portfolio.sleeves.filter(s => s.current_percentage !== null).map(s => ({role:s.sleeve, percentage_points:Number(s.current_percentage)}))} label="Current allocation"/>}<PlanAlignment portfolio={portfolio}/>{!!portfolio.holdings.length && <details className="provider-totals"><summary className="min-h-11 cursor-pointer text-sm text-slate-600">Value by provider</summary><dl className="detail-facts">{Object.entries(portfolio.provider_values_php).map(([provider, value]) => <div key={provider}><dt>{providerName(provider)}</dt><dd>{money(value)}{portfolio.holdings.some(h => h.provider === provider && h.value_php === null) ? " · incomplete" : ""}</dd></div>)}</dl></details>}</div></details>}
+      {plusAlignment && <details id="section-allocation" className="portfolio-insights" onToggle={e => setInsightsOpen(e.currentTarget.open)} open={section === "allocation" || section === "insights"}><summary className="min-h-11 cursor-pointer font-semibold text-slate-900"><span className="eyebrow plus-eyebrow">Arbor Plus</span><span>Portfolio insights</span></summary><div className="pt-4">{insightsOpen && <MonthlyReview key={`${userId}-${reload}`} userId={userId}/>}{portfolio.complete && portfolio.sleeves.some(s => s.current_percentage !== null) && <Allocation weights={portfolio.sleeves.filter(s => s.current_percentage !== null).map(s => ({role:s.sleeve, percentage_points:Number(s.current_percentage)}))} label="Current allocation"/>}<PlanAlignment portfolio={portfolio}/>{!!portfolio.holdings.length && <details className="provider-totals"><summary className="min-h-11 cursor-pointer text-sm text-slate-600">Value by provider</summary><dl className="detail-facts">{Object.entries(portfolio.provider_values_php).map(([provider, value]) => <div key={provider}><dt>{providerName(provider)}</dt><dd>{money(value)}{portfolio.holdings.some(h => h.provider === provider && h.value_php === null) ? " · incomplete" : ""}</dd></div>)}</dl></details>}</div></details>}
       {plusAlignment === false && <section className="portfolio-plus-preview"><h2 className="text-lg font-semibold text-slate-900">Understand your portfolio</h2><p className="mt-2 text-sm text-slate-600">See how your recorded holdings compare with the plan you chose with Arbor Plus.</p><a className="entry-link mt-3 inline-flex min-h-11 items-center" href="#settings/plus">Explore Arbor Plus →</a></section>}
       <nav className="portfolio-secondary-actions" aria-label="Investment activity">
         <a href="#portfolio/history" data-sheet-launcher="history">Investment activity <span aria-hidden="true">→</span></a>

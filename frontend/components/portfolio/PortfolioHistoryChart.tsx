@@ -4,6 +4,7 @@ import { AreaChart, Area, ReferenceDot, ReferenceLine, ResponsiveContainer, XAxi
 import { formatContributionMoney, formatUsdQuote } from "@/lib/contributions";
 import type { GainDisplayFx, PortfolioHistory } from "@/lib/livePortfolio";
 import { currentGainFxRate, historicalGainFxRate, usdEquivalentOfPhpGain } from "@/lib/gainDisplayFx";
+import GainInfo from "./GainInfo";
 import { historyChartSeries, historyExtrema, historyRange, historyRangeStart, historyValue, portfolioPeriodGain, supportedHistoryPoints, type ChartCurrency } from "@/lib/portfolioHistory";
 import { portfolioGraphState } from "@/lib/portfolioGraphState";
 import { roundedStepAfter } from "./roundedStepCurve";
@@ -159,7 +160,7 @@ export default function PortfolioHistoryChart({ history, knownValue = "0", curre
       {selectedGain && <div className="chart-gain" data-gain={selectedGain.tone} aria-label={`${rangeNames[range]} ${currency === "USD" ? "USD equivalent of PHP gain" : "gain/loss against recorded PHP cost"}: ${selectedGain.text}${currency === "USD" && selectedGain.percentage ? "; percentage based on PHP recorded cost" : ""}`}>
         <span className="sr-only">{`${rangeNames[range]} gain/loss against recorded PHP cost`}</span><span>{selectedGain.amount}</span>
         {selectedGain.percentage && <strong>{selectedGain.percentage}</strong>}
-        {currency === "USD" && <span className="chart-gain-currency">USD equivalent of PHP gain{selectedGain.percentage ? " · PHP-based %" : ""}</span>}
+        <GainInfo currency={currency} fx={currentDisplayFx} point={active}/>
       </div>}
       <div className="chart-selected-date" data-selected={active ? "true" : "false"} aria-hidden={!active}>
         {active ? <><time dateTime={active.day}>{dateLabel(active.day)}</time>

@@ -186,6 +186,12 @@ export function createPortfolioApi(token = getAccessToken, request: typeof fetch
         return body;
       } catch (error) { throw portfolioReadError(error); }
     },
+    async monthlyReview(userId: string, month?: string, signal?: AbortSignal) {
+      const {isMonthlyReview} = await import("./monthlyReview");
+      const body:unknown = await call(userId, `/monthly-review${month ? `?month=${encodeURIComponent(month)}` : ""}`, "GET", undefined, signal);
+      if(!isMonthlyReview(body))throw new PortfolioError("portfolio_contract");
+      return body;
+    },
     save: (userId: string, draft: HoldingDraft, id?: string) => call(userId, `/holdings${id ? `/${encodeURIComponent(id)}` : ""}`, id ? "PUT" : "POST", draft),
     remove: (userId: string, id: string) => call(userId, `/holdings/${encodeURIComponent(id)}`, "DELETE"),
     manualValue: (userId: string, id: string, value: string | null) => call(userId, `/holdings/${encodeURIComponent(id)}/manual-value`, "PUT", { manual_value_php: value }),

@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {withAuthenticatedBrowser} from './auth.mjs';
 import {mkdir} from 'node:fs/promises';
-const origin=process.env.ARBOR_REVIEW_ORIGIN ?? 'http://127.0.0.1:3118';
-const output='/tmp/arbor-usd-captures';await mkdir(output,{recursive:true});
+const origin=process.env.ARBOR_REVIEW_ORIGIN ?? 'http://127.0.0.1:3120';
+const output='/tmp/arbor-gain-info-captures';await mkdir(output,{recursive:true});
 let exportStatus=200;
 
 const exportFixture={schema_version:'1',complete:true,source_availability:{ask_usage:'table_absent'},account:{id:'00000000-0000-4000-8000-000000000001'},profile:[],legacy_holdings:[],portfolio_holdings:[],investment_entries:[],snapshots:[],history_changes:[],monthly_checkins:[],ask_usage:[],pending_recordings:[],reminder_metadata:[],export_operational_metadata:[{cooldown_until:new Date(Date.now()+60000).toISOString()}]};
@@ -94,6 +94,11 @@ await withAuthenticatedBrowser(async({page})=>{
   summaries.push({range:label,php,usd});
  }
  await chart.getByRole('button',{name:'All portfolio history',exact:true}).click();await currency().click();
+ await currency().click();
+ assert.equal(await chart.locator('.chart-gain-currency').count(),0);
+ await chart.screenshot({path:output+'/gain-php-desktop.png'});
+ const phpInfo=chart.getByLabel('About PHP gain and return');await phpInfo.focus();await page.keyboard.press('Enter');await chart.getByRole('note',{name:'PHP gain explanation'}).waitFor();assert.match(await chart.getByRole('note').textContent(),/contributions aren’t investment profit/);await chart.screenshot({path:output+'/gain-php-info-desktop.png'});await page.keyboard.press('Escape');assert.ok(await phpInfo.evaluate(el=>el===document.activeElement));
+ await currency().click();const info=()=>chart.getByLabel('About USD gain and return');await info().click();await chart.getByRole('note',{name:'USD gain explanation'}).waitFor();assert.match(await chart.getByRole('note').textContent(),/56 PHP/);assert.match(await chart.getByRole('note').textContent(),/ExchangeRate-API/);await chart.screenshot({path:output+'/gain-usd-info-desktop.png'});await page.keyboard.press('Escape');
  await page.evaluate(()=>document.fonts.ready);await chart.screenshot({path:output+'/usd-current-desktop.png',animations:'disabled'});
  const plot=chart.locator('.chart-plot');await plot.focus();await page.keyboard.press('ArrowLeft');
  assert.equal(await amount().textContent(),'+US$176.00'); // Selected captured rate50, current quote56.
@@ -104,10 +109,12 @@ await withAuthenticatedBrowser(async({page})=>{
  await page.keyboard.press('Escape');
  for(const width of [320,390,768,1024,1440,1920]){
   await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'overflow '+width);
+  await info().click();const bounds=await chart.getByRole('note').boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=width);const touch=await info().boundingBox();assert.ok(touch.width>=44&&touch.height>=44);await page.keyboard.press('Escape');
   for(const number of [amount(),chart.locator('.chart-gain > strong')])assert.equal(await number.evaluate(el=>getComputedStyle(el).whiteSpace),'nowrap');
  }
  await page.setViewportSize({width:390,height:844});await page.emulateMedia({colorScheme:'dark'});await chart.screenshot({path:output+'/usd-current-mobile-dark.png',animations:'disabled'});
  await page.screenshot({path:output+'/usd-portfolio-mobile-dark.png',fullPage:true,animations:'disabled'});
+ await info().click();await page.screenshot({path:output+'/gain-usd-info-mobile-dark.png',fullPage:true});await page.keyboard.press('Escape');await currency().click();await chart.getByLabel('About PHP gain and return').click();await page.screenshot({path:output+'/gain-php-info-mobile-dark.png',fullPage:true});await page.keyboard.press('Escape');await currency().click();
  const reload=async()=>{await page.reload();await chart.waitFor();await chart.getByRole('button',{name:'All portfolio history',exact:true}).click();await currency().click();};
  portfolio.display_fx=null;await reload();assert.equal(await amount().textContent(),'USD gain equivalent unavailable');await chart.screenshot({path:output+'/usd-missing-fx-mobile.png',animations:'disabled'});
  portfolio.display_fx={rate:'56',source:'exchangerate_api',as_of:now,valued_at:now,valuation_date:observedDay(0)};
@@ -117,5 +124,5 @@ await withAuthenticatedBrowser(async({page})=>{
  portfolio.recorded_cost_php='124800.00';portfolio.recorded_gain_php='0.00';portfolio.recorded_gain_percentage='0.00';Object.assign(portfolio.holdings[0],{cost_basis_php:'124800.00',recorded_gain_php:'0.00',recorded_gain_percentage:'0.00'});
  await reload();assert.equal(await amount().textContent(),'US$0.00');assert.equal(await chart.locator('.chart-gain > strong').textContent(),'0%');
  assert.equal(pageErrors,0);assert.equal(consoleErrors,0);assert.equal(blockedExternal,0);
- console.log(JSON.stringify({actualProductionBuild:true,syntheticOnly:true,summaries,widths:[320,390,768,1024,1440,1920],observedEndpointRate50:true,reconstructedEndpointRate56:true,positiveNegativeZeroMissingFx:true,phpPercentageUnchanged:true,keyboard:true,pageErrors,consoleErrors,unexpectedRemoteRequests:blockedExternal,hostedWrites:0,captures:output}));
+ console.log(JSON.stringify({actualProductionBuild:true,syntheticOnly:true,summaries,widths:[320,390,768,1024,1440,1920],observedEndpointRate50:true,reconstructedEndpointRate56:true,positiveNegativeZeroMissingFx:true,phpPercentageUnchanged:true,keyboard:true,tapKeyboardAccessibleInfo:true,essentialWarningsPreserved:true,pageErrors,consoleErrors,unexpectedRemoteRequests:blockedExternal,hostedWrites:0,captures:output}));
 },{syntheticFixture:{baseURL:origin,setup}});
