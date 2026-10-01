@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { FinalPlanReview } from "../components/PlanCustomization";
+import HomeBudget from "../components/app/HomeBudget";
 import HomeGoal from "../components/app/HomeGoal";
 import { AccountAccessContext } from "../components/AccountAccess";
 import type { PlanV2 } from "./types/planV2";
@@ -46,4 +48,14 @@ test("only the entitled projection is marked Arbor Plus; basic goal progress is 
   assert.doesNotMatch(plus, /<section class="home-goal"[^>]*>\s*<p class="eyebrow plus-eyebrow"/);
   const free = markup(plan, holdings("0"));
   assert.doesNotMatch(free, /class="eyebrow plus-eyebrow"/);
+});
+
+test("unset budget and explicit zero render distinctly in Home and final review", () => {
+  for (const amount of [null, 0]) {
+    const value = {...plan, profile:{...plan.profile, monthly_investment:amount}, plan:{...plan.plan, path:"short_term"}} as PlanV2;
+    const budget = renderToStaticMarkup(createElement(HomeBudget,{value}));
+    const review = renderToStaticMarkup(createElement(FinalPlanReview,{value}));
+    assert.match(budget, amount === null ? /Not set yet/ : /₱0/);
+    assert.match(review, amount === null ? /Not set yet/ : /₱0/);
+  }
 });

@@ -27,19 +27,19 @@ export function InvestingProfileSummary({ input, assessment }: { input: ProfileV
   return <section aria-labelledby="investing-profile-heading">
     <p className="choice-eyebrow">A little clarity about you</p>
     <h2 id="investing-profile-heading" className="choice-heading">Your investing profile</h2>
-    <div className="profile-assessment"><span className="profile-orbit" aria-hidden="true"><ArborIdentityIcon glyph="globe"/></span><strong>{PROFILE_HEADLINE[assessment.requested_strategy]}</strong><p>{PROFILE_DESCRIPTION[assessment.requested_strategy]}</p></div>
+    <div className="profile-assessment"><span className="profile-orbit" aria-hidden="true"><ArborIdentityIcon glyph="globe"/></span><strong>{assessment.requested_strategy ? PROFILE_HEADLINE[assessment.requested_strategy] : "Choose the approach that fits you"}</strong><p>{assessment.requested_strategy ? PROFILE_DESCRIPTION[assessment.requested_strategy] : "Compare the models and confirm your own plan. No volatility assessment has been inferred."}</p></div>
     <p className="choice-intro">This summary is informational. No plan has been selected for you. You choose your approach next.</p>
-    <ul className="profile-context"><li>{HORIZON_OPTIONS.find(([code]) => code === input.horizon)?.[1]}</li><li>{formatContributionMoney(String(input.monthly_investment), "PHP")} monthly plan</li><li>Goal: {input.goal_target == null ? "Not set yet" : formatContributionMoney(String(input.goal_target), "PHP")}</li></ul>
+    <ul className="profile-context"><li>{HORIZON_OPTIONS.find(([code]) => code === input.horizon)?.[1]}</li><li>{input.monthly_investment === null ? "Monthly contribution: Not set yet" : `${formatContributionMoney(String(input.monthly_investment), "PHP")} monthly plan`}</li><li>Goal: {input.goal_target == null ? "Not set yet" : formatContributionMoney(String(input.goal_target), "PHP")}</li></ul>
   </section>;
 }
 
 type Option = { strategy: Strategy; allocation: { role: string; percentage_points: number }[]; planning_return_pct: number };
-type Options = { assessment: { requested_strategy: Strategy; is_short_term: boolean }; approaches: Option[] };
+type Options = { assessment: { requested_strategy: Strategy | null; is_short_term: boolean }; approaches: Option[] };
 export function validApproaches(value: unknown): value is Options {
   if (!value || typeof value !== "object") return false;
   const v = value as Options;
   const names = ["Conservative", "Balanced", "Growth", "Aggressive"];
-  return !!v.assessment && names.includes(v.assessment.requested_strategy) && typeof v.assessment.is_short_term === "boolean" &&
+  return !!v.assessment && (v.assessment.requested_strategy === null || names.includes(v.assessment.requested_strategy)) && typeof v.assessment.is_short_term === "boolean" &&
     Array.isArray(v.approaches) && v.approaches.length === 4 &&
     v.approaches.every(o => o && names.includes(o.strategy) && Number.isFinite(o.planning_return_pct) && Array.isArray(o.allocation) && o.allocation.length === 2 &&
       o.allocation.every(w => w && ["global_equity", "defensive"].includes(w.role) && Number.isInteger(w.percentage_points) && w.percentage_points >= 0 && w.percentage_points <= 100) && new Set(o.allocation.map(w => w.role)).size === 2 && o.allocation.reduce((sum,w)=>sum+w.percentage_points,0) === 100) && new Set(v.approaches.map(o => o.strategy)).size === 4;

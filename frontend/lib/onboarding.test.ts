@@ -7,10 +7,10 @@ import ProgressBar from "../components/ProgressBar";
 import { ONBOARDING_STEPS, EMPTY_ANSWERS, onboardingRequest, answerError, SAVINGS_OPTIONS, DEBT_OPTIONS, HORIZON_OPTIONS, RISK_OPTIONS } from "./onboardingV2";
 import { authErrorMessage } from "./authErrorMessage";
 
-test("v2 asks nine assessment questions before explicit model selection", () => {
-  assert.deepEqual(ONBOARDING_STEPS, ["full_name", "country", "goal_target", "horizon", "emergency_savings", "high_interest_debt", "current_portfolio_value", "monthly_investment", "risk_response"]);
+test("v2 asks five required questions before explicit model selection", () => {
+  assert.deepEqual(ONBOARDING_STEPS, ["full_name", "country", "horizon", "emergency_savings", "high_interest_debt"]);
   const screens = ONBOARDING_STEPS.map(field => renderToStaticMarkup(createElement(OnboardingQuestionV2, {field, value:"", onChange:() => {}})));
-  assert.match(screens[0], /your name/);
+  assert.match(screens[0], /preferred or first name/);
   assert.match(screens[1], /Where do you live/);
   assert.equal(screens.filter(html => html.includes("Where do you live")).length, 1);
   for (const html of screens) assert.doesNotMatch(html, /satellite|cap engine|requested allocation|technology percentage|bitcoin percentage|risk score|recommended|suitable/i);
@@ -46,4 +46,9 @@ test("numeric blank, negative and nonfinite values fail; zero amounts and option
 test("email-send limit remains friendly", () => {
   for (const error of [new Error("email rate limit exceeded"), {code:"over_email_send_rate_limit"}]) assert.match(authErrorMessage(error), /Too many confirmation emails/);
   assert.equal(authErrorMessage(new Error("Invalid login credentials")), "Invalid login credentials");
+});
+
+test("removed answers remain unset rather than becoming zero or a risk reaction", () => {
+  const input = onboardingRequest({...EMPTY_ANSWERS, full_name:"A", country:"Philippines", horizon:"ten_plus_years", emergency_savings:"three_to_six_months", high_interest_debt:"none"});
+  assert.equal(input.current_portfolio_value, null); assert.equal(input.monthly_investment, null); assert.equal(input.goal_target, null); assert.equal(input.risk_response, null);
 });

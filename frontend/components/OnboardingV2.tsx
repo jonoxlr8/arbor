@@ -11,9 +11,9 @@ import { onboardingEnter } from "@/lib/onboardingKeyboard";
 import ChatSection from "./dashboard/ChatSection";
 
 const QUESTIONS: Record<keyof Answers, string> = {
-  full_name: "What’s your name?", country: "Where do you live?",
+  full_name: "What’s your preferred or first name?", country: "Where do you live?",
   emergency_savings: "How much emergency savings do you have?",
-  high_interest_debt: "How is your high-interest debt?",
+  high_interest_debt: "Do you have high-interest debt, such as credit-card debt?",
   goal_target: "Do you have a goal amount in mind?",
   current_portfolio_value: "Where are you starting?",
   monthly_investment: "What could you set aside each month?",
@@ -23,7 +23,7 @@ const QUESTIONS: Record<keyof Answers, string> = {
 const HELP: Partial<Record<keyof Answers, string>> = {
   emergency_savings: "Think about how many months of essential expenses your savings could cover.",
   high_interest_debt: "For example, credit-card balances or other expensive borrowing.",
-  goal_target: "An optional amount in today’s PHP. You can choose Not yet.",
+  goal_target: "An optional amount in future PHP. You can choose Not yet.",
   current_portfolio_value: "Enter a starting amount for your plan. Starting from zero is fine. You’ll record your actual investments separately.",
   monthly_investment: "A typical monthly amount for your plan, not a commitment. Zero is fine.",
   country: "Your country sets your planning currency. This beta supports the Philippines.",
@@ -95,9 +95,8 @@ export default function OnboardingV2({ userId, onComplete, onSignOut, signingOut
         <fieldset disabled={signingOut} className="min-w-0">
           <div className="my-3 min-h-11">{step > 0 && <button type="button" className="min-h-11 text-sm font-medium text-slate-600" onClick={() => setStep(step - 1)}>← Back</button>}</div>
           <OnboardingQuestionV2 field={field} value={answers[field]} onChange={value => setAnswers(previous => ({ ...previous, [field]: value }))} />
-          {field === "goal_target" && <button type="button" onClick={() => { setAnswers(a => ({ ...a, goal_target: "" })); setStep(step + 1); }} className="mt-3 min-h-11 text-sm font-medium text-emerald-700">Not yet</button>}
           <div className="onboarding-continue"><button type="submit" disabled={!valid} className="entry-primary w-full disabled:opacity-50">
-            {step === steps.length - 1 ? "See my investing profile" : "Continue →"}
+            {step === steps.length - 1 ? "Choose my plan" : "Continue →"}
           </button></div>
         </fieldset>
       </form>

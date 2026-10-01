@@ -1,5 +1,5 @@
 import type { ExplicitCustomization, PlanV2, ProfileV2Input, Strategy } from "./types/planV2";
-import { ONBOARDING_STEPS, EMPTY_ANSWERS, onboardingRequest, SAVINGS_OPTIONS, DEBT_OPTIONS, HORIZON_OPTIONS, RISK_OPTIONS, type Answers } from "./onboardingV2";
+import { PROFILE_ANSWER_FIELDS, EMPTY_ANSWERS, onboardingRequest, SAVINGS_OPTIONS, DEBT_OPTIONS, HORIZON_OPTIONS, RISK_OPTIONS, type Answers } from "./onboardingV2";
 import { getAccessToken } from "./auth";
 import { apiBaseUrl } from "./apiConfig";
 import { boundedRequest } from "./dashboardConsistency";
@@ -10,19 +10,19 @@ import { formatPhpMoney } from "./contributions";
 export type EditInputs = Omit<ProfileV2Input, "selected_approach" | "saved_preferences" | "explicit_customization" | "implementation_choices">;
 export type EditRequest = {inputs: EditInputs; proposed_approach: Strategy | "short_term" | null; expected_revision: string; explicit_customization?: ExplicitCustomization};
 export type EditPreview = {current: PlanV2; proposed: PlanV2};
-export const EDIT_LABELS: Record<typeof ONBOARDING_STEPS[number], string> = {
+export const EDIT_LABELS: Record<typeof PROFILE_ANSWER_FIELDS[number], string> = {
   full_name:"Name", country:"Country", emergency_savings:"Emergency savings", high_interest_debt:"High-interest debt",
   goal_target:"Goal amount", current_portfolio_value:"Planning starting value", monthly_investment:"Monthly contribution",
   horizon:"Time horizon", risk_response:"Market-drop reaction",
 };
 export function editAnswers(profile: ProfileV2Input): Answers {
   const answers = {...EMPTY_ANSWERS};
-  for (const field of ONBOARDING_STEPS) answers[field] = profile[field] == null ? "" : String(profile[field]);
+  for (const field of PROFILE_ANSWER_FIELDS) answers[field] = profile[field] == null ? "" : String(profile[field]);
   return answers;
 }
 export function editInputs(answers: Answers): EditInputs {
   const input = onboardingRequest(answers);
-  return Object.fromEntries(["strategy_engine_version", "currency", ...ONBOARDING_STEPS].map(key=>[key,input[key as keyof ProfileV2Input]])) as EditInputs;
+  return Object.fromEntries(["strategy_engine_version", "currency", ...PROFILE_ANSWER_FIELDS].map(key=>[key,input[key as keyof ProfileV2Input]])) as EditInputs;
 }
 export function displayAnswer(field: string, value: unknown): string {
   if (value == null || value === "") return "Not set";

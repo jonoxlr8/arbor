@@ -12,6 +12,7 @@ import { planTargets } from "@/lib/planImplementation";
 import { recentLedgerActivity } from "@/lib/portfolioActivity";
 import InvestmentIdentity from "../InvestmentIdentity";
 import HomeGoal from "./HomeGoal";
+import HomeBudget from "./HomeBudget";
 import InvestmentActivitySheet from "../portfolio/InvestmentActivitySheet";
 import { closePortfolioSheet } from "@/lib/appNavigation";
 
@@ -55,14 +56,15 @@ export default function V2Home({ value, userId, section = "", onPlanChange }: { 
         <div className="home-history-empty"><span aria-hidden="true">◷</span><strong>Your investments.<br/>One clear view.</strong><p>{!implementationAllowed ? "Your saved profile and current path are ready to review. Tracking stays separate from your plan." : "Tracking isn’t available right now. Your chosen plan and ways to invest are ready to explore."}</p></div>
         <a className="entry-link" href="#portfolio">Explore your portfolio →</a>
       </section>}
-      <HomeGoal value={value} portfolio={portfolio} userId={userId} onPlanChange={onPlanChange} monthly={
-        <a className="home-metric home-monthly" aria-label={plusMonthly ? `Review monthly plan: ${formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP")}` : "Explore Arbor Plus monthly plan"} href="#home/monthly">
+      <HomeGoal value={value} portfolio={portfolio} userId={userId} onPlanChange={onPlanChange} monthly={<>
+        <HomeBudget value={value} userId={userId} onPlanChange={onPlanChange}/>
+        <a className="home-metric home-monthly" aria-label={plusMonthly ? `Review monthly plan: ${currentMonthly?.current?.amount_php != null || value.profile.monthly_investment != null ? formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP") : "Not set yet"}` : "Explore Arbor Plus monthly plan"} href="#home/monthly">
           <span className="eyebrow plus-eyebrow">Arbor Plus</span>
           <span className="home-monthly-heading">Monthly plan</span>
-          <span className="home-monthly-main">{plusMonthly && <strong className="home-financial-amount">{formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP")}</strong>}{plusMonthly && currentMonthly && <small className="completed-label">{currentMonthly.current ? "Recorded" : "Not recorded"} for {monthLabel(currentMonthly.month).split(" ")[0]}</small>}</span>
+          <span className="home-monthly-main">{plusMonthly && <strong className="home-financial-amount">{currentMonthly?.current?.amount_php != null || value.profile.monthly_investment != null ? formatContributionMoney(currentMonthly?.current?.amount_php ?? String(value.profile.monthly_investment),"PHP") : "Not set yet"}</strong>}{plusMonthly && currentMonthly && <small className="completed-label">{currentMonthly.current ? "Recorded" : "Not recorded"} for {monthLabel(currentMonthly.month).split(" ")[0]}</small>}</span>
           <span className="home-monthly-foot">{plusMonthly ? "Open monthly plan →" : "Explore monthly planning →"}</span>
         </a>
-      }/>
+      </>}/>
     </div>
     <div className="home-bottom"><HomeActivity error={entriesError} entries={entries}/><HomePlanContext value={value} /></div>
     </div>

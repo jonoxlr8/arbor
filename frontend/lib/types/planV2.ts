@@ -22,9 +22,9 @@ export type PreferenceResult = {
 export type ProfileV2Input = {
   strategy_engine_version: "2.0"; full_name: string; country: "Philippines"; currency: "PHP";
   emergency_savings: EmergencySavings; high_interest_debt: HighInterestDebt;
-  goal_target: number | null; current_portfolio_value: number; monthly_investment: number;
+  goal_target: number | null; current_portfolio_value: number | null; monthly_investment: number | null;
   goal_name?: string | null; goal_date?: string | null;
-  horizon: Horizon; risk_response: RiskResponse;
+  horizon: Horizon; risk_response: RiskResponse | null;
   saved_preferences?: SavedPreferences;
   selected_approach?: Strategy | "short_term" | null;
   explicit_customization?: ExplicitCustomization | null;
@@ -40,10 +40,10 @@ type PlanCommon = {
   inflation_pct: number;
   preference_result?: PreferenceResult;
   selection: {
-    risk_response: RiskResponse; horizon: Horizon; requested_strategy: Strategy;
+    risk_response: RiskResponse | null; horizon: Horizon; requested_strategy: Strategy | null;
     horizon_maximum_strategy: Strategy | null; selected_strategy: Strategy | null;
     is_short_term: boolean; cap_applied: boolean;
-    reason: "short_term_path" | "horizon_capped" | "requested_strategy_retained";
+    reason: "not_assessed" | "short_term_path" | "horizon_capped" | "requested_strategy_retained";
   };
   readiness: {
     readiness: "ready" | "getting_ready" | "foundation_first";

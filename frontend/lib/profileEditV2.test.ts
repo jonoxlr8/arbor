@@ -24,15 +24,15 @@ test("editing prefills supported inputs, retains zero and optional goal, exclude
 });
 test("editor starts unsaved with labelled prefilled questions and no automatic plan selection",()=>{
   const html=renderToStaticMarkup(createElement(InvestmentProfileEditor,{value:fixture(),userId:"fixture",onCancel:()=>{},onSaved:()=>{}}));
-  for(const text of ["Review your investment profile","Preview changes","Cancel editing","Monthly contribution","5,000","current plan remains Growth"])assert.ok(html.includes(text));
+  for(const text of ["Review your investment profile","Preview changes","Cancel editing","Emergency savings","current plan remains Growth"])assert.ok(html.includes(text));
   assert.doesNotMatch(html,/recommended for you|suitable portfolio|best plan for you|type="range"/i);
 });
 test("canonical review distinguishes answers, assessment, readiness and historical plan; no projection invented",()=>{
-  const current=fixture(), proposed=fixture();proposed.profile.monthly_investment=8000;
+  const current=fixture(), proposed=fixture();proposed.profile.horizon="five_to_ten_years";
   proposed.plan.selection.requested_strategy="Conservative";
   proposed.plan.readiness={...proposed.plan.readiness,readiness:"foundation_first",actionable_contribution_guidance_allowed:false};
   const html=renderToStaticMarkup(createElement(ProfileEditReview,{preview:{current,proposed}}));
-  for(const text of ["Nothing has been saved","5,000","8,000","Conservative","Foundation First","No saved plan-choice change","historical plan","No exact duration or projected balance"])assert.ok(html.includes(text));
+  for(const text of ["Nothing has been saved","Time horizon","Conservative","Foundation First","No saved plan-choice change","historical plan","No exact duration or projected balance"])assert.ok(html.includes(text));
   assert.equal(editSaveLabel({current,proposed}),"Save profile changes");
   proposed.profile.selected_approach="Balanced";
   assert.equal(editSaveLabel({current,proposed}),"Save changes and use Balanced as my plan");

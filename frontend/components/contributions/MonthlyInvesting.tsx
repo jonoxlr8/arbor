@@ -21,7 +21,7 @@ const emptyValues={global_equity:"0",defensive:"0",technology_tilt:"0",crypto:"0
 export default function MonthlyInvesting({value,userId,onPlanChange}:{value:PlanV2;userId:string;onPlanChange:(value:PlanV2)=>void}) {
   const access=useAccountAccess();
   const tracking=access?.value?.availability?.live_portfolio===true && access.value.features.includes("live_portfolio");
-  const [amount,setAmount]=useState(String(value.profile.monthly_investment||""));
+  const [amount,setAmount]=useState(String(value.profile.monthly_investment ?? ""));
   const [inputMode,setInputMode]=useState<""|"empty"|"manual">("");
   const [manual,setManual]=useState({...emptyValues});
   const [result,setResult]=useState<MonthlyPlan|null>(null);

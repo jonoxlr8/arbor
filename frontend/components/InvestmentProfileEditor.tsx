@@ -22,7 +22,7 @@ export function ProfileEditReview({preview}: {preview: EditPreview}) {
       {changes.length ? <dl className="mt-2 divide-y divide-slate-200">{changes.map(field=><div key={field} className="py-3 text-sm"><dt className="font-medium text-slate-900">{EDIT_LABELS[field]}</dt><dd className="mt-1 break-words text-slate-600">{displayAnswer(field,current.profile[field])} → {displayAnswer(field,proposed.profile[field])}</dd></div>)}</dl> : <p className="mt-2 text-sm text-slate-600">No profile answer changes.</p>}
     </section>
     <section className="space-y-2 text-sm text-slate-600"><h3 className="font-semibold text-slate-900">Informational assessment</h3>
-      <p>Volatility comfort: {current.plan.selection.requested_strategy} → {proposed.plan.selection.requested_strategy}</p>
+      <p>Volatility comfort: {current.plan.selection.requested_strategy ?? "Not assessed"} → {proposed.plan.selection.requested_strategy ?? "Not assessed"}</p>
       <p>Readiness: {current.plan.readiness.readiness.replaceAll("_"," ")} → {proposed.plan.readiness.readiness.replaceAll("_"," ")}</p>
       {!proposed.plan.readiness.actionable_contribution_guidance_allowed && <p>Foundation First: contribution allocations are paused. Your plan remains a preview.</p>}
       {proposed.plan.readiness.readiness==="getting_ready" && <p>Your answers flag a financial-foundation consideration. Bitcoin eligibility is paused; saved historical allocations are not rewritten.</p>}

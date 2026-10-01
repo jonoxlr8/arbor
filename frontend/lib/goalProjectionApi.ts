@@ -26,3 +26,9 @@ export async function futureProjection(userId: string, scenario: {monthly_contri
       typeof p.whole_months !== "number" || !Number.isInteger(p.whole_months) || p.whole_months < 1 || p.illustrative !== true) throw new Error("The projection response was incomplete.");
   return result as FutureProjection;
 }
+
+export async function saveBudget(userId: string, budget: {monthly_investment: number | null; expected_revision: string}): Promise<PlanV2> {
+  const result = await call(userId, "/v2/budget", budget, "PUT");
+  if (!isPlanV2(result)) throw new Error("The saved budget response was incomplete.");
+  return result;
+}

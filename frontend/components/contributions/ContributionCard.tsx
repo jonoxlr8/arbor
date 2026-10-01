@@ -14,7 +14,7 @@ const inputClass = "mt-1 min-h-12 w-full min-w-0 rounded-xl border border-slate-
 
 export default function ContributionCard({ value, userId, portfolio }: { value: PlanV2; userId: string; portfolio?: LivePortfolioData }) {
   const [mode, setMode] = useState<ContributionMode>("plan");
-  const [amount, setAmount] = useState(String(value.profile.monthly_investment || ""));
+  const [amount, setAmount] = useState(String(value.profile.monthly_investment ?? ""));
   const [holdings, setHoldings] = useState(portfolio ? portfolioValues(portfolio) : { ...EMPTY_VALUES });
   const [route, setRoute] = useState<RouteId | "">("");
   const [bitcoinProvider, setBitcoinProvider] = useState<BitcoinProvider | null>(null);

@@ -68,14 +68,16 @@ export function isPlanV2(value: unknown): value is PlanV2 {
   if (p.goal_name != null && (typeof p.goal_name !== "string" || !p.goal_name.trim() || p.goal_name.length > 80)) return false;
   if (p.goal_date != null && (typeof p.goal_date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(p.goal_date) || Number.isNaN(Date.parse(`${p.goal_date}T00:00:00Z`)))) return false;
   if (p.strategy_engine_version !== "2.0" || typeof p.full_name !== "string" || !p.full_name.trim() || p.full_name.length > 120 || p.country !== "Philippines" || p.currency !== "PHP" ||
-      !money(p.current_portfolio_value) || !money(p.monthly_investment) ||
+      !(p.current_portfolio_value === null || money(p.current_portfolio_value)) || !(p.monthly_investment === null || money(p.monthly_investment)) ||
       !(p.goal_target === null || (money(p.goal_target) && p.goal_target > 0)) ||
       !includesOption(SAVINGS_OPTIONS, p.emergency_savings) || !includesOption(DEBT_OPTIONS, p.high_interest_debt) ||
-      !includesOption(HORIZON_OPTIONS, p.horizon) || !includesOption(RISK_OPTIONS, p.risk_response)) return false;
+      !includesOption(HORIZON_OPTIONS, p.horizon) || !(p.risk_response === null || includesOption(RISK_OPTIONS, p.risk_response))) return false;
   if (plan.strategy_engine_version !== "2.0" || !finite(plan.inflation_pct) || plan.inflation_pct < 0 ||
       !object(plan.selection) || !object(plan.readiness)) return false;
   const s = plan.selection, r = plan.readiness;
-  if (s.horizon !== p.horizon || s.risk_response !== p.risk_response || !strategy(s.requested_strategy) ||
+  if (p.risk_response !== null && !strategy(s.requested_strategy)) return false;
+  if (p.risk_response === null && (plan.plan_basis !== "user_selected" || s.requested_strategy !== null || s.selected_strategy !== null || s.cap_applied !== false || s.reason !== "not_assessed")) return false;
+  if (s.horizon !== p.horizon || s.risk_response !== p.risk_response || !(s.requested_strategy === null || strategy(s.requested_strategy)) ||
       typeof s.cap_applied !== "boolean" || typeof s.is_short_term !== "boolean" ||
       !["ready", "getting_ready", "foundation_first"].includes(r.readiness as string) ||
       !["none", "readiness_caution", "foundation_first"].includes(r.message_requirement as string) ||
@@ -90,10 +92,10 @@ export function isPlanV2(value: unknown): value is PlanV2 {
   }
   if (plan.historical_allocation_preserved && (!object(value.historical_plan) || plan.plan_basis === "user_selected")) return false;
   if (plan.path === "short_term") return plan.selected_strategy === null && plan.base_allocation === null && plan.planning_return_pct === null &&
-    ((s.is_short_term && !s.cap_applied && s.selected_strategy === null && s.horizon_maximum_strategy === null && s.reason === "short_term_path") ||
+    ((s.is_short_term && !s.cap_applied && s.selected_strategy === null && s.horizon_maximum_strategy === null && ["short_term_path", "not_assessed"].includes(s.reason as string)) ||
       (!s.is_short_term && (p.selected_approach === "short_term" || plan.historical_allocation_preserved === true)));
   return plan.path === "long_term" && !s.is_short_term && strategy(plan.selected_strategy) && (plan.plan_basis === "user_selected" || plan.historical_allocation_preserved === true || s.selected_strategy === plan.selected_strategy) &&
-    strategy(s.horizon_maximum_strategy) && ["horizon_capped", "requested_strategy_retained"].includes(s.reason as string) &&
+    strategy(s.horizon_maximum_strategy) && ["not_assessed", "horizon_capped", "requested_strategy_retained"].includes(s.reason as string) &&
     finite(plan.planning_return_pct) && plan.planning_return_pct >= 0 && plan.planning_return_pct <= 100 &&
     Array.isArray(plan.base_allocation) && plan.base_allocation.length === 2 &&
     plan.base_allocation.every(w => object(w) && ["global_equity", "defensive"].includes(w.role as string) && finite(w.percentage_points) && Number.isInteger(w.percentage_points) && w.percentage_points >= 0) &&
