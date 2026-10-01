@@ -5,7 +5,7 @@ import {execFileSync} from 'node:child_process';
 import {withAuthenticatedBrowser} from './auth.mjs';
 import {mkdir} from 'node:fs/promises';
 const origin=process.env.ARBOR_REVIEW_ORIGIN ?? 'http://127.0.0.1:3120';
-const output='/tmp/arbor-gain-info-captures';await mkdir(output,{recursive:true});
+const output='/tmp/arbor-history-info-captures';await mkdir(output,{recursive:true});
 let exportStatus=200;
 
 const exportFixture={schema_version:'1',complete:true,source_availability:{ask_usage:'table_absent'},account:{id:'00000000-0000-4000-8000-000000000001'},profile:[],legacy_holdings:[],portfolio_holdings:[],investment_entries:[],snapshots:[],history_changes:[],monthly_checkins:[],ask_usage:[],pending_recordings:[],reminder_metadata:[],export_operational_metadata:[{cooldown_until:new Date(Date.now()+60000).toISOString()}]};
@@ -47,6 +47,7 @@ const setup = async context => context.route('**/*',route=>{
  if(path.endsWith('/auth/v1/token')){return json(session);}
  if(path.endsWith('/auth/v1/logout'))return json({});
  if(path.endsWith('/auth/v1/user'))return json(user);
+ if(path.endsWith('/account/lifecycle')||path.endsWith('/account/lifecycle/login'))return json({state:'active',version:0,access_allowed:true,deletion_request:null,in_flight_reminders:0,erasure_available:false});
  if(path.endsWith('/profiles/me'))return json(plan);
  if(path.endsWith('/account/export')){assert.equal(request.method(),'GET');assert.equal(url.search,'');return new Promise(resolve=>setTimeout(()=>resolve(route.fulfill({status:exportStatus,json:exportStatus===200?exportFixture:{detail:'Synthetic failure'},headers})),400));}
  if(path.endsWith('/account/entitlements'))return json({tier:'plus',status:'trial',effective_tier:'plus',private_beta:true,features:['live_portfolio','monthly_contribution_planner','monthly_checkin','future_projection','plan_alignment','ask_arbor_full'],ask_monthly_limit:null,ask_usage:null,ask_usage_available:true,availability:{live_portfolio:true,monthly_checkin:true}});
@@ -64,6 +65,7 @@ const setup = async context => context.route('**/*',route=>{
 
 portfolio.display_fx={rate:'56',source:'exchangerate_api',as_of:now,valued_at:now,valuation_date:observedDay(0)};
 for(const point of historyFixture){
+ point.earliest_recorded_date="2026-01-01";
  point.source_dates=[{price_key:'usd_php',source:'bsp',observation_date:point.day,valuation_date:point.day,rate:'56'}];
 }
 const last=historyFixture.at(-1);
@@ -96,9 +98,9 @@ await withAuthenticatedBrowser(async({page})=>{
  await chart.getByRole('button',{name:'All portfolio history',exact:true}).click();await currency().click();
  await currency().click();
  assert.equal(await chart.locator('.chart-gain-currency').count(),0);
- await chart.screenshot({path:output+'/gain-php-desktop.png'});
- const phpInfo=chart.getByLabel('About PHP gain and return');await phpInfo.focus();await page.keyboard.press('Enter');await chart.getByRole('note',{name:'PHP gain explanation'}).waitFor();assert.match(await chart.getByRole('note').textContent(),/contributions aren’t investment profit/);await chart.screenshot({path:output+'/gain-php-info-desktop.png'});await page.keyboard.press('Escape');assert.ok(await phpInfo.evaluate(el=>el===document.activeElement));
- await currency().click();const info=()=>chart.getByLabel('About USD gain and return');await info().click();await chart.getByRole('note',{name:'USD gain explanation'}).waitFor();assert.match(await chart.getByRole('note').textContent(),/56 PHP/);assert.match(await chart.getByRole('note').textContent(),/ExchangeRate-API/);await chart.screenshot({path:output+'/gain-usd-info-desktop.png'});await page.keyboard.press('Escape');
+ assert.equal(await chart.locator('.chart-usd-limitation').count(),0);await chart.screenshot({path:output+'/gain-php-desktop.png'});
+ const phpInfo=chart.getByLabel('About PHP gain and return');await phpInfo.focus();await page.keyboard.press('Enter');await chart.getByRole('note',{name:'PHP gain explanation'}).waitFor();assert.match(await chart.getByRole('note').textContent(),/contributions aren’t investment profit/);assert.match(await chart.getByRole('note').textContent(),/Complete history begins/);await chart.screenshot({path:output+'/gain-php-info-desktop.png'});await page.keyboard.press('Escape');assert.ok(await phpInfo.evaluate(el=>el===document.activeElement));
+ await currency().click();const info=()=>chart.getByLabel('About USD gain and return');await info().click();await chart.getByRole('note',{name:'USD gain explanation'}).waitFor();assert.match(await chart.getByRole('note').textContent(),/56 PHP/);assert.match(await chart.getByRole('note').textContent(),/ExchangeRate-API/);assert.match(await chart.getByRole('note').textContent(),/Complete history begins/);await chart.screenshot({path:output+'/gain-usd-info-desktop.png'});await page.keyboard.press('Escape');
  await page.evaluate(()=>document.fonts.ready);await chart.screenshot({path:output+'/usd-current-desktop.png',animations:'disabled'});
  const plot=chart.locator('.chart-plot');await plot.focus();await page.keyboard.press('ArrowLeft');
  assert.equal(await amount().textContent(),'+US$176.00'); // Selected captured rate50, current quote56.

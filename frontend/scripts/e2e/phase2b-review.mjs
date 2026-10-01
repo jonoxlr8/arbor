@@ -1002,7 +1002,9 @@ try {
       historyFixture=[historyFixture[1]];
       await page.reload();await chart().waitFor();
       await chart().getByRole('button',{name:'All portfolio history'}).click();
-      await chart().getByText('Complete history begins Aug 25, 2026. Earlier values are unavailable.').waitFor();
+      assert.equal(await chart().locator('.chart-usd-limitation').count(),0);
+      await chart().getByLabel('About PHP gain and return').click();
+      await chart().getByRole('note').getByText('Complete history begins Aug 25, 2026. Earlier values are unavailable.').waitFor();
       await capture('incomplete-earlier-coverage');
     }
     assert.equal(pageErrors,0,'browser page errors');assert.equal(consoleErrors,0,'browser console errors');assert.equal(blockedExternal,0,'unhandled external requests');

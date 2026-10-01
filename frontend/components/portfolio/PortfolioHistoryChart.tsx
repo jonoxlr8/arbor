@@ -55,7 +55,7 @@ export default function PortfolioHistoryChart({ history, knownValue = "0", curre
   const allRangePoints = historyRange(state.history, range);
   const points = supportedHistoryPoints(allRangePoints, currency);
   const earliestRecorded = state.history.find(point => point.earliest_recorded_date)?.earliest_recorded_date;
-  const coverageLimitation = range === 0 && currency === "PHP" && earliestRecorded &&
+  const coverageLimitation = range === 0 && earliestRecorded &&
     state.history[0]?.day > earliestRecorded ? `Complete history begins ${dateLabel(state.history[0].day)}. Earlier values are unavailable.` : null;
   const partialUsd = currency === "USD" && allRangePoints.length > points.length;
   const inspectable = complete && points.length > 0;
@@ -160,7 +160,10 @@ export default function PortfolioHistoryChart({ history, knownValue = "0", curre
       {selectedGain && <div className="chart-gain" data-gain={selectedGain.tone} aria-label={`${rangeNames[range]} ${currency === "USD" ? "USD equivalent of PHP gain" : "gain/loss against recorded PHP cost"}: ${selectedGain.text}${currency === "USD" && selectedGain.percentage ? "; percentage based on PHP recorded cost" : ""}`}>
         <span className="sr-only">{`${rangeNames[range]} gain/loss against recorded PHP cost`}</span><span>{selectedGain.amount}</span>
         {selectedGain.percentage && <strong>{selectedGain.percentage}</strong>}
-        <GainInfo currency={currency} fx={currentDisplayFx} point={active}/>
+        <GainInfo currency={currency} fx={currentDisplayFx} point={active} coverage={[
+          ...(coverageLimitation ? [coverageLimitation] : []),
+          ...(partialUsd && points.length ? [`USD history from ${dateLabel(points[0].day)}. Some historical dates lack approved FX or captured FX context. Missing dates are not converted using today's rate.`] : []),
+        ]}/>
       </div>}
       <div className="chart-selected-date" data-selected={active ? "true" : "false"} aria-hidden={!active}>
         {active ? <><time dateTime={active.day}>{dateLabel(active.day)}</time>
@@ -168,8 +171,6 @@ export default function PortfolioHistoryChart({ history, knownValue = "0", curre
       </div>
     </div>
     {status && <p className="chart-status" role="status">{status}</p>}
-    {coverageLimitation && <p className="chart-usd-limitation" role="status">{coverageLimitation}</p>}
-    {partialUsd && !!points.length && <p className="chart-usd-limitation" role="status">USD history from {dateLabel(points[0].day)}<span className="sr-only">. Some historical dates lack approved FX or captured FX context. Missing dates are not converted using today&apos;s rate.</span></p>}
     <div ref={plot} className="chart-plot min-w-0" tabIndex={inspectable ? 0 : undefined} role={inspectable ? "group" : undefined}
       aria-label={inspectable ? `Inspect ${points.length} historical portfolio values. Use left and right arrow keys.` : undefined}
       aria-describedby={active ? `${gradient}-headline` : undefined}
