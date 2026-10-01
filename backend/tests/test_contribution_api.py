@@ -105,10 +105,10 @@ def test_ibkr_crypto_eligibility(client, path, eligible, product):
 
 def test_partial_minimum_and_exact_decimals(client):
     result = client.post(PATHS[1], json=payload(risk="sell_all", tech=0, btc=0,
-        amount=1200, values=(3300, 5500, 0, 0))).json()
+        amount=800, values=(3360, 5440, 0, 0))).json()
     assert result["status"] == "partial"
-    assert result["invested_amount"] == "500" and result["unallocated_amount"] == "700"
-    assert result["blocked_allocations"][0]["minimum"]["amount_needed_to_minimum"] == "300"
+    assert result["invested_amount"] == "320" and result["unallocated_amount"] == "480"
+    assert result["blocked_allocations"][0]["minimum"]["amount_needed_to_minimum"] == "20"
     body = payload(amount="12345.67890123456789", values=(0, 0, 0, 0), route="dragonfi")
     result = client.post(PATHS[1], json=body).json()
     assert result["contribution_amount"] == "12345.67890123456789"

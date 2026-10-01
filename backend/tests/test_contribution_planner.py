@@ -74,8 +74,8 @@ def test_allocation_matrix(route, risk, tech, btc, values):
 def test_locked_multi_deficit_example():
     result = checked(make_request())
     assert [(row.implementation.sleeve, row.allocated_amount) for row in result.allocations] == [
-        ("global_equity", 7000), ("technology_tilt", 2000), ("crypto", 2000), ("defensive", 1000)]
-    assert result.invested_amount == 12000 and result.status == "invest"
+        ("global_equity", 7000), ("technology_tilt", 2000), ("defensive", 1000), ("crypto", 2000)]
+    assert result.invested_amount == 10000 and result.verify_minimum_amount == 2000 and result.status == "partial"
     assert result.unallocated_amount == 0
 
 
@@ -109,17 +109,17 @@ def test_deficit_tie_order(first, second):
 
 def test_blocked_global_does_not_turn_into_overweight_residual():
     req = make_request(route="gcash", risk="sell_all", tech=0, btc=0,
-                       amount=1200, values=(3300, 5500, 0, 0))
+                       amount=800, values=(3360, 5440, 0, 0))
     result = checked(req)
-    assert [(row.implementation.sleeve, row.allocated_amount) for row in result.allocations] == [("defensive", 500)]
-    assert result.unallocated_amount == 700 and result.status == "partial"
+    assert [(row.implementation.sleeve, row.allocated_amount) for row in result.allocations] == [("defensive", 320)]
+    assert result.unallocated_amount == 480 and result.status == "partial"
     blocked = result.blocked_allocations[0]
-    assert blocked.candidate_amount == 700 and blocked.minimum.applicable_minimum == 1000
-    assert blocked.minimum.amount_needed_to_minimum == 300
+    assert blocked.candidate_amount == 480 and blocked.minimum.applicable_minimum == 500
+    assert blocked.minimum.amount_needed_to_minimum == 20
     # 3Q-A's single-product behavior is intentionally unchanged.
     single = recommend_next_contribution(req)
     assert single.action == "invest" and single.selected.sleeve == "global_equity"
-    assert single.recommended_amount == 1200
+    assert single.recommended_amount == 800
 
 
 def test_below_all_minimums():
@@ -129,13 +129,15 @@ def test_below_all_minimums():
     assert len(result.blocked_allocations) == 2
 
 
-@pytest.mark.parametrize("owned,invested", [((), 0), (("gotrade_vt",), 0), (("gcash_global_equity",), 500)])
+@pytest.mark.parametrize("owned,invested", [((), 500), (("gotrade_vt",), 500), (("gcash_global_equity",), 0)])
 def test_product_ownership_minimums(owned, invested):
     result = checked(make_request(route="gcash", risk="continue_investing", tech=0, btc=0,
                                   amount=500, values=(0, 0, 0, 0), owned=owned))
     assert result.invested_amount == invested
     row = (result.allocations or result.blocked_allocations)[0]
-    assert row.minimum.applicable_minimum == (500 if invested else 1000)
+    assert row.minimum.applicable_minimum == (500 if invested else None)
+    assert row.minimum.status == ("ready" if invested else "verify_minimum")
+    assert result.verify_minimum_amount == (0 if invested else 500)
 
 
 @pytest.mark.parametrize("route,owned", [("ibkr", ()), ("dragonfi", ("dragonfi_global_equity",))])
@@ -167,14 +169,14 @@ def test_confirmed_deficits_precede_uncertain_not_overweight_sleeves(route):
     result = checked(make_request(route=route))
     if route == "gotrade":
         assert [(row.implementation.sleeve, row.allocated_amount) for row in result.allocations] == [
-            ("global_equity", 7000), ("technology_tilt", 2000), ("crypto", 2000), ("defensive", 1000)]
-        assert result.invested_amount == 12000 and result.verify_minimum_amount == 0
-        assert result.status == "invest"
-    else:
-        assert result.allocations[0].implementation.sleeve == "crypto"
-        assert result.allocations[0].allocated_amount == 2000
-        assert result.invested_amount == 2000 and result.verify_minimum_amount == 10000
+            ("global_equity", 7000), ("technology_tilt", 2000), ("defensive", 1000), ("crypto", 2000)]
+        assert result.invested_amount == 10000 and result.verify_minimum_amount == 2000
         assert result.status == "partial"
+    else:
+        assert result.allocations[0].implementation.sleeve == "global_equity"
+        assert result.allocations[0].allocated_amount == 7000
+        assert result.invested_amount == 0 and result.verify_minimum_amount == 12000
+        assert result.status == "wait"
     result = checked(make_request(route=route, amount=15000, values=(50000, 20000, 10000, 5000)))
     assert [row.implementation.sleeve for row in result.allocations] == ["global_equity"]
 
@@ -190,11 +192,11 @@ def test_crypto_routing(route, eligible, product):
     row = result.allocations[0]
     assert row.implementation.product.product_id == product
     assert row.allocated_amount == 1000
-    if product in {"gcrypto_btc", "ibkr_btc"}:
+    if product in {"gcrypto_btc", "coins_btc", "ibkr_btc"}:
         assert row.minimum.status == "verify_minimum"
     if product == "gcrypto_btc":
-        assert row.minimum.applicable_minimum == Decimal("0.00002")
-        assert row.minimum.minimum_currency == "BTC"
+        assert row.minimum.applicable_minimum is None
+        assert row.minimum.minimum_currency is None
     assert product != "pdax_btc"
 
 
@@ -252,8 +254,8 @@ def test_residual_target_weight_tie(first, second):
 def test_residual_confirmed_preferred_then_uncertain(route):
     req, candidates = residual_candidates(route)
     row, _ = _residual_allocation(req, candidates, Decimal(3000))
-    assert row.implementation.sleeve == ("global_equity" if route == "gotrade" else "crypto")
-    assert row.minimum.status == "ready"
+    assert row.implementation.sleeve == "global_equity"
+    assert row.minimum.status == ("ready" if route == "gotrade" else "verify_minimum")
     row, _ = _residual_allocation(req, [(item, calc) for item, calc in candidates if item.sleeve != "crypto"], Decimal(3000))
     assert row.implementation.sleeve == "global_equity"
     assert row.minimum.status == ("ready" if route == "gotrade" else "verify_minimum")

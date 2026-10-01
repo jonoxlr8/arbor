@@ -32,20 +32,24 @@ def test_exact_primary_routes_and_valid_unique_product_scopes():
 
 
 @pytest.mark.parametrize("product_id", ["gcash_global_equity", "gcash_technology"])
-def test_gcash_official_global_fund_minimums(product_id):
+def test_gfunds_owner_reported_global_fund_initial_and_unknown_additional(product_id):
     product = get_product(product_id)
-    assert product.minimum_initial == 1000
-    assert product.minimum_additional == 500
-    assert product.minimum_additional_status == "published"
+    assert product.minimum_initial == 500
+    assert product.minimum_additional is None
+    assert product.minimum_additional_status == "verify_in_app"
     assert product.currency == "PHP"
-    assert "official" in product.minimum_source
+    assert "Owner-reported GFunds app observation" in product.minimum_source
+    assert "not independently verified" in product.minimum_source
+    assert product.last_verified_at is None
+    assert not any("1,000" in note for note in product.eligibility_notes)
 
 
 def test_gcash_bond_and_crypto_units():
     bond = get_product("gcash_defensive")
-    assert bond.minimum_initial == bond.minimum_additional == 50
+    assert bond.minimum_initial == 50 and bond.minimum_additional is None
+    assert bond.minimum_additional_status == "verify_in_app"
     crypto = get_product("gcrypto_btc")
-    assert crypto.minimum_order_quantity == Decimal("0.00002")
+    assert crypto.minimum_order_quantity is None
     assert crypto.minimum_order_currency == "BTC"
     assert crypto.minimum_order is crypto.minimum_initial is crypto.practical_minimum is None
     assert get_product("gcash_global_equity").match_quality == "broad"
@@ -74,6 +78,9 @@ def test_gotrade_order_minimum_not_account_deposit(ticker):
     assert product.minimum_order == 1 and product.minimum_order_currency == "USD"
     assert product.supports_fractional is True
     assert product.minimum_initial is None
+    assert product.practical_minimum == 100
+    assert product.minimum_additional_status == "verify_in_app"
+    assert any("not the provider" in note for note in product.eligibility_notes)
 
 
 def test_gotrade_fees_are_separate_metadata():
@@ -96,7 +103,7 @@ def test_ibkr_unresolved_minimums_stay_null(product_id):
 
 def test_partnerships_do_not_claim_signed_arbor_relationships():
     coins = get_product("coins_btc")
-    assert coins.minimum_order == 5 and coins.minimum_order_currency == "PHP"
+    assert coins.minimum_order is None and coins.minimum_order_currency == "PHP"
     assert coins.partnership.affiliate_available is True
     assert coins.partnership.affiliate_type == "business_affiliate"
     assert coins.partnership.compensation_model == "revenue_share_on_trading_fees"
@@ -125,3 +132,12 @@ def test_product_metadata_is_immutable_and_round_trips():
         get_product("coins_btc").minimum_order = 0
     with pytest.raises(TypeError):
         PRODUCTS["extra"] = get_product("coins_btc")
+
+
+@pytest.mark.parametrize("product_id", ["gcrypto_btc", "coins_btc", "pdax_btc"])
+def test_bitcoin_execution_minimums_are_unknown_not_zero(product_id):
+    product = get_product(product_id)
+    assert product.minimum_initial is product.minimum_additional is product.minimum_order is product.minimum_order_quantity is product.practical_minimum is None
+    assert product.minimum_additional_status == "verify_in_app"
+    assert product.last_verified_at is None
+    assert "execution minimum unknown" in product.minimum_source

@@ -99,13 +99,13 @@ def test_below_minimum_is_waiting_not_reassigned():
     assert amounts(result) == {"global_equity": 2400, "technology_tilt": 300, "crypto": 300}
     assert (result.ready_amount, result.waiting_amount, result.verify_minimum_amount, result.recordable_amount) == (2400, 300, 300, 2700)
     row = result.rows[1]
-    assert row.minimum.applicable_minimum == 1000 and row.minimum.amount_needed_to_minimum == 700
+    assert row.minimum.applicable_minimum == 500 and row.minimum.amount_needed_to_minimum == 200
     assert "Carry-forward is not yet saved" in explain_monthly_plan("Why is my Technology amount below minimum?", result)
 
 
 @pytest.mark.parametrize("product,owned,expected", [
-    ("gcash_technology", (), "below_minimum"),
-    ("gcash_technology", ("gcash_technology",), "ready"),
+    ("gcash_technology", (), "ready"),
+    ("gcash_technology", ("gcash_technology",), "verify_minimum"),
     ("dragonfi_technology", ("dragonfi_technology",), "verify_minimum"),
 ])
 def test_exact_product_ownership_minimums(product, owned, expected):
@@ -113,8 +113,8 @@ def test_exact_product_ownership_minimums(product, owned, expected):
     assert result.rows[1].amount == 500 and result.rows[1].status == expected
 
 
-@pytest.mark.parametrize("product", ["pdax_btc", "gcrypto_btc"])
-def test_unknown_or_quantity_minimum_never_invented(product):
+@pytest.mark.parametrize("product", ["pdax_btc", "gcrypto_btc", "coins_btc"])
+def test_bitcoin_unknown_minimum_never_invented(product):
     result = calculate(choices={**CHOICES, "crypto": product})
     assert result.rows[-1].status == "verify_minimum"
     assert result.verify_minimum_amount == 1000

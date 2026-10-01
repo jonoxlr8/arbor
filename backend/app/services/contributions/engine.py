@@ -30,7 +30,11 @@ def _check_minimum(
     purchase = "additional" if additional else "initial"
     value, currency, kind = None, None, "unknown"
     reason = "dynamic_minimum"
-    if additional and product.minimum_initial is not None:
+    if additional and product.route_id == "gotrade":
+        # Exact existing ETF: Arbor's PHP initial threshold is not an additional
+        # purchase minimum. Do not fall back to the separate USD 1 order fact.
+        kind, currency, reason = "additional", "PHP", "additional_unknown"
+    elif additional and product.minimum_initial is not None:
         kind, currency = "additional", product.currency
         if product.minimum_additional_status == "published":
             value = product.minimum_additional

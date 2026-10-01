@@ -155,10 +155,10 @@ def test_route_integration(route, role, product):
 
 @pytest.mark.parametrize("route,eligible,product,status", [
     ("gcash", None, "gcrypto_btc", "verify_minimum"),
-    ("dragonfi", None, "coins_btc", "ready"),
-    ("gotrade", None, "coins_btc", "ready"),
-    ("ibkr", False, "coins_btc", "ready"),
-    ("ibkr", None, "coins_btc", "ready"),
+    ("dragonfi", None, "coins_btc", "verify_minimum"),
+    ("gotrade", None, "coins_btc", "verify_minimum"),
+    ("ibkr", False, "coins_btc", "verify_minimum"),
+    ("ibkr", None, "coins_btc", "verify_minimum"),
     ("ibkr", True, "ibkr_btc", "verify_minimum"),
 ])
 def test_crypto_routes_reuse_mapper(route, eligible, product, status):
@@ -172,21 +172,27 @@ def test_crypto_routes_reuse_mapper(route, eligible, product, status):
     assert result.selected == expected
     assert result.selected.product.product_id != "pdax_btc"
     if route == "gcash":
-        assert result.minimum.applicable_minimum == Decimal("0.00002")
-        assert result.minimum.minimum_currency == "BTC"
+        assert result.minimum.applicable_minimum is None
+        assert result.minimum.minimum_currency is None
         assert result.minimum.amount_needed_to_minimum is None
 
 
 @pytest.mark.parametrize("role,product,initial,additional", [
-    ("global_equity", "gcash_global_equity", 1000, 500),
-    ("technology_tilt", "gcash_technology", 1000, 500),
-    ("defensive", "gcash_defensive", 50, 50),
+    ("global_equity", "gcash_global_equity", 500, None),
+    ("technology_tilt", "gcash_technology", 500, None),
+    ("defensive", "gcash_defensive", 50, None),
 ])
 @pytest.mark.parametrize("owns", [False, True])
 @pytest.mark.parametrize("difference", [-1, 0, 1])
 def test_gcash_initial_additional_thresholds(role, product, initial, additional, owns, difference):
     minimum = additional if owns else initial
-    result = select_role(role, amount=minimum + difference, owned=(product,) if owns else ())
+    result = select_role(role, amount=(minimum or initial) + difference, owned=(product,) if owns else ())
+    if minimum is None:
+        assert result.minimum.purchase_type == "additional"
+        assert result.minimum.applicable_minimum is result.minimum.amount_needed_to_minimum is None
+        assert result.execution_status == "verify_minimum" and result.minimum.reason == "additional_unknown"
+        assert result.action == "wait" and result.recommended_amount == 0
+        return
     assert result.minimum.applicable_minimum == minimum
     assert result.minimum.purchase_type == ("additional" if owns else "initial")
     assert result.minimum.amount_needed_to_minimum == max(0, -difference)
@@ -195,7 +201,7 @@ def test_gcash_initial_additional_thresholds(role, product, initial, additional,
     assert result.recommended_amount == (0 if difference < 0 else minimum + difference)
 
 
-@pytest.mark.parametrize("amount,owned,needed", [(500, (), 500), (300, ("gcash_global_equity",), 200)])
+@pytest.mark.parametrize("amount,owned,needed", [(499, (), 1), (300, ("gotrade_vt",), 200)])
 def test_below_minimum_does_not_redirect(amount, owned, needed):
     result = select_role("global_equity", amount=amount, owned=owned)
     assert result.selected.product.product_id == "gcash_global_equity"
@@ -238,7 +244,8 @@ def test_gotrade_order_currency(role, currency, amount, minimum, status):
 
 def test_coins_below_minimum_and_ibkr_dynamic():
     result = select_role("crypto", route="dragonfi", amount=3)
-    assert result.action == "wait" and result.minimum.amount_needed_to_minimum == 2
+    assert result.action == "wait" and result.execution_status == "verify_minimum"
+    assert result.minimum.applicable_minimum is result.minimum.amount_needed_to_minimum is None
     result = select_role("global_equity", route="ibkr", amount=10000, currency="USD")
     assert result.selected.product.product_id == "ibkr_vwra"
     assert result.minimum.applicable_minimum is None
@@ -248,7 +255,7 @@ def test_coins_below_minimum_and_ibkr_dynamic():
 def test_owning_sleeve_on_other_route_does_not_prove_product_ownership():
     result = select_role("global_equity", owned=("gotrade_vt",), amount=500)
     assert result.minimum.purchase_type == "initial"
-    assert result.minimum.applicable_minimum == 1000
+    assert result.minimum.applicable_minimum == 500
 
 
 def test_zero_contribution_and_action_vocabulary():
