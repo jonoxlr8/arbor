@@ -13,7 +13,7 @@ SECTIONS = ('profile', 'legacy_holdings', 'portfolio_holdings', 'investment_entr
 
 
 def verified_identity(authorization):
-    owner = auth.get_current_user_id(authorization)
+    owner = auth.get_verified_user_id(authorization)
     token = authorization.split(' ', 1)[1]
     try:
         key = auth.jwks_client.get_signing_key_from_jwt(token)

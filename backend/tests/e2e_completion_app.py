@@ -55,7 +55,7 @@ if os.getenv("ARBOR_COMPLETION_ONBOARDING") != "true":
 def verified_fixture_owner(authorization: str | None = Header(default=None)):
     # Invoke normal signature/issuer/audience/expiry validation; never decode an
     # unsigned token or trust a client-supplied owner header.
-    user_id = auth.get_current_user_id(authorization)
+    user_id = auth.get_verified_user_id(authorization)
     if user_id != OWNER:
         raise HTTPException(403, "Dedicated disposable fixture account required")
     return user_id
@@ -133,8 +133,11 @@ class LocalProfileClient:
             raise RuntimeError("Hosted tables are disabled in the completion fixture")
         return LocalProfileQuery(self.owner)
 
-    def rpc(self, *_args, **_kwargs):
-        raise RuntimeError("Hosted RPCs are disabled in the completion fixture")
+    def rpc(self, name, params=None):
+        if name != "arbor_account_lifecycle_v1" or params.get("p_action") != "status":
+            raise RuntimeError("Unsupported fixture RPC")
+        return SimpleNamespace(execute=lambda: SimpleNamespace(data={"state":"active", "version":0,
+            "access_allowed":True, "deletion_request":None, "in_flight_reminders":0, "erasure_available":False}))
 
 
 class DisabledHostedClient:

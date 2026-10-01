@@ -32,7 +32,7 @@ jwks_client = PyJWKClient(
 )
 
 
-def get_current_user_id(
+def get_verified_user_id(
     authorization: str | None = Header(default=None),
 ) -> str:
     if not authorization:
@@ -79,3 +79,10 @@ def get_current_user_id(
             status_code=401,
             detail="Invalid or expired token",
         )
+
+
+def get_current_user_id(authorization: str | None = Header(default=None)) -> str:
+    owner = get_verified_user_id(authorization)
+    from app.services.account_lifecycle import require_active
+    require_active(authorization)
+    return owner

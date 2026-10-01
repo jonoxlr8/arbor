@@ -44,3 +44,47 @@ def account_export(request: Request, authorization: str | None = Header(default=
     except HTTPException as exc:
         return JSONResponse({"detail": exc.detail}, status_code=exc.status_code,
                             headers={**headers, **(exc.headers or {})})
+
+
+from app.schemas.account_lifecycle import LifecycleAction
+
+
+def lifecycle_response(request, authorization, action="status", body=None):
+    from fastapi.responses import JSONResponse
+    from app.services.account_lifecycle import lifecycle
+    headers = {"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"}
+    try:
+        if request.query_params:
+            raise HTTPException(400, "Account actions do not accept selectors.")
+        result = lifecycle(authorization, action,
+                           body.expected_version if body else None,
+                           body.action_id if body else None,
+                           body.confirm if body else False)
+        return JSONResponse(result, headers=headers)
+    except HTTPException as error:
+        return JSONResponse({"detail": error.detail}, status_code=error.status_code, headers=headers)
+
+
+@router.get("/account/lifecycle")
+def account_lifecycle(request: Request, authorization: str | None = Header(default=None)):
+    return lifecycle_response(request, authorization)
+
+
+@router.post("/account/lifecycle/login")
+def lifecycle_login(request: Request, authorization: str | None = Header(default=None)):
+    return lifecycle_response(request, authorization, "login")
+
+
+@router.post("/account/deactivate")
+def deactivate(request: Request, body: LifecycleAction, authorization: str | None = Header(default=None)):
+    return lifecycle_response(request, authorization, "deactivate", body)
+
+
+@router.post("/account/deletion-requests")
+def request_deletion(request: Request, body: LifecycleAction, authorization: str | None = Header(default=None)):
+    return lifecycle_response(request, authorization, "request_deletion", body)
+
+
+@router.post("/account/deletion-requests/current/withdraw")
+def withdraw_deletion(request: Request, body: LifecycleAction, authorization: str | None = Header(default=None)):
+    return lifecycle_response(request, authorization, "cancel_deletion", body)

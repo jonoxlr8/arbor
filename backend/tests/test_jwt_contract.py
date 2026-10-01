@@ -24,7 +24,7 @@ def token_factory(monkeypatch):
 
 def test_valid_token(token_factory):
     claims, sign, _ = token_factory
-    assert auth.get_current_user_id("Bearer " + sign(claims)) == claims["sub"]
+    assert auth.get_verified_user_id("Bearer " + sign(claims)) == claims["sub"]
 
 
 @pytest.mark.parametrize("field", ["exp", "iat", "iss", "aud", "sub"])
@@ -32,7 +32,7 @@ def test_missing_claim_rejected(token_factory, field):
     claims, sign, _ = token_factory
     del claims[field]
     with pytest.raises(HTTPException) as caught:
-        auth.get_current_user_id("Bearer " + sign(claims))
+        auth.get_verified_user_id("Bearer " + sign(claims))
     assert caught.value.status_code == 401
     assert caught.value.detail == "Invalid or expired token"
 
@@ -41,7 +41,7 @@ def test_missing_claim_rejected(token_factory, field):
 def test_wrong_claim_rejected(token_factory, edit):
     claims, sign, _ = token_factory
     with pytest.raises(HTTPException) as caught:
-        auth.get_current_user_id("Bearer " + sign({**claims, **edit}))
+        auth.get_verified_user_id("Bearer " + sign({**claims, **edit}))
     assert caught.value.status_code == 401
 
 
@@ -50,15 +50,28 @@ def test_timestamp_leeway(token_factory, field, offset, allowed):
     claims, sign, now = token_factory
     token = sign({**claims, field: now + offset})
     if allowed:
-        assert auth.get_current_user_id("Bearer " + token) == claims["sub"]
+        assert auth.get_verified_user_id("Bearer " + token) == claims["sub"]
     else:
         with pytest.raises(HTTPException):
-            auth.get_current_user_id("Bearer " + token)
+            auth.get_verified_user_id("Bearer " + token)
 
 
 def test_unsupported_algorithm(token_factory):
     claims, _, _ = token_factory
     token = jwt.encode(claims, "test-only-signing-key-long-enough-for-hs256", algorithm="HS256")
     with pytest.raises(HTTPException) as caught:
-        auth.get_current_user_id("Bearer " + token)
+        auth.get_verified_user_id("Bearer " + token)
     assert caught.value.status_code == 401
+
+
+def test_cached_valid_signature_does_not_bypass_erasing_barrier(token_factory, monkeypatch):
+    from app.services import account_lifecycle
+    claims, sign, _ = token_factory
+    token = 'Bearer ' + sign(claims)
+    assert auth.get_verified_user_id(token) == claims['sub']
+    monkeypatch.setattr(account_lifecycle, 'lifecycle', lambda _: {
+        'state': 'erasing', 'access_allowed': False,
+    })
+    with pytest.raises(HTTPException) as caught:
+        auth.get_current_user_id(token)
+    assert caught.value.status_code == 403
