@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { signIn, signUp, resendConfirmation } from "@/lib/auth";
+import { accountLifecycle } from '@/lib/accountLifecycle';
 import type { AccountSession } from "@/lib/accountRecovery";
 import { authErrorMessage } from "@/lib/authErrorMessage";
 import { entryLinks } from "@/lib/publicEntry";
@@ -81,6 +82,7 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
         setError("We couldn’t complete sign-in. Please try again.");
         return;
       }
+      if (!isSignUp) await accountLifecycle(result.data.session.user.id, "login", undefined, undefined, result.data.session.access_token);
       onAuthenticated(result.data.session);
     } catch (error) {
       setPendingConfirmation(confirmationContext(mode, email, { error }));

@@ -11,7 +11,9 @@ import OnboardingV2 from "@/components/OnboardingV2";
 import PlanV2View from "@/components/PlanV2View";
 import { getCurrentUser, signOut } from "@/lib/auth";
 import ResultsDashboard from "@/components/ResultsDashboard";
-import { createAccountRecovery, type AccountState } from "@/lib/accountRecovery";
+import { createAccountRecovery, type AccountState, AccountRestrictedError } from "@/lib/accountRecovery";
+import { accountLifecycle } from '@/lib/accountLifecycle';
+import RestrictedAccount from '@/components/account/RestrictedAccount';
 import { supabase } from "@/lib/supabase";
 
 export default function Home() {
@@ -23,7 +25,11 @@ export default function Home() {
   useEffect(() => {
     const coordinator = createAccountRecovery<AccountPlan>({
       getUser: getCurrentUser,
-      getProfile: getAccountProfile,
+      getProfile: async (userId, access) => {
+        const status = await accountLifecycle(userId, "status", undefined, undefined, access);
+        if (!status.access_allowed) throw new AccountRestrictedError(userId, status);
+        return getAccountProfile(userId, access);
+      },
       onState: setAccount,
       onIdentityChange: () => {
         setLogoutError("");
@@ -55,6 +61,8 @@ export default function Home() {
     }
   };
 
+  if (account.status === "restricted") return <RestrictedAccount key={account.userId} userId={account.userId} status={account.lifecycle} onRefresh={() => void recovery.current?.restore()} onSignOut={() => void handleSignOut()} />;
+
   if (account.status === "error") {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background px-6">
@@ -75,7 +83,9 @@ export default function Home() {
   // Render the public story in initial HTML, not a crawler-only loading spinner.
   // Existing session/profile restoration still decides the authenticated handoff.
   if (account.status === "checking" || account.status === "unauthenticated") {
-    return <PublicEntry onAuthenticated={(session) => void recovery.current?.authenticated(session)} />;
+    // Explicit form completion happens after lifecycle login admission. Supersede
+    // an SDK SIGNED_IN restoration that may have observed the pre-reopen state.
+    return <PublicEntry onAuthenticated={(session) => void recovery.current?.restore(session)} />;
   }
 
   if (account.status === "ready") {

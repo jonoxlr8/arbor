@@ -1,6 +1,10 @@
+import type { AccountLifecycle } from './accountLifecycle';
 import type { Plan } from "./types/plan";
 
 export class InvalidSessionError extends Error {}
+export class AccountRestrictedError extends Error {
+ constructor(public userId: string, public lifecycle: AccountLifecycle) { super("Account restricted"); }
+}
 
 // Only the identity and access token are needed; never store tokens in UI state.
 export type AccountSession = {
@@ -20,7 +24,8 @@ export type AccountState<T = Plan> =
   | { status: "unauthenticated" }
   | { status: "ready"; userId: string; plan: T }
   | { status: "no-profile"; userId: string }
-  | { status: "error"; message: string };
+  | { status: "error"; message: string }
+  | { status: "restricted"; userId: string; lifecycle: AccountLifecycle };
 
 type Dependencies<T> = {
   getUser: () => Promise<{ id: string } | null>;
@@ -66,7 +71,9 @@ export function createAccountRecovery<T = Plan>(deps: Dependencies<T>) {
     } catch (error) {
       if (attempt !== generation) return;
       generation++;
-      if (error instanceof InvalidSessionError) {
+      if (error instanceof AccountRestrictedError) {
+        publish({ status: "restricted", userId: error.userId, lifecycle: error.lifecycle });
+      } else if (error instanceof InvalidSessionError) {
         setIdentity(null);
         publish({ status: "unauthenticated" });
       } else {
