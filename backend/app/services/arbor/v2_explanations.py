@@ -14,6 +14,7 @@ from app.services.strategy_v2 import AssetRole
 from app.services.entitlements import Entitlements, subscription_explanation
 from .v2_context import V2ChatContext, build_v2_context
 from .portfolio_explanation import is_target_comparison
+from .instrument_education import instrument_question, explain_instruments
 
 
 class V2ChatReply(BaseModel):
@@ -41,6 +42,8 @@ def classify_v2_question(question: str) -> tuple[str, str]:
     # Out-of-scope tasks win even when mixed with investment keywords.
     if has(r"\b(python|javascript|code|coding|recipe|cook|vacation|travel|basketball|football|trivia|poem|joke)\b|ignore.*instructions|system prompt"):
         return "out_of_scope", "out_of_scope"
+    if instrument_question(question) is not None:
+        return "investment", "implementation"
     # Match whole questions so extra advice requests keep their existing boundary.
     if re.fullmatch(
         r"\s*(?:(?:how much is|what is|show me) my monthly plan"
@@ -127,6 +130,9 @@ def readiness(c: V2ChatContext) -> str:
 
 
 def explain(c: V2ChatContext, question: str, intent: str) -> str:
+    named = instrument_question(question)
+    if named is not None:
+        return explain_instruments(named, context=c, brief="brief" in question.casefold())
     if intent == "monthly_plan":
         if c.path == "short_term": return "Your short-term path has no long-term monthly investment plan."
         if not c.contributions_allowed: return readiness(c)

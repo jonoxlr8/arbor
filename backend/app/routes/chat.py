@@ -8,6 +8,7 @@ from app.routes.profiles import get_my_profile
 from app.services.entitlements import get_entitlements, subscription_explanation
 from app.services.ask_usage import ask_usage, check_quota
 from app.services.arbor.education import explain_education
+from app.services.arbor.instrument_education import instrument_question, explain_instruments
 
 router = APIRouter()
 
@@ -30,12 +31,15 @@ def chat(request: ChatRequest, user_id: str = Depends(get_current_user_id), auth
 
     # General education is available before onboarding. No owner data is read,
     # and successful answers alone enter the existing (currently non-public) meter.
-    education = explain_education(request.message)
+    instrument = instrument_question(request.message)
+    education = (explain_instruments(instrument, brief="brief" in request.message.casefold())
+                 if instrument is not None and not instrument.needs_plan
+                 else None if instrument is not None else explain_education(request.message))
     if education is not None:
         check_quota(ask_usage(entitlements, authorization))
         usage = ask_usage(entitlements, authorization, consume=True)
         check_quota(usage)
-        return {"reply": education, "category": "investment", "intent": "education",
+        return {"reply": education, "category": "investment", "intent": "instrument_education" if instrument is not None else "education",
                 **({"ask_usage": usage} if usage is not None else {})}
 
     # Reuse the authenticated canonical plan path. Client-supplied plans are rejected.
@@ -45,6 +49,15 @@ def chat(request: ChatRequest, user_id: str = Depends(get_current_user_id), auth
         if exc.status_code == 404:
             raise HTTPException(404, "Create your Arbor plan first, then return to Ask Arbor.") from None
         raise
+    if instrument is not None and plan.get("strategy_engine_version") != "2.0":
+        # Older profile shapes do not provide a canonical sleeve/choice join.
+        # Preserve the profile and return facts without inventing a personal role.
+        check_quota(ask_usage(entitlements, authorization))
+        usage = ask_usage(entitlements, authorization, consume=True)
+        check_quota(usage)
+        return {"reply": explain_instruments(instrument), "category": "investment",
+                "intent": "instrument_education",
+                **({"ask_usage": usage} if usage is not None else {})}
     if plan.get("strategy_engine_version") == "2.0":
         try:
             result = explain_v2(request.message, plan, entitlements).model_dump()

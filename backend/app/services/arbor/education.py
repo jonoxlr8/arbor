@@ -22,7 +22,7 @@ EDUCATION = (
 
 def explain_education(question: str) -> str | None:
     q = question.casefold()
-    if re.search(r"\b(my|i|me|should i|best|recommend|buy|sell|hold|switch|most money)\b|^\s*how (much|many)\b|\brecorded in arbor\b", q):
+    if re.search(r"\b(python|javascript|code|coding|recipe|cook|poem|joke|vacation|travel|basketball|football|trivia)\b|ignore.*instructions|system prompt|\b(my|i|me|should i|best|recommend|buy|sell|hold|switch|most money)\b|^\s*how (much|many)\b|\brecorded in arbor\b", q):
         return None
     for pattern, answer in EDUCATION:
         if re.search(pattern, q):
