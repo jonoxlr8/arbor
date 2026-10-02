@@ -1,3 +1,4 @@
+import { needsShareBasis, type ShareBasis } from "./shareBasis";
 import { getAccessToken } from "./auth";
 import { apiBaseUrl } from "./apiConfig";
 import { boundedRequest } from "./dashboardConsistency";
@@ -28,15 +29,16 @@ export function portfolioReadError(error: unknown): PortfolioError {
 }
 
 export type PortfolioProduct = { product_id: string; provider: string; provider_name: string; display_name: string; sleeve: Sleeve; price_kind: "nav" | "reference" };
-export type HoldingDraft = { provider: string; product_id: string; units: string | null; cost_basis_php: string | null; manual_value_php?: string | null };
+export type HoldingDraft = { provider: string; product_id: string; units: string | null; cost_basis_php: string | null; manual_value_php?: string | null; opening_share_basis?: ShareBasis | null };
 export type PortfolioHolding = PortfolioProduct & HoldingDraft & { id: string; value_php: string | null; freshness: "fresh" | "stale" | "unavailable"; as_of: string | null; updated_at: string; created_at?: string;
   valuation_source?: "nav" | "market_reference" | "manual_user" | "unavailable"; manual_value_php?: string | null; manual_value_updated_at?: string | null;
+  effective_units?: string | null; valuation_units?: string | null; share_basis_required?: boolean;
   opening_units?: string | null; opening_cost_php?: string | null; has_entries?: boolean; unit_price?: string | null; unit_price_currency?: "PHP" | "USD" | null;
   recorded_gain_php?: string | null; recorded_gain_percentage?: string | null };
 export type InvestmentEntry = { id: string; holding_id: string; product_id: string; provider: string; investment_date: string; units: string;
-  amount_paid_php: string | null; recorded_at: string; updated_at: string; revision: number; voided_at: string | null };
+  amount_paid_php: string | null; recorded_at: string; updated_at: string; revision: number; voided_at: string | null; share_basis?: ShareBasis | null };
 export type InvestmentEntryDraft = { provider: string; product_id: string; investment_date: string; units: string; amount_paid_php: string | null;
-  idempotency_key: string; opening_units?: string | null; opening_cost_php?: string | null; confirm_conversion?: boolean };
+  idempotency_key: string; opening_units?: string | null; opening_cost_php?: string | null; confirm_conversion?: boolean; share_basis?: ShareBasis | null };
 export type RecordedEntryResult = { entry_id: string; holding_id: string; replayed: boolean };
 export const supportsManualValue = (h: { product_id: string }) => ["gcash_global_equity", "gcash_technology", "gcash_defensive", "dragonfi_global_equity", "dragonfi_technology", "dragonfi_defensive"].includes(h.product_id);
 export const validManualValue = (v: string) => /^\d{1,16}(?:\.\d{1,2})?$/.test(v) && /[1-9]/.test(v);
@@ -72,6 +74,7 @@ export function entryDraftError(d: InvestmentEntryDraft, catalog: PortfolioProdu
   if (!day(d.investment_date) || d.investment_date > manilaInvestmentToday()) return "Enter a valid investment date on or before today in the Philippines.";
   const units = (value: string) => /^\d{1,12}(?:\.\d{1,12})?$/.test(value) && /[1-9]/.test(value);
   const cost = (value: string) => /^\d{1,16}(?:\.\d{1,2})?$/.test(value);
+  if (needsShareBasis(d.product_id, d.investment_date) && d.share_basis != null && !["before_split", "after_split"].includes(d.share_basis)) return "Check the VGT share count basis.";
   if (!units(d.units)) return "Enter the actual units received, greater than zero, with up to 12 decimal places.";
   const amountError = investmentAmountPaidError(d.amount_paid_php);
   if (amountError) return amountError;
@@ -139,6 +142,7 @@ export function isPortfolio(value: unknown): value is LivePortfolioData {
       (s.difference_pp === null || decimal(s.difference_pp)) && (s.target_percentage === null || (Number.isInteger(s.target_percentage) && s.target_percentage >= 0 && s.target_percentage <= 100)));
 }
 export function validHolding(draft: HoldingDraft, catalog: PortfolioProduct[]) {
+  if (needsShareBasis(draft.product_id) && !draft.opening_share_basis) return false;
   const unitsValid = draft.units !== null && /^\d{1,12}(?:\.\d{1,12})?$/.test(draft.units) && /[1-9]/.test(draft.units);
   const manualValid = draft.manual_value_php != null && validManualValue(draft.manual_value_php);
   return catalog.some(p => p.product_id === draft.product_id && p.provider === draft.provider) &&
@@ -202,12 +206,12 @@ export function createPortfolioApi(token = getAccessToken, request: typeof fetch
         throw new PortfolioError("portfolio_contract");
       return result as RecordedEntryResult;
     },
-    reviseEntry: (userId: string, id: string, revision: number, draft: Pick<InvestmentEntryDraft, "investment_date" | "units" | "amount_paid_php">) =>
+    reviseEntry: (userId: string, id: string, revision: number, draft: Pick<InvestmentEntryDraft, "investment_date" | "units" | "amount_paid_php" | "share_basis">) =>
       call(userId, `/entries/${encodeURIComponent(id)}`, "PUT", { ...draft, expected_revision: revision }),
     voidEntry: (userId: string, id: string, revision: number) => call(userId, `/entries/${encodeURIComponent(id)}/void`, "POST", { expected_revision: revision }),
-    correctOpening: (userId: string, id: string, updatedAt: string, units: string, cost: string | null) =>
+    correctOpening: (userId: string, id: string, updatedAt: string, units: string, cost: string | null, shareBasis?: ShareBasis | null) =>
       call(userId, `/holdings/${encodeURIComponent(id)}/opening-position`, "PUT", {
-        expected_updated_at: updatedAt, opening_units: units, opening_cost_php: cost,
+        expected_updated_at: updatedAt, opening_units: units, opening_cost_php: cost, ...(shareBasis ? {share_basis: shareBasis} : {}),
       }),
     async activity(userId: string, holdingId?: string, page = 0, signal?: AbortSignal, filter?: { month?: string; recent?: boolean }) {
       const params = new URLSearchParams({ page: String(page) });
