@@ -109,3 +109,10 @@ def test_rpc_errors_fail_safely(monkeypatch,message,status):
 @pytest.mark.parametrize('metadata',[[],[{'cooldown_until':'x','token':'secret'}],[{'cooldown_until':None}],[{'cooldown_until':'not-a-date'}]])
 def test_operational_metadata_is_allowlisted(metadata):
     with pytest.raises(ValueError):validate_export({**body(),'export_operational_metadata':metadata},A)
+
+def test_investment_request_export_is_optional_and_contains_requested_fields_only():
+    validate_export(body(), A)
+    receipt={'investment_name':'Sample Index Fund','provider':'Sample Broker','received_at':'2026-10-02T01:00:00+00:00'}
+    validate_export({**body(),'investment_requests':[receipt]}, A)
+    for invalid in (None,[{**receipt,'user_id':'B'}],[{**receipt,'received_at':'2026-10-02T01:00:00'}],[{**receipt,'investment_name':''}],[{**receipt,'provider':'x'*81}]):
+        with pytest.raises(ValueError):validate_export({**body(),'investment_requests':invalid}, A)

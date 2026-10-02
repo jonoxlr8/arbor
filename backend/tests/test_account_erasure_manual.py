@@ -54,3 +54,15 @@ def test_reviewed_histories_require_cascade_owner_security_without_relaxing_unkn
  assert "k.confdeltype='c' AND k.convalidated" in sql
  assert "has_table_privilege('service_role'" in sql
  assert 'manual_unreviewed_owner_surface' in sql
+
+def test_request_inventory_is_explicit_and_security_drift_checks_do_not_bypass_admission():
+    b=binding();now=datetime.now(timezone.utc)
+    assert 'arbor_investment_requests' in b.expected_counts
+    for mode in ('zero_sessions','banned_barrier'):
+        sql=render(b,'database',now,now+timedelta(seconds=180),admission_mode=mode)
+        assert 'manual_request_security_changed' in sql
+        assert "'investment_request_read'" in sql and "'investment_request_insert'" in sql
+        assert "'received_at','INSERT'" in sql
+        assert 'manual_execution_not_approved' in sql
+        assert 'manual_sessions_or_storage_remain' in sql
+        assert "'whole_account_erasure_claim',false" in sql

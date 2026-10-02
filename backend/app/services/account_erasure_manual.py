@@ -9,7 +9,7 @@ from datetime import datetime,timedelta,timezone
 from uuid import UUID
 
 PHASES=('review','begin','sessions_ready','database','auth_ready','auth_confirm','complete')
-TABLES={'arbor_investment_entries','arbor_portfolio_holdings','arbor_portfolio_snapshots','arbor_portfolio_history_changes','arbor_monthly_checkins','arbor_pending_investment_recordings','arbor_pending_recording_reminders','holdings','profiles','arbor_ask_usage_monthly'}
+TABLES={'arbor_investment_requests','arbor_investment_entries','arbor_portfolio_holdings','arbor_portfolio_snapshots','arbor_portfolio_history_changes','arbor_monthly_checkins','arbor_pending_investment_recordings','arbor_pending_recording_reminders','holdings','profiles','arbor_ask_usage_monthly'}
 @dataclass(frozen=True)
 class Binding:
     project_ref:str
@@ -84,7 +84,7 @@ BEGIN
   IF EXISTS(SELECT 1 FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid
    JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public'
    AND c.relkind IN ('r','p','v','m') AND a.attname IN ('user_id','owner_id') AND NOT a.attisdropped
-   AND c.relname NOT IN ('arbor_investment_entries','arbor_portfolio_holdings','arbor_portfolio_snapshots','arbor_portfolio_history_changes','arbor_monthly_checkins','arbor_pending_investment_recordings','arbor_pending_recording_reminders','holdings','profiles','arbor_ask_usage_monthly','arbor_budget_versions','arbor_plan_versions','arbor_portfolio_history','arbor_investment_entry_values','arbor_portfolio_observed_history_status','arbor_portfolio_holding_ledger_values','arbor_portfolio_holding_values'))
+   AND c.relname NOT IN ('arbor_investment_requests','arbor_investment_entries','arbor_portfolio_holdings','arbor_portfolio_snapshots','arbor_portfolio_history_changes','arbor_monthly_checkins','arbor_pending_investment_recordings','arbor_pending_recording_reminders','holdings','profiles','arbor_ask_usage_monthly','arbor_budget_versions','arbor_plan_versions','arbor_portfolio_history','arbor_investment_entry_values','arbor_portfolio_observed_history_status','arbor_portfolio_holding_ledger_values','arbor_portfolio_holding_values'))
   THEN RAISE EXCEPTION 'manual_unreviewed_owner_surface'; END IF;
   -- Histories are read-only owner surfaces erased through the profile FK.
   -- Keep the legacy inventory's category counts; this is supplemental coverage.
@@ -144,6 +144,24 @@ BEGIN
    THEN RAISE EXCEPTION 'manual_lifecycle_trigger_changed'; END IF;
   END LOOP;
  END IF;
+ IF to_regclass('public.arbor_investment_requests') IS NULL
+ OR NOT EXISTS(SELECT 1 FROM pg_class c WHERE c.oid='public.arbor_investment_requests'::regclass AND c.relkind='r' AND c.relrowsecurity)
+ OR (SELECT count(*) FROM pg_attribute a WHERE a.attrelid='public.arbor_investment_requests'::regclass AND a.attnum>0 AND NOT a.attisdropped AND a.attname IN ('id','user_id','investment_name','provider','idempotency_key','received_at'))<>6
+ OR (SELECT count(*) FROM pg_attribute a WHERE a.attrelid='public.arbor_investment_requests'::regclass AND a.attnum>0 AND NOT a.attisdropped)<>6
+ OR (SELECT count(*) FROM pg_policy p WHERE p.polrelid='public.arbor_investment_requests'::regclass)<>3
+ OR NOT EXISTS(SELECT 1 FROM pg_policy p WHERE p.polrelid='public.arbor_investment_requests'::regclass AND p.polname='arbor_lifecycle_active' AND NOT p.polpermissive AND (SELECT oid FROM pg_roles WHERE rolname='authenticated')=ANY(p.polroles) AND pg_get_expr(p.polqual,p.polrelid) LIKE '%arbor_account_active_v1%' AND pg_get_expr(p.polwithcheck,p.polrelid) LIKE '%arbor_account_active_v1%')
+ OR NOT EXISTS(SELECT 1 FROM pg_constraint k WHERE k.conrelid='public.arbor_investment_requests'::regclass AND k.contype='f' AND k.confrelid='auth.users'::regclass AND k.confdeltype='c' AND k.convalidated AND k.conkey=ARRAY[(SELECT attnum FROM pg_attribute WHERE attrelid=k.conrelid AND attname='user_id')]::smallint[])
+ OR NOT EXISTS(SELECT 1 FROM pg_class c WHERE c.oid='public.arbor_investment_requests'::regclass AND c.relowner=(SELECT proowner FROM pg_proc WHERE oid='arbor_private.erasure_data(uuid)'::regprocedure))
+ OR NOT EXISTS(SELECT 1 FROM pg_policy p WHERE p.polrelid='public.arbor_investment_requests'::regclass AND p.polname='investment_request_read' AND p.polpermissive AND p.polcmd='r' AND (SELECT oid FROM pg_roles WHERE rolname='authenticated')=ANY(p.polroles) AND regexp_replace(pg_get_expr(p.polqual,p.polrelid),'[[:space:]]','','g')='((SELECTauth.uid()ASuid)=user_id)')
+ OR NOT EXISTS(SELECT 1 FROM pg_policy p WHERE p.polrelid='public.arbor_investment_requests'::regclass AND p.polname='investment_request_insert' AND p.polpermissive AND p.polcmd='a' AND (SELECT oid FROM pg_roles WHERE rolname='authenticated')=ANY(p.polroles) AND regexp_replace(pg_get_expr(p.polwithcheck,p.polrelid),'[[:space:]]','','g')='((SELECTauth.uid()ASuid)=user_id)')
+ OR has_table_privilege('authenticated','public.arbor_investment_requests','UPDATE,DELETE,TRUNCATE')
+ OR has_column_privilege('authenticated','public.arbor_investment_requests','user_id','INSERT')
+ OR has_column_privilege('authenticated','public.arbor_investment_requests','id','INSERT')
+ OR has_column_privilege('authenticated','public.arbor_investment_requests','received_at','INSERT')
+ OR has_table_privilege('anon','public.arbor_investment_requests','SELECT,INSERT,UPDATE,DELETE,TRUNCATE')
+ OR has_table_privilege('service_role','public.arbor_investment_requests','SELECT,INSERT,UPDATE,DELETE,TRUNCATE')
+ OR NOT EXISTS(SELECT 1 FROM pg_trigger g WHERE g.tgrelid='public.arbor_investment_requests'::regclass AND g.tgname='arbor_lifecycle_write' AND g.tgenabled IN ('O','A') AND g.tgfoid='arbor_private.guard_lifecycle_write()'::regprocedure)
+ THEN RAISE EXCEPTION 'manual_request_security_changed'; END IF;
  IF phase IN ('auth_ready','auth_confirm','complete') AND EXISTS(SELECT 1 FROM jsonb_each(current_counts) e WHERE e.value<>'null'::jsonb AND e.value<>'0'::jsonb) THEN RAISE EXCEPTION 'manual_primary_rows_remain'; END IF;
  IF clock_timestamp()>=expiry THEN RAISE EXCEPTION 'manual_approval_expired'; END IF;
  IF phase='review' THEN PERFORM arbor_private.erasure_review(owner_id,request_id,request_version,operation_id,true,'[]'::jsonb);

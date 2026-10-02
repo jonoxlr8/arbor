@@ -14,6 +14,7 @@ from app.routes.live_portfolio import router as live_portfolio_router
 from app.routes.monthly_checkin import router as monthly_checkin_router
 from app.routes.monthly_plan import router as monthly_plan_router
 from app.routes.pending_recordings import router as pending_recordings_router
+from app.routes.investment_requests import router as investment_requests_router
 
 app = FastAPI()
 
@@ -34,6 +35,7 @@ app.include_router(live_portfolio_router)
 app.include_router(monthly_checkin_router)
 app.include_router(monthly_plan_router)
 app.include_router(pending_recordings_router)
+app.include_router(investment_requests_router)
 
 
 @app.get("/")

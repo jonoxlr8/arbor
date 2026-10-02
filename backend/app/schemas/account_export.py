@@ -50,6 +50,16 @@ def validate_export(value, owner):
     for row in terms:
         if not isinstance(row['version'],str) or not 1<=len(row['version'])<=64 or not isinstance(row['content_digest'],str) or not re.fullmatch(r'[0-9a-f]{64}',row['content_digest']) or not isinstance(row['accepted_at'],str) or datetime.fromisoformat(row['accepted_at']).tzinfo is None:
             raise ValueError('Invalid Terms receipt')
+    requests = value.get('investment_requests', [])
+    if not isinstance(requests, list) or len(requests) > 10000:
+        raise ValueError('Invalid investment request export')
+    for row in requests:
+        if (not isinstance(row, dict) or set(row) != {'investment_name', 'provider', 'received_at'}
+                or not isinstance(row['investment_name'], str) or not 1 <= len(row['investment_name']) <= 120
+                or not isinstance(row['provider'], str) or not 1 <= len(row['provider']) <= 80
+                or not isinstance(row['received_at'], str)
+                or datetime.fromisoformat(row['received_at']).tzinfo is None):
+            raise ValueError('Invalid investment request export')
     for row in value.get('erasure_operations', []):
         if not isinstance(row.get('holds'), list) or len(row['holds']) > 12:
             raise ValueError('Invalid erasure holds')
