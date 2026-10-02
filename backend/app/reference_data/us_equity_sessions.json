@@ -1,0 +1,10 @@
+{
+  "version": "verified-2026-v1",
+  "timezone": "America/New_York",
+  "verified_years": [2026],
+  "regular_close": "16:00",
+  "products": {"gotrade_vt": "NYSE Arca", "gotrade_vgt": "NYSE Arca", "gotrade_bnd": "Nasdaq"},
+  "holidays": ["2026-01-01", "2026-01-19", "2026-02-16", "2026-04-03", "2026-05-25", "2026-06-19", "2026-07-03", "2026-09-07", "2026-11-26", "2026-12-25"],
+  "early_closes": {"2026-11-27": "13:00", "2026-12-24": "13:00"},
+  "sources": ["https://www.nyse.com/trade/hours-calendars", "https://www.nasdaq.com/market-activity/stock-market-holiday-schedule", "https://advisors.vanguard.com/investments/products/vt/vanguard-total-world-stock-etf", "https://advisors.vanguard.com/investments/products/vgt/vanguard-information-technology-etf", "https://advisors.vanguard.com/investments/products/bnd/vanguard-total-bond-market-etf"]
+}

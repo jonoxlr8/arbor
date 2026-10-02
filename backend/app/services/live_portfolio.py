@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 from pydantic import Field, model_validator
 
 from app.services.implementation.products import PRODUCTS
+from app.services.reference_freshness import reference_age_seconds
 from app.services.strategy_v2 import AssetRole, DomainModel, Allocation
 
 PROVIDERS = {"gcash": "GCash / GFunds", "dragonfi": "DragonFi", "gotrade": "Gotrade",
@@ -245,9 +246,10 @@ def _value_portfolio(holdings, market, target, now):
         available = [prices[k] for k in needed if k in prices]
         quote_units = holding.valuation_units if holding.product_id == "gotrade_vgt" and holding.share_basis_checked else holding.units
         quote_basis_matches = not holding.share_basis_checked or holding.valuation_units_quote_date == (prices[holding.product_id].as_of.astimezone(timezone.utc).date() if holding.product_id in prices else None)
+        ages = {p.price_key: reference_age_seconds(p, now) for p in available}
         valid = quote_basis_matches and not holding.share_basis_required and quote_units is not None and len(available) == len(needed) and all(
-            0 <= (now - p.as_of).total_seconds() <= price_limits(p.price_key)[1] for p in available)
-        stale = valid and any((now - p.as_of).total_seconds() > price_limits(p.price_key)[0] for p in available)
+            ages[p.price_key] is not None and 0 <= ages[p.price_key] <= price_limits(p.price_key)[1] for p in available)
+        stale = valid and any(ages[p.price_key] > price_limits(p.price_key)[0] for p in available)
         amount = quote_units
         if valid:
             for p in available:

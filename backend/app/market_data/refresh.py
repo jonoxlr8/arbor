@@ -66,7 +66,12 @@ def refresh(cache, adapters, now=None, capture_history=False, bsp_history=None):
                         or (p.kind != "nav" and p.as_of == existing[p.price_key].as_of)]
             if accepted:
                 cache.write(accepted)
-            status[adapter.source] = "updated" if accepted else "older_data_ignored"
+            unchanged_eod = accepted and adapter.source == "marketstack" and all(
+                p.price_key in existing and p.as_of == existing[p.price_key].as_of
+                and p.value == existing[p.price_key].value for p in accepted)
+            # fetched_at records a successful poll, not a new market observation.
+            status[adapter.source] = ("unchanged_observation" if unchanged_eod
+                                      else "updated" if accepted else "older_data_ignored")
             history(adapter, prices)
             if isinstance(batch, NAVBatch):
                 if prices:

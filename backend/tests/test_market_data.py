@@ -157,7 +157,12 @@ def test_marketstack_retries_early_poll_before_old_eod_expires():
 
 def test_refresh_isolates_sources_and_two_users_do_not_fetch():
     cache=Cache(); calls=[]
-    adapters=[adapter(k,handler(k,calls)) for k in ("marketstack","exchangerate_api")]
+    def completed_eod(request):
+        calls.append(request)
+        data=response("marketstack")
+        for row in data["data"]:row["date"]=(NOW-timedelta(days=1)).isoformat()
+        return httpx.Response(200,json=data)
+    adapters=[adapter("marketstack",completed_eod),adapter("exchangerate_api",handler("exchangerate_api",calls))]
     adapters.append(adapter("coinranking",lambda _:httpx.Response(503)))
     result=refresh(cache,adapters,NOW)
     assert result=={"marketstack":"updated","exchangerate_api":"updated","coinranking":"provider_unavailable"}
@@ -246,3 +251,21 @@ def test_writer_only_targets_cache_and_lease():
 @pytest.mark.parametrize("url",["http://localhost", "https://evil.com", "https://project.supabase.co?key=x", "https://user:secret@project.supabase.co"])
 def test_writer_rejects_untrusted_configuration(url):
     with pytest.raises(MarketDataError):SharedCache(None,url,"synthetic")
+
+
+def test_equal_eod_receipt_does_not_renew_observation_or_claim_updated():
+    cache=Cache();poll=NOW+timedelta(hours=24)
+    for key in ('gotrade_vt','gotrade_vgt','gotrade_bnd'):
+        cache.rows[key]=ReferencePrice(price_key=key,value='123.123456789012',as_of=NOW,
+            fetched_at=NOW+timedelta(hours=21),source='marketstack',kind='etf_eod',currency='USD')
+    previous={key:(p.as_of,p.value) for key,p in cache.rows.items()}
+    calls=[];source=adapter('marketstack',handler('marketstack',calls))
+    # Make the existing poll eligible without changing any observation date/value.
+    for key,p in cache.rows.items():cache.rows[key]=p.model_copy(update={'fetched_at':NOW+timedelta(hours=18)})
+    assert refresh(cache,[source],poll)=={'marketstack':'unchanged_observation'}
+    assert len(calls)==1 and cache.intervals==[21600]
+    assert all((p.as_of,p.value)==previous[key] and p.fetched_at==poll for key,p in cache.rows.items())
+    from app.services.reference_freshness import reference_age_seconds
+    assert reference_age_seconds(cache.rows['gotrade_vt'],poll)==4*3600
+    assert refresh(cache,[source],poll+timedelta(minutes=1))=={'marketstack':'cached'}
+    assert len(calls)==1

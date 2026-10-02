@@ -290,7 +290,7 @@ def test_five_minute_day_has_bounded_calls_and_no_synthetic_closed_market_dates(
     for tick in range(288):
         clock[0] = NOW+timedelta(minutes=5*tick)
         result = refresh(cache, feeds, clock[0], capture_history=True, bsp_history=SimpleNamespace(fetch=bsp))
-        assert all(status in ('updated', 'cached', 'cooldown') for status in result.values())
+        assert all(status in ('updated', 'unchanged_observation', 'cached', 'cooldown') for status in result.values())
     assert sum(r.url.host == 'api.marketstack.com' for r in calls) == 4
     assert sum(r.url.host == 'open.er-api.com' for r in calls) == 1
     assert sum(r.url.path.endswith('/price') for r in calls) == 144
