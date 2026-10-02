@@ -5,6 +5,7 @@ import { formatContributionMoney, formatUsdQuote } from "@/lib/contributions";
 import type { GainDisplayFx, PortfolioHistory } from "@/lib/livePortfolio";
 import { currentGainFxRate, historicalGainFxRate, usdEquivalentOfPhpGain } from "@/lib/gainDisplayFx";
 import GainInfo from "./GainInfo";
+import { historicalEstimateSources } from "@/lib/historyEstimate";
 import { historyChartSeries, historyExtrema, historyRange, historyRangeStart, historyValue, portfolioPeriodGain, supportedHistoryPoints, type ChartCurrency } from "@/lib/portfolioHistory";
 import { portfolioGraphState } from "@/lib/portfolioGraphState";
 import { roundedStepAfter } from "./roundedStepCurve";
@@ -65,6 +66,9 @@ export default function PortfolioHistoryChart({ history, knownValue = "0", curre
   const axisStart = range ? Date.parse(`${historyRangeStart(range)}T00:00:00Z`) : plotted[0]?.timestamp ?? 0;
   const axisEnd = Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`);
   const active = selected === null ? null : points[selected] ?? null;
+  const estimateSources = active ? historicalEstimateSources(active) : [];
+  const selectedPosition = active ? Math.max(0, Math.min(1,
+    (Date.parse(`${active.day}T00:00:00Z`) - axisStart) / Math.max(1, axisEnd - axisStart))) : 0;
   const periodAmount = holdingsCount ? portfolioPeriodGain({ history: state.history, days: range,
     currentGainPhp, currentComplete: complete && currentRecordedCostPhp != null && currentGainPhp != null,
     selected: active }) : null;
@@ -113,7 +117,8 @@ export default function PortfolioHistoryChart({ history, knownValue = "0", curre
     setSelected(index);
   };
   const pointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (!inspectable || event.pointerType === "mouse") return;
+    if (!inspectable || event.pointerType === "mouse" || !event.isPrimary) return;
+    if (touch.current?.timer) clearTimeout(touch.current.timer);
     const target = event.currentTarget, pointerId = event.pointerId;
     const start = { x: event.clientX, y: event.clientY, active: false, timer: null as ReturnType<typeof setTimeout> | null };
     start.timer = setTimeout(() => { start.active = true; nearest(start.x);
@@ -173,18 +178,18 @@ export default function PortfolioHistoryChart({ history, knownValue = "0", curre
     {status && <p className="chart-status" role="status">{status}</p>}
     <div ref={plot} className="chart-plot min-w-0" tabIndex={inspectable ? 0 : undefined} role={inspectable ? "group" : undefined}
       aria-label={inspectable ? `Inspect ${points.length} historical portfolio values. Use left and right arrow keys.` : undefined}
-      aria-describedby={active ? `${gradient}-headline` : undefined}
+      aria-describedby={active ? `${gradient}-headline ${gradient}-inspection` : undefined}
       onKeyDown={event => { if (!inspectable) return; if (event.key === "Escape") setSelected(null);
         if (event.key === "ArrowRight" || event.key === "ArrowLeft") { event.preventDefault(); setSelected(Math.max(0, Math.min(points.length - 1, (selected ?? (event.key === "ArrowRight" ? -1 : points.length)) + (event.key === "ArrowRight" ? 1 : -1)))); } }}
-      onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={() => { if (touch.current?.timer) clearTimeout(touch.current.timer); touch.current = null; }}
+      onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={() => { if (touch.current?.timer) clearTimeout(touch.current.timer); touch.current = null; setSelected(null); }}
       onPointerLeave={event => { if (event.pointerType === "mouse") setSelected(null); }}>
       {!complete || state.kind === "empty_zero" || plotted.length === 0 ? <div className={`chart-no-history chart-no-history-${state.kind}`}><span className="chart-no-history-marker"/><span>{state.kind === "empty_zero" ? "No investments recorded yet. No portfolio history yet." : !complete ? "Complete portfolio value unavailable" : state.kind === "current_only" ? "Current value · No history yet" : "Current value · No history in this range"}</span></div> :
       plotted.length === 1 ? <div className="chart-single-observation"><span className="chart-single-dot" aria-hidden="true"/>{points[0] && <time dateTime={points[0].day}>{dateLabel(points[0].day)}</time>}</div> :
-      <><ResponsiveContainer width="100%" height="100%"><AreaChart data={plotted} margin={{ left: 8, right: 8, top: plotTop, bottom: plotBottom }}>
+      <><ResponsiveContainer width="100%" height="100%"><AreaChart accessibilityLayer={false} data={plotted} margin={{ left: 8, right: 8, top: plotTop, bottom: plotBottom }}>
         <defs><linearGradient id={`${gradient}-fill`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="currentColor" stopOpacity={0.14}/><stop offset="100%" stopColor="currentColor" stopOpacity={0.01}/></linearGradient></defs>
         <XAxis type="number" scale="time" domain={[axisStart, axisEnd]} dataKey="timestamp" hide />
         <YAxis type="number" domain={[domainMin, domainMax]} allowDataOverflow hide width={0}/>
-        <Area type={roundedStepAfter} fill={`url(#${gradient}-fill)`} dataKey="plotValue" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" dot={false} isAnimationActive={false}/>
+        <Area type={roundedStepAfter} fill={`url(#${gradient}-fill)`} dataKey="plotValue" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" dot={false} activeDot={false} isAnimationActive={false}/>
         {active && <><ReferenceLine x={Date.parse(`${active.day}T00:00:00Z`)} stroke="var(--v3-muted)" strokeOpacity={0.8} strokeWidth={1.5}/>
           <ReferenceDot x={Date.parse(`${active.day}T00:00:00Z`)} y={Number(historyValue(active, currency))} r={6}
             fill={`var(--chart-${selectedGain?.tone ?? "unknown"})`} stroke="var(--surface)" strokeWidth={2}/></>}
@@ -193,6 +198,12 @@ export default function PortfolioHistoryChart({ history, knownValue = "0", curre
         <span className="chart-extreme-high" style={{ top: guidePosition(highValue) }}><span className="chart-extreme-text">{money(historyValue(extrema.high,currency)!,currency)}</span></span>
         {showLow && <span className="chart-extreme-low" style={{ top: guidePosition(lowValue) }}><span className="chart-extreme-text">{money(historyValue(extrema.low,currency)!,currency)}</span></span>}
       </div>}</>}
+      {active && <div id={`${gradient}-inspection`} role="tooltip" className="chart-inspection"
+        style={{ left: `clamp(8px, calc(${selectedPosition * 100}% - 100px), calc(100% - 208px))` }}>
+        <time dateTime={active.day}>{dateLabel(active.day)}</time>
+        <strong>{money(historyValue(active, currency)!, currency)}</strong>
+        {estimateSources.length > 0 && <span>Estimate · last available<br/>{estimateSources.join("; ")}</span>}
+      </div>}
     </div>
     <div className="chart-range" role="group" aria-label="History range">{ranges.map(([days, label]) =>
       <button type="button" key={label} aria-pressed={range === days} aria-label={`${label} portfolio history`} onClick={() => changeRange(days)}>{label}</button>)}</div>
