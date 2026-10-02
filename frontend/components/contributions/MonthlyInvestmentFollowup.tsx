@@ -13,7 +13,7 @@ import DatedInvestmentFlow from "../portfolio/DatedInvestmentFlow";
 type Selection = { product: PortfolioProduct | null; plannedAmount?: string };
 
 /** Investment dates use the Philippine calendar. Check-in months remain their own UTC authority. */
-export function MonthlyInvestmentFollowup({ userId, plan, completed }: { userId: string; plan: MonthlyPlan | null; completed: boolean }) {
+export function MonthlyInvestmentFollowup({ userId, plan, completed, recording=false, onRecordingClose }: { userId: string; plan: MonthlyPlan | null; completed: boolean;recording?:boolean;onRecordingClose?:()=>void }) {
   const [portfolio, setPortfolio] = useState<LivePortfolioData | null>(null);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
@@ -33,14 +33,16 @@ export function MonthlyInvestmentFollowup({ userId, plan, completed }: { userId:
   }, []);
   function recorded(draft: InvestmentEntryDraft) {
     setSelection(null);
+    onRecordingClose?.();
     setSaved(draft);
     setMonth(draft.investment_date.slice(0, 7));
-    setReload(value => value + 1);
+    window.dispatchEvent(new Event("arbor-investment-recorded"));
   }
   const rows = recordingRows(plan, portfolio?.catalog ?? []);
+  const directProduct=rows.length===1?rows[0].product:null;
   return <section id="monthly-record-investment" className="monthly-record" aria-label="Record actual investments">
     {completed && <header><h3>Record what you actually invested</h3><p>Enter the units shown by your provider. Arbor won’t estimate them from today’s price. Your check-in and investments are separate records.</p></header>}
-    {completed && saved && <div className="monthly-record-success" role="status"><strong>Investment recorded</strong><div className="investment-line"><InvestmentIdentity product={saved.product_id}/><p>{investmentIdentity(saved.product_id).shortName} · {saved.units} {saved.product_id.endsWith("_btc") ? "BTC" : "units"}<br/><ProviderIdentity provider={saved.provider}/></p></div><div><button type="button" className="entry-secondary min-h-11" onClick={() => { setSaved(null); setSelection({ product: null }); }}>Record another</button><button type="button" className="entry-link min-h-11" onClick={() => setSaved(null)}>Done</button></div></div>}
+    {saved && <div className="monthly-record-success" role="status"><strong>Investment recorded</strong><a className="entry-link min-h-11 inline-flex items-center" href="#portfolio/holdings">View in Portfolio →</a><div className="investment-line"><InvestmentIdentity product={saved.product_id}/><p>{investmentIdentity(saved.product_id).shortName} · {saved.units} {saved.product_id.endsWith("_btc") ? "BTC" : "units"}<br/><ProviderIdentity provider={saved.provider}/></p></div><div><button type="button" className="entry-secondary min-h-11" onClick={() => { setSaved(null); setSelection({ product: null }); }}>Record another</button><button type="button" className="entry-link min-h-11" onClick={() => setSaved(null)}>Done</button></div></div>}
     {error && <p role="alert" className="monthly-error">{error} <button type="button" className="entry-link min-h-11" onClick={() => { setError(""); setReload(value => value + 1); }}>Retry</button></p>}
     {!portfolio && !error && <p role="status">Loading supported investments…</p>}
     {completed && portfolio && <>
@@ -50,7 +52,8 @@ export function MonthlyInvestmentFollowup({ userId, plan, completed }: { userId:
       })}</div></>}
       <button type="button" className="entry-link min-h-11" onClick={() => { setSaved(null); setSelection({ product: null }); }}>Record another supported investment</button>
     </>}
-    {selection && portfolio && <DatedInvestmentFlow key={`${selection.product?.product_id ?? "choose"}:${selection.product?.provider ?? ""}`} portfolio={portfolio} userId={userId} initialProduct={selection.product ?? undefined} plannedAmount={selection.plannedAmount} monthly onClose={() => setSelection(null)} onSaved={recorded} onOpeningOnly={() => { setSelection(null); window.location.hash = "#portfolio/add"; }} />}
+    {recording && portfolio && <DatedInvestmentFlow key="direct-recording" portfolio={portfolio} userId={userId} initialProduct={directProduct??undefined} allowProductChange monthly onClose={()=>onRecordingClose?.()} onSaved={recorded} onOpeningOnly={()=>{onRecordingClose?.();window.location.hash="#portfolio/add";}}/>}
+    {!recording && selection && portfolio && <DatedInvestmentFlow key={`${selection.product?.product_id ?? "choose"}:${selection.product?.provider ?? ""}`} portfolio={portfolio} userId={userId} initialProduct={selection.product ?? undefined} plannedAmount={selection.plannedAmount} monthly onClose={() => setSelection(null)} onSaved={recorded} onOpeningOnly={() => { setSelection(null); window.location.hash = "#portfolio/add"; }} />}
     <MonthlyInvestmentActivity userId={userId} month={month} onMonthChange={setMonth} reload={reload} />
   </section>;
 }

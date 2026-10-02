@@ -13,12 +13,14 @@ import MonthlyInvesting from "./contributions/MonthlyInvesting";
 import MonthlyPendingRecording from "./contributions/MonthlyPendingRecording";
 import InvestmentProfileEditor from "./InvestmentProfileEditor";
 import ChatSection from "./dashboard/ChatSection";
-import { AccountAccessProvider, AccountPlans, PlusFeature, AccessLoading, useAccountAccess } from "./AccountAccess";
+import { AccountAccessProvider, AccountPlans, PlusFeature, AccessLoading, useAccountAccess, accountPlanLabel } from "./AccountAccess";
 import PlanImplementation, { TrackingAvailability } from "./portfolio/PlanImplementation";
 import { planTargets } from "@/lib/planImplementation";
 import V2Home from "./app/V2Home";
 import Allocation from "./portfolio/Allocation";
 import SettingsIcon from "./app/SettingsIcon";
+import PortfolioWhatIf from "./portfolio/PortfolioWhatIf";
+import PortfolioPlanningTools from "./portfolio/PortfolioPlanningTools";
 
 type Props = {
   value: PlanV2; userId?: string; onSignOut: () => void; signingOut: boolean; logoutError: string; onPlanChange?: (plan: AccountPlan) => void;
@@ -29,6 +31,7 @@ export default function PlanV2View(props: Props) {
 function PlanV2Shell({ value, userId, onSignOut, signingOut, logoutError, onPlanChange }: Props) {
   const active = useSyncExternalStore(subscribeNavigation, navigationSnapshot, serverNavigationSnapshot);
   const section = useSyncExternalStore(subscribeNavigation, sectionSnapshot, () => "");
+  const [reviewMonth,setReviewMonth]=useState<string>();
   const [chatVisited, setChatVisited] = useState(false);
   if (active === "ask" && !chatVisited) setChatVisited(true);
   const [choosing, setChoosing] = useState(false);
@@ -42,9 +45,9 @@ function PlanV2Shell({ value, userId, onSignOut, signingOut, logoutError, onPlan
     setPreviousDestination(active);
     setChoosing(false);
   }
-  return <AppShell active={active} pageTitle={(active === "home" && section === "monthly") || (active === "portfolio" && section === "contribution") ? "Monthly plan" : undefined} name={value.profile.full_name} onSignOut={onSignOut} signingOut={signingOut} logoutError={logoutError}>
+  return <AppShell active={active} pageTitle={(active === "home" && section === "monthly") || (active === "portfolio" && section === "contribution") ? "Investment breakdown" : active === "portfolio" && section === "what-if" ? "What-if" : undefined} name={value.profile.full_name} onSignOut={onSignOut} signingOut={signingOut} logoutError={logoutError}>
     {choosing && userId && onPlanChange ? <PlusFeature feature="profile_rebuild" title="Review and rebuild your investment profile" onBack={() => setChoosing(false)}><InvestmentProfileEditor value={value} userId={userId} initialMode={editMode} onCancel={() => setChoosing(false)} onSaved={plan => { onPlanChange(plan); setChoosing(false); }} /></PlusFeature> : <>
-      {((active === "home" && section === "monthly") || (active === "portfolio" && section === "contribution")) && userId && onPlanChange ? <div className="monthly-page"><MonthlyPendingRecording userId={userId}/><PlusFeature feature="monthly_contribution_planner" title="Monthly plan"><MonthlyInvesting value={value} userId={userId} onPlanChange={onPlanChange}/></PlusFeature></div> : active === "home" && (section === "plan" ? <><a href="#home" className="entry-link min-h-11 inline-flex items-center">‹ Home</a><V2PlanContent value={value}/></> : <V2Home value={value} userId={userId} section={section} onPlanChange={onPlanChange}/>)}
+      {((active === "home" && section === "monthly") || (active === "portfolio" && section === "contribution")) && userId && onPlanChange ? <div className="monthly-page"><MonthlyPendingRecording userId={userId}/><PlusFeature feature="monthly_contribution_planner" title="Investment breakdown"><MonthlyInvesting value={value} userId={userId} onPlanChange={onPlanChange} backHref={active==="home"?"#home":"#portfolio"}/></PlusFeature></div> : active === "home" && (section === "plan" ? <><a href="#home" className="entry-link min-h-11 inline-flex items-center">‹ Home</a><V2PlanContent value={value}/></> : <V2Home value={value} userId={userId} section={section} onPlanChange={onPlanChange}/>)}
       {active === "settings" && userId && onPlanChange && <section id="section-investment" className="settings-list" aria-label="Account and plan settings">
         <p className="settings-group-label">Account</p>
         <div className="settings-account-header"><span aria-hidden="true">{value.profile.full_name.trim().slice(0,1)}</span><div><strong>{value.profile.full_name}</strong><small>Your Arbor account</small></div></div>
@@ -56,27 +59,29 @@ function PlanV2Shell({ value, userId, onSignOut, signingOut, logoutError, onPlan
         <button className="settings-row" onClick={()=>{setEditMode("plan");setChoosing(true);}}><SettingsIcon kind="plan"/><span>Change plan<small className="block mt-1">Changes targets, not investments · Arbor Plus</small></span><span aria-hidden="true">›</span></button>
         <a className="settings-row" href="#portfolio/ways"><SettingsIcon kind="plan"/><span>Your investment choices<small className="block mt-1">Ways to invest your plan</small></span><span aria-hidden="true">›</span></a>
       </section>}
-      {active !== "home" && active !== "ask" && !(active==="portfolio"&&section==="contribution") && <V2Destination key={`${active}:${JSON.stringify(value)}`} value={value} active={active} userId={userId} section={section} onPlanChange={onPlanChange}/>}
+      {active !== "home" && active !== "ask" && !(active==="portfolio"&&section==="contribution") && <V2Destination key={`${active}:${JSON.stringify(value)}`} value={value} active={active} userId={userId} section={section} onPlanChange={onPlanChange} reviewMonth={reviewMonth} onReviewMonthChange={setReviewMonth}/>}
     </>}
     {chatVisited && <div hidden={active !== "ask" || choosing}><ChatSection key={`${userId}:${JSON.stringify(value)}`} plan={value} /></div>}
   </AppShell>;
 }
 
-export function V2Destination({ value, active, userId, section = "", onPlanChange }: { value: PlanV2; active: Destination; userId?: string; section?: string; onPlanChange?: (value:PlanV2)=>void }) {
+export function V2Destination({ value, active, userId, section = "", onPlanChange, reviewMonth, onReviewMonthChange }: { value: PlanV2; active: Destination; userId?: string; section?: string; onPlanChange?: (value:PlanV2)=>void;reviewMonth?:string;onReviewMonthChange?:(month:string)=>void }) {
   const access = useAccountAccess();
   if (active === "ask") return <ChatSection key={userId} plan={value} />;
   if (active === "portfolio" && userId && !access?.value) return <AccessLoading />;
   const tracking = access?.value?.availability?.live_portfolio === true && access.value.features.includes("live_portfolio");
+  if(active==="portfolio"&&section==="what-if"&&userId)return <PlusFeature feature="future_projection" title="What-if exploration"><PortfolioWhatIf value={value} userId={userId}/></PlusFeature>;
   if (active === "portfolio") return <div className="space-y-5">
-    {tracking && userId ? <LivePortfolio key={section === "add" ? "add" : "portfolio"} value={value} userId={userId} section={section} onPlanChange={onPlanChange}/> : <>
+    {tracking && userId ? <LivePortfolio key={section === "add" ? "add" : "portfolio"} value={value} userId={userId} section={section} onPlanChange={onPlanChange} reviewMonth={reviewMonth} onReviewMonthChange={onReviewMonthChange}/> : <>
       <PlanImplementation value={value} userId={userId} onPlanChange={onPlanChange}/>
       <TrackingAvailability/>
+      <PortfolioPlanningTools/>
     </>}
     {value.plan.path === "short_term" || value.plan.plan_basis !== "user_selected" ? <p className="text-sm leading-6 text-slate-600">{value.plan.path === "short_term" ? "Long-term monthly investing is paused on your short-term path." : "Your historical plan remains saved. Explicitly choose an approach before exploring monthly investing."} <a className="entry-link" href="#settings/investment">Review investment profile</a></p> : null}
   </div>;
   if (active === "settings") return <div className="settings-list">
     <p className="settings-group-label">Subscription</p>
-    <details id="section-plus" open={section === "plus"}><summary><SettingsIcon kind="plus"/><span>{access?.value?.private_beta ? "Arbor Plus Trial" : "Arbor Plus"}<small className="block mt-1">{access?.value?.private_beta ? "Private Beta · Included for now" : access?.value?.effective_tier === "free" ? "Arbor Free · Explore Arbor Plus" : "Arbor Plus · Your access"}</small></span></summary><AccountPlans /></details>
+    <details id="section-plus" open={section === "plus"}><summary><SettingsIcon kind="plus"/><span>{access?.value?accountPlanLabel(access.value):"Your Arbor access"}<small className="block mt-1">{access?.value?.effective_tier==="plus"&&access.value.status==="trial" ? access.value.private_beta?"Private beta · No card or billing date":"Trial access" : access?.value?.effective_tier === "free" ? "Your current plan · Compare access" : "Active access · Your current plan"}</small></span></summary><AccountPlans /></details>
     <p className="settings-group-label">Appearance</p>
     <AppearanceSettings />
     <p className="settings-group-label">Security</p>

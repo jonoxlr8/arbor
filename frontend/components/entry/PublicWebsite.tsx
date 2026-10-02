@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import ActionArrow from "../ui/ActionArrow";
 import Logo, { ArborMark } from "@/components/Logo";
 import ArborIdentityIcon from "@/components/ArborIdentityIcon";
 import { AppearanceSelect } from "@/components/app/Appearance";
@@ -10,7 +11,7 @@ import { entryLinks } from "@/lib/publicEntry";
 import { publicFaqs, publicSections } from "@/lib/publicWebsite";
 
 function StartLink() {
-  return <a className="m-button" href={entryLinks.signup}>Get started <span aria-hidden="true">↗</span></a>;
+  return <a className="m-button" href={entryLinks.signup}>Get started <span className="m-start-arrow"><ActionArrow/></span></a>;
 }
 function DemoImage({ name, width, height, alt, priority = false, sizes = "(max-width: 768px) 90vw, 1120px" }: {
   name: string; width: number; height: number; alt: string; priority?: boolean; sizes?: string;

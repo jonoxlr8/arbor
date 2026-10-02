@@ -16,7 +16,8 @@ import DatedInvestmentFlow from "./DatedInvestmentFlow";
 import HoldingActivity from "./HoldingActivity";
 import InvestmentActivitySheet from "./InvestmentActivitySheet";
 import MonthlyReview from "./MonthlyReview";
-import { useAccountAccess } from "../AccountAccess";
+import PortfolioPlanningTools from "./PortfolioPlanningTools";
+import { PlusFeature } from "../AccountAccess";
 import PortfolioHistoryChart from "./PortfolioHistoryChart";
 import { closePortfolioSheet } from "@/lib/appNavigation";
 
@@ -40,26 +41,27 @@ function gainDisplay(value: string | null, cost: string | null | undefined, gain
 }
 export function recordedGainDisplay(h: PortfolioHolding) { return gainDisplay(h.value_php, h.cost_basis_php, h.recorded_gain_php, h.recorded_gain_percentage); }
 export function portfolioGainDisplay(p: LivePortfolioData) { return gainDisplay(p.total_value_php, p.recorded_cost_php, p.recorded_gain_php, p.recorded_gain_percentage); }
-function GainText({ text, tone }: { text: string; tone: GainTone }) {
+function GainText({ text, tone, mobileLines = false }: { text: string; tone: GainTone; mobileLines?: boolean }) {
   const color = { positive: "text-emerald-700", negative: "text-red-700", zero: "text-slate-900", unknown: "text-slate-500" }[tone];
-  return <span className={color} data-gain={tone}>{text}</span>;
+  const parts = text.split(" · ");
+  return <span className={color} data-gain={tone}>{mobileLines && parts.length === 2 ? <><span className="holding-gain-amount">{parts[0]}</span><span className="holding-gain-separator"> · </span><span className="holding-gain-percentage">{parts[1]}</span></> : text}</span>;
 }
-export function RecordedGain({ holding }: { holding: PortfolioHolding }) {
+export function RecordedGain({ holding, mobileLines = false }: { holding: PortfolioHolding; mobileLines?: boolean }) {
   const gain = recordedGainDisplay(holding);
-  return <GainText {...gain}/>;
+  return <GainText {...gain} mobileLines={mobileLines}/>;
 }
 export function PortfolioGain({ portfolio }: { portfolio: LivePortfolioData }) {
   if (!portfolio.holdings.length) return null;
   return <p className="portfolio-gain mt-2 text-sm" aria-label="Gain/loss against recorded cost"><span>Gain/loss against recorded cost</span><GainText {...portfolioGainDisplay(portfolio)}/></p>;
 }
 
-export default function LivePortfolio({ value, userId, section = "", onPlanChange }: { value: PlanV2; userId: string; section?: string; onPlanChange?: (value:PlanV2)=>void }) {
-  const access = useAccountAccess();
-  const plusAlignment = access?.value?.features.includes("plan_alignment") === true;
+export default function LivePortfolio({ value, userId, section = "", onPlanChange, reviewMonth, onReviewMonthChange }: { value: PlanV2; userId: string; section?: string; onPlanChange?: (value:PlanV2)=>void;reviewMonth?:string;onReviewMonthChange?:(month:string)=>void }) {
   const [portfolio, setPortfolio] = useState<LivePortfolioData | null>(null);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
-  const [insightsOpen, setInsightsOpen] = useState(section === "allocation" || section === "insights");
+  const insightsOpen = section === "allocation" || section === "insights";
+  const [insightsVisited, setInsightsVisited] = useState(insightsOpen);
+  if(insightsOpen&&!insightsVisited)setInsightsVisited(true);
   const [captureOnRead, setCaptureOnRead] = useState(section !== "ways" && section !== "history");
   const [busy, setBusy] = useState(false);
   const [historyError, setHistoryError] = useState(false);
@@ -99,6 +101,19 @@ export default function LivePortfolio({ value, userId, section = "", onPlanChang
     finally { pending.current = false; setBusy(false); }
   }
   return <div className="portfolio-canvas w-full min-w-0 space-y-6">
+    {insightsVisited && <Sheet title="Portfolio insights" wide open={insightsOpen} onClose={closePortfolioSheet}>
+      <PlusFeature feature="plan_alignment" title="Portfolio insights">
+        <div className="portfolio-insights-content">
+          <MonthlyReview key={userId} userId={userId} refreshVersion={reload} active={insightsOpen} initialMonth={reviewMonth} onMonthChange={onReviewMonthChange}/>
+          {portfolio ? <>
+            {portfolio.complete && portfolio.sleeves.some(s => s.current_percentage !== null) && <Allocation weights={portfolio.sleeves.filter(s => s.current_percentage !== null).map(s => ({role:s.sleeve, percentage_points:Number(s.current_percentage)}))} label="Current allocation"/>}
+            <AlignmentOverTime key={`${userId}-${reload}`} userId={userId}/>
+            <PlanAlignment portfolio={portfolio}/>
+            {!!portfolio.holdings.length && <details className="provider-totals"><summary className="min-h-11 cursor-pointer text-sm text-slate-600">Value by provider</summary><dl className="detail-facts">{Object.entries(portfolio.provider_values_php).map(([provider, amount]) => <div key={provider}><dt>{providerName(provider)}</dt><dd>{money(amount)}{portfolio.holdings.some(h => h.provider === provider && h.value_php === null) ? " · incomplete" : ""}</dd></div>)}</dl></details>}
+          </> : <p role="status" className="mt-6 text-sm text-slate-600">{error || "Checking your recorded portfolio…"}{error && <button className="entry-link min-h-11 ml-3" onClick={retryRead}>Retry portfolio</button>}</p>}
+        </div>
+      </PlusFeature>
+    </Sheet>}
     {error && <div role="alert" className="arbor-panel text-sm text-slate-700">{error}<button disabled={busy} className="entry-link ml-3 min-h-11" onClick={retryRead}>Retry</button></div>}
     {!portfolio && !error && <div role="status" className="portfolio-skeleton"><span className="sr-only">Loading your portfolio…</span><div/><div/><div/></div>}
     <header className="portfolio-toolbar"><span className="portfolio-context">Your investments, together</span><div className="portfolio-actions"><button type="button" className="refresh-control" aria-label="Refresh portfolio" title="Refresh portfolio" onClick={refresh} disabled={busy}><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M20 7v5h-5M4 17v-5h5M19 12a7 7 0 0 0-12-5L4 10m16 4-3 3A7 7 0 0 1 5 12"/></svg></button><button className="entry-primary portfolio-add" disabled={busy || !portfolio} onClick={() => setEntryProduct(null)}>+ Add Investment</button></div></header>
@@ -109,18 +124,17 @@ export default function LivePortfolio({ value, userId, section = "", onPlanChang
         {!portfolio.holdings.length ? <>
           <div className="portfolio-empty"><h3>No investments recorded yet.</h3><p>Record an investment you own to see it here.</p></div>
         </> : <div className="holdings-list">{portfolio.holdings.map(h => <button type="button" className="holding-row" key={h.id} aria-label={`View ${h.display_name}`} onClick={() => setDetail(h)}>
-          <AssetIdentity product={h.product_id} sleeve={h.sleeve}/><span className="holding-copy"><strong>{investmentIdentity(h.product_id,h.display_name).shortName}</strong>{investmentIdentity(h.product_id).category === "etf" && <span className="holding-full-name">{investmentIdentity(h.product_id).fullName}</span>}<span className="mt-1 block"><ProviderBrand provider={h.provider} name={h.provider_name}/></span><small>{h.share_basis_required ? "Share count basis needed" : h.units === null ? "Units not recorded" : `${decimalText(h.product_id === "gotrade_vgt" ? h.effective_units ?? h.units : h.units)} ${h.sleeve === "crypto" ? "BTC" : supportsManualValue(h) ? "units" : "shares"}`} · {h.unit_price && h.unit_price_currency ? investmentUnitPrice(h.product_id, h.unit_price, h.unit_price_currency) : "Unit price unavailable"}</small></span><span className="holding-money">{h.value_php === null ? "Value unavailable" : money(h.value_php)}<small><RecordedGain holding={h}/></small></span><span className="row-chevron" aria-hidden="true">›</span>
+          <AssetIdentity product={h.product_id} sleeve={h.sleeve}/><span className="holding-copy"><strong>{investmentIdentity(h.product_id,h.display_name).category === "fund" ? investmentIdentity(h.product_id,h.display_name).fullName : investmentIdentity(h.product_id,h.display_name).shortName}</strong>{investmentIdentity(h.product_id).category === "etf" && <span className="holding-full-name">{investmentIdentity(h.product_id).fullName}</span>}<span className="holding-provider mt-1 block"><ProviderBrand provider={h.provider} name={h.provider_name}/></span><small className="holding-row-facts">{h.share_basis_required ? "Share count basis needed" : h.units === null ? "Units not recorded" : `${decimalText(h.product_id === "gotrade_vgt" ? h.effective_units ?? h.units : h.units)} ${h.sleeve === "crypto" ? "BTC" : supportsManualValue(h) ? "units" : "shares"}`} · {h.unit_price && h.unit_price_currency ? investmentUnitPrice(h.product_id, h.unit_price, h.unit_price_currency) : "Unit price unavailable"}</small></span><span className="holding-money">{h.value_php === null ? "Value unavailable" : money(h.value_php)}<small><RecordedGain holding={h} mobileLines/></small></span><span className="row-chevron" aria-hidden="true">›</span>
         </button>)}</div>}
       </section>
       {value.plan.path === "long_term" && value.plan.readiness.actionable_contribution_guidance_allowed && <nav className="portfolio-secondary-actions" aria-label="Ways to invest"><a href="#portfolio/ways" data-sheet-launcher="ways">Ways to invest <span aria-hidden="true">→</span></a></nav>}
-      {plusAlignment && <details id="section-allocation" className="portfolio-insights" onToggle={e => setInsightsOpen(e.currentTarget.open)} open={section === "allocation" || section === "insights"}><summary className="min-h-11 cursor-pointer font-semibold text-slate-900"><span className="eyebrow plus-eyebrow">Arbor Plus</span><span>Portfolio insights</span></summary><div className="pt-4">{insightsOpen && <MonthlyReview key={`${userId}-${reload}`} userId={userId}/>}{portfolio.complete && portfolio.sleeves.some(s => s.current_percentage !== null) && <Allocation weights={portfolio.sleeves.filter(s => s.current_percentage !== null).map(s => ({role:s.sleeve, percentage_points:Number(s.current_percentage)}))} label="Current allocation"/>}<AlignmentOverTime key={`${userId}-${reload}`} userId={userId}/><PlanAlignment portfolio={portfolio}/>{!!portfolio.holdings.length && <details className="provider-totals"><summary className="min-h-11 cursor-pointer text-sm text-slate-600">Value by provider</summary><dl className="detail-facts">{Object.entries(portfolio.provider_values_php).map(([provider, value]) => <div key={provider}><dt>{providerName(provider)}</dt><dd>{money(value)}{portfolio.holdings.some(h => h.provider === provider && h.value_php === null) ? " · incomplete" : ""}</dd></div>)}</dl></details>}</div></details>}
-      {plusAlignment === false && <section className="portfolio-plus-preview"><h2 className="text-lg font-semibold text-slate-900">Understand your portfolio</h2><p className="mt-2 text-sm text-slate-600">See how your recorded holdings compare with the plan you chose with Arbor Plus.</p><a className="entry-link mt-3 inline-flex min-h-11 items-center" href="#settings/plus">Explore Arbor Plus →</a></section>}
+      <PortfolioPlanningTools/>
       <nav className="portfolio-secondary-actions" aria-label="Investment activity">
         <a href="#portfolio/history" data-sheet-launcher="history">Investment activity <span aria-hidden="true">→</span></a>
       </nav>
       {section === "history" && <InvestmentActivitySheet portfolio={portfolio} userId={userId} onClose={closePortfolioSheet} onChanged={refresh}/>}
       {detail && <Sheet title={investmentIdentity(detail.product_id, detail.display_name).shortName} onClose={() => setDetail(null)}>
-        <div className="holding-detail-identity flex items-center gap-3"><AssetIdentity product={detail.product_id} sleeve={detail.sleeve}/><div><strong>{investmentIdentity(detail.product_id,detail.display_name).shortName}</strong><small>{investmentIdentity(detail.product_id,detail.display_name).fullName}</small><ProviderBrand provider={detail.provider} name={detail.provider_name}/></div></div>
+        <div className="holding-detail-identity flex items-center gap-3"><AssetIdentity product={detail.product_id} sleeve={detail.sleeve}/><div><strong>{investmentIdentity(detail.product_id,detail.display_name).shortName}</strong><small>{investmentIdentity(detail.product_id,detail.display_name).fullName}</small>{investmentIdentity(detail.product_id).unitClass&&<small className="block">{investmentIdentity(detail.product_id).unitClass}</small>}<ProviderBrand provider={detail.provider} name={detail.provider_name}/></div></div>
         <p className="mt-6 text-4xl font-semibold">{detail.value_php === null ? "Value unavailable" : money(detail.value_php)}</p><p className="mt-2 text-sm text-slate-600">{freshnessText(detail)}</p>
         <dl className="detail-facts"><div><dt>Units</dt><dd>{detail.share_basis_required ? "Share count basis needed" : detail.units === null ? "Not recorded" : `${decimalText(detail.product_id === "gotrade_vgt" ? detail.effective_units ?? detail.units : detail.units)}${detail.sleeve === "crypto" ? " BTC" : ""}`}</dd></div><div><dt>Current unit price</dt><dd>{detail.unit_price && detail.unit_price_currency ? investmentUnitPrice(detail.product_id, detail.unit_price, detail.unit_price_currency) : "Unavailable"}</dd></div><div><dt>Recorded cost</dt><dd>{detail.cost_basis_php === null ? "Recorded cost needed" : money(detail.cost_basis_php)}</dd></div><div><dt>Gain/loss against recorded cost</dt><dd><RecordedGain holding={detail}/></dd></div><div><dt>Plan sleeve</dt><dd>{SLEEVE_LABELS[detail.sleeve]}</dd></div></dl>
         {detail.units === null && <p className="text-sm text-slate-600">Arbor uses the value you entered. Add your fund units to enable automatic NAV-based tracking when a usable NAV is available.</p>}

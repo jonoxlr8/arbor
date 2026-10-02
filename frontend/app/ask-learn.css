@@ -30,7 +30,7 @@
 .learn-row:hover {background:var(--muted-surface);}
 .learn-mark {display:grid;place-items:center;width:52px;height:52px;flex:none;border-radius:13px;color:white;background:#305d70;}
 .learn-mark svg {width:31px;height:31px;}
-.learn-mark .learn-arbor-mark {width:36px;height:27px;color:white;}
+.learn-mark .learn-arbor-mark {width:31px;height:24px;color:white;}
 .learn-mark-basics {background:#476b82;}.learn-mark-etfs {background:#17518b;}.learn-mark-funds {background:#0a746b;}.learn-mark-crypto {background:#bd6500;}.learn-mark-arbor {background:#0f5132;}
 .learn-row-copy {display:grid;gap:3px;min-width:0;flex:1;}
 .learn-row-copy strong {font-size:14px;line-height:1.3;color:var(--foreground);}

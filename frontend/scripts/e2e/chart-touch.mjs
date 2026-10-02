@@ -60,6 +60,7 @@ const setup = async context => context.route('**/*',route=>{
  if(path.endsWith('/profiles/me'))return json(plan);
  if(path.endsWith('/account/export')){assert.equal(request.method(),'GET');assert.equal(url.search,'');return new Promise(resolve=>setTimeout(()=>resolve(route.fulfill({status:exportStatus,json:exportStatus===200?exportFixture:{detail:'Synthetic failure'},headers})),400));}
  if(path.endsWith('/account/entitlements'))return json({tier:'plus',status:'trial',effective_tier:'plus',private_beta:true,features:['live_portfolio','monthly_contribution_planner','monthly_checkin','future_projection','plan_alignment','ask_arbor_full'],ask_monthly_limit:null,ask_usage:null,ask_usage_available:true,availability:{live_portfolio:true,monthly_checkin:true}});
+ if(path.endsWith('/v2/portfolio/alignment-history'))return json({status:'unavailable',message:'Last month’s comparison is unavailable.',detail:'Synthetic history intentionally absent.',current:null,previous:null,drivers:[]});
  if(path.endsWith('/v2/next-action'))return json({key:'review_monthly_contribution',title:'Review your contribution',explanation:'Local fixture',button_label:'Review',blocking:false,destination:'plan'});
  if(path.endsWith('/v2/future-projection'))return json(canonical.projection);
  if(path.endsWith('/v2/monthly-plan'))return json(canonical.monthly);

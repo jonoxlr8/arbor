@@ -33,8 +33,11 @@ test("Monthly pending is outside the Plus gate and absent from Home", () => {
 
 test("Plus labels identify gated insights, not core tracking or Learn", () => {
   const portfolio = source("components/portfolio/LivePortfolio.tsx");
-  assert.match(portfolio, /plusAlignment && <details[^\n]+Arbor Plus[^\n]+Portfolio insights/);
-  assert.doesNotMatch(portfolio.slice(portfolio.indexOf('id="section-holdings"'),portfolio.indexOf('id="section-allocation"')),/plus-eyebrow/);
+  assert.match(portfolio, /<PlusFeature feature="plan_alignment" title="Portfolio insights">/);
+  assert.doesNotMatch(portfolio.slice(portfolio.indexOf('id="section-holdings"'),portfolio.indexOf('<PortfolioPlanningTools/>')),/plus-eyebrow/);
+  const tools=source("components/portfolio/PortfolioPlanningTools.tsx");
+  assert.equal((tools.match(/Arbor Plus/g)||[]).length,3);
+  assert.match(tools, /href="#portfolio\/insights"[^>]+aria-haspopup="dialog"/);
   assert.doesNotMatch(source("components/dashboard/LearnSection.tsx"),/plus-eyebrow/);
   const settings = renderToStaticMarkup(createElement(ComparePlans,{value:plus}));
   assert.match(settings,/Current plan: Arbor Plus Trial/);

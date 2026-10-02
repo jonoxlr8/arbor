@@ -107,3 +107,19 @@ test("monthly API uses JWT, no user ID in request body and strict response valid
 test("completed action is a recognized deterministic product destination",()=>{
  assert.ok(isNextAction({key:"monthly_complete",destination:"portfolio",title:"You’re set for September",explanation:"Recorded outside Arbor",button_label:"View your portfolio",blocking:false}));
 });
+
+for(const checkin of [pending,complete,null])test(`primary actual recording is independent of ${checkin?.current?"completed":checkin?"missing":"unavailable"} check-in`,t=>{
+ const states:unknown[]=[checkin,"",0,null,"",false];let cursor=0,opened=0;
+ t.mock.method(React,"useState",((initial:unknown)=>{const i=cursor++;return[states[i]??initial,(next:unknown)=>{states[i]=typeof next==="function"?(next as (old:unknown)=>unknown)(states[i]):next;}];}) as typeof React.useState);
+ t.mock.method(React,"useRef",((value:unknown)=>({current:value})) as typeof React.useRef);
+ t.mock.method(React,"useEffect",()=>{});
+ t.mock.method(React,"useContext",()=>({value:{availability:{monthly_checkin:true},features:["monthly_contribution_planner"]}}));
+ const value=structuredClone(contributionFixture);value.plan.plan_basis="user_selected";
+ const child=MonthlyCheckin({value,userId:"fixture",scenarioAmount:"5000",recordingPrimary:true,onRecordInvestment:()=>opened++});assert.ok(child);
+ const props=child.props,activity=child.type as (componentProps:typeof props)=>React.ReactNode;
+ const draw=()=>{cursor=0;return activity(props);};
+ assert.equal(findElement(draw(),el=>el.type==="button"&&el.props.children==="Submit monthly contribution"),undefined);
+ const button=findElement(draw(),el=>el.type==="button"&&el.props.children==="Record investment");assert.ok(button);(button.props.onClick as ()=>void)();assert.equal(opened,1);
+ assert.equal(states[3],null);assert.equal(states[4],"");assert.equal(findElement(draw(),el=>el.type==="input"),undefined);
+ if(checkin?.current)assert.ok(findElement(draw(),el=>el.type==="button"&&el.props.children==="Undo completion"));
+});

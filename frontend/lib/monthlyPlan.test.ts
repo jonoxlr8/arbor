@@ -41,8 +41,8 @@ const plan=()=>{const p=structuredClone(contributionFixture);p.plan.plan_basis="
 const access=(tracking:boolean):Entitlements=>({tier:"plus",status:"trial",effective_tier:"plus",private_beta:true,features:["live_portfolio","monthly_contribution_planner"],ask_monthly_limit:null,ask_usage:null,ask_usage_available:true,availability:{live_portfolio:tracking,monthly_checkin:true}});
 for(const tracking of [true,false])test(`monthly initial UI tracking=${tracking} uses one current-value source`,()=>{
   const html=render(createElement(AccountAccessContext.Provider,{value:{value:access(tracking),error:"",retry(){}}},createElement(MonthlyInvesting,{value:plan(),userId:"owner",onPlanChange(){}})));
-  assert.match(html,/Invest this month/);assert.match(html,/Review contribution/);
-  assert.equal(html.includes("recorded portfolio supplies current values automatically"),tracking);
+  assert.match(html,/Invest this month/);assert.match(html,/See investment breakdown/);
+  assert.equal(html.includes("Uses your recorded holdings and available reference values"),tracking);
   assert.equal(html.includes("I have no investments yet"),!tracking);
   assert.doesNotMatch(html,/Mark as invested|scenario|localStorage/);
 });
@@ -52,7 +52,7 @@ for(const path of ["foundation","short_term","historical"])test(`monthly ${path}
   if(path==="short_term")p.plan={...p.plan,path:"short_term",selected_strategy:null,base_allocation:null,planning_return_pct:null};
   if(path==="historical")p.plan.plan_basis="historical_assessment";
   const html=render(createElement(MonthlyInvesting,{value:p,userId:"owner",onPlanChange(){}}));
-  assert.match(html,/paused/);assert.doesNotMatch(html,/Contribution amount|Mark as invested|Review contribution/);
+  assert.match(html,/paused/);assert.doesNotMatch(html,/Amount to split|Mark as invested|See investment breakdown/);
 });
 test("monthly UI has no browser financial persistence, allocation engine or holding mutation",()=>{
   const source=readFileSync("components/contributions/MonthlyInvesting.tsx","utf8");
@@ -60,7 +60,7 @@ test("monthly UI has no browser financial persistence, allocation engine or hold
   assert.doesNotMatch(source,/localStorage|sessionStorage|portfolioApi\.(save|capture|remove)|Math\.round/);
   assert.match(source,/monthlyPlanApi.calculate/);assert.match(source,/recordable_amount/);assert.match(readFileSync("components/contributions/MonthlyMinimumNotice.tsx","utf8"),/does not hold or carry it forward automatically/);
   assert.match(source,/ProviderContinue/);assert.match(providerContinue,/await pendingApi\.start/);assert.match(providerContinue,/link\.click\(\)/);assert.doesNotMatch(providerContinue,/window\.location\.assign/);assert.doesNotMatch(source,/href="#portfolio\/add"/);
-  assert.match(source,/record the actual units you received/);
+  assert.match(source,/record the actual units and PHP amount you paid/);
   assert.match(source,/MonthlyInvestmentFollowup/);
 });
 

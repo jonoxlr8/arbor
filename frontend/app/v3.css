@@ -50,14 +50,19 @@
 .app-shell :is(.text-emerald-700,.text-emerald-600) { color:var(--v3-positive); }
 .app-shell :is(.text-red-700,.text-red-600) { color:var(--v3-negative); }
 
-/* Home is one composition: a dominant graph, utility rail, paired planning row. */
-.home-dashboard { --home-section-gap:12px; --home-related-gap:8px; display:grid; grid-template-columns:minmax(0,1.5fr) minmax(290px,1fr); gap:var(--home-section-gap); align-items:start; }
-.home-dashboard > .home-grid, .home-dashboard > .home-bottom { display:contents; }
-.home-dashboard .home-portfolio { grid-column:1; grid-row:1; align-self:stretch; min-height:0; }
-.home-dashboard .home-utility-stack { grid-column:2; grid-row:1; display:grid; grid-template-rows:minmax(0,3fr) minmax(0,2fr); align-self:stretch; gap:var(--home-related-gap); min-width:0; }
+/* Home groups recorded values/progress, then goal/plan context. */
+.home-dashboard { --home-section-gap:12px; --home-related-gap:8px; display:grid; grid-template-columns:minmax(0,1fr); gap:var(--home-section-gap); align-items:start; }
+.home-dashboard > .home-grid { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(290px,1fr); grid-template-rows:auto; gap:var(--home-section-gap); align-items:start; }
+/* Each column stacks independently: a taller neighbour never leaves an empty
+   grid-row hole above the next related card, including short/error states. */
+.home-column { display:flex; flex-direction:column; gap:var(--home-section-gap); min-width:0; }
+.home-dashboard .home-column > * { width:100%; }
+.home-dashboard > .home-bottom { display:contents; }
+.home-dashboard .home-portfolio { grid-column:1; grid-row:1; align-self:start; min-height:0; }
+.home-dashboard .home-utility-stack { grid-column:1; grid-row:2; display:grid; align-self:stretch; gap:var(--home-related-gap); min-width:0; }
 .home-dashboard .home-projection { grid-column:1; grid-row:2; }
 .home-dashboard .home-plan { grid-column:2; grid-row:2; }
-.home-dashboard .home-activity { grid-column:1/-1; grid-row:3; }
+.home-dashboard .home-activity { grid-column:1/-1; }
 .home-dashboard :is(.home-metric,.home-goal,.home-projection,.home-plan,.home-activity) { min-width:0; border:1px solid var(--line); border-radius:var(--v3-radius); background:var(--surface); box-shadow:var(--v3-shadow); }
 .home-dashboard :is(.home-portfolio,.home-goal,.home-projection,.home-plan,.home-activity) { padding:18px 20px; }
 .home-dashboard .home-portfolio header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
@@ -65,7 +70,7 @@
 .home-dashboard .home-portfolio .chart-value { margin-top:4px; font-size:clamp(33px,3.4vw,44px); }
 .home-dashboard .home-portfolio .compact-chart { padding:0; }
 .home-dashboard .home-portfolio .compact-chart .chart-known-label { display:block; }
-.home-dashboard .home-portfolio .compact-chart .chart-plot { height:190px; margin-top:12px; }
+.home-dashboard .home-portfolio .compact-chart .chart-plot { height:155px; margin-top:10px; }
 .home-dashboard .home-portfolio .compact-chart .chart-plot:has(.chart-no-history) { height:150px; }
 .home-dashboard .home-portfolio .compact-chart > p[role="status"] { margin-top:8px; font-size:11px; }
 .home-dashboard .home-portfolio > .entry-link { min-height:32px; }
@@ -335,12 +340,16 @@
 
 @media (max-width:999px) {
   .home-dashboard { grid-template-columns:minmax(0,1fr); }
-  .home-dashboard :is(.home-portfolio,.home-utility-stack,.home-projection,.home-activity,.home-plan) { grid-column:1; grid-row:auto; align-self:start; }
+  .home-dashboard > .home-grid { display:flex; flex-direction:column; }
+  .home-column { display:contents; }
+  .home-dashboard :is(.home-portfolio,.home-month-progress,.home-utility-stack,.home-next-investment,.home-projection,.home-activity,.home-plan) { grid-column:1; grid-row:auto; align-self:start; }
   .home-dashboard .home-portfolio { order:0; }
-  .home-dashboard .home-utility-stack { order:1; grid-template-rows:none; }
+  .home-dashboard .home-month-progress { order:1; }
+  .home-dashboard .home-next-investment { order:4; }
+  .home-dashboard .home-utility-stack { order:2; grid-template-rows:none; }
   .home-dashboard .home-projection { order:2; }
   .home-dashboard .home-plan { order:3; }
-  .home-dashboard .home-activity { order:4; }
+  .home-dashboard .home-activity { order:5; }
   .home-dashboard .home-utility-stack > .home-goal { order:0; }
   .home-dashboard .home-utility-stack > .home-monthly { order:1; }
   .home-dashboard .home-goal { display:flex; }
@@ -490,3 +499,77 @@
 .review-budget-progress::-webkit-progress-bar { background:var(--line); border-radius:999px; }
 .review-budget-progress::-webkit-progress-value { background:var(--v3-green); border-radius:999px; }
 .review-budget-progress::-moz-progress-bar { background:var(--v3-green); border-radius:999px; }
+
+/* Bounded Home/Portfolio clarity pass. */
+.action-arrow{width:20px;height:20px;flex:none;}
+.home-portfolio-open{display:grid;place-items:center;width:40px;height:40px;border:1px solid var(--feature-line);border-radius:50%;background:var(--feature-surface);color:var(--v3-green);}
+.home-portfolio-open:hover{background:var(--v3-green);color:var(--surface);}
+.home-month-progress{grid-column:2;grid-row:1;min-width:0;padding:18px 20px;border:1px solid var(--line);border-radius:var(--v3-radius);background:var(--surface);box-shadow:var(--v3-shadow);}
+.home-month-progress>header{display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:16px;}
+.home-month-progress h2{font-size:15px;font-weight:700;}.home-month-progress p{font-size:12px;line-height:1.6;color:var(--v3-muted);margin-top:6px;}
+.home-month-progress .home-progress-result{font-weight:650;color:var(--foreground);margin-top:10px;}.home-month-progress>small{display:block;font-size:10px;line-height:1.6;color:var(--v3-muted);margin-top:12px;}
+.home-budget-inline{padding-top:12px;margin-top:14px;border-top:1px solid var(--line);}.home-budget-inline .home-budget-amount{display:block;font-size:17px;font-weight:650;color:var(--foreground);}.home-budget-inline .entry-link{font-size:12px;}
+.home-next-investment{grid-column:1/-1;grid-row:auto;padding:16px 20px;border:1px solid var(--feature-line);border-radius:var(--v3-radius);background:var(--feature-surface);color:var(--foreground);}.home-next-investment>div{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:6px;}.home-next-investment strong{font-size:16px;}.home-next-investment p{font-size:12px;line-height:1.6;color:var(--v3-muted);margin-top:4px;}.home-next-investment .action-arrow{color:var(--v3-green);}
+.portfolio-planning-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}.portfolio-planning-tools>a{position:relative;padding:16px 40px 16px 18px;border:1px solid var(--feature-line);border-radius:var(--v3-radius);background:var(--feature-surface);}.portfolio-planning-tools strong,.portfolio-planning-tools small{display:block;}.portfolio-planning-tools strong{margin-top:6px;font-size:16px;}.portfolio-planning-tools small{font-size:12px;line-height:1.6;margin-top:4px;color:var(--v3-muted);}.portfolio-planning-tools>a>span:last-child{position:absolute;right:18px;top:40%;color:var(--v3-green);}
+.what-if-page{max-width:760px;}.what-if-page>header{margin:12px 0 18px;}.what-if-page h2{font-size:clamp(23px,3vw,29px);font-weight:700;}.what-if-page p{font-size:13px;line-height:1.7;color:var(--v3-muted);}.what-if-inputs,.what-if-result{padding:20px;border:1px solid var(--line);border-radius:var(--v3-radius);background:var(--surface);}.what-if-result{margin-top:16px;background:var(--feature-surface);border-color:var(--feature-line);}.what-if-result>strong{display:block;font-size:clamp(30px,4vw,44px);font-weight:700;overflow-wrap:anywhere;}.what-if-result summary{min-height:44px;padding:12px 0;font-size:13px;}
+.account-current-plan{background:var(--feature-surface)!important;border-color:var(--feature-line)!important;box-shadow:inset 0 0 0 1px var(--feature-line);}.current-plan-badge{display:inline-block;margin-top:8px;border-radius:999px;padding:4px 9px;background:var(--v3-green);color:white;font-size:10px;font-weight:650;}
+@media(max-width:999px){.home-dashboard .home-month-progress,.home-dashboard .home-next-investment{grid-column:1;grid-row:auto;}.portfolio-planning-tools{grid-template-columns:minmax(0,1fr);}}
+
+/* Insights uses the shared modal sheet; the three Plus launchers follow Ways. */
+.portfolio-planning-tools > a:last-child { grid-column:1/-1; }
+.portfolio-insights-content { min-width:0; }
+.portfolio-insights-content .monthly-review { padding:0; }
+
+/* Approved Home visual refinement; amounts and entitlements stay authoritative. */
+.home-dashboard .home-goal{padding:16px 18px;display:flex;flex-direction:column;justify-content:center;gap:0;min-height:0}.home-goal header{display:flex;align-items:center;justify-content:space-between;gap:12px}.home-goal header .entry-link{font-size:12px;min-height:44px;display:flex;align-items:center}.home-dashboard .home-goal .home-goal-progress{display:block;flex:none;margin-top:10px}.home-dashboard .home-goal .goal-amount{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.home-dashboard .home-goal .home-financial-amount{font-size:28px}.home-dashboard .home-goal .home-financial-target{font-size:14px;font-weight:500;letter-spacing:0}.home-dashboard .home-goal .goal-track{height:11px;margin:12px 0 8px;border-radius:8px;overflow:hidden}.home-goal .home-goal-footer{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}.home-dashboard .home-goal .home-goal-footer p{font-size:12px;margin:0}.home-dashboard .home-month-progress{display:block;padding:18px 20px}.home-progress-main{margin-top:8px}.home-month-progress .home-progress-main .home-financial-amount{font-size:32px}.home-progress-main .home-progress-zero{font-size:12px;color:var(--v3-muted);margin-top:4px}.home-progress-target{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12px;margin-top:8px;color:var(--v3-muted)}.home-progress-target strong{font-size:14px;color:var(--foreground)}.home-progress-meter{height:10px;background:var(--line);border-radius:8px;margin:8px 0 10px;overflow:hidden}.home-progress-meter span{display:block;height:100%;background:var(--v3-green);border-radius:8px}.home-month-progress .home-progress-result{font-size:14px;margin:8px 0;color:var(--foreground)}.home-progress-actions{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:0}.home-progress-actions .entry-link{display:inline-flex;align-items:center;min-height:44px;font-size:12px}.home-progress-notes{border-top:1px solid var(--line);margin-top:4px;color:var(--v3-muted);font-size:11px}.home-progress-notes summary{min-height:44px;display:flex;align-items:center;cursor:pointer}.home-progress-notes p{margin:8px 0;font-size:12px}.holding-money small{font-size:12px;font-weight:600;line-height:1.4}.chart-gain{font-size:20px}.chart-gain>strong{font-size:16px}.compact-chart .chart-gain{font-size:17px}.compact-chart .chart-gain>strong{font-size:14px}@media(min-width:1000px){.home-dashboard .home-plan .allocation-ring{width:104px;height:104px;padding:11px}.home-dashboard .home-plan .allocation-layout{padding:8px 0}.home-dashboard>.home-grid{align-items:stretch}.home-column-portfolio>.home-utility-stack{flex:1}.home-utility-stack>.home-goal{height:100%}.home-column-progress>.home-plan{flex:1}}
+.home-dashboard .home-budget-inline { border:0; padding:0; margin:0; }
+.home-progress-main > p { font-size:12px; color:var(--v3-muted); margin-top:4px; }
+
+/* Approved compact mobile Holdings; keep exact identities and values. */
+@media(max-width:640px) {
+  .holdings-list { display:grid; gap:10px; border:0; padding:0; box-shadow:none; background:transparent; }
+  .holding-row { grid-template-columns:29px minmax(0,1fr) max-content 8px; gap:8px; padding:15px 12px; align-items:start; border:1px solid var(--line); border-radius:14px; background:var(--surface); }
+  .holding-row > .identity-mark { width:29px; height:29px; grid-column:1; grid-row:1; }
+  .holding-copy { grid-column:2; grid-row:1; min-width:0; }
+  .holding-copy .holding-row-facts { display:none; }
+  .holding-copy strong { font-size:13px; font-weight:650; line-height:1.45; overflow-wrap:normal; word-break:normal; }
+  .holding-money { grid-column:3; grid-row:1; min-width:0; max-width:147px; padding:1px 0 0; text-align:right; font-size:13px; font-weight:650; line-height:1.45; letter-spacing:0; white-space:nowrap; }
+  .holding-money small { display:block; font-size:12px; font-weight:600; line-height:1.4; white-space:normal; }
+  .holding-row > .row-chevron { grid-column:4; grid-row:1; align-self:center; }
+}
+@media(max-width:350px) {
+  .holding-row { grid-template-columns:30px minmax(0,1fr) 10px; gap:8px 10px; padding:14px 12px; }
+  .holding-money { grid-column:2/4; grid-row:2; max-width:none; padding-top:5px; text-align:right; }
+  .holding-row > .row-chevron { grid-column:3; grid-row:1; }
+}
+
+/* Home and Portfolio share one chart component and visual family. Compact only scales type and plot height. */
+.portfolio-chart { --chart-gain-size:20px; --chart-percent-size:16px; --chart-axis-size:11px; }
+.portfolio-chart.compact-chart { --chart-gain-size:17px; --chart-percent-size:14px; --chart-axis-size:10px; }
+.portfolio-chart .chart-gain { font-size:var(--chart-gain-size); }
+.portfolio-chart .chart-gain > strong { font-size:var(--chart-percent-size); }
+.portfolio-chart .chart-extreme-text { font-size:var(--chart-axis-size); }
+
+/* Mobile Holdings: value, signed PHP gain, then signed percentage. Desktop keeps its inline gain. */
+@media(max-width:640px) {
+  .holding-money .holding-gain-amount,.holding-money .holding-gain-percentage { display:block; text-align:right; }
+  .holding-money .holding-gain-separator { display:none; }
+}
+
+/* Narrow Holdings: one content column, numbers directly below identity, provider after the numbers. */
+@media(max-width:350px) {
+  .holding-row .holding-copy { display:contents; }
+  .holding-copy > strong { grid-column:2; grid-row:1; }
+  .holding-copy > .holding-full-name { grid-column:2/4; grid-row:2; }
+  .holding-row .holding-money { grid-column:2/4; grid-row:2; padding-top:0; text-align:left; }
+  .holding-row:has(.holding-full-name) .holding-money { grid-row:3; }
+  .holding-copy > .holding-provider { grid-column:2/4; grid-row:3; margin-top:0; }
+  .holding-row:has(.holding-full-name) .holding-provider { grid-row:4; }
+  .holding-money .holding-gain-amount,.holding-money .holding-gain-percentage { text-align:left; }
+}
+
+/* Latest narrow refinement: PHP gain and percentage share the line below value. */
+@media(max-width:350px) {
+  .holding-money .holding-gain-amount,.holding-money .holding-gain-percentage { display:inline-block; white-space:nowrap; text-align:left; }
+  .holding-money .holding-gain-separator { display:inline; }
+}

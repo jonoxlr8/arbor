@@ -4,7 +4,8 @@ import {readFile,mkdir} from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {withAuthenticatedBrowser} from './auth.mjs';
-const origin='http://127.0.0.1:3138';
+const origin=process.env.ARBOR_REVIEW_ORIGIN??'http://127.0.0.1:3138';
+assert.ok(['localhost','127.0.0.1'].includes(new URL(origin).hostname));
 const fixtureCode = `import json
 from app.schemas.profile_v2 import ProfileV2Create
 from app.services.profile_v2 import profile_v2_row,restore_profile_v2
@@ -72,13 +73,13 @@ await withAuthenticatedBrowser(async({page})=>{
  await page.getByRole('button',{name:/^Growth More room/}).click();await page.getByRole('button',{name:'Continue',exact:true}).click();
  await page.getByRole('button',{name:'Review my plan',exact:true}).click();await page.getByRole('button',{name:'Use this as my plan',exact:true}).click();
  await page.getByRole('button',{name:'See ways to invest',exact:true}).click();
- await page.evaluate(()=>location.hash='home');await page.getByRole('button',{name:'Set monthly contribution/budget →',exact:true}).waitFor();
+ await page.evaluate(()=>location.hash='home');await page.getByRole('button',{name:'Set monthly budget →',exact:true}).waitFor();
  for(const theme of['light','dark'])for(const width of[320,390,768,1024,1440,1920]){
   await page.emulateMedia({colorScheme:theme});await page.setViewportSize({width,height:1000});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await page.evaluate(async () => { await Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {}))); });
   await page.screenshot({path:`${output}/home-${theme}-${width}.png`,fullPage:true});
-  await page.getByRole('button',{name:/monthly contribution\/budget →/}).click();
+  await page.getByRole('button',{name:/monthly budget →/}).click();
   assert.ok(await page.getByRole('button',{name:'Save monthly budget',exact:true}).isDisabled());
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await page.evaluate(async () => { await Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {}))); });
@@ -87,12 +88,12 @@ await withAuthenticatedBrowser(async({page})=>{
  }
  assert.equal(budgetWrites,0);
  for(const amount of['0','2500']){
-  await page.getByRole('button',{name:/monthly contribution\/budget →/}).click();await page.getByLabel('Monthly budget (PHP)').fill(amount);await page.getByRole('button',{name:'Save monthly budget',exact:true}).dblclick();
-  await page.getByRole('button',{name:'Edit monthly contribution/budget →',exact:true}).waitFor();assert.equal(saved.profile.monthly_investment,Number(amount));
-  await page.reload();await page.getByRole('button',{name:'Edit monthly contribution/budget →',exact:true}).waitFor();
+  await page.getByRole('button',{name:/monthly budget →/}).click();await page.getByLabel('Monthly budget (PHP)').fill(amount);await page.getByRole('button',{name:'Save monthly budget',exact:true}).dblclick();
+  await page.getByRole('button',{name:'Edit monthly budget →',exact:true}).waitFor();assert.equal(saved.profile.monthly_investment,Number(amount));
+  await page.reload();await page.getByRole('button',{name:'Edit monthly budget →',exact:true}).waitFor();
  }
  assert.equal(budgetWrites,2);
- await page.getByRole('button',{name:/monthly contribution\/budget →/}).click();await page.getByRole('button',{name:'Not set yet',exact:true}).click();await page.getByRole('button',{name:'Set monthly contribution/budget →',exact:true}).waitFor();assert.equal(saved.profile.monthly_investment,null);
+ await page.getByRole('button',{name:/monthly budget →/}).click();await page.getByRole('button',{name:'Not set yet',exact:true}).click();await page.getByRole('button',{name:'Set monthly budget →',exact:true}).waitFor();assert.equal(saved.profile.monthly_investment,null);
  await page.getByRole('button',{name:'Set a goal →',exact:true}).click();await page.getByRole('button',{name:'Continue',exact:true}).click();
  for(const theme of['light','dark'])for(const width of[320,390,768,1024,1440,1920]){
   await page.emulateMedia({colorScheme:theme});await page.setViewportSize({width,height:1000});
@@ -103,13 +104,13 @@ await withAuthenticatedBrowser(async({page})=>{
  assert.ok(await page.getByRole('button',{name:'Continue',exact:true}).isDisabled());await page.getByLabel('Target amount (future PHP)').fill('0');assert.ok(await page.getByRole('button',{name:'Continue',exact:true}).isDisabled());
  await page.getByLabel('Target amount (future PHP)').fill('500000');await page.getByRole('button',{name:'Continue',exact:true}).click();await page.getByRole('button',{name:'Skip date for now',exact:true}).click();await page.getByRole('button',{name:'Edit goal →',exact:true}).waitFor();assert.equal(saved.profile.goal_date,null);assert.equal(goalWrites,1);
  // Existing profiles restore unchanged, including their actual zero/nonzero planning answers.
- saved=structuredClone(fixtures.old);await page.reload();await page.getByRole('button',{name:'Edit monthly contribution/budget →',exact:true}).waitFor();
- await page.getByRole('button',{name:'Edit monthly contribution/budget →',exact:true}).click();assert.equal(await page.getByLabel('Monthly budget (PHP)').inputValue(),'2000');await page.getByRole('button',{name:'Cancel',exact:true}).click();
- await page.evaluate(()=>location.hash='home/plan');await page.evaluate(()=>location.hash='home');await page.getByRole('button',{name:'Edit monthly contribution/budget →',exact:true}).waitFor();
+ saved=structuredClone(fixtures.old);await page.reload();await page.getByRole('button',{name:'Edit monthly budget →',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Edit monthly budget →',exact:true}).click();assert.equal(await page.getByLabel('Monthly budget (PHP)').inputValue(),'2000');await page.getByRole('button',{name:'Cancel',exact:true}).click();
+ await page.evaluate(()=>location.hash='home/plan');await page.evaluate(()=>location.hash='home');await page.getByRole('button',{name:'Edit monthly budget →',exact:true}).waitFor();
  assert.deepEqual(saved,fixtures.old);
- plus=true;saved=structuredClone(fixtures.new);await page.reload();await page.getByRole('button',{name:'Set monthly contribution/budget →',exact:true}).waitFor();
- await page.evaluate(()=>location.hash='home/monthly');await page.getByLabel('Contribution amount (PHP)').waitFor();assert.equal(await page.getByLabel('Contribution amount (PHP)').inputValue(),'');
- saved.profile.monthly_investment=0;await page.reload();await page.getByLabel('Contribution amount (PHP)').waitFor();assert.equal(await page.getByLabel('Contribution amount (PHP)').inputValue(),'0');
+ plus=true;saved=structuredClone(fixtures.new);await page.reload();await page.getByRole('button',{name:'Set monthly budget →',exact:true}).waitFor();
+ await page.evaluate(()=>location.hash='home/monthly');await page.getByLabel('Amount to split (PHP)').waitFor();assert.equal(await page.getByLabel('Amount to split (PHP)').inputValue(),'');
+ saved.profile.monthly_investment=0;await page.reload();await page.getByLabel('Amount to split (PHP)').waitFor();assert.equal(await page.getByLabel('Amount to split (PHP)').inputValue(),'0');
  assert.equal(creates,1);assert.equal(errors,0);assert.equal(unexpected,0);
  } catch(error) { await page.screenshot({path:output+'/failure.png',fullPage:true}); console.log((await page.locator('body').innerText()).slice(-4500)); throw error; }
 },{syntheticFixture:{baseURL:origin,setup}});

@@ -21,33 +21,29 @@ test("historical goal names are not invented and no holdings is genuine zero pro
   assert.match(text,/Your goal/);
   assert.match(text,/₱0/);
   assert.match(text,/of ₱500,000/);
-  assert.match(text,/0\.0% complete/);
-  assert.match(text,/Explore Arbor Plus/);
+  assert.match(text,/0\.0% of target/);
+  assert.doesNotMatch(text,/Explore Arbor Plus|What If/);
 });
 test("complete, exceeded and incomplete goal progress stay distinct",()=>{
   const named = {...plan,profile:{...plan.profile,goal_name:"Home"}} as PlanV2;
-  assert.match(markup(named,holdings("106000")),/21\.2% complete/);
-  assert.match(markup(named,holdings("550000")),/110\.0% complete/);
+  assert.match(markup(named,holdings("106000")),/21\.2% of target/);
+  assert.match(markup(named,holdings("550000")),/110\.0% of target/);
   const incomplete = markup(named,holdings("106000",false));
   assert.match(incomplete,/Known progress/);
-  assert.doesNotMatch(incomplete,/21\.2% complete/);
+  assert.doesNotMatch(incomplete,/21\.2% of target/);
 });
-test("no valuation does not claim zero progress and Plus needs a target date",()=>{
+test("no valuation does not claim zero progress or mount a projection on Home",()=>{
   assert.match(markup(plan,null,true),/Checking your recorded portfolio/);
-  assert.match(markup(plan,holdings("0"),true),/Add a target date/);
+  assert.doesNotMatch(markup(plan,holdings("0"),true),/home-projection|What If/);
 });
-test("goal, monthly action and projection retain the intended reading order",()=>{
+test("goal and factual monthly context retain reading order without projection",()=>{
   const text = renderToStaticMarkup(createElement(AccountAccessContext.Provider,{value:access(true)},
     createElement(HomeGoal,{value:plan,portfolio:holdings("0"),monthly:createElement("a",{href:"#home/monthly"},"Monthly contribution")})));
   assert.ok(text.indexOf('id="home-goal-title"') < text.indexOf("Monthly contribution"));
-  assert.ok(text.indexOf("Monthly contribution") < text.indexOf('id="home-projection-title"'));
+  assert.doesNotMatch(text,/home-projection-title/);
 });
-test("only the entitled projection is marked Arbor Plus; basic goal progress is not",()=>{
-  const plus = markup(plan, holdings("0"), true);
-  assert.match(plus, /class="eyebrow plus-eyebrow">Arbor Plus<\/p><h2 id="home-projection-title"/);
-  assert.doesNotMatch(plus, /<section class="home-goal"[^>]*>\s*<p class="eyebrow plus-eyebrow"/);
-  const free = markup(plan, holdings("0"));
-  assert.doesNotMatch(free, /class="eyebrow plus-eyebrow"/);
+test("Home goal stays basic and has no duplicated Plus promotion",()=>{
+  for(const plus of [false,true])assert.doesNotMatch(markup(plan,holdings("0"),plus),/plus-eyebrow|Arbor Plus|Explore What If/);
 });
 
 test("unset budget and explicit zero render distinctly in Home and final review", () => {
@@ -58,4 +54,12 @@ test("unset budget and explicit zero render distinctly in Home and final review"
     assert.match(budget, amount === null ? /Not set yet/ : /₱0/);
     assert.match(review, amount === null ? /Not set yet/ : /₱0/);
   }
+});
+
+test("goal visual compares recorded values with the target and optional saved date, without a forecast",()=>{
+ const dated={...plan,profile:{...plan.profile,goal_target:3000000,goal_date:"2036-09-30"}} as PlanV2;
+ const text=markup(dated,holdings("124800"));
+ assert.match(text,/4\.2% of target/);assert.match(text,/recorded value/);assert.match(text,/Target date · Sep 2036/);
+ assert.doesNotMatch(text,/on track|projected|forecast/i);
+ assert.doesNotMatch(markup(dated,holdings("124800",false)),/4\.2% of target/);
 });

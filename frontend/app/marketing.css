@@ -259,3 +259,5 @@
 .m-information footer { border-top:1px solid var(--m-line); }
 .m-information footer nav { display:flex; flex-wrap:wrap; gap:12px 28px; }
 .m-information footer a { min-height:44px; display:inline-flex; align-items:center; }
+
+.m-start-arrow{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:color-mix(in srgb,currentColor 12%,transparent);}.m-start-arrow .action-arrow{width:19px;height:19px;color:inherit;}

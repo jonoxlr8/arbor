@@ -82,7 +82,7 @@ test("unavailable current allocation does not draw a misleading zero-value bar",
 });
 test("sheets rely on native modal focus/inert behavior and restore focus", () => {
   const source=readFileSync("components/ui/Sheet.tsx","utf8");
-  assert.match(source,/showModal\(\)/);assert.match(source,/previous.focus\(\)/);assert.match(source,/onCancel/);assert.match(source,/aria-labelledby/);
+  assert.match(source,/showModal\(\)/);assert.match(source,/previous.focus\(\{\s*preventScroll:\s*true/);assert.match(source,/onCancel/);assert.match(source,/aria-labelledby/);
   assert.match(source,/arbor-sheet-wide/);
 });
 test("factual activity and implementation are sheet launchers, not inline expanded sections", () => {
@@ -102,7 +102,7 @@ test("factual activity and implementation are sheet launchers, not inline expand
 });
 test("Portfolio hierarchy places ways before Plus insights and activity before final data disclosure", () => {
   const portfolio=readFileSync("components/portfolio/LivePortfolio.tsx","utf8");
-  const positions=["portfolio-value",'id="section-holdings"','data-sheet-launcher="ways"','className="portfolio-insights"','data-sheet-launcher="history"','className="portfolio-data"'].map(marker=>portfolio.indexOf(marker));
+  const positions=["portfolio-value",'id="section-holdings"','data-sheet-launcher="ways"','<PortfolioPlanningTools/>','data-sheet-launcher="history"','className="portfolio-data"'].map(marker=>portfolio.indexOf(marker));
   assert.ok(positions.every(position=>position>=0));
   assert.deepEqual(positions,[...positions].sort((left,right)=>left-right));
 });
