@@ -46,9 +46,9 @@ def main():
                     matches[0]["uuid"], btc_start, args.to_day, now)
             observations = etfs + bsp + btc
             cache = SharedCache(client, os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_MARKET_DATA_KEY"))
-            cache.write_history(observations)
+            cache.write_history(observations, preserve_existing=True)
             print(f"Historical observations cached: ETF {len(etfs)}, BSP {len(bsp)}, BTC {len(btc)}."
-                  " Missing dates remain unavailable; no owner history or snapshots changed.")
+                  " Pre-split VGT excluded; missing dates remain unavailable; no owner history or snapshots changed.")
             return 0
     except (MarketDataError, KeyError, TypeError, ValueError, httpx.HTTPError):
         print("Historical import failed; inspect source access, schema and operator configuration."

@@ -13,6 +13,7 @@ from .models import ETF_SYMBOLS, MarketDataError, normalized_value
 
 BSP_DAILY_URL = "https://www.bsp.gov.ph/statistics/external/day99_data.aspx"
 BSP_ARCHIVE_URL = "https://www.bsp.gov.ph/statistics/external/pesodollar.xlsx"
+VGT_SPLIT_DAY = date(2026, 4, 21)  # Older units/prices require separate split qualification.
 MARKETSTACK_EOD_URL = "https://api.marketstack.com/v2/eod"
 COINRANKING_HISTORY_URL = f"https://api.coinranking.com/v2/coin/{BTC_UUID}/price-history"
 
@@ -32,7 +33,7 @@ class HistoricalObservation:
 
     def payload(self):
         return {"price_key": self.price_key, "observed_at": self.observed_at.isoformat(),
-                "observation_date": self.observed_at.date().isoformat(), "value": str(self.value),
+                "observation_date": self.observed_at.astimezone(timezone.utc).date().isoformat(), "value": str(self.value),
                 "source": self.source, "currency": self.currency,
                 "provenance": self.provenance, "fetched_at": self.fetched_at.isoformat(),
                 "kind": self.kind, "unit_class": self.unit_class,
@@ -68,11 +69,14 @@ class MarketstackHistory:
                     raise ValueError()
                 for row in rows:
                     symbol = row["symbol"]
-                    observed_at = timestamp(row["date"])
+                    observed_at = timestamp(row["date"]).astimezone(timezone.utc)
                     if (symbol not in ETF_SYMBOLS or row.get("price_currency", "USD").upper() != "USD"
                             or not start <= observed_at.date() <= end or observed_at > now):
                         raise ValueError()
                     value = normalized_value(row["close"])
+                    # Do not import pre-split VGT into the unchanged unit accounting.
+                    if symbol == "VGT" and observed_at.astimezone(timezone.utc).date() < VGT_SPLIT_DAY:
+                        continue
                     identity = (ETF_SYMBOLS[symbol], observed_at)
                     if identity in result and result[identity].value != value:
                         raise ValueError()

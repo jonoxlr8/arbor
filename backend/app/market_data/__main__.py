@@ -10,6 +10,7 @@ from .models import FUND_CLASSES, MarketDataError, manual_nav
 from .adapters import VendorHTTP, Marketstack, ExchangeRate, Coinranking
 from .cache import SharedCache
 from .refresh import refresh
+from .history_sources import BSPHistory
 from .toap import TOAP, TOAPRequestGate
 
 
@@ -42,9 +43,11 @@ def main():
             http = VendorHTTP(client)
             toap_enabled = os.getenv("TOAP_NAV_ENABLED", "true").strip().lower() == "true"
             toap_gate = TOAPRequestGate()
+            history_options = ({"capture_history": True, "bsp_history": BSPHistory(client)}
+                if os.getenv("ARBOR_AUTOMATIC_HISTORY_ENABLED", "").strip().lower() == "true" else {})
             results = refresh(cache, [Marketstack(http, os.getenv("MARKETSTACK_API_KEY")),
                 ExchangeRate(http), Coinranking(http, os.getenv("COINRANKING_API_KEY")),
-                TOAP(client, "atram_nav", toap_enabled, toap_gate), TOAP(client, "bpi_nav", toap_enabled, toap_gate)])
+                TOAP(client, "atram_nav", toap_enabled, toap_gate), TOAP(client, "bpi_nav", toap_enabled, toap_gate)], **history_options)
             for source, status in results.items():
                 print(f"{source}: {status}")
             return int(any(v not in ("cached", "cooldown", "updated", "older_data_ignored", "disabled_by_config") for v in results.values()))

@@ -1,10 +1,12 @@
 """CLI-only privileged cache writer. Never used by authenticated API routes."""
 import json
 import re
+from datetime import timezone
 from urllib.parse import urlsplit
 from decimal import Decimal
 import httpx
-from .models import ReferencePrice, MarketDataError
+from .models import ReferencePrice, MarketDataError, normalized_value
+from .adapters import timestamp
 
 
 class SharedCache:
@@ -30,12 +32,13 @@ class SharedCache:
         if (method, path) not in {
                 ("GET", "/arbor_market_prices"), ("POST", "/arbor_market_prices"),
                 ("POST", "/arbor_historical_market_observations"),
+                ("GET", "/arbor_historical_market_observations"),
                 ("POST", "/rpc/arbor_claim_market_refresh")}:
             raise MarketDataError("cache_operation_not_allowed")
         try:
             request = self.client.build_request(method, self.base + path, timeout=10,
                 headers={"apikey": self.key,
-                         "Prefer": "resolution=merge-duplicates,return=minimal"}, **kwargs)
+                         "Prefer": kwargs.pop("prefer", "resolution=merge-duplicates,return=minimal")}, **kwargs)
             # Do not inherit a bearer/user credential from the HTTP client.
             if self.modern_key:
                 request.headers.pop("Authorization", None)
@@ -77,9 +80,53 @@ class SharedCache:
     def write(self, prices):
         self.call("POST", "/arbor_market_prices", json=[p.model_dump(mode="json") for p in prices])
 
-    def write_history(self, observations):
+    def write_history(self, observations, preserve_existing=False):
         # Operator-only, shared by all owners; never a user portfolio write.
         for start in range(0, len(observations), 100):
+            batch = observations[start:start + 100]
             self.call("POST", "/arbor_historical_market_observations",
                       params={"on_conflict": "price_key,observed_at"},
-                      json=[item.payload() for item in observations[start:start + 100]])
+                      prefer=("resolution=ignore-duplicates,return=minimal" if preserve_existing
+                              else "resolution=merge-duplicates,return=minimal"),
+                      json=[item.payload() for item in batch])
+            if preserve_existing:
+                self.verify_history(batch)
+
+    def verify_history(self, observations):
+        """Bounded exact-key read detects ignored corrections, including races.
+
+        Source provenance/fetch time may differ between latest and dated imports.
+        Compare the immutable quote's value/source/currency, not retrieval metadata.
+        Never update an existing row to resolve a correction.
+        """
+        # Keep encoded filters below ordinary proxy URL limits, including
+        # dated imports whose insert batches contain 100 observations.
+        for start in range(0, len(observations), 25):
+            self._verify_history_batch(observations[start:start + 25])
+
+    def _verify_history_batch(self, observations):
+        expected = {(item.price_key, item.observed_at.astimezone(timezone.utc)):
+                    (normalized_value(item.value), item.source, item.currency)
+                    for item in observations}
+        filters = []
+        for key, observed_at in expected:
+            # Internal canonical keys only; never interpolate a user expression.
+            if key not in ("gotrade_vt", "gotrade_vgt", "gotrade_bnd", "btc_php", "usd_php"):
+                raise MarketDataError("historical_observation_identity_invalid")
+            filters.append(f"and(price_key.eq.{key},observed_at.eq.{observed_at.isoformat()})")
+        rows = self.call("GET", "/arbor_historical_market_observations", params={
+            "select": "price_key,observed_at,value,source,currency",
+            "or": "(" + ",".join(filters) + ")", "limit": len(expected)})
+        try:
+            if not isinstance(rows, list) or len(rows) != len(expected):
+                raise ValueError()
+            found = {}
+            for row in rows:
+                key = (row["price_key"], timestamp(row["observed_at"]).astimezone(timezone.utc))
+                if key not in expected or key in found:
+                    raise ValueError()
+                found[key] = (normalized_value(row["value"]), row["source"], row["currency"])
+            if found != expected:
+                raise MarketDataError("historical_observation_conflict")
+        except (KeyError, ValueError, TypeError, AttributeError, ArithmeticError):
+            raise MarketDataError("invalid_historical_cache_response") from None

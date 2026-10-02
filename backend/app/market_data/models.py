@@ -101,7 +101,10 @@ def normalized_value(value):
         if not result.is_finite() or not 0 < result < 10**12:
             raise ValueError("Invalid price")
         # Cache contract is 12 fractional digits; never round via binary float.
-        return result.quantize(Decimal("0.000000000001"), rounding=ROUND_HALF_UP)
+        rounded = result.quantize(Decimal("0.000000000001"), rounding=ROUND_HALF_UP)
+        if not 0 < rounded < 10**12:
+            raise ValueError("Invalid price")
+        return rounded
 
 
 def manual_nav(product, value, effective_date, source, unit_class, now=None):
