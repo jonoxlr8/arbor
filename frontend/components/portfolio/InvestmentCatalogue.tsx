@@ -4,11 +4,14 @@ import type { PortfolioProduct } from "@/lib/livePortfolio";
 import { catalogueGroups, investmentIdentity, providerName, type CatalogueCategory } from "@/lib/investmentIdentity";
 import InvestmentIdentity from "../InvestmentIdentity";
 import ProviderIdentity from "../ProviderIdentity";
+import InvestmentRequestForm from "./InvestmentRequestForm";
 
-export default function InvestmentCatalogue({ catalog, onSelect }: { catalog: PortfolioProduct[]; onSelect: (product: PortfolioProduct) => void }) {
+export default function InvestmentCatalogue({ catalog, onSelect, userId }: { catalog: PortfolioProduct[]; onSelect: (product: PortfolioProduct) => void; userId?: string }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<CatalogueCategory>("all");
+  const [requestOpen, setRequestOpen] = useState(false);
   const groups = catalogueGroups(catalog, query, category);
+  if (requestOpen && userId) return <InvestmentRequestForm key={userId} userId={userId} onBack={() => setRequestOpen(false)}/>;
   return <div className="investment-catalogue">
     <p className="catalogue-intro">Add an investment you already own.</p>
     <label className="catalogue-search"><span aria-hidden="true">⌕</span><span className="sr-only">Search investments</span><input type="search" placeholder="Search investments" value={query} onChange={e => setQuery(e.target.value)}/></label>
@@ -24,5 +27,6 @@ export default function InvestmentCatalogue({ catalog, onSelect }: { catalog: Po
       </button>;
     })}</div></section>)}
     {!groups.length && <p role="status" className="catalogue-empty">No supported investments match. Try a fund, ticker or provider name.</p>}
+    {userId && <button type="button" className="entry-link min-h-11 mt-4" onClick={() => setRequestOpen(true)}>Can’t find your investment?</button>}
   </div>;
 }

@@ -18,6 +18,11 @@ test("information destinations contain substantive beta information and navigati
 test("privacy and beta pages preserve known account and availability boundaries", () => {
   const privacy = renderToStaticMarkup(createElement(PublicInformation, { page: "privacy" }));
   assert.match(privacy, /retains an audit record/);
+  assert.match(privacy, /Missing-investment requests/);
+  assert.match(privacy, /account ID.*received date.*two identifiers for receipts and retries/);
+  assert.match(privacy, /other customers cannot read them/);
+  assert.match(privacy, /after 90 days through reviewed manual cleanup, so removal may occur later/);
+  assert.match(privacy, /Reviewed account erasure can remove them earlier/);
   assert.match(privacy, /no self-service whole-account deletion/);
   assert.match(privacy, /not currently implemented automatic purges/);
   assert.doesNotMatch(privacy, /founder-review draft/);

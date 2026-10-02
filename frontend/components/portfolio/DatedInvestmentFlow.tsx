@@ -60,7 +60,7 @@ export default function DatedInvestmentFlow({ portfolio, userId, initialProduct,
   }
   return <Sheet title={monthly ? !product ? "Record an investment" : `Record ${investmentIdentity(product.product_id).shortName} investment` : !product ? "Add Investment" : existing ? `Add to ${investmentIdentity(product.product_id).shortName}` : `Add ${investmentIdentity(product.product_id).shortName}`} busy={busy} onClose={onClose}>
     {onChooseAll && <button type="button" className="entry-link min-h-11" disabled={busy} onClick={onChooseAll}>Change investment · Choose from all supported investments</button>}
-    {!product ? <InvestmentCatalogue catalog={portfolio.catalog} onSelect={p => { setDraft(fresh(p)); setError(""); }}/>
+    {!product ? <InvestmentCatalogue userId={userId} catalog={portfolio.catalog} onSelect={p => { setDraft(fresh(p)); setError(""); }}/>
     : <div className="investment-form space-y-4">
       {(!initialProduct||allowProductChange) && <button type="button" className="catalogue-back" onClick={() => { setDraft(null); setConfirm(false); }}>{catalogueBackLabel}</button>}
       <div className="selected-investment"><AssetIdentity product={product.product_id} sleeve={product.sleeve}/><div><strong>{investmentIdentity(product.product_id).fullName}</strong><ProviderBrand provider={product.provider} name={product.provider_name}/></div></div>
