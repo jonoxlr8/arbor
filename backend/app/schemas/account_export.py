@@ -35,6 +35,15 @@ def validate_export(value, owner):
             rows = value[section]
             if not isinstance(rows, list) or len(rows)>1 or any(not isinstance(row,dict) or set(row)-allowed for row in rows):
                 raise ValueError('Invalid lifecycle export section')
+    for section, keys in {'budget_versions': {'month','amount_php','recorded_at'}, 'plan_versions': {'valid_from','profile_data'}}.items():
+        rows = value.get(section, [])
+        if not isinstance(rows,list) or len(rows)>10000 or any(not isinstance(row,dict) or set(row)!=keys for row in rows):
+            raise ValueError("Invalid planning history export")
+    for row in value.get('plan_versions', []):
+        data = row['profile_data']
+        if not isinstance(data,dict) or set(data)!={'strategy_engine_version','country','currency','goal_target','current_portfolio_value','monthly_investment','v2_inputs'}:
+            raise ValueError("Invalid plan version export")
+        check_nested(data['v2_inputs'], V2_SHAPE)
     terms=value.get('terms_acceptances',[])
     if not isinstance(terms,list) or len(terms)>1000 or any(not isinstance(row,dict) or set(row)!={'version','content_digest','accepted_at','source'} or row['source'] not in ('signup','account') for row in terms):
         raise ValueError('Invalid Terms export section')

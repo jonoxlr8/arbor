@@ -84,8 +84,44 @@ BEGIN
   IF EXISTS(SELECT 1 FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid
    JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public'
    AND c.relkind IN ('r','p','v','m') AND a.attname IN ('user_id','owner_id') AND NOT a.attisdropped
-   AND c.relname NOT IN ('arbor_investment_entries','arbor_portfolio_holdings','arbor_portfolio_snapshots','arbor_portfolio_history_changes','arbor_monthly_checkins','arbor_pending_investment_recordings','arbor_pending_recording_reminders','holdings','profiles','arbor_ask_usage_monthly','arbor_portfolio_history','arbor_investment_entry_values','arbor_portfolio_observed_history_status','arbor_portfolio_holding_ledger_values','arbor_portfolio_holding_values'))
+   AND c.relname NOT IN ('arbor_investment_entries','arbor_portfolio_holdings','arbor_portfolio_snapshots','arbor_portfolio_history_changes','arbor_monthly_checkins','arbor_pending_investment_recordings','arbor_pending_recording_reminders','holdings','profiles','arbor_ask_usage_monthly','arbor_budget_versions','arbor_plan_versions','arbor_portfolio_history','arbor_investment_entry_values','arbor_portfolio_observed_history_status','arbor_portfolio_holding_ledger_values','arbor_portfolio_holding_values'))
   THEN RAISE EXCEPTION 'manual_unreviewed_owner_surface'; END IF;
+  -- Histories are read-only owner surfaces erased through the profile FK.
+  -- Keep the legacy inventory's category counts; this is supplemental coverage.
+  IF (to_regclass('public.arbor_budget_versions') IS NULL) IS DISTINCT FROM
+     (to_regclass('public.arbor_plan_versions') IS NULL)
+  THEN RAISE EXCEPTION 'manual_history_schema_changed'; END IF;
+  FOREACH t IN ARRAY ARRAY['arbor_budget_versions','arbor_plan_versions'] LOOP
+   IF to_regclass('public.'||t) IS NOT NULL THEN
+    IF NOT EXISTS(SELECT 1 FROM pg_class c WHERE c.oid=to_regclass('public.'||t)
+       AND c.relkind='r' AND c.relrowsecurity
+       AND c.relowner=(SELECT proowner FROM pg_proc WHERE oid='arbor_private.erasure_data(uuid)'::regprocedure))
+     OR NOT EXISTS(SELECT 1 FROM pg_policy p WHERE p.polrelid=to_regclass('public.'||t)
+       AND NOT p.polpermissive AND p.polname='arbor_lifecycle_active'
+       AND (SELECT oid FROM pg_roles WHERE rolname='authenticated')=ANY(p.polroles)
+       AND pg_get_expr(p.polqual,p.polrelid) LIKE '%arbor_account_active_v1%')
+     OR NOT EXISTS(SELECT 1 FROM pg_policy p WHERE p.polrelid=to_regclass('public.'||t)
+       AND p.polpermissive AND p.polcmd='r'
+       AND (SELECT oid FROM pg_roles WHERE rolname='authenticated')=ANY(p.polroles)
+       AND regexp_replace(pg_get_expr(p.polqual,p.polrelid),'[[:space:]]','','g')='((SELECTauth.uid()ASuid)=user_id)')
+     OR (SELECT count(*) FROM pg_policy p WHERE p.polrelid=to_regclass('public.'||t))<>2
+     OR has_table_privilege('authenticated','public.'||t,'INSERT,UPDATE,DELETE,TRUNCATE')
+     OR has_table_privilege('anon','public.'||t,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE')
+     OR has_table_privilege('service_role','public.'||t,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE')
+     OR NOT EXISTS(SELECT 1 FROM pg_constraint k WHERE k.conrelid=to_regclass('public.'||t)
+       AND k.contype='f' AND k.confrelid='public.profiles'::regclass
+       AND k.confdeltype='c' AND k.convalidated
+       AND k.conkey=ARRAY[(SELECT attnum FROM pg_attribute WHERE attrelid=k.conrelid AND attname='user_id')]::smallint[]
+       AND k.confkey=ARRAY[(SELECT attnum FROM pg_attribute WHERE attrelid=k.confrelid AND attname='user_id')]::smallint[])
+    THEN RAISE EXCEPTION 'manual_history_security_changed'; END IF;
+   END IF;
+  END LOOP;
+  IF to_regclass('public.arbor_plan_versions') IS NOT NULL AND (
+   to_regclass('public.arbor_plan_versions_id_seq') IS NULL
+   OR has_sequence_privilege('authenticated','public.arbor_plan_versions_id_seq','USAGE,SELECT,UPDATE')
+   OR has_sequence_privilege('anon','public.arbor_plan_versions_id_seq','USAGE,SELECT,UPDATE')
+   OR has_sequence_privilege('service_role','public.arbor_plan_versions_id_seq','USAGE,SELECT,UPDATE'))
+  THEN RAISE EXCEPTION 'manual_history_security_changed'; END IF;
   IF EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
    WHERE n.nspname='public' AND c.relname IN ('arbor_portfolio_history','arbor_investment_entry_values','arbor_portfolio_observed_history_status','arbor_portfolio_holding_ledger_values','arbor_portfolio_holding_values')
    AND (c.relkind<>'v' OR NOT coalesce(c.reloptions @> ARRAY['security_invoker=true'],false)))

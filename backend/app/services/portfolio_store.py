@@ -236,3 +236,52 @@ class PortfolioStore:
     @storage_errors
     def capture(self):
         return self.client.rpc("arbor_capture_portfolio", {}).execute().data
+
+    def insight_rows(self, table, columns, order):
+        try:
+            rows = []
+            expected = None
+            tie = {"arbor_budget_versions": "month", "arbor_plan_versions": "id", "arbor_portfolio_snapshots": "day", "arbor_portfolio_history_changes": "id"}[table]
+            for offset in range(0, 10001, 1000):
+                result = (self.client.table(table).select(columns, count="exact")
+                          .eq("user_id", self.owner).order(order).order(tie).range(offset, offset+999).execute())
+                if result.count is None or result.count > 10000:
+                    raise HTTPException(503, "The complete planning history could not be verified.")
+                if expected is not None and expected != result.count:
+                    raise HTTPException(409, "Planning history changed. Refresh this comparison.")
+                expected = result.count
+                rows.extend(result.data)
+                if len(rows) == expected:
+                    return rows
+                if len(result.data) != 1000:
+                    raise HTTPException(503, "The complete planning history could not be verified.")
+            raise HTTPException(503, "The complete planning history could not be verified.")
+        except APIError as exc:
+            if exc.code in ("42P01", "42703", "PGRST204", "PGRST205"):
+                return None  # History not deployed: honest unavailability.
+            raise HTTPException(503, "Planning history is temporarily unavailable.") from None
+        except TransportError:
+            raise HTTPException(503, "Planning history is temporarily unavailable.") from None
+
+    def budget_versions(self):
+        first = self.insight_rows("arbor_budget_versions", "month,amount_php::text,recorded_at", "month")
+        if first != self.insight_rows("arbor_budget_versions", "month,amount_php::text,recorded_at", "month"):
+            raise HTTPException(409, "Your budget changed. Refresh this review.")
+        return first
+
+    def alignment_history(self):
+        tables = [("arbor_portfolio_snapshots", "day,captured_at,value_php::text,allocation_values", "captured_at"),
+                  ("arbor_plan_versions", "id,valid_from,profile_data", "id"),
+                  ("arbor_portfolio_history_changes", "affected_from,changed_at", "changed_at")]
+        first = [self.insight_rows(*t) for t in tables]
+        if first != [self.insight_rows(*t) for t in tables]:
+            raise HTTPException(409, "Your planning records changed. Refresh this comparison.")
+        observations, versions, changes = first
+        if changes is None:
+            return None, versions
+        if observations is not None:
+            observations = [r for r in observations if not any(
+                c["affected_from"] <= r["day"] and
+                datetime.fromisoformat(c["changed_at"].replace("Z", "+00:00")) > datetime.fromisoformat(r["captured_at"].replace("Z", "+00:00"))
+                for c in changes)]
+        return observations, versions

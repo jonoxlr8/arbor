@@ -190,6 +190,9 @@ export function createPortfolioApi(token = getAccessToken, request: typeof fetch
         return body;
       } catch (error) { throw portfolioReadError(error); }
     },
+    async alignmentHistory(userId: string, signal?: AbortSignal) {
+      return await call(userId, "/alignment-history", "GET", undefined, signal) as import("./alignmentHistory").AlignmentHistory;
+    },
     async monthlyReview(userId: string, month?: string, signal?: AbortSignal) {
       const {isMonthlyReview} = await import("./monthlyReview");
       const body:unknown = await call(userId, `/monthly-review${month ? `?month=${encodeURIComponent(month)}` : ""}`, "GET", undefined, signal);

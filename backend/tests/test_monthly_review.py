@@ -71,6 +71,7 @@ class Query:
 def real_store(rows,owner="A",truncated=False):
     store=PortfolioStore.__new__(PortfolioStore);store.owner=owner
     store.client=SimpleNamespace(table=lambda name:Query(rows,owner,truncated))
+    store.budget_versions=lambda: None
     return store
 
 def test_all_pages_owner_isolation_and_bounds():

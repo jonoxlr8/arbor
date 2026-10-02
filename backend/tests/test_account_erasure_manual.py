@@ -44,3 +44,13 @@ def test_final_receipt_always_requires_identity_and_sessions_absent(phase):
     assert 'manual_auth_identity_still_present' in sql
     assert 'manual_sessions_or_storage_remain' in sql
     assert "'whole_account_erasure_claim',false" in sql
+
+
+def test_reviewed_histories_require_cascade_owner_security_without_relaxing_unknown_surfaces():
+ b=binding();now=datetime.now(timezone.utc)
+ sql=render(b,'database',now,now+timedelta(seconds=180),admission_mode='banned_barrier')
+ assert "ARRAY['arbor_budget_versions','arbor_plan_versions']" in sql
+ assert 'manual_history_schema_changed' in sql and 'manual_history_security_changed' in sql
+ assert "k.confdeltype='c' AND k.convalidated" in sql
+ assert "has_table_privilege('service_role'" in sql
+ assert 'manual_unreviewed_owner_surface' in sql
