@@ -1,5 +1,6 @@
 """Normal JWT/RLS persistence; no service-role access in the application reader."""
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from decimal import Decimal
 from functools import wraps
 from calendar import monthrange
 
@@ -19,6 +20,8 @@ def storage_errors(fn):
             if exc.code == "P0001":
                 if exc.message in ("idempotency_conflict", "stale_entry_revision", "ledger_managed_holding"):
                     raise HTTPException(409, "This record changed. Reload its activity before trying again.") from None
+                if exc.message in ("share_basis_required", "invalid_share_basis"):
+                    raise HTTPException(422, "Confirm whether the VGT share count is from before or after the April 21, 2026 split.") from None
                 if exc.message == "opening_position_confirmation_required":
                     raise HTTPException(409, "Confirm the units you already owned before adding this fund investment.") from None
                 if exc.message in ("entry_not_found", "holding_not_found"):
@@ -45,7 +48,27 @@ class PortfolioStore:
     @storage_errors
     def holdings(self):
         rows = self.client.table("arbor_portfolio_holding_values").select("*").eq("user_id", self.owner).order("created_at").execute().data
-        return [Holding.model_validate({k: v for k, v in row.items() if k != "user_id"}) for row in rows]
+        holdings = [Holding.model_validate({k: v for k, v in row.items() if k != "user_id"}) for row in rows]
+        vgt_ids = [str(h.id) for h in holdings if h.product_id == "gotrade_vgt"]
+        if vgt_ids:
+            basis_rows = (self.client.table("arbor_portfolio_holding_ledger_values").select("*")
+                          .eq("user_id", self.owner).in_("id", vgt_ids).execute().data)
+            by_id = {str(row["id"]): row for row in basis_rows}
+            for index, holding in enumerate(holdings):
+                if holding.product_id != "gotrade_vgt":
+                    continue
+                row = by_id.get(str(holding.id))
+                if row is None:
+                    raise HTTPException(503, "Share basis records are temporarily unavailable.")
+                holdings[index] = holding.model_copy(update={
+                    "valuation_units": None if row["valuation_units"] is None else Decimal(row["valuation_units"]),
+                    "valuation_units_quote_date": None if row["quote_date"] is None else date.fromisoformat(row["quote_date"]),
+                    "effective_units": None if row["effective_units"] is None else Decimal(row["effective_units"]),
+                    "opening_share_basis": row["opening_share_basis"],
+                    "share_basis_checked": True,
+                    "share_basis_required": row["effective_units"] is None,
+                })
+        return holdings
 
     @storage_errors
     def ledger_metadata(self):
@@ -57,6 +80,11 @@ class PortfolioStore:
     @storage_errors
     def save(self, value: HoldingInput, holding_id=None):
         payload = value.model_dump(mode="json")
+        basis = payload.pop("opening_share_basis", None)
+        if value.product_id == "gotrade_vgt":
+            if value.units is not None and not basis:
+                raise HTTPException(422, "Confirm the VGT opening share count basis.")
+            payload["opening_share_basis"] = basis
         if holding_id is None:
             if payload["manual_value_php"] is None:
                 payload.pop("manual_value_php")
@@ -70,6 +98,8 @@ class PortfolioStore:
                 raise HTTPException(422, "Edit units or remove the record before changing investment.")
             changes = {"units": payload["units"], "cost_basis_php": payload["cost_basis_php"],
                        "updated_at": datetime.now(timezone.utc).isoformat()}
+            if value.product_id == "gotrade_vgt":
+                changes["opening_share_basis"] = basis
             if "manual_value_php" in value.model_fields_set and value.manual_value_php != found.manual_value_php:
                 changes["manual_value_php"] = payload["manual_value_php"]
             self.client.table("arbor_portfolio_holdings").update(changes, returning="minimal").eq("user_id", self.owner).eq("id", str(holding_id)).execute()
@@ -97,22 +127,30 @@ class PortfolioStore:
     @storage_errors
     def record_entry(self, request: InvestmentEntryInput):
         payload = request.model_dump(mode="json")
-        return self.client.rpc("arbor_record_investment", {
+        rpc = "arbor_record_investment_with_share_basis" if request.product_id == "gotrade_vgt" else "arbor_record_investment"
+        args = {
             "p_product_id": payload["product_id"], "p_provider": payload["provider"],
             "p_investment_date": payload["investment_date"], "p_units": payload["units"],
             "p_amount_paid_php": payload["amount_paid_php"], "p_idempotency_key": payload["idempotency_key"],
             "p_opening_units": payload["opening_units"], "p_opening_cost_php": payload["opening_cost_php"],
             "p_confirm_conversion": payload["confirm_conversion"],
-        }).execute().data
+        }
+        if request.product_id == "gotrade_vgt":
+            args["p_share_basis"] = payload["share_basis"]
+        return self.client.rpc(rpc, args).execute().data
 
     @storage_errors
     def revise_entry(self, entry_id, request: InvestmentRevisionInput | None, revision: int, void: bool):
         payload = request.model_dump(mode="json") if request else {}
-        return self.client.rpc("arbor_revise_investment", {
+        args = {
             "p_entry_id": str(entry_id), "p_expected_revision": revision,
             "p_investment_date": payload.get("investment_date"), "p_units": payload.get("units"),
             "p_amount_paid_php": payload.get("amount_paid_php"), "p_void": void,
-        }).execute().data
+        }
+        rpc = "arbor_revise_investment" if void or "share_basis" not in request.model_fields_set else "arbor_revise_investment_with_share_basis"
+        if rpc.endswith("with_share_basis"):
+            args["p_share_basis"] = payload["share_basis"]
+        return self.client.rpc(rpc, args).execute().data
 
     @storage_errors
     def activity(self, holding_id=None, page=0, month=None, recent=False):
@@ -132,10 +170,14 @@ class PortfolioStore:
     @storage_errors
     def correct_opening(self, holding_id, request: OpeningPositionCorrection):
         payload = request.model_dump(mode="json")
-        return self.client.rpc("arbor_correct_opening_position", {
+        args = {
             "p_holding_id": str(holding_id), "p_expected_updated_at": payload["expected_updated_at"],
             "p_opening_units": payload["opening_units"], "p_opening_cost_php": payload["opening_cost_php"],
-        }).execute().data
+        }
+        rpc = "arbor_correct_opening_with_share_basis" if request.share_basis is not None else "arbor_correct_opening_position"
+        if request.share_basis is not None:
+            args["p_share_basis"] = payload["share_basis"]
+        return self.client.rpc(rpc, args).execute().data
 
     @storage_errors
     def review_activity(self, start, end):

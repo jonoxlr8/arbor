@@ -40,6 +40,7 @@ class HoldingInput(DomainModel):
     units: Units | None = None
     cost_basis_php: Cost | None = None
     manual_value_php: ManualValue | None = None
+    opening_share_basis: Literal["before_split", "after_split"] | None = None
 
     @model_validator(mode="after")
     def supported_pair(self):
@@ -61,6 +62,11 @@ class Holding(HoldingInput):
     opening_units: Decimal | None = None
     opening_cost_php: Decimal | None = None
     has_entries: bool = False
+    valuation_units: Decimal | None = None
+    valuation_units_quote_date: date | None = None
+    effective_units: Decimal | None = None
+    share_basis_checked: bool = False
+    share_basis_required: bool = False
 
     @model_validator(mode="after")
     def manual_record(self):
@@ -149,6 +155,7 @@ class InvestmentEntryInput(DomainModel):
     opening_units: Units | None = None
     opening_cost_php: Cost | None = None
     confirm_conversion: bool = False
+    share_basis: Literal["before_split", "after_split"] | None = None
 
     @model_validator(mode="after")
     def valid_entry(self):
@@ -162,6 +169,7 @@ class InvestmentEntryInput(DomainModel):
 
 
 class InvestmentRevisionInput(DomainModel):
+    share_basis: Literal["before_split", "after_split"] | None = None
     expected_revision: int = Field(gt=0)
     investment_date: date
     units: Units
@@ -173,6 +181,7 @@ class InvestmentVoidInput(DomainModel):
 
 
 class OpeningPositionCorrection(DomainModel):
+    share_basis: Literal["before_split", "after_split"] | None = None
     expected_updated_at: datetime
     opening_units: Annotated[Decimal, Field(ge=0, lt=10**12, max_digits=24, decimal_places=12, allow_inf_nan=False)]
     opening_cost_php: Cost | None = None
@@ -234,10 +243,12 @@ def _value_portfolio(holdings, market, target, now):
     for holding in holdings:
         needed = [price_key(holding.product_id)] + (["usd_php"] if holding.provider == "gotrade" else [])
         available = [prices[k] for k in needed if k in prices]
-        valid = holding.units is not None and len(available) == len(needed) and all(
+        quote_units = holding.valuation_units if holding.product_id == "gotrade_vgt" and holding.share_basis_checked else holding.units
+        quote_basis_matches = not holding.share_basis_checked or holding.valuation_units_quote_date == (prices[holding.product_id].as_of.astimezone(timezone.utc).date() if holding.product_id in prices else None)
+        valid = quote_basis_matches and not holding.share_basis_required and quote_units is not None and len(available) == len(needed) and all(
             0 <= (now - p.as_of).total_seconds() <= price_limits(p.price_key)[1] for p in available)
         stale = valid and any((now - p.as_of).total_seconds() > price_limits(p.price_key)[0] for p in available)
-        amount = holding.units
+        amount = quote_units
         if valid:
             for p in available:
                 amount *= p.value
