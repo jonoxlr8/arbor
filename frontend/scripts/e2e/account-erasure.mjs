@@ -1,7 +1,8 @@
 // Actual local production-build UI; isolated synthetic auth/routes, no hosted writes.
 import assert from 'node:assert/strict';
-import {mkdir} from 'node:fs/promises';
+import {mkdir,readFile} from 'node:fs/promises';
 import {withAuthenticatedBrowser} from './auth.mjs';
+const termsDoc=JSON.parse(await readFile(new URL('../../lib/termsDocument.json',import.meta.url),'utf8'));
 const origin=process.env.ARBOR_REVIEW_ORIGIN??'http://127.0.0.1:3116';
 assert.equal(new URL(origin).hostname,'127.0.0.1');
 const output='/tmp/arbor-erasure-captures';await mkdir(output,{recursive:true});
@@ -18,6 +19,7 @@ const setup=context=>context.route('**/*',route=>{
  if(u.pathname.endsWith('/auth/v1/token'))return json(session);
  if(u.pathname.endsWith('/auth/v1/user'))return json(user);
  if(u.pathname.endsWith('/auth/v1/logout'))return json({});
+ if(u.pathname.endsWith('/account/terms'))return json({...termsDoc,required:false,accepted_at:null});
  if(u.pathname.endsWith('/account/lifecycle')||u.pathname.endsWith('/account/lifecycle/login'))return json(status);
  unexpected++;return route.abort('blockedbyclient');
 });

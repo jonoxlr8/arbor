@@ -1,0 +1,51 @@
+{
+  "version": "2026-10-01.1",
+  "digest": "16081efb1de73fb08c2afeaa905ac4b6d0659c2f1ac6dab6d44d66642602e599",
+  "document_text": "{\"title\":\"Terms\",\"introduction\":\"The boundaries of the current private beta.\",\"sections\":[[\"Operator and contact\",\"The current operator is Jonathan Isidoro, operating Arbor. Contact support@arbor.ph for questions about the beta.\"],[\"Beta eligibility\",\"The beta is for people aged 18 or older in the Philippines. This is the beta eligibility policy; Arbor does not currently verify age.\"],[\"What Arbor provides\",\"Arbor is a planning, tracking and education companion. You choose your approach and investments. Arbor calculates, tracks and explains. It does not hold money, execute trades, open provider accounts or automatically synchronize brokerage transactions.\"],[\"Your account and records\",\"Protect account access and provide accurate information. Record actual investments from your provider records, including units received and the amount paid. A planned amount, unfinished provider recording or monthly check-in is not proof that an investment occurred. Do not submit brokerage credentials or someone else's private financial information.\"],[\"Investment decisions\",\"You decide whether to follow a calculated breakdown. Information and explanations are not personalized buy/sell instructions. Verify provider eligibility, fees, minimums, execution details and current product documents before investing. Provider references identify supported paths and imply no partnership or endorsement.\"],[\"Values, projections and explanations\",\"Reference values can be delayed, incomplete or unavailable and can differ from execution prices. Contributions are not investment profit. Projections use planning assumptions and are hypothetical; they do not guarantee results. Explanations can be mistaken. Use your provider records to verify transactions and seek qualified advice where needed.\"],[\"Beta availability\",\"Private-beta members currently receive an Arbor Plus trial. Monthly contribution planning, Plan Alignment, Projection & What If and deeper portfolio-aware explanations are Plus capabilities. Subscription checkout and public Free access are not active. Get started opens account creation. No trial duration, future price, billing date or automatic conversion is promised here.\"],[\"Service availability and responsible use\",\"Arbor is a beta service. Features and availability may change, and interruptions may occur. Use the service lawfully and respect other people's account access and privacy. Access may be restricted where necessary to protect accounts, prevent misuse or meet applicable legal requirements. Contact support@arbor.ph about an access concern.\"],[\"Responsibility and complaints\",\"You remain responsible for your investment decisions and for verifying records against your provider. Philippine law governs these intended beta conditions. Contact support@arbor.ph first about a concern so Jonathan can review it. This does not require arbitration or prevent you from exercising statutory rights or approaching an appropriate authority. Nothing here excludes rights or responsibilities that applicable law does not permit to be excluded.\"],[\"About these terms\",\"Acceptance is recorded only after an explicit action for an identified Terms version. Publishing this page does not establish that an existing user has accepted it. A material update requires a new acceptance before normal account use; export, deletion requests and support remain accessible. No payment obligation, fixed trial duration or automatic paid conversion is created by these terms.\"]]}",
+  "body": {
+    "title": "Terms",
+    "introduction": "The boundaries of the current private beta.",
+    "sections": [
+      [
+        "Operator and contact",
+        "The current operator is Jonathan Isidoro, operating Arbor. Contact support@arbor.ph for questions about the beta."
+      ],
+      [
+        "Beta eligibility",
+        "The beta is for people aged 18 or older in the Philippines. This is the beta eligibility policy; Arbor does not currently verify age."
+      ],
+      [
+        "What Arbor provides",
+        "Arbor is a planning, tracking and education companion. You choose your approach and investments. Arbor calculates, tracks and explains. It does not hold money, execute trades, open provider accounts or automatically synchronize brokerage transactions."
+      ],
+      [
+        "Your account and records",
+        "Protect account access and provide accurate information. Record actual investments from your provider records, including units received and the amount paid. A planned amount, unfinished provider recording or monthly check-in is not proof that an investment occurred. Do not submit brokerage credentials or someone else's private financial information."
+      ],
+      [
+        "Investment decisions",
+        "You decide whether to follow a calculated breakdown. Information and explanations are not personalized buy/sell instructions. Verify provider eligibility, fees, minimums, execution details and current product documents before investing. Provider references identify supported paths and imply no partnership or endorsement."
+      ],
+      [
+        "Values, projections and explanations",
+        "Reference values can be delayed, incomplete or unavailable and can differ from execution prices. Contributions are not investment profit. Projections use planning assumptions and are hypothetical; they do not guarantee results. Explanations can be mistaken. Use your provider records to verify transactions and seek qualified advice where needed."
+      ],
+      [
+        "Beta availability",
+        "Private-beta members currently receive an Arbor Plus trial. Monthly contribution planning, Plan Alignment, Projection & What If and deeper portfolio-aware explanations are Plus capabilities. Subscription checkout and public Free access are not active. Get started opens account creation. No trial duration, future price, billing date or automatic conversion is promised here."
+      ],
+      [
+        "Service availability and responsible use",
+        "Arbor is a beta service. Features and availability may change, and interruptions may occur. Use the service lawfully and respect other people's account access and privacy. Access may be restricted where necessary to protect accounts, prevent misuse or meet applicable legal requirements. Contact support@arbor.ph about an access concern."
+      ],
+      [
+        "Responsibility and complaints",
+        "You remain responsible for your investment decisions and for verifying records against your provider. Philippine law governs these intended beta conditions. Contact support@arbor.ph first about a concern so Jonathan can review it. This does not require arbitration or prevent you from exercising statutory rights or approaching an appropriate authority. Nothing here excludes rights or responsibilities that applicable law does not permit to be excluded."
+      ],
+      [
+        "About these terms",
+        "Acceptance is recorded only after an explicit action for an identified Terms version. Publishing this page does not establish that an existing user has accepted it. A material update requires a new acceptance before normal account use; export, deletion requests and support remain accessible. No payment obligation, fixed trial duration or automatic paid conversion is created by these terms."
+      ]
+    ]
+  }
+}

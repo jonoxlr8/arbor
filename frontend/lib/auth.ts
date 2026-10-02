@@ -14,8 +14,9 @@ export function createAuthHelpers(getClient: () => Promise<SupabaseClient> = def
     throw Object.assign(new Error(error.message), { code: error.code });
   }
   return {
-    signUp: (email: string, password: string) => withDeadline((async () => {
-      const result = await (await getClient()).auth.signUp({ email, password, options: { emailRedirectTo } });
+    signUp: (email: string, password: string, intent: string) => withDeadline((async () => {
+      if(!/^[0-9a-f]{64}$/.test(intent??''))throw Error('Review and accept the current Terms before creating an account.');
+      const result = await (await getClient()).auth.signUp({ email, password, options: { emailRedirectTo, data:{arbor_terms_intent:intent} } });
       check(result.error);
       return result;
     })()),

@@ -11,8 +11,11 @@ import OnboardingV2 from "@/components/OnboardingV2";
 import PlanV2View from "@/components/PlanV2View";
 import { getCurrentUser, signOut } from "@/lib/auth";
 import ResultsDashboard from "@/components/ResultsDashboard";
-import { createAccountRecovery, type AccountState, AccountRestrictedError } from "@/lib/accountRecovery";
+import { createAccountRecovery, type AccountState, AccountRestrictedError, TermsRequiredError } from "@/lib/accountRecovery";
 import { accountLifecycle } from '@/lib/accountLifecycle';
+import {accountTerms}from'@/lib/accountTerms';
+import TermsRequired from '@/components/account/TermsRequired';
+import AccountPrivacy from '@/components/account/AccountPrivacy';
 import RestrictedAccount from '@/components/account/RestrictedAccount';
 import { supabase } from "@/lib/supabase";
 
@@ -26,7 +29,9 @@ export default function Home() {
     const coordinator = createAccountRecovery<AccountPlan>({
       getUser: getCurrentUser,
       getProfile: async (userId, access) => {
+        const terms = await accountTerms.account(userId,undefined,access);
         const status = await accountLifecycle(userId, "status", undefined, undefined, access);
+        if (status.state==='active' && terms.required) throw new TermsRequiredError(userId,terms);
         if (!status.access_allowed) throw new AccountRestrictedError(userId, status);
         return getAccountProfile(userId, access);
       },
@@ -61,6 +66,8 @@ export default function Home() {
     }
   };
 
+  if(account.status==='terms-required')return <TermsRequired key={`${account.userId}:${account.terms.version}`} userId={account.userId} terms={account.terms} onRefresh={()=>void recovery.current?.restore()} onSignOut={()=>void handleSignOut()}/>;
+
   if (account.status === "restricted") return <RestrictedAccount key={account.userId} userId={account.userId} status={account.lifecycle} onRefresh={() => void recovery.current?.restore()} onSignOut={() => void handleSignOut()} />;
 
   if (account.status === "error") {
@@ -71,6 +78,8 @@ export default function Home() {
           <h1 className="mt-8 text-2xl font-bold text-slate-900">Let’s reconnect your account</h1>
           <p role="alert" className="mt-4 text-slate-600">{account.message}</p>
           {logoutError && <p role="alert" className="mt-4 text-red-700">{logoutError}</p>}
+          <p><a href="/account-deletion">Account deletion</a> · <a href="mailto:support@arbor.ph">Support</a></p>
+          {account.userId && <AccountPrivacy userId={account.userId}/>}
           <div className="mt-6 flex gap-4">
             <button disabled={signingOut} onClick={() => void recovery.current?.restore()} className="rounded-xl bg-emerald-700 px-5 py-3 text-white">Retry</button>
             <button disabled={signingOut} onClick={handleSignOut} className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60">{signingOut ? "Signing out…" : "Sign out"}</button>

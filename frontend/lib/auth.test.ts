@@ -12,10 +12,10 @@ function helpers(auth: Record<string, unknown>) {
 }
 test("signup confirmation is a successful result without session", async () => {
   const result = { data: { session: null }, error: null };
-  assert.deepEqual(await helpers({ signUp: async () => result }).signUp("a", "b"), result);
+  assert.deepEqual(await helpers({ signUp: async () => result }).signUp("a", "b", "a".repeat(64)), result);
 });
 test("signup failure is surfaced separately", async () => {
-  await assert.rejects(helpers({ signUp: async () => ({ error: { message: "Rejected" } }) }).signUp("a", "b"), /Rejected/);
+  await assert.rejects(helpers({ signUp: async () => ({ error: { message: "Rejected" } }) }).signUp("a", "b", "a".repeat(64)), /Rejected/);
 });
 test("returned signout error is surfaced", async () => {
   await assert.rejects(helpers({ signOut: async () => ({ error: { message: "offline" } }) }).signOut(), /offline/);
@@ -51,10 +51,10 @@ test("signup and resend both use the configured confirmation destination", async
     signUp: async (args: unknown) => { calls.push(args); return { data: { session: null }, error: null }; },
     resend: async (args: unknown) => { calls.push(args); return { data: {}, error: null }; },
   });
-  await client.signUp("person@example.com", "test-password");
+  await client.signUp("person@example.com", "test-password", "a".repeat(64));
   await client.resendConfirmation("person@example.com");
   assert.deepEqual(calls, [
-    { email: "person@example.com", password: "test-password", options: { emailRedirectTo } },
+    { email: "person@example.com", password: "test-password", options: { emailRedirectTo, data:{arbor_terms_intent:"a".repeat(64)} } },
     { type: "signup", email: "person@example.com", options: { emailRedirectTo } },
   ]);
 });

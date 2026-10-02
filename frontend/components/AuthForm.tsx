@@ -6,6 +6,7 @@ import { accountLifecycle } from '@/lib/accountLifecycle';
 import type { AccountSession } from "@/lib/accountRecovery";
 import { authErrorMessage } from "@/lib/authErrorMessage";
 import { entryLinks } from "@/lib/publicEntry";
+import {accountTerms,type TermsDocument}from'@/lib/accountTerms';
 import SignupPending from "./SignupPending";
 import { AuthEmblem } from "./AuthSurface";
 import { confirmationContext, showConfirmationResend, canResendConfirmation, neutralResendMessage, type PendingConfirmation } from "@/lib/authConfirmation";
@@ -16,9 +17,14 @@ type AuthFormProps = {
 };
 
 export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
+  const isSignUp = mode === "signup";
+  const [terms,setTerms]=useState<TermsDocument|null>(null);
+  const [termsAccepted,setTermsAccepted]=useState(false);
+  const [termsError,setTermsError]=useState('');
+  const [termsRetry,setTermsRetry]=useState(0);
+  useEffect(()=>{if(!isSignUp)return;const c=new AbortController();void accountTerms.current(c.signal).then(doc=>{if(!c.signal.aborted){setTerms(doc);setTermsAccepted(false);setTermsError('');}}).catch(()=>{if(!c.signal.aborted)setTermsError('Terms are unavailable. Retry or contact support@arbor.ph.');});return()=>c.abort();},[isSignUp,termsRetry]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const isSignUp = mode === "signup";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState("");
@@ -53,7 +59,7 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (submitting.current || !email || !password) return;
+    if (submitting.current || !email || !password || (isSignUp && (!terms || !termsAccepted))) return;
     submitting.current = true;
     setError("");
     setConfirmation("");
@@ -62,7 +68,7 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
 
     try {
       const result = isSignUp
-        ? await signUp(email, password)
+        ? await signUp(email, password, await accountTerms.intent(email,terms!,termsAccepted))
         : await signIn(email, password);
 
       if (result.error) {
@@ -146,6 +152,7 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
             className="w-full rounded-xl border border-slate-300 px-5 py-4 text-slate-900 outline-none focus:border-green-600 focus:ring-4 focus:ring-green-100"
           />
 
+          {isSignUp && <div className="space-y-2"><p><a href={terms?`/terms/${encodeURIComponent(terms.version)}`:'/terms'} target="_blank" rel="noopener noreferrer">Read Arbor’s Terms</a> · <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Notice</a></p>{terms?<label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={termsAccepted} disabled={loading} onChange={e=>setTermsAccepted(e.target.checked)}/>I agree to Arbor’s Terms, version {terms.version}.</label>:<p role="status">Loading Terms…</p>}{termsError&&<p role="alert">{termsError}</p>}<button type="button" className="entry-link min-h-11" disabled={loading} onClick={()=>{setTerms(null);setTermsAccepted(false);setTermsError('');setTermsRetry(n=>n+1);}}>Refresh Terms</button></div>}
           {confirmation && <p role="status" className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">{confirmation}</p>}
           {error && (
             <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">
@@ -155,9 +162,9 @@ export default function AuthForm({ onAuthenticated, mode }: AuthFormProps) {
 
           <button
             type="submit"
-            disabled={loading || !email || !password}
+            disabled={loading || !email || !password || (isSignUp && (!terms || !termsAccepted))}
             className={`w-full rounded-2xl py-4 text-lg font-semibold transition ${
-              loading || !email || !password
+              loading || !email || !password || (isSignUp && (!terms || !termsAccepted))
                 ? "cursor-not-allowed bg-slate-200 text-slate-400"
                 : "bg-emerald-700 text-white hover:bg-emerald-800"
             }`}

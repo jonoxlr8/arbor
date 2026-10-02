@@ -1,6 +1,8 @@
+import type { AccountTerms } from './accountTerms';
 import type { AccountLifecycle } from './accountLifecycle';
 import type { Plan } from "./types/plan";
 
+export class TermsRequiredError extends Error { constructor(public userId:string,public terms:AccountTerms){super('Terms acceptance required');} }
 export class InvalidSessionError extends Error {}
 export class AccountRestrictedError extends Error {
  constructor(public userId: string, public lifecycle: AccountLifecycle) { super("Account restricted"); }
@@ -24,7 +26,8 @@ export type AccountState<T = Plan> =
   | { status: "unauthenticated" }
   | { status: "ready"; userId: string; plan: T }
   | { status: "no-profile"; userId: string }
-  | { status: "error"; message: string }
+  | { status: "error"; message: string; userId?:string }
+  | { status: "terms-required"; userId:string; terms:AccountTerms }
   | { status: "restricted"; userId: string; lifecycle: AccountLifecycle };
 
 type Dependencies<T> = {
@@ -71,13 +74,15 @@ export function createAccountRecovery<T = Plan>(deps: Dependencies<T>) {
     } catch (error) {
       if (attempt !== generation) return;
       generation++;
-      if (error instanceof AccountRestrictedError) {
+      if (error instanceof TermsRequiredError) {
+        publish({status:'terms-required',userId:error.userId,terms:error.terms});
+      } else if (error instanceof AccountRestrictedError) {
         publish({ status: "restricted", userId: error.userId, lifecycle: error.lifecycle });
       } else if (error instanceof InvalidSessionError) {
         setIdentity(null);
         publish({ status: "unauthenticated" });
       } else {
-        publish({ status: "error", message: "We couldn’t restore your account. Please check your connection and try again." });
+        publish({ status: "error", userId:identity??undefined, message: "We couldn’t restore your account. Please check your connection and try again." });
       }
     }
   }

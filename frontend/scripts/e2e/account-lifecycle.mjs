@@ -3,7 +3,8 @@
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {withAuthenticatedBrowser} from './auth.mjs';
-import {mkdir} from 'node:fs/promises';
+import {mkdir,readFile} from 'node:fs/promises';
+const termsDoc=JSON.parse(await readFile(new URL('../../lib/termsDocument.json',import.meta.url),'utf8'));
 const origin=process.env.ARBOR_REVIEW_ORIGIN ?? 'http://127.0.0.1:3114';
 const output='/tmp/arbor-lifecycle-captures';await mkdir(output,{recursive:true});
 let exportRequests=0,exportStatus=200,actionCount=0;
@@ -47,6 +48,7 @@ const setup = async context => context.route('**/*',route=>{
  if(request.method()==='OPTIONS')return route.fulfill({status:204,headers});
  if(path.endsWith('/auth/v1/token')){signInCount++;return json(session);}
  if(path.endsWith('/auth/v1/logout'))return json({});
+ if(path.endsWith('/account/terms'))return json({...termsDoc,required:false,accepted_at:null});
  if(path.endsWith('/account/lifecycle/login')){if(lifecycle.state==='deactivated')lifecycle={...lifecycle,state:'active',access_allowed:true,version:lifecycle.version+1};return json(lifecycle);}
  if(path.endsWith('/account/lifecycle'))return json(lifecycle);
  if(path.endsWith('/account/deactivate')){actionCount++;lifecycle={...lifecycle,state:'deactivated',access_allowed:false,version:lifecycle.version+1};return json(lifecycle);}

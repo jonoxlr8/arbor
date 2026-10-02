@@ -24,5 +24,5 @@ test("privacy and beta pages preserve known account and availability boundaries"
   const terms = renderToStaticMarkup(createElement(PublicInformation, { page: "terms" }));
   assert.match(terms, /Subscription checkout and public Free access are not active/);
   assert.match(terms, /Philippine law governs/);
-  assert.match(terms, /does not record affirmative acceptance/);
+  assert.match(terms, /Acceptance is recorded only after an explicit action/);
 });
