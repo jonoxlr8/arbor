@@ -4,7 +4,7 @@ import type { PlanV2 } from "@/lib/types/planV2";
 import { portfolioApi, type LivePortfolioData, type InvestmentEntry } from "@/lib/livePortfolio";
 import { useAccountAccess } from "../AccountAccess";
 import PortfolioHistoryChart from "../portfolio/PortfolioHistoryChart";
-import { DataAttribution } from "../portfolio/LivePortfolio";
+import { PriceDataDetails } from "../portfolio/LivePortfolio";
 import { recentLedgerActivity } from "@/lib/portfolioActivity";
 import InvestmentIdentity from "../InvestmentIdentity";
 import Allocation from "../portfolio/Allocation";
@@ -48,7 +48,7 @@ export default function V2Home({ value, userId, section = "", onPlanChange }: { 
       <a className="home-next-investment" href="#portfolio/contribution"><span className="eyebrow plus-eyebrow">Arbor Plus</span><div><strong>Plan your next investment</strong><ActionArrow/></div><p>{plusMonthly?"Choose an amount and see your investment breakdown.":"Explore a breakdown for the investments and targets you choose."}</p></a>
     <div className="home-bottom"><HomeActivity error={entriesError} entries={entries}/></div>
     </div>
-    {portfolio && <div className="home-data-attribution"><DataAttribution sources={portfolio.data_sources ?? []}/></div>}
+    {portfolio && <div className="home-data-attribution"><PriceDataDetails sources={portfolio.data_sources ?? []}/></div>}
     {section === "activity" && portfolio && userId && <InvestmentActivitySheet portfolio={portfolio} userId={userId} onClose={closePortfolioSheet} onChanged={() => setPortfolioVersion(version => version + 1)}/>}
   </div>;
 }
@@ -91,7 +91,7 @@ function HomePortfolio({ userId, onLoaded }: { userId: string; onLoaded: (portfo
         currentDisplayFx={portfolio.display_fx}
         currentRecordedCostPhp={portfolio.recorded_cost_php} currentGainPhp={portfolio.recorded_gain_php} currentGainPercentage={portfolio.recorded_gain_percentage}
         complete={portfolio.complete} holdingsCount={portfolio.holdings.length} compact/>
-      {(!portfolio.complete || portfolio.stale_count > 0) && <a className="entry-link" href="#portfolio">{!portfolio.complete ? "Some values are unavailable · Review →" : "Cached values · Check dates →"}</a>}
+      {!portfolio.complete && <a className="entry-link" href="#portfolio">Some values are unavailable · Review →</a>}
     </> : <>
       <PortfolioHistoryChart history={portfolio.history} knownValue={portfolio.known_value_php} currentUsdValue={portfolio.total_value_usd} complete={portfolio.complete} holdingsCount={portfolio.holdings.length} compact/>
       <a className="entry-primary" href="#portfolio/add">+ Add Investment</a>

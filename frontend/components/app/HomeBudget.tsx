@@ -28,7 +28,6 @@ export default function HomeBudget({ value, userId, onPlanChange, compact=false,
       <div className="home-progress-target"><span>Monthly target</span><strong>{saved === null ? "Not set yet" : formatContributionMoney(String(saved), "PHP")}</strong></div>
       {progress}
       <div className="home-progress-actions"><button className="entry-link min-h-11" onClick={() => { setAmount(saved === null ? "" : String(saved)); setError(""); setEditing(true); }}>{saved === null ? "Set monthly budget →" : "Edit monthly budget →"}</button><a className="entry-link min-h-11" href="#home/activity">View recorded activity →</a></div>
-      <details className="home-progress-notes"><summary>About these figures</summary><p>Your target for this month. Editing it keeps recorded investments and past months unchanged. Purchases only. Opening balances and check-ins are separate. Later corrections can change this summary.</p></details>
     </> : <>
       <p className="eyebrow">Monthly budget</p>
       <strong className="home-financial-amount">{saved === null ? "Not set yet" : formatContributionMoney(String(saved), "PHP")}</strong>

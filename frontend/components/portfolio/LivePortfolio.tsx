@@ -180,9 +180,13 @@ export default function LivePortfolio({ value, userId, section = "", onPlanChang
       {error && <p role="alert" className="text-sm">{error}</p>}</form>}</Sheet>}
       {deleting && <Sheet title="Remove holding" busy={busy} onClose={() => setDeleting(null)}><section aria-label="Confirm removal"><h3 className="font-semibold text-slate-900">Remove {deleting.display_name} from Arbor?</h3><p className="mt-2 text-sm text-slate-600">This removes the record, not the investment in your provider account. Recorded history stays unchanged.</p><button className="entry-primary mt-4 min-h-11" disabled={busy} onClick={() => void mutate(() => portfolioApi.remove(userId, deleting.id))}>Remove from Arbor</button><button className="entry-link ml-4 min-h-11" disabled={busy} onClick={() => setDeleting(null)}>Cancel</button>{error && <p role="alert">{error}</p>}</section></Sheet>}
       {section === "ways" && value.plan.path === "long_term" && value.plan.readiness.actionable_contribution_guidance_allowed && <Sheet title="Ways to invest" wide onClose={closePortfolioSheet}><PlanImplementation value={value} intro={false} inSheet userId={userId} onPlanChange={onPlanChange} onRecord={() => { closePortfolioSheet(); setEntryProduct(null); }}/></Sheet>}
-      <footer className="portfolio-data"><details><summary>About prices &amp; data</summary><p>Reference values may exclude fees or spreads. A value entered by you is not an official fund NAV. Provider names belong to their owners; Arbor is not affiliated with or endorsed by them.</p></details><DataAttribution sources={portfolio.data_sources ?? []} /></footer>
+      <footer className="portfolio-data"><PriceDataDetails sources={portfolio.data_sources ?? []} /></footer>
     </>}
   </div>;
+}
+
+export function PriceDataDetails({ sources }: { sources: string[] }) {
+  return <details className="price-data-details"><summary className="min-h-11 cursor-pointer">About prices and data</summary><p>Reference values may exclude fees or spreads. A value entered by you is not an official fund NAV. Provider names belong to their owners; Arbor is not affiliated with or endorsed by them.</p><DataAttribution sources={sources}/></details>;
 }
 
 export function DataAttribution({ sources }: { sources: string[] }) {
@@ -202,7 +206,6 @@ export function PortfolioSummary({ portfolio: p }: { portfolio: LivePortfolioDat
     currentRecordedCostPhp={p.recorded_cost_php} currentGainPhp={p.recorded_gain_php} currentGainPercentage={p.recorded_gain_percentage}
     complete={p.complete} holdingsCount={p.holdings.length}/>
     {p.unavailable_count > 0 && <p role="status" className="mt-2 text-sm text-slate-600">Plus {p.unavailable_count} unavailable holding(s). This is not the complete portfolio value.</p>}
-    {p.stale_count > 0 && <p role="status" className="mt-2 text-sm text-slate-600">{p.stale_count} holding(s) use cached prices. Check each holding for its price date.</p>}
   </section>;
 }
 export function PlanAlignment({ portfolio: p }: { portfolio: LivePortfolioData }) {

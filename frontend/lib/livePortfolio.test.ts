@@ -195,7 +195,7 @@ test("dated-entry API uses one authenticated write, preserves retry key and vali
 });
 test("summary uses PHP grouping and distinguishes partial/stale totals",()=>{
   const markup=html(createElement(PortfolioSummary,{portfolio:{...portfolioFixture,complete:false,unavailable_count:1,stale_count:1}}));
-  assert.match(markup,/₱5,600/);assert.match(markup,/not the complete portfolio value/);assert.match(markup,/cached prices/);
+  assert.match(markup,/₱5,600/);assert.match(markup,/not the complete portfolio value/);assert.doesNotMatch(markup,/cached prices/);
   assert.doesNotMatch(markup,/Buy|Sell|NaN|Guaranteed/);
 });
 test("alignment is a signed comparison not a health score",()=>{

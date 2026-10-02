@@ -9,6 +9,7 @@ import type {PortfolioProduct,InvestmentEntry} from "./livePortfolio";
 import InvestmentIdentity from "../components/InvestmentIdentity";
 import ProviderIdentity from "../components/ProviderIdentity";
 import InvestmentCatalogue from "../components/portfolio/InvestmentCatalogue";
+import {PriceDataDetails} from "../components/portfolio/LivePortfolio";
 import {HomeActivity} from "../components/app/V2Home";
 import {sleeveColors} from "../components/AssetIdentity";
 
@@ -128,6 +129,9 @@ test("real Home investment activity uses the canonical product mark and investme
   assert.match(html,/data-identity="crypto"/);assert.match(html,/Added to Bitcoin/);
   assert.match(html,/<time dateTime="2026-09-25">2026-09-25<\/time>/);assert.doesNotMatch(html,/₱/);
 });
-test("price attribution stays visible while source explanation is disclosed",()=>{
-  const source=readFileSync("components/portfolio/LivePortfolio.tsx","utf8");assert.match(source,/<\/details><DataAttribution/);assert.match(source,/About prices &amp; data/);
+test("price source disclosure preserves exact linked credits",()=>{
+ const html=render(createElement(PriceDataDetails,{sources:["coinranking","marketstack","exchangerate_api","bsp","toap"]}));
+ assert.match(html,/<details class="price-data-details">/);assert.match(html,/About prices and data/);assert.doesNotMatch(html,/<details[^>]* open/);
+ for(const [label,url] of [["Crypto data by Coinranking","https://coinranking.com"],["Market data by Marketstack","https://marketstack.com"],["Rates By Exchange Rate API","https://www.exchangerate-api.com"],["NAV data by TOAP / UITF.com.ph","https://uitf.com.ph"]]){assert.ok(html.includes(label));assert.ok(html.includes(`href="${url}"`));}
+ assert.match(html,/Historical USD\/PHP rates from Bangko Sentral ng Pilipinas/);assert.match(html,/noopener noreferrer/);
 });
