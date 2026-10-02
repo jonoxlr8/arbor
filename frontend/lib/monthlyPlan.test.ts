@@ -22,7 +22,7 @@ test("monthly API sends only current inputs, not client targets/owner or provide
   let body:unknown,url="";
   const api=createMonthlyPlanApi(async()=>"synthetic-token",async(input,init)=>{url=String(input);body=JSON.parse(init!.body as string);return Response.json(monthlyPlanFixture);});
   await api.calculate("owner",{contribution_amount:"10000",confirm_empty:true});
-  assert.ok(url.endsWith("/v2/monthly-plan"));assert.deepEqual(body,{contribution_amount:"10000",confirm_empty:true});
+  assert.ok(url.endsWith("/v2/monthly-plan"));assert.deepEqual(body,{contribution_amount:"10000",confirm_empty:true,allow_indicative_nav:true});
 });
 test("monthly API fails closed on incomplete success and stale portfolio",async()=>{
   await assert.rejects(createMonthlyPlanApi(async()=>"synthetic",async()=>Response.json({})).calculate("owner",{contribution_amount:"100"}),/could not be confirmed/);
@@ -83,4 +83,11 @@ test("Gotrade practical initial PHP100 is distinct from the USD1 provider order 
   const row = { ...monthlyPlanFixture.rows[0], product_id: "gotrade_vgt", provider_id: "gotrade", amount: "100", status: "ready" as const, minimum: { purchase_type: "initial" as const, kind: "order" as const, applicable_minimum: "100", minimum_currency: "PHP", status: "ready" as const, amount_needed_to_minimum: "0", reason: "minimum_met" } };
   const html = render(createElement(MonthlyMinimumNotice, { row }));
   assert.match(html, /Arbor practical initial minimum met/); assert.match(html, /PHP100/); assert.match(html, /separate provider order minimum is US\$1/);
+});
+
+test("indicative NAV metadata is bounded and validates before display",()=>{
+  const nav={product_id:"gcash_technology",as_of:"2026-09-29T00:00:00Z",source:"toap",unit_class:"A PHP Unit Class"};
+  assert.ok(validMonthlyPlan({...monthlyPlanFixture,indicative_navs:[nav]}));
+  for(const bad of [null,[null],[{...nav,source:"unknown"}],[{...nav,as_of:"invalid"}],[{...nav,product_id:"gotrade_vt"}],[nav,nav]])
+    assert.equal(validMonthlyPlan({...monthlyPlanFixture,indicative_navs:bad}),false);
 });

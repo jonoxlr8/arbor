@@ -15,7 +15,7 @@ from app.services.arbor.v2_context import build_v2_context
 from app.services.contributions.models import CurrentPortfolio
 from app.services.entitlements import require_feature
 from app.services.implementation.choices import PROVIDER_IDS, validate_active_choices, validate_implementation_choices
-from app.services.monthly_plan import calculate_monthly_plan, empty_current
+from app.services.monthly_plan import IndicativeNav, calculate_monthly_plan, empty_current
 from app.services.profile_v2 import restore_profile_v2
 from app.services.strategy_v2 import AssetRole, DomainModel
 
@@ -26,6 +26,7 @@ Amount = Annotated[Decimal, BeforeValidator(reject_blank_or_boolean),
 
 class MonthlyPlanInput(DomainModel):
     contribution_amount: Amount | None = None
+    allow_indicative_nav: Annotated[bool, Field(strict=True)] = False
     manual_current: CurrentPortfolio | None = None
     confirm_empty: Annotated[bool, Field(strict=True)] = False
 
@@ -57,20 +58,26 @@ class ImplementationChoicesInput(DomainModel):
 
 def owner_monthly_plan(user_id, authorization, request=None, saved=None):
     require_feature(user_id, "monthly_contribution_planner")
-    request = request or MonthlyPlanInput()
+    # Internal Ask uses reviewed canonical wording; HTTP clients must acknowledge
+    # the indicative metadata contract explicitly to protect older open tabs.
+    request = request or MonthlyPlanInput(allow_indicative_nav=True)
     saved = saved or get_my_profile(user_id=user_id, authorization=authorization)
     try:
         context = build_v2_context(saved)
         # Higher-priority readiness/path rules need no market reads.
         if not context.contributions_allowed or context.path != "long_term" or context.plan_basis != "user_selected":
             return calculate_monthly_plan(saved, empty_current(), request.contribution_amount, "confirmed_empty")
+        indicative_navs = ()
         if live_portfolio_enabled():
             if request.manual_current is not None or request.confirm_empty:
                 raise HTTPException(422, "Arbor uses your recorded portfolio while tracking is available. Manual current-value overrides are not accepted.")
             from app.routes.live_portfolio import load_portfolio
-            from app.services.live_portfolio import current_values
-            portfolio, _ = load_portfolio(user_id, authorization, saved)
-            current = current_values(portfolio) if portfolio.holdings else empty_current()
+            from app.services.monthly_valuation import monthly_current_values
+            portfolio, store = load_portfolio(user_id, authorization, saved)
+            if portfolio.holdings:
+                current, indicative_navs = monthly_current_values(portfolio, store, allow_indicative=request.allow_indicative_nav)
+            else:
+                current = empty_current()
             source = "recorded_portfolio"
         elif request.manual_current is not None:
             current, source = request.manual_current, "manual_values"
@@ -78,7 +85,8 @@ def owner_monthly_plan(user_id, authorization, request=None, saved=None):
             current, source = empty_current(), "confirmed_empty"
         else:
             raise HTTPException(409, "Open Invest this month on Home and enter current values, or confirm that you have no investments yet.")
-        return calculate_monthly_plan(saved, current, request.contribution_amount, source)
+        return calculate_monthly_plan(saved, current, request.contribution_amount, source).model_copy(
+            update={"indicative_navs": tuple(IndicativeNav(**item) for item in indicative_navs)})
     except (ValueError, KeyError, TypeError):
         raise HTTPException(409, "Refresh your complete portfolio and review your saved plan before calculating this month’s contribution.") from None
 
@@ -87,7 +95,7 @@ def owner_monthly_plan(user_id, authorization, request=None, saved=None):
 def read_monthly_plan(response: Response, user_id: str = Depends(get_current_user_id),
                       authorization: str | None = Header(default=None)):
     response.headers["Cache-Control"] = "private, no-store"
-    return owner_monthly_plan(user_id, authorization).model_dump(mode="json")
+    return owner_monthly_plan(user_id, authorization, MonthlyPlanInput()).model_dump(mode="json")
 
 
 @router.post("/monthly-plan")

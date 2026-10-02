@@ -3,6 +3,7 @@
 No transactions, holdings mutations, carry-forward balance or new price calls.
 Sleeve amounts use shared contribution arithmetic before product minimum checks.
 """
+from datetime import datetime
 from decimal import Decimal, localcontext
 from fractions import Fraction
 from typing import Literal
@@ -50,7 +51,15 @@ class ProviderGroup(DomainModel):
     waiting_amount: NonNegative
 
 
+class IndicativeNav(DomainModel):
+    product_id: str
+    as_of: datetime
+    source: Literal["toap"]
+    unit_class: str
+
+
 class MonthlyPlan(DomainModel):
+    indicative_navs: tuple[IndicativeNav, ...] = ()
     contribution_amount: NonNegative
     currency: Literal["PHP"] = "PHP"
     current_portfolio_value: NonNegative
@@ -158,6 +167,9 @@ def explain_monthly_plan(question: str, plan: MonthlyPlan) -> str:
     named = [(role, label) for role, label in ROW_LABELS.items()
              if label.casefold() in q or (role == AssetRole.CRYPTO and "btc" in q)]
     lines = [f"For your saved monthly contribution of {money_text(plan.contribution_amount)}, Arbor calculated these amounts from your final targets and {'recorded portfolio' if plan.source == 'recorded_portfolio' else 'explicit current-value inputs'}:"]
+    if plan.indicative_navs:
+        dates = ", ".join(sorted({nav.as_of.date().isoformat() for nav in plan.indicative_navs}))
+        lines.append(f"Indicative estimate using the latest NAVs available to Arbor from TOAP, dated {dates}. Actual purchase prices and units may differ. These cached NAVs are not execution prices.")
     if named and not any(row.sleeve in {role for role, _ in named} for row in plan.rows):
         lines.append("Your saved plan has no active target for that sleeve, so no part of this contribution is assigned to it.")
     for row in plan.rows:

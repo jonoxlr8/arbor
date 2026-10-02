@@ -18,6 +18,7 @@ export type MonthlyRow = {
 };
 export type MonthlyPlan = {
   contribution_amount: string; current_portfolio_value: string; source: string; status: string;
+  indicative_navs?: {product_id: string; as_of: string; source: "toap"; unit_class: string}[];
   rows: MonthlyRow[];
   provider_groups: {provider_id: string; amount: string; ready_amount: string; verify_minimum_amount: string; waiting_amount: string}[];
   ready_amount: string; recordable_amount: string; verify_minimum_amount: string; waiting_amount: string;
@@ -57,6 +58,11 @@ export function validMonthlyPlan(value: unknown): value is MonthlyPlan {
   if (!value || typeof value !== "object") return false;
   const p = value as MonthlyPlan;
   return [p.contribution_amount,p.current_portfolio_value,p.ready_amount,p.recordable_amount,p.verify_minimum_amount,p.waiting_amount,p.choose_investment_amount,p.reserve_amount,p.unallocated_amount].every(decimal)
+    && (p.indicative_navs === undefined || (Array.isArray(p.indicative_navs) && p.indicative_navs.length <= 6
+      && new Set(p.indicative_navs.map(n=>n?.product_id)).size === p.indicative_navs.length
+      && p.indicative_navs.every(n=>n && n.source === "toap" && /^\d{4}-\d{2}-\d{2}T/.test(n.as_of) && Number.isFinite(Date.parse(n.as_of))
+        && typeof n.unit_class === "string" && n.unit_class.length > 0 && n.unit_class.length <= 60
+        && Object.values(PLAN_OPTIONS).flat().some(o=>o.product===n.product_id && ["gcash","dragonfi"].includes(o.provider)))))
     && typeof p.source === "string" && typeof p.status === "string"
     && Array.isArray(p.rows) && p.rows.length <= 4 && p.rows.every(r=>r && typeof r === "object") && new Set(p.rows.map(r=>r.sleeve)).size === p.rows.length
     && p.rows.every(r => r && Object.hasOwn(PLAN_OPTIONS,r.sleeve) && statuses.includes(r.status)
@@ -81,7 +87,7 @@ export function createMonthlyPlanApi(token=getAccessToken, request: typeof fetch
   }
   return {
     async calculate(userId:string,input:MonthlyPlanInput,signal?:AbortSignal):Promise<MonthlyPlan>{
-      const result:unknown=await call(userId,"monthly-plan","POST",input,signal);
+      const result:unknown=await call(userId,"monthly-plan","POST",{...input,allow_indicative_nav:true},signal);
       if(!validMonthlyPlan(result))throw new Error("Your monthly breakdown could not be confirmed. Please retry.");return result;
     },
     async choose(userId:string,value:PlanV2,choices:ImplementationChoices,signal?:AbortSignal):Promise<PlanV2>{

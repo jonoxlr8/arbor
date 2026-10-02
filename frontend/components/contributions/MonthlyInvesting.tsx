@@ -38,7 +38,7 @@ export default function MonthlyInvesting({value,userId,onPlanChange}:{value:Plan
     if(request.current)return;
     if(!/^\d+(\.\d{1,2})?$/.test(amount)||Number(amount)<=0){setError("Enter a positive PHP contribution with up to two decimal places.");return;}
     if(!tracking&&!inputMode){setError("Tell Arbor whether you have existing investments before calculating.");return;}
-    const controller=new AbortController();request.current=controller;setBusy(true);setError("");setReviewPortfolio(false);
+    const controller=new AbortController();request.current=controller;setResult(null);setBusy(true);setError("");setReviewPortfolio(false);
     const input:MonthlyPlanInput={contribution_amount:amount,...(!tracking?(inputMode==="empty"?{confirm_empty:true}:{manual_current:{...manual,currency:"PHP",owned_product_ids:[]}}):{})};
     try{const next=await monthlyPlanApi.calculate(userId,input,controller.signal);if(!controller.signal.aborted)setResult(next);}
     catch(e){
@@ -68,6 +68,7 @@ export default function MonthlyInvesting({value,userId,onPlanChange}:{value:Plan
     {error&&<div id="monthly-plan-error" role="alert" className="monthly-error"><p>{error}</p>{reviewPortfolio&&<a className="entry-link inline-flex min-h-11 items-center" href="#portfolio/holdings">Review holdings in Portfolio →</a>}</div>}
     {result&&<section className="monthly-breakdown" aria-label="Monthly investment breakdown">
       <header><h3>Your contribution breakdown</h3><span>{money(result.contribution_amount)}</span></header>
+      {!!result.indicative_navs?.length && <div className="monthly-result-note" role="note"><strong>Indicative estimate</strong><p>Uses the latest NAVs available to Arbor from TOAP, dated {Array.from(new Set(result.indicative_navs.map(nav=>nav.as_of.slice(0,10)))).sort().join(" · ")}. Actual purchase prices and units may differ.</p><details><summary>NAV dates used</summary><ul>{result.indicative_navs.map(nav=><li key={nav.product_id}>{investmentIdentity(nav.product_id,nav.product_id).shortName} · {nav.unit_class} · {nav.as_of.slice(0,10)} · TOAP</li>)}</ul></details></div>}
       <p className="monthly-result-note">{result.source.includes("empty")?"No investments recorded yet. This starts from the targets you chose.":"Calculated from your current values and the gaps to your chosen targets."}</p>
       <div className="monthly-rows">{result.rows.map(row=><article key={row.sleeve} className="monthly-row" data-sleeve={row.sleeve} data-status={row.status}>
         {row.product_id?<InvestmentIdentity product={row.product_id}/>:<span className="monthly-sleeve-symbol" style={{color:sleeveColors[row.sleeve]}} aria-hidden="true">◌</span>}
