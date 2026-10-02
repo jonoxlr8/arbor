@@ -31,7 +31,7 @@ def render(b,phase,issued_at,expires_at,*,approved=False,commit=False,admission_
     for d in (b.created_at,issued_at,expires_at):
         if not isinstance(d,datetime) or d.tzinfo is None:raise ValueError('Aware timestamps required')
     if not timedelta(0)<expires_at-issued_at<=timedelta(seconds=180):raise ValueError('Max180s approval required')
-    if not set(b.expected_counts)==TABLES or any(v is None and k!='arbor_ask_usage_monthly' or v is not None and (type(v) is not int or v<0) for k,v in b.expected_counts.items()) or sum(v or 0 for v in b.expected_counts.values())>10000:raise ValueError('Complete bounded counts required')
+    if set(b.expected_counts) not in (TABLES,TABLES|{'terms_acceptances'}) or any(v is None and k!='arbor_ask_usage_monthly' or v is not None and (type(v) is not int or v<0) for k,v in b.expected_counts.items()) or sum(v or 0 for v in b.expected_counts.values())>10000:raise ValueError('Complete bounded counts required')
     owner,op,req=map(str,(b.owner,b.operation,b.request));created=b.created_at.isoformat();counts=json.dumps(b.expected_counts,sort_keys=True,separators=(',',':'))
     common=f"""BEGIN;
 SET LOCAL statement_timeout='8s'; SET LOCAL lock_timeout='2s';

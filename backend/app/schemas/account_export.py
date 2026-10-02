@@ -1,3 +1,4 @@
+import re
 """Response contract validates completeness without recalculating financial data."""
 import json
 from datetime import datetime
@@ -34,6 +35,12 @@ def validate_export(value, owner):
             rows = value[section]
             if not isinstance(rows, list) or len(rows)>1 or any(not isinstance(row,dict) or set(row)-allowed for row in rows):
                 raise ValueError('Invalid lifecycle export section')
+    terms=value.get('terms_acceptances',[])
+    if not isinstance(terms,list) or len(terms)>1000 or any(not isinstance(row,dict) or set(row)!={'version','content_digest','accepted_at','source'} or row['source'] not in ('signup','account') for row in terms):
+        raise ValueError('Invalid Terms export section')
+    for row in terms:
+        if not isinstance(row['version'],str) or not 1<=len(row['version'])<=64 or not isinstance(row['content_digest'],str) or not re.fullmatch(r'[0-9a-f]{64}',row['content_digest']) or not isinstance(row['accepted_at'],str) or datetime.fromisoformat(row['accepted_at']).tzinfo is None:
+            raise ValueError('Invalid Terms receipt')
     for row in value.get('erasure_operations', []):
         if not isinstance(row.get('holds'), list) or len(row['holds']) > 12:
             raise ValueError('Invalid erasure holds')

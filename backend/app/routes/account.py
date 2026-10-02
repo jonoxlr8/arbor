@@ -88,3 +88,39 @@ def request_deletion(request: Request, body: LifecycleAction, authorization: str
 @router.post("/account/deletion-requests/current/withdraw")
 def withdraw_deletion(request: Request, body: LifecycleAction, authorization: str | None = Header(default=None)):
     return lifecycle_response(request, authorization, "cancel_deletion", body)
+
+
+from app.schemas.terms import TermsAcceptance,TermsSignupIntent
+
+
+def terms_response(request,work):
+    from fastapi.responses import JSONResponse
+    headers={'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}
+    try:
+        if request.query_params:raise HTTPException(400,'Terms actions do not accept selectors.')
+        return JSONResponse(work(),headers=headers)
+    except HTTPException as exc:return JSONResponse({'detail':exc.detail},status_code=exc.status_code,headers=headers)
+
+
+@router.get('/terms/current')
+def current_terms(request:Request):
+    from app.services.terms import current
+    return terms_response(request,current)
+
+
+@router.post('/terms/signup-intent')
+def terms_signup_intent(request:Request,body:TermsSignupIntent):
+    from app.services.terms import signup_intent
+    return terms_response(request,lambda:signup_intent(body))
+
+
+@router.get('/account/terms')
+def account_terms(request:Request,authorization:str|None=Header(default=None)):
+    from app.services.terms import account
+    return terms_response(request,lambda:account(authorization))
+
+
+@router.post('/account/terms/accept')
+def accept_account_terms(request:Request,body:TermsAcceptance,authorization:str|None=Header(default=None)):
+    from app.services.terms import account
+    return terms_response(request,lambda:account(authorization,body))
