@@ -7,6 +7,7 @@ import type { AccountPlan } from "@/lib/types/planV2";
 import { ArborMark } from "@/components/Logo";
 import { useAccountAccess } from "./AccountAccess";
 import { FREE_LIMIT_MESSAGE, type AskUsage } from "@/lib/entitlements";
+import { chatSourceParts } from "@/lib/chatSourceLinks";
 import { providerDisplayText } from "@/lib/investmentIdentity";
 
 type ArborChatProps = {
@@ -33,6 +34,12 @@ function renderBold(text: string) {
 
     return part;
   });
+}
+
+function renderInline(text: string) {
+  return chatSourceParts(text).map((part, index) => part.href
+    ? <a key={index} href={part.href} target="_blank" rel="noopener noreferrer" className="underline break-words text-emerald-700">{renderBold(part.text)}</a>
+    : <span key={index}>{renderBold(part.text)}</span>);
 }
 
 function ArborResponse({ text }: { text: string }) {
@@ -63,7 +70,7 @@ function ArborResponse({ text }: { text: string }) {
               key={index}
               className="pt-2 text-base font-semibold text-slate-900"
             >
-              {renderBold(trimmed.replace("#### ", ""))}
+              {renderInline(trimmed.replace("#### ", ""))}
             </h4>
           );
         }
@@ -71,7 +78,7 @@ function ArborResponse({ text }: { text: string }) {
         if (trimmed.startsWith("### ")) {
           return (
             <h3 key={index} className="pt-3 text-lg font-bold text-slate-900">
-              {renderBold(trimmed.replace("### ", ""))}
+              {renderInline(trimmed.replace("### ", ""))}
             </h3>
           );
         }
@@ -79,7 +86,7 @@ function ArborResponse({ text }: { text: string }) {
         if (trimmed.startsWith("## ")) {
           return (
             <h2 key={index} className="pt-3 text-xl font-bold text-slate-900">
-              {renderBold(trimmed.replace("## ", ""))}
+              {renderInline(trimmed.replace("## ", ""))}
             </h2>
           );
         }
@@ -95,7 +102,7 @@ function ArborResponse({ text }: { text: string }) {
               </span>
 
               <span className="flex-1 pt-0.5">
-                {renderBold(numberedMatch[2])}
+                {renderInline(numberedMatch[2])}
               </span>
             </div>
           );
@@ -108,7 +115,7 @@ function ArborResponse({ text }: { text: string }) {
               <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600" />
 
               <span className="flex-1">
-                {renderBold(trimmed.substring(2).trim())}
+                {renderInline(trimmed.substring(2).trim())}
               </span>
             </div>
           );
@@ -121,7 +128,7 @@ function ArborResponse({ text }: { text: string }) {
               <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600" />
 
               <span className="flex-1">
-                {renderBold(trimmed.substring(1).trim())}
+                {renderInline(trimmed.substring(1).trim())}
               </span>
             </div>
           );
@@ -129,7 +136,7 @@ function ArborResponse({ text }: { text: string }) {
 
         return (
           <p key={index} className="leading-7">
-            {renderBold(trimmed)}
+            {renderInline(trimmed)}
           </p>
         );
       })}
