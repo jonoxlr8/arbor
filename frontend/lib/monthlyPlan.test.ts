@@ -82,7 +82,7 @@ test("unknown additional purchase verifies without minimum-met or a cash-ledger 
 test("Gotrade practical initial PHP100 is distinct from the USD1 provider order fact", () => {
   const row = { ...monthlyPlanFixture.rows[0], product_id: "gotrade_vgt", provider_id: "gotrade", amount: "100", status: "ready" as const, minimum: { purchase_type: "initial" as const, kind: "order" as const, applicable_minimum: "100", minimum_currency: "PHP", status: "ready" as const, amount_needed_to_minimum: "0", reason: "minimum_met" } };
   const html = render(createElement(MonthlyMinimumNotice, { row }));
-  assert.match(html, /Arbor practical initial minimum met/); assert.match(html, /PHP100/); assert.match(html, /separate provider order minimum is US\$1/);
+  assert.match(html, /Arbor practical minimum met/); assert.match(html, /PHP100/); assert.match(html, /separate provider order minimum is US\$1/);
 });
 
 test("indicative NAV metadata is bounded and validates before display",()=>{
@@ -90,4 +90,10 @@ test("indicative NAV metadata is bounded and validates before display",()=>{
   assert.ok(validMonthlyPlan({...monthlyPlanFixture,indicative_navs:[nav]}));
   for(const bad of [null,[null],[{...nav,source:"unknown"}],[{...nav,as_of:"invalid"}],[{...nav,product_id:"gotrade_vt"}],[nav,nav]])
     assert.equal(validMonthlyPlan({...monthlyPlanFixture,indicative_navs:bad}),false);
+});
+
+for (const product_id of ["gotrade_vt","gotrade_vgt","gotrade_bnd"]) for (const purchase_type of ["initial","additional"] as const) for (const [amount,status] of [["99.99","below_minimum"],["100","ready"],["60000","ready"]] as const) test(`Arbor100 ${product_id} ${purchase_type} ${amount} copy preserves provider fact`,()=>{
+ const row={...monthlyPlanFixture.rows[0],product_id,provider_id:"gotrade",amount,status,minimum:{purchase_type,kind:"order" as const,applicable_minimum:"100",minimum_currency:"PHP",status,amount_needed_to_minimum:status==="ready"?"0":"0.01",reason:status==="ready"?"minimum_met":"below_minimum"}};
+ const html=render(createElement(MonthlyMinimumNotice,{row}));assert.match(html,/PHP100/);assert.match(html,/separate provider order minimum is US\$1/);assert.match(html,/Verify broker execution requirements/);
+ if(status==="ready")assert.match(html,/Arbor practical minimum met/);else {assert.match(html,/Save toward/);assert.doesNotMatch(html,/minimum met/);}
 });

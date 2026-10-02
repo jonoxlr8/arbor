@@ -77,7 +77,7 @@ await withAuthenticatedBrowser(async ({page,reused})=>{
   }
   await page.evaluate(()=>{location.hash='portfolio';});
   stage='edit record';
-  await page.getByRole('button',{name:'View VT',exact:true}).click();await page.getByRole('button',{name:'Edit VT',exact:true}).click();
+  await page.getByRole('button',{name:'View Vanguard Total World Stock ETF',exact:true}).click();await page.getByRole('button',{name:'Edit VT',exact:true}).click();
   await page.getByLabel('Shares',{exact:true}).fill('3');
   await page.getByRole('button',{name:'Save Investment',exact:true}).click();
   await page.getByText('₱20,800',{exact:true}).waitFor();

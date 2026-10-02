@@ -4,7 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import V2Home, { HomePlanContext } from "../components/app/V2Home";
 import ProviderBrand from "../components/ProviderBrand";
-import { V2Destination } from "../components/PlanV2View";
+import { V2Destination, V2PlanContent } from "../components/PlanV2View";
 import { AccountAccessContext } from "../components/AccountAccess";
 import { contributionFixture } from "./contributions.test";
 import type { Entitlements } from "./entitlements";
@@ -58,4 +58,16 @@ test("navigation preserves chat but saved plan changes reset context; Home never
   assert.match(shell,/chatVisited && <div hidden=/);
   assert.match(shell,/ChatSection key=\{`\$\{userId\}:\$\{JSON.stringify\(value\)\}`\}/);
   assert.doesNotMatch(readFileSync("components/app/V2Home.tsx","utf8"),/portfolioApi\.(save|capture|remove)/);
+});
+
+test("expanded Plan Sheet exposes assumptions and saved context without inventing a forecast", () => {
+ const html=render(createElement(V2PlanContent,{value,expanded:true}));
+ assert.match(html,/Planning assumptions<\/h3>/);assert.match(html,/Planning return:/);
+ assert.doesNotMatch(html,/<summary[^>]*>Planning assumptions/);
+ assert.match(html,/Your goal and timeframe/);assert.match(html,/not investments already recorded/);
+ assert.match(html,/does not contain a projected future amount/);
+ assert.match(html,/actual returns vary and investments can lose value/);
+ const empty=structuredClone(value);empty.profile.goal_target=null;empty.profile.goal_name=null;empty.profile.goal_date=null;empty.profile.monthly_investment=null;
+ assert.match(render(createElement(V2PlanContent,{value:empty,expanded:true})),/No goal name set/);
+ assert.match(render(createElement(V2PlanContent,{value:empty,expanded:true})),/Not set/);
 });

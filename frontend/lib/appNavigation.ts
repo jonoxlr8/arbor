@@ -20,7 +20,7 @@ export function subscribeNavigation(callback: () => void) {
     if ("newURL" in event && "oldURL" in event) {
       const change = event as HashChangeEvent;
       const next = new URL(change.newURL).hash;
-      if (next === "#portfolio/insights" || next === "#portfolio/allocation" || next === "#portfolio/ways" || next === "#portfolio/history" || next === "#home/activity") {
+      if (next === "#portfolio/insights" || next === "#portfolio/allocation" || next === "#portfolio/ways" || next === "#portfolio/history" || next === "#home/activity" || next === "#home/plan" || next === "#plan" || next === "#portfolio/plan") {
         sheetOpeningHash = new URL(change.oldURL).hash;
         sheetTargetHash = next;
       } else {
@@ -42,15 +42,15 @@ export function closePortfolioSheet() {
   if (opener !== null) {
     window.history.back();
     window.setTimeout(() => {
-      const launcher = document.querySelector<HTMLElement>(`[href="${target === "#portfolio/allocation" ? "#portfolio/insights" : target}"]`);
+      const launcher = document.querySelector<HTMLElement>(`[href="${target === "#portfolio/allocation" ? "#portfolio/insights" : target === "#plan" || target === "#portfolio/plan" ? "#home/plan" : target}"]`);
       launcher?.focus({ preventScroll: true });
     }, 50);
     return;
   }
   // A direct bookmarked sheet has no in-app opener to return to.
-  window.history.replaceState(window.history.state, "", target.startsWith("#home/") ? "#home" : "#portfolio");
+  window.history.replaceState(window.history.state, "", target.startsWith("#home/") || target === "#plan" || target === "#portfolio/plan" ? "#home" : "#portfolio");
   window.dispatchEvent(new HashChangeEvent("hashchange", { oldURL: window.location.href, newURL: window.location.href }));
-  window.setTimeout(()=>document.querySelector<HTMLElement>(`[href="${target === "#portfolio/allocation" ? "#portfolio/insights" : target}"]`)?.focus({preventScroll:true}),50);
+  window.setTimeout(()=>document.querySelector<HTMLElement>(`[href="${target === "#portfolio/allocation" ? "#portfolio/insights" : target === "#plan" || target === "#portfolio/plan" ? "#home/plan" : target}"]`)?.focus({preventScroll:true}),50);
 }
 export function navigationSnapshot() { return destinationFromHash(window.location.hash); }
 export function serverNavigationSnapshot(): Destination { return "home"; }

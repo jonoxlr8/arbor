@@ -11,3 +11,11 @@ export function recordingRows(plan: MonthlyPlan | null, catalog: PortfolioProduc
 export function investmentAction(entry: InvestmentEntry) {
   return entry.voided_at ? "Deleted" : entry.revision > 1 ? "Corrected" : "Recorded";
 }
+
+/** Only exact supported, recordable planned pairs may scope the recording picker. */
+export function plannedRecordingProducts(plan: MonthlyPlan | null, catalog: PortfolioProduct[]) {
+  const products = recordingRows(plan, catalog).filter(row => row.product && row.product.sleeve === row.sleeve &&
+    plan?.rows.some(source => source.sleeve === row.sleeve && (source.status === "ready" || source.status === "verify_minimum")));
+  return products.flatMap(row => row.product ? [row.product] : [])
+    .filter((product, index, all) => all.findIndex(other => other.product_id === product.product_id && other.provider === product.provider) === index);
+}

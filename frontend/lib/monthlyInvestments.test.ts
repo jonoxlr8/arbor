@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { recordingRows, investmentAction } from "./monthlyInvestments";
+import { recordingRows, investmentAction, plannedRecordingProducts } from "./monthlyInvestments";
 import { monthlyPlanFixture } from "./monthlyPlan.test";
 import { portfolioFixture } from "./livePortfolio.test";
 import { createPortfolioApi, type InvestmentEntry } from "./livePortfolio";
@@ -76,4 +76,15 @@ test("monthly flow uses one existing ledger save and never copies planned PHP in
   assert.match(form, /plannedAmount.*context only/);
   assert.match(form, /amount_paid_php: null/);
   assert.doesNotMatch(form, /amount_paid_php: plannedAmount|units: plannedAmount/);
+});
+
+test("planned picker scopes only positive recordable exact pairs and clears invalid plans", () => {
+ const catalog=portfolioFixture.catalog; const plan=structuredClone(monthlyPlanFixture);
+ plan.rows=[{...plan.rows[0],product_id:catalog[0].product_id,provider_id:catalog[0].provider,amount:"100",status:"ready"},
+ {...plan.rows[0],sleeve:"technology_tilt",product_id:catalog[0].product_id,provider_id:"wrong",amount:"100",status:"ready"},
+ {...plan.rows[0],sleeve:"defensive",product_id:catalog[0].product_id,provider_id:catalog[0].provider,amount:"99",status:"below_minimum"}];
+ assert.deepEqual(plannedRecordingProducts(plan,catalog),[catalog[0]]);
+ assert.deepEqual(plannedRecordingProducts(null,catalog),[]);
+ plan.rows[0].sleeve="crypto";assert.deepEqual(plannedRecordingProducts(plan,catalog),[]);
+ plan.rows[0].sleeve="global_equity";plan.rows[0].amount="0";assert.deepEqual(plannedRecordingProducts(plan,catalog),[]);
 });

@@ -40,7 +40,7 @@ def etf(product_id, route, ticker, provider, sleeve):
         practical_minimum=100 if gotrade else None,
         minimum_additional_status="verify_in_app" if gotrade else "unknown",
         eligibility_notes=("US-listed ETF; verify current fractional trading availability.",
-         "Arbor practical initial minimum: PHP 100, not the provider's official minimum. Gotrade order minimum: USD 1. Additional purchase minimum: verify in app.") if gotrade else
+         "Arbor practical planning minimum: PHP 100 per ETF for initial and additional purchases, not the provider's official minimum. Gotrade order minimum: USD 1. Additional purchase minimum: verify in app.") if gotrade else
             ("Irish-domiciled UCITS ETF; USD listing context.", IBKR_NOTE),
         partnership=ROUTES[route].partnership,
     )

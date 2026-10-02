@@ -66,7 +66,6 @@
 .home-dashboard :is(.home-metric,.home-goal,.home-projection,.home-plan,.home-activity) { min-width:0; border:1px solid var(--line); border-radius:var(--v3-radius); background:var(--surface); box-shadow:var(--v3-shadow); }
 .home-dashboard :is(.home-portfolio,.home-goal,.home-projection,.home-plan,.home-activity) { padding:18px 20px; }
 .home-dashboard .home-portfolio header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-.home-dashboard .home-portfolio h2 { font-size:11px; color:var(--v3-muted); font-weight:500; }
 .home-dashboard .home-portfolio .chart-value { margin-top:4px; font-size:clamp(33px,3.4vw,44px); }
 .home-dashboard .home-portfolio .compact-chart { padding:0; }
 .home-dashboard .home-portfolio .compact-chart .chart-known-label { display:block; }
@@ -502,8 +501,6 @@
 
 /* Bounded Home/Portfolio clarity pass. */
 .action-arrow{width:20px;height:20px;flex:none;}
-.home-portfolio-open{display:grid;place-items:center;width:40px;height:40px;border:1px solid var(--feature-line);border-radius:50%;background:var(--feature-surface);color:var(--v3-green);}
-.home-portfolio-open:hover{background:var(--v3-green);color:var(--surface);}
 .home-month-progress{grid-column:2;grid-row:1;min-width:0;padding:18px 20px;border:1px solid var(--line);border-radius:var(--v3-radius);background:var(--surface);box-shadow:var(--v3-shadow);}
 .home-month-progress>header{display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:16px;}
 .home-month-progress h2{font-size:15px;font-weight:700;}.home-month-progress p{font-size:12px;line-height:1.6;color:var(--v3-muted);margin-top:6px;}
@@ -573,3 +570,58 @@
   .holding-money .holding-gain-amount,.holding-money .holding-gain-percentage { display:inline-block; white-space:nowrap; text-align:left; }
   .holding-money .holding-gain-separator { display:inline; }
 }
+
+/* Shared typography hierarchy for app destinations, sections, cards and dialogs.
+   Eyebrows, field labels, investment identities and financial figures keep their sizes. */
+.app-shell,.arbor-sheet {
+  --heading-page:clamp(24px,2.3vw,30px);
+  --heading-section:20px;
+  --heading-card:16px;
+  --heading-detail:14px;
+  --heading-dialog:22px;
+}
+@media(min-width:1000px) {
+  .app-shell,.arbor-sheet { --heading-section:22px; --heading-card:18px; --heading-detail:16px; }
+}
+.app-shell main > header h1 { font-size:var(--heading-page); }
+.app-shell :is(#section-holdings > h2,#section-plan h2,.what-if-page > header h2,.monthly-investing > header h2,.learn-detail > h2,.arbor-panel > h2,.implementation-plan h2),
+.arbor-sheet .ways-heading h2,.arbor-sheet .portfolio-insights-content h3 {
+  font-size:var(--heading-section); font-weight:700; line-height:1.3; letter-spacing:-.025em; color:var(--foreground);
+}
+.app-shell .home-dashboard :is(.home-goal,.home-plan,.home-activity,.home-month-progress) h2,
+.app-shell :is(.learn-copy,.learn-sources) h3,.app-shell .arbor-panel > div > article h3,
+.app-shell .monthly-investing h3,.arbor-sheet .sheet-body h3 {
+  font-size:var(--heading-card); font-weight:700; line-height:1.35; letter-spacing:-.02em; color:var(--foreground);
+}
+.arbor-sheet .portfolio-insights-content h3 { font-size:var(--heading-section); }
+.arbor-sheet .sheet-header h2 { font-size:var(--heading-dialog); font-weight:700; line-height:1.25; }
+.arbor-sheet .monthly-review h4 { font-size:var(--heading-detail); line-height:1.4; }
+.app-shell .home-next-investment > div > strong,.app-shell .portfolio-planning-tools > a > strong { font-size:var(--heading-card); }
+.app-shell .settings-list > details > summary { font-size:var(--heading-card); font-weight:650; }
+/* The chart retains an accessible known-value qualifier and visible incomplete-value notice. */
+.home-dashboard .home-portfolio .chart-known-label { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+/* Units and unit price remain in holding details at every width. */
+.holding-copy .holding-row-facts { display:none; }
+
+/* Existing Plus accent identifies access; the explicit trial label stays intact. */
+.settings-plus-access>summary>span{color:var(--v3-green)}
+.settings-plus-access>summary>span>small{color:var(--v3-muted)}
+.arbor-sheet #section-plan h2{font-size:var(--heading-section);font-weight:700;line-height:1.3}
+#section-goal,#section-chosen-plan{scroll-margin-top:100px}
+#section-goal:focus-visible,#section-chosen-plan:focus-visible{outline:2px solid var(--v3-green);outline-offset:4px}
+
+/* Current Plus access has a visible restrained edge even while collapsed. */
+.app-shell .settings-list > #section-plus.settings-plus-access {
+  border-color:var(--feature-line);
+  border-inline-start:3px solid var(--v3-green);
+  background:var(--feature-surface);
+}
+
+.plan-detail-sheet p {font-size:13px;line-height:1.7;color:var(--v3-muted)}
+.plan-detail-sheet .allocation-layout {display:grid;grid-template-columns:220px minmax(0,1fr);align-items:center;gap:24px;padding:20px 0}
+.plan-detail-sheet .allocation-ring {width:220px;height:220px;padding:24px}
+.plan-detail-sheet .allocation-ring span {font-size:20px}
+.plan-detail-sheet .allocation-ring small {font-size:12px}
+.plan-detail-sheet .allocation-legend {min-width:0;width:100%}
+.plan-detail-sheet .allocation-legend>div {font-size:13px;gap:16px}
+@media(max-width:599px){.plan-detail-sheet .allocation-layout{grid-template-columns:minmax(0,1fr);gap:12px;padding:16px 0}.plan-detail-sheet .allocation-ring{width:180px;height:180px;padding:20px;justify-self:center}}

@@ -7,7 +7,7 @@ import InvestmentIdentity from "../InvestmentIdentity";
 import ProviderIdentity from "../ProviderIdentity";
 import { monthlyMoney, type MonthlyPlan } from "@/lib/monthlyPlan";
 import { monthLabel } from "@/lib/monthlyCheckin";
-import { investmentAction, recordingRows } from "@/lib/monthlyInvestments";
+import { investmentAction, recordingRows, plannedRecordingProducts } from "@/lib/monthlyInvestments";
 import DatedInvestmentFlow from "../portfolio/DatedInvestmentFlow";
 
 type Selection = { product: PortfolioProduct | null; plannedAmount?: string };
@@ -18,6 +18,7 @@ export function MonthlyInvestmentFollowup({ userId, plan, completed, recording=f
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
   const [selection, setSelection] = useState<Selection | null>(null);
+  const [allInvestments, setAllInvestments] = useState(false);
   const [saved, setSaved] = useState<InvestmentEntryDraft | null>(null);
   const [month, setMonth] = useState(() => manilaInvestmentToday().slice(0, 7));
   useEffect(() => {
@@ -39,10 +40,12 @@ export function MonthlyInvestmentFollowup({ userId, plan, completed, recording=f
     window.dispatchEvent(new Event("arbor-investment-recorded"));
   }
   const rows = recordingRows(plan, portfolio?.catalog ?? []);
-  const directProduct=rows.length===1?rows[0].product:null;
+  const plannedProducts = plannedRecordingProducts(plan, portfolio?.catalog ?? []);
+  const scopedPortfolio = portfolio && plannedProducts.length && !allInvestments ? { ...portfolio, catalog: plannedProducts } : portfolio;
+  const directProduct = !allInvestments && plannedProducts.length === 1 ? plannedProducts[0] : null;
   return <section id="monthly-record-investment" className="monthly-record" aria-label="Record actual investments">
     {completed && <header><h3>Record what you actually invested</h3><p>Enter the units shown by your provider. Arbor won’t estimate them from today’s price. Your check-in and investments are separate records.</p></header>}
-    {saved && <div className="monthly-record-success" role="status"><strong>Investment recorded</strong><a className="entry-link min-h-11 inline-flex items-center" href="#portfolio/holdings">View in Portfolio →</a><div className="investment-line"><InvestmentIdentity product={saved.product_id}/><p>{investmentIdentity(saved.product_id).shortName} · {saved.units} {saved.product_id.endsWith("_btc") ? "BTC" : "units"}<br/><ProviderIdentity provider={saved.provider}/></p></div><div><button type="button" className="entry-secondary min-h-11" onClick={() => { setSaved(null); setSelection({ product: null }); }}>Record another</button><button type="button" className="entry-link min-h-11" onClick={() => setSaved(null)}>Done</button></div></div>}
+    {saved && <div className="monthly-record-success" role="status"><strong>Investment recorded</strong><a className="entry-link min-h-11 inline-flex items-center" href="#portfolio/holdings">View in Portfolio →</a><div className="investment-line"><InvestmentIdentity product={saved.product_id}/><p>{investmentIdentity(saved.product_id).shortName} · {saved.units} {saved.product_id.endsWith("_btc") ? "BTC" : "units"}<br/><ProviderIdentity provider={saved.provider}/></p></div><div><button type="button" className="entry-secondary min-h-11" onClick={() => { setSaved(null); setAllInvestments(false); setSelection({ product: directProduct }); }}>Record another</button><button type="button" className="entry-link min-h-11" onClick={() => setSaved(null)}>Done</button></div></div>}
     {error && <p role="alert" className="monthly-error">{error} <button type="button" className="entry-link min-h-11" onClick={() => { setError(""); setReload(value => value + 1); }}>Retry</button></p>}
     {!portfolio && !error && <p role="status">Loading supported investments…</p>}
     {completed && portfolio && <>
@@ -50,10 +53,11 @@ export function MonthlyInvestmentFollowup({ userId, plan, completed, recording=f
         const product = row.product;
         return <article key={row.sleeve} className="monthly-record-row"><div className="investment-line">{product && <InvestmentIdentity product={product.product_id}/>}<div><strong>{product ? investmentIdentity(product.product_id).shortName : "Choose where you invested"}</strong>{product ? <ProviderIdentity provider={product.provider}/> : <small>No provider selected</small>}<small>Planned this month · {monthlyMoney(row.plannedAmount)}</small></div></div><button type="button" className="entry-secondary min-h-11" onClick={() => { setSaved(null); setSelection({ product, plannedAmount: row.plannedAmount }); }}>{product ? "Record investment" : "Choose investment"}</button></article>;
       })}</div></>}
-      <button type="button" className="entry-link min-h-11" onClick={() => { setSaved(null); setSelection({ product: null }); }}>Record another supported investment</button>
+      <button type="button" className="entry-link min-h-11" onClick={() => { setSaved(null); setAllInvestments(true); setSelection({ product: null }); }}>Record another supported investment</button>
     </>}
-    {recording && portfolio && <DatedInvestmentFlow key="direct-recording" portfolio={portfolio} userId={userId} initialProduct={directProduct??undefined} allowProductChange monthly onClose={()=>onRecordingClose?.()} onSaved={recorded} onOpeningOnly={()=>{onRecordingClose?.();window.location.hash="#portfolio/add";}}/>}
-    {!recording && selection && portfolio && <DatedInvestmentFlow key={`${selection.product?.product_id ?? "choose"}:${selection.product?.provider ?? ""}`} portfolio={portfolio} userId={userId} initialProduct={selection.product ?? undefined} plannedAmount={selection.plannedAmount} monthly onClose={() => setSelection(null)} onSaved={recorded} onOpeningOnly={() => { setSelection(null); window.location.hash = "#portfolio/add"; }} />}
+
+    {recording && scopedPortfolio && <DatedInvestmentFlow key={`direct-recording:${allInvestments}`} portfolio={scopedPortfolio} userId={userId} initialProduct={directProduct??undefined} allowProductChange onChooseAll={!allInvestments && plannedProducts.length ? () => setAllInvestments(true) : undefined} catalogueBackLabel={allInvestments || !plannedProducts.length ? "‹ All investments" : "‹ Planned investments"} monthly onClose={()=>onRecordingClose?.()} onSaved={recorded} onOpeningOnly={()=>{onRecordingClose?.();window.location.hash="#portfolio/add";}}/>}
+    {!recording && selection && scopedPortfolio && <DatedInvestmentFlow key={`${selection.product?.product_id ?? "choose"}:${selection.product?.provider ?? ""}:${allInvestments}`} portfolio={scopedPortfolio} userId={userId} initialProduct={allInvestments ? undefined : selection.product ?? undefined} allowProductChange onChooseAll={!allInvestments && plannedProducts.length ? () => setAllInvestments(true) : undefined} catalogueBackLabel={allInvestments || !plannedProducts.length ? "‹ All investments" : "‹ Planned investments"} plannedAmount={selection.plannedAmount} monthly onClose={() => setSelection(null)} onSaved={recorded} onOpeningOnly={() => { setSelection(null); window.location.hash = "#portfolio/add"; }} />}
     <MonthlyInvestmentActivity userId={userId} month={month} onMonthChange={setMonth} reload={reload} />
   </section>;
 }

@@ -30,6 +30,16 @@ def _check_minimum(
     purchase = "additional" if additional else "initial"
     value, currency, kind = None, None, "unknown"
     reason = "dynamic_minimum"
+    if product.product_id in {"gotrade_vt", "gotrade_vgt", "gotrade_bnd"} and request.contribution_currency == "PHP":
+        # Arbor planning policy per allocated ETF, separate from broker execution.
+        needed = max(Decimal(0), GOTRADE_PRACTICAL_MINIMUM_PHP - request.contribution_amount)
+        return MinimumCheck(
+            purchase_type=purchase, kind="order",
+            applicable_minimum=GOTRADE_PRACTICAL_MINIMUM_PHP, minimum_currency="PHP",
+            status="below_minimum" if needed else "ready",
+            amount_needed_to_minimum=needed,
+            reason="below_minimum" if needed else "minimum_met",
+        )
     if additional and product.route_id == "gotrade":
         # Exact existing ETF: Arbor's PHP initial threshold is not an additional
         # purchase minimum. Do not fall back to the separate USD 1 order fact.

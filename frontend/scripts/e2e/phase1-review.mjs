@@ -139,17 +139,17 @@ try{
     await page.getByRole('button',{name:'Explore What If'}).click();await page.getByText('Projected value',{exact:true}).waitFor();await shot('what-if-390',390);await page.getByRole('button',{name:'Close'}).click();
     await page.getByRole('button',{name:'Edit goal'}).click();await shot('goal-setup-390',390);await page.getByRole('button',{name:'Close'}).click();
     await checkWidth('home-tablet',1024);await checkWidth('home-tablet-small',768);await checkWidth('home-small',320);
-    history=[{day:'2026-09-26',value_php:'12000.00',captured_at:now}];await page.evaluate(()=>{location.hash='portfolio';});await page.getByRole('button',{name:'View VT'}).waitFor();await shot('portfolio-one-history-390',390);
-    history=[];await page.reload();await page.getByRole('button',{name:'View VT'}).waitFor();await shot('portfolio-populated-1440',1440);await shot('portfolio-populated-390',390);
+    history=[{day:'2026-09-26',value_php:'12000.00',captured_at:now}];await page.evaluate(()=>{location.hash='portfolio';});await page.getByRole('button',{name:'View Vanguard Total World Stock ETF'}).waitFor();await shot('portfolio-one-history-390',390);
+    history=[];await page.reload();await page.getByRole('button',{name:'View Vanguard Total World Stock ETF'}).waitFor();await shot('portfolio-populated-1440',1440);await shot('portfolio-populated-390',390);
     await checkWidth('portfolio-tablet',1024);await checkWidth('portfolio-tablet-small',768);await checkWidth('portfolio-small',320);
     assert.equal(pageErrors,0);assert.equal(consoleErrors,0);assert.equal(blockedExternal,0);
     console.log(JSON.stringify({screenshots:shots,mobileScroll,pageErrors,consoleErrors,blockedExternal,fixtureOnly:true}));await browser.close();process.exit(0);
   }
   await page.evaluate(()=>{location.hash='portfolio';});
-  await page.getByRole('button',{name:'View VT'}).waitFor();
+  await page.getByRole('button',{name:'View Vanguard Total World Stock ETF'}).waitFor();
   await shot('portfolio-desktop',1440);
   await shot('portfolio-mobile',390);
-  await page.getByRole('button',{name:'View VT'}).click();
+  await page.getByRole('button',{name:'View Vanguard Total World Stock ETF'}).click();
   await page.getByRole('heading',{name:'Investment activity'}).waitFor();
   await shot('holding-detail',390);
   await page.getByRole('button',{name:'Add more'}).click();
@@ -158,8 +158,8 @@ try{
   await page.getByRole('button',{name:'Review investment'}).click();
   await shot('add-to-existing',390);
   await page.getByRole('button',{name:'Confirm and save'}).click();
-  await page.getByRole('button',{name:'View VT'}).waitFor();
-  await page.getByRole('button',{name:'View VT'}).click();
+  await page.getByRole('button',{name:'View Vanguard Total World Stock ETF'}).waitFor();
+  await page.getByRole('button',{name:'View Vanguard Total World Stock ETF'}).click();
   await page.getByText('Added investment').waitFor();
   await page.getByRole('button',{name:'Edit',exact:true}).click();
   await page.getByLabel('Units received').fill('0.50000');
@@ -167,8 +167,8 @@ try{
   await page.getByRole('button',{name:'Review correction'}).click();
   await shot('edit-transaction',390,'dark');
   await page.getByRole('button',{name:'Confirm correction'}).click();
-  await page.getByRole('button',{name:'View VT'}).waitFor();
-  await page.getByRole('button',{name:'View VT'}).click();
+  await page.getByRole('button',{name:'View Vanguard Total World Stock ETF'}).waitFor();
+  await page.getByRole('button',{name:'View Vanguard Total World Stock ETF'}).click();
   await page.getByRole('button',{name:'Delete',exact:true}).click();
   await shot('delete-confirmation',320);
   await page.getByRole('button',{name:'Delete investment'}).click();

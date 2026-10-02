@@ -1073,7 +1073,7 @@ try {
     entitlementMode = 'plus'; marketScreenshot = true;
     await page.evaluate(() => { location.hash = 'portfolio'; });
     await page.reload();
-    await page.getByRole('button', { name: 'View VGT' }).waitFor();
+    await page.getByRole('button', { name: 'View Vanguard Information Technology ETF' }).waitFor();
     await shot('portfolio-vt-vgt-1440', 1440);
     for (const symbol of ['VT', 'VGT']) {
       const row = page.getByRole('button', { name: `View ${symbol}` });
@@ -1321,7 +1321,7 @@ try {
   await shot('phase2c-home-desktop', 1440);
   await shot('phase2c-home-mobile', 390);
   await page.evaluate(() => { location.hash = 'portfolio'; });
-  await page.getByRole('button', { name: 'View VT' }).waitFor();
+  await page.getByRole('button', { name: 'View Vanguard Total World Stock ETF' }).waitFor();
   await page.evaluate(() => { location.hash = 'home/monthly'; });
   await page.getByRole('button', { name: 'Undo completion' }).click();
   await page.getByRole('button', { name: 'Confirm undo completion' }).click();
@@ -1332,10 +1332,10 @@ try {
   assert.equal(entries.length, 2); assert.equal(entries[0].amount_paid_php, '6500'); assert.equal(entries[1].amount_paid_php, '300');
   // Phase 2C review reuses this synthetic owner and intercepts every external call.
   await page.evaluate(() => { location.hash = 'portfolio'; });
-  await page.getByRole('button', { name: 'View VT' }).waitFor();
+  await page.getByRole('button', { name: 'View Vanguard Total World Stock ETF' }).waitFor();
   await shot('phase2c-portfolio-plus-desktop', 1440);
   await shot('phase2c-portfolio-plus-laptop', 1024);
-  await page.getByRole('button', { name: 'View VT' }).getByText('US$100.00 per share').waitFor();
+  await page.getByRole('button', { name: 'View Vanguard Total World Stock ETF' }).getByText('US$100.00 per share').waitFor();
   await page.getByRole('button', { name: 'View Bitcoin' }).getByText('₱2,000,000.00 per BTC').waitFor();
   await shot('phase2c-portfolio-plus-tablet', 768);
   await shot('phase2c-portfolio-plus-mobile', 390);
@@ -1353,7 +1353,7 @@ try {
   await page.getByText('₱2,000,000.00 per BTC', { exact: true }).waitFor();
   await shot('phase2c-btc-detail-mobile', 390);
   await page.getByRole('button', { name: 'Close' }).click();
-  await page.getByRole('button', { name: 'View VT' }).click();
+  await page.getByRole('button', { name: 'View Vanguard Total World Stock ETF' }).click();
   await shot('phase2c-holding-detail-mobile', 390);
   await shot('phase2c-gain-loss-dark-detail', 390, 'dark');
   await shot('phase2c-holding-detail-mobile', 390);
@@ -1366,7 +1366,7 @@ try {
     await page.reload();
     for (const theme of ['light', 'dark']) {
       await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
-      const gain = page.getByRole('button', { name: 'View VT' }).locator(`[data-gain="${tone}"]`);
+      const gain = page.getByRole('button', { name: 'View Vanguard Total World Stock ETF' }).locator(`[data-gain="${tone}"]`);
       await gain.waitFor();
       assert.ok((await gain.textContent()).includes(expected));
       const className = await gain.getAttribute('class');
@@ -1375,7 +1375,7 @@ try {
   }
   vtEntry.amount_paid_php = originalCost;
   await page.reload();
-  await page.getByRole('button', { name: 'View VT' }).waitFor();
+  await page.getByRole('button', { name: 'View Vanguard Total World Stock ETF' }).waitFor();
   await page.evaluate(() => { location.hash = 'portfolio/insights'; });
   await page.getByText('Plan Alignment').waitFor();
   await shot('phase2c-plus-insights', 1440);

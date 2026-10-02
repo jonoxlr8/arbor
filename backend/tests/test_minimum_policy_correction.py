@@ -26,8 +26,12 @@ def test_initial_boundaries_and_exact_ownership(product_id, minimum, difference)
     assert first.amount_needed_to_minimum==max(0,-difference)
     additional = _check_minimum(product,inputs(100000,(product_id,)))
     assert additional.purchase_type=='additional'
-    assert additional.applicable_minimum is additional.amount_needed_to_minimum is None
-    assert additional.status=='verify_minimum' and additional.reason=='additional_unknown'
+    if product_id.startswith('gotrade_'):
+        assert additional.applicable_minimum == 100 and additional.amount_needed_to_minimum == 0
+        assert additional.status == 'ready' and additional.reason == 'minimum_met'
+    else:
+        assert additional.applicable_minimum is additional.amount_needed_to_minimum is None
+        assert additional.status=='verify_minimum' and additional.reason=='additional_unknown'
     assert product.last_verified_at is None
 
 

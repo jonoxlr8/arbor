@@ -31,7 +31,7 @@ export default function MonthlyInvesting({value,userId,onPlanChange,backHref="#p
   const [choosing,setChoosing]=useState<Sleeve|null>(null);
   const request=useRef<AbortController|null>(null);
   useEffect(()=>()=>request.current?.abort(),[]);
-  function invalidate(){request.current?.abort();request.current=null;setResult(null);setBusy(false);setError("");setReviewPortfolio(false);}
+  function invalidate(){request.current?.abort();request.current=null;setResult(null);setRecording(false);setBusy(false);setError("");setReviewPortfolio(false);}
   async function calculate(){
     if(request.current)return;
     if(!/^\d+(\.\d{1,2})?$/.test(amount)||Number(amount)<=0){setError("Enter a positive PHP contribution with up to two decimal places.");return;}
@@ -86,7 +86,7 @@ export default function MonthlyInvesting({value,userId,onPlanChange,backHref="#p
       <div className="monthly-handoff"><p>Review the investment and actual price in your provider app before deciding. Arbor does not place trades or move money.</p><small>After investing through your provider, record the actual units and PHP amount you paid. Planned PHP amounts never become investment cost automatically.</small></div>
     </section>}
     <MonthlyCheckin value={value} userId={userId} scenarioAmount={result?.recordable_amount&&Number(result.recordable_amount)>0?result.recordable_amount:undefined} recordingPrimary onRecordInvestment={tracking?()=>setRecording(true):undefined}/>
-    {tracking && <MonthlyInvestmentFollowup userId={userId} plan={result} completed={false} recording={recording} onRecordingClose={()=>setRecording(false)}/>}
+    {tracking && <MonthlyInvestmentFollowup key={JSON.stringify(result)} userId={userId} plan={result} completed={false} recording={recording} onRecordingClose={()=>setRecording(false)}/>}
     {choosing&&<ImplementationPicker value={value} userId={userId} sleeve={choosing} onClose={()=>setChoosing(null)} onSaved={plan=>{invalidate();onPlanChange(plan);void calculate();}}/>}
   </section>;
 }

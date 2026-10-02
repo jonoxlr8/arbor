@@ -17,9 +17,9 @@ function fresh(product: PortfolioProduct): InvestmentEntryDraft {
     amount_paid_php: null, idempotency_key: crypto.randomUUID(), opening_units: null, opening_cost_php: null, confirm_conversion: false };
 }
 
-export default function DatedInvestmentFlow({ portfolio, userId, initialProduct, onClose, onSaved, onOpeningOnly, plannedAmount, monthly = false, allowProductChange=false }:
+export default function DatedInvestmentFlow({ portfolio, userId, initialProduct, onClose, onSaved, onOpeningOnly, plannedAmount, monthly = false, allowProductChange=false, catalogueBackLabel="‹ All investments", onChooseAll }:
   { portfolio: LivePortfolioData; userId: string; initialProduct?: PortfolioProduct; onClose: () => void;
-    onSaved: (draft: InvestmentEntryDraft) => void; onOpeningOnly: (product: PortfolioProduct) => void; plannedAmount?: string; monthly?: boolean;allowProductChange?:boolean }) {
+    onSaved: (draft: InvestmentEntryDraft) => void; onOpeningOnly: (product: PortfolioProduct) => void; plannedAmount?: string; monthly?: boolean;allowProductChange?:boolean;catalogueBackLabel?:string;onChooseAll?:()=>void }) {
   const [draft, setDraft] = useState<InvestmentEntryDraft | null>(initialProduct ? fresh(initialProduct) : null);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -59,9 +59,10 @@ export default function DatedInvestmentFlow({ portfolio, userId, initialProduct,
     finally { setBusy(false); }
   }
   return <Sheet title={monthly ? !product ? "Record an investment" : `Record ${investmentIdentity(product.product_id).shortName} investment` : !product ? "Add Investment" : existing ? `Add to ${investmentIdentity(product.product_id).shortName}` : `Add ${investmentIdentity(product.product_id).shortName}`} busy={busy} onClose={onClose}>
+    {onChooseAll && <button type="button" className="entry-link min-h-11" disabled={busy} onClick={onChooseAll}>Change investment · Choose from all supported investments</button>}
     {!product ? <InvestmentCatalogue catalog={portfolio.catalog} onSelect={p => { setDraft(fresh(p)); setError(""); }}/>
     : <div className="investment-form space-y-4">
-      {(!initialProduct||allowProductChange) && <button type="button" className="catalogue-back" onClick={() => { setDraft(null); setConfirm(false); }}>‹ All investments</button>}
+      {(!initialProduct||allowProductChange) && <button type="button" className="catalogue-back" onClick={() => { setDraft(null); setConfirm(false); }}>{catalogueBackLabel}</button>}
       <div className="selected-investment"><AssetIdentity product={product.product_id} sleeve={product.sleeve}/><div><strong>{investmentIdentity(product.product_id).fullName}</strong><ProviderBrand provider={product.provider} name={product.provider_name}/></div></div>
       {!monthly && supportsManualValue(product) && !existing && <button type="button" className="entry-link min-h-11" onClick={() => onOpeningOnly(product)}>Track an existing fund value without units instead</button>}
       {!monthly&&<p className="text-sm text-slate-600">Record units actually received. Your investment date is not the time you recorded this in Arbor. No trade is placed.</p>}

@@ -5,10 +5,10 @@ import { portfolioApi, type LivePortfolioData, type InvestmentEntry } from "@/li
 import { useAccountAccess } from "../AccountAccess";
 import PortfolioHistoryChart from "../portfolio/PortfolioHistoryChart";
 import { DataAttribution } from "../portfolio/LivePortfolio";
-import Allocation from "../portfolio/Allocation";
-import { planTargets } from "@/lib/planImplementation";
 import { recentLedgerActivity } from "@/lib/portfolioActivity";
 import InvestmentIdentity from "../InvestmentIdentity";
+import Allocation from "../portfolio/Allocation";
+import { planTargets } from "@/lib/planImplementation";
 import HomeGoal from "./HomeGoal";
 import HomeMonthlyProgress from "./HomeMonthlyProgress";
 import ActionArrow from "../ui/ActionArrow";
@@ -34,7 +34,7 @@ export default function V2Home({ value, userId, section = "", onPlanChange }: { 
     <div className="home-dashboard">
     <div className="home-grid">
     <div className="home-column home-column-portfolio">
-      {available && userId ? <HomePortfolio key={portfolioVersion} userId={userId} onLoaded={setPortfolio} /> : <section className="home-metric home-portfolio" aria-label="Portfolio overview"><header><h2>Portfolio</h2><span className="access-badge">Preview</span></header>
+      {available && userId ? <HomePortfolio key={portfolioVersion} userId={userId} onLoaded={setPortfolio} /> : <section className="home-metric home-portfolio" aria-label="Portfolio overview"><span className="access-badge">Preview</span>
         <div className="home-history-empty"><span aria-hidden="true">◷</span><strong>Your investments.<br/>One clear view.</strong><p>{!implementationAllowed ? "Your saved profile and current path are ready to review. Tracking stays separate from your plan." : "Tracking isn’t available right now. Your chosen plan and ways to invest are ready to explore."}</p></div>
         <a className="entry-link" href="#portfolio">Explore your portfolio →</a>
       </section>}
@@ -56,12 +56,12 @@ export default function V2Home({ value, userId, section = "", onPlanChange }: { 
 export function HomePlanContext({ value }: { value: PlanV2 }) {
   const { plan } = value;
   const targets = planTargets(value);
-  return <section className="home-plan">
-    <header><h2 className="text-lg font-semibold">Your plan</h2></header>
+  return <section id="section-chosen-plan" tabIndex={-1} className="home-plan" aria-labelledby="home-plan-title">
+    <header><h2 id="home-plan-title" className="text-lg font-semibold">Your plan</h2></header>
     <strong>{plan.path === "short_term" ? "Short-term path" : plan.plan_basis === "user_selected" ? plan.selected_strategy : "Historical plan"}</strong>
     {targets.length > 0 && <Allocation weights={targets} label="Target mix"/>}
     <div className="home-plan-actions">{plan.path === "long_term" && plan.readiness.actionable_contribution_guidance_allowed && <a href="#portfolio/ways" className="entry-primary inline-flex min-h-11 items-center">Ways to invest →</a>}
-    <a href="#home/plan" className="entry-link inline-flex min-h-11 items-center">View plan →</a></div>
+    <a href="#home/plan" aria-haspopup="dialog" className="entry-link inline-flex min-h-11 items-center">View your plan →</a></div>
     {plan.readiness.readiness !== "ready" && <p className="home-plan-caution">{plan.readiness.readiness === "foundation_first" ? "Contribution previews are paused while you review your financial foundation." : "Review your readiness before relying on contribution guidance."}</p>}
   </section>;
 }
@@ -85,7 +85,7 @@ function HomePortfolio({ userId, onLoaded }: { userId: string; onLoaded: (portfo
   }, [userId, attempt, onLoaded]);
   if (error) return <section className="home-metric home-portfolio" aria-label="Portfolio overview"><p role="alert">We couldn’t load your portfolio.</p><button className="entry-secondary mt-3" onClick={() => { setError(false); setAttempt(n => n + 1); }}>Try again</button></section>;
   if (!portfolio) return <section className="home-metric home-portfolio arbor-skeleton" role="status"><span className="sr-only">Checking your recorded portfolio…</span><i/><i/></section>;
-  return <section className="home-metric home-portfolio" aria-label="Portfolio overview"><header><h2>{portfolio.holdings.length ? portfolio.complete ? "Portfolio value" : "Known portfolio value" : "Portfolio"}</h2><a className="home-portfolio-open" href="#portfolio" aria-label="View portfolio"><ActionArrow/></a></header>
+  return <section className="home-metric home-portfolio" aria-label="Portfolio overview">
     {portfolio.holdings.length ? <>
       <PortfolioHistoryChart history={portfolio.history} knownValue={portfolio.known_value_php} currentUsdValue={portfolio.total_value_usd}
         currentDisplayFx={portfolio.display_fx}
