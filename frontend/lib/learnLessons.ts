@@ -29,6 +29,33 @@ export const learnLessons: Lesson[] = [
     reviewed, askDraft: "Can you explain investment risk and time horizon in simpler terms?",
   },
   {
+    id: "starting-to-save", title: "Starting to save", category: "Basics", summary: "Start small and make saving repeatable.",
+    sections: [
+      { heading: "A small start counts", body: "Saving sets money aside for a purpose. A small amount saved regularly can build a useful habit. Look at money coming in and essential expenses before choosing an amount; it does not need to be the same every payday." },
+      { heading: "Next step", body: "Write one small savings goal and an amount you could set aside on your next payday without missing essential bills." },
+    ],
+    sources: [source("CFPB: Savings plan", "https://files.consumerfinance.gov/f/documents/cfpb_your-money-your-goals_savings_plan_tool_2018-11_ADA.pdf")],
+    reviewed: "2026-10-02", askDraft: "Can you explain how to start a small savings habit?",
+  },
+  {
+    id: "emergency-fund", title: "Building an emergency fund", category: "Basics", summary: "Keep a buffer for an unexpected expense.",
+    sections: [
+      { heading: "Money you can reach", body: "An emergency fund is cash set aside for an unexpected bill or loss of income. Keep it somewhere safe and easy to access. The amount depends on your circumstances; a small first target can help you get started. Investments can fall in value when you need the money." },
+      { heading: "Next step", body: "Choose one unexpected expense you want your first buffer to cover, and write down roughly what it would cost." },
+    ],
+    sources: [source("CFPB: Building an emergency fund", "https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/")],
+    reviewed: "2026-10-02", askDraft: "What is an emergency fund and why keep it accessible?",
+  },
+  {
+    id: "debt-before-investing", title: "Debt before investing", category: "Basics", summary: "Understand what borrowing costs before taking investment risk.",
+    sections: [
+      { heading: "Interest costs keep adding up", body: "High-interest debt can be expensive, while investment returns are uncertain. Reducing that debt is a financial-foundation priority. Debts have different rates and repayment terms; having debt does not make every situation the same." },
+      { heading: "Next step", body: "Make a private list from your statements: each balance, interest rate, minimum payment and due date. Do not put account numbers or personal details in Ask Arbor." },
+    ],
+    sources: [source("Investor.gov: Investor Preparedness Checklist", preparedness), source("CFPB: Debt log", "https://files.consumerfinance.gov/f/documents/cfpb_your-money-your-goals_debt_log_tool_2018-11_ADA.pdf")],
+    reviewed: "2026-10-02", askDraft: "Why does high-interest debt matter before investing?",
+  },
+  {
     id: "etfs", title: "What are ETFs?", category: "ETFs", summary: "Shares, market prices and what Arbor asks you to record.",
     sections: [
       { heading: "A fund traded as shares", body: "An exchange-traded fund (ETF) holds a portfolio of investments. Its shares trade on an exchange at a market price, which can differ from the fund's net asset value. A broad ETF may diversify across many companies; a narrow one may concentrate exposure." },

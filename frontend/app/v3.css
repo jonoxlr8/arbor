@@ -661,3 +661,7 @@
 .alignment-over-time>details {margin-top:16px;border-top:1px solid var(--line)}
 @media(prefers-color-scheme:dark){.alignment-over-time{--gap-track:#263d4f;--gap-fill:#74ae97}}
 @media(max-width:700px){.alignment-over-time{padding:18px 17px}.alignment-over-time h3{font-size:20px;line-height:1.3}.alignment-gap-subtitle{font-size:12px;margin:7px 0 22px}.alignment-gap-heading>div>strong{font-size:13px}.alignment-gap-heading time{font-size:10px}.alignment-gap-number{font-size:25px}.alignment-gap-number>span{font-size:13px}.alignment-gap-track{height:13px}.alignment-gap-zero-marker{width:11px;height:11px}.alignment-gap-scale{font-size:9px}.alignment-gap-takeaway{padding:11px 12px;font-size:13px}}
+
+/* Keep the shared price disclosure aligned with Home and Portfolio content. */
+.app-shell .price-data-details {text-align:left}
+.app-shell .price-data-details > summary {justify-content:flex-start;text-align:left}

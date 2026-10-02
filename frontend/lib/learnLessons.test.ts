@@ -6,9 +6,9 @@ import { readFileSync } from "node:fs";
 import LearnSection from "../components/dashboard/LearnSection";
 import { learnCategories, learnLessons, lessonById, safeLessonSource } from "./learnLessons";
 
-test("twelve reviewed beginner lessons have stable identities and safe sources", () => {
-  assert.equal(learnLessons.length, 12);
-  assert.equal(new Set(learnLessons.map(item => item.id)).size, 12);
+test("fifteen reviewed beginner lessons have stable identities and safe sources", () => {
+  assert.equal(learnLessons.length, 15);
+  assert.equal(new Set(learnLessons.map(item => item.id)).size, 15);
   for (const lesson of learnLessons) {
     assert.equal(lessonById(lesson.id), lesson);
     assert.ok(learnCategories.includes(lesson.category));
@@ -21,7 +21,7 @@ test("twelve reviewed beginner lessons have stable identities and safe sources",
 
 test("Learn exposes compact lessons without a Plus lock or auto-send", () => {
   const html = renderToStaticMarkup(createElement(LearnSection, { onAsk() {} }));
-  assert.equal((html.match(/class="learn-row"/g) ?? []).length, 12);
+  assert.equal((html.match(/class="learn-row"/g) ?? []).length, 15);
   assert.match(html, /Lesson categories/);
   assert.doesNotMatch(html, /Locked|Upgrade to read/);
   const source = readFileSync("components/dashboard/LearnSection.tsx", "utf8");
