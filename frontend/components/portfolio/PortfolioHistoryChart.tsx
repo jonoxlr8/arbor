@@ -6,7 +6,7 @@ import type { GainDisplayFx, PortfolioHistory } from "@/lib/livePortfolio";
 import { currentGainFxRate, historicalGainFxRate, usdEquivalentOfPhpGain } from "@/lib/gainDisplayFx";
 import GainInfo from "./GainInfo";
 import { historicalEstimateSources } from "@/lib/historyEstimate";
-import { chartInspectionPoints, historyChartSeries, historyExtrema, historyRange, historyRangeStart, historyValue, portfolioGainForDisplay, portfolioPeriodGain, supportedHistoryPoints, type ChartCurrency } from "@/lib/portfolioHistory";
+import { chartInspectionPoints, historyChartSeries, historyExtrema, historyRange, historyRangeStart, historyValue, portfolioGainForDisplay, supportedHistoryPoints, type ChartCurrency } from "@/lib/portfolioHistory";
 import { portfolioGraphState } from "@/lib/portfolioGraphState";
 import { roundedStepAfter } from "./roundedStepCurve";
 
@@ -87,10 +87,8 @@ export default function PortfolioHistoryChart({ history, knownValue = "0", curre
   const gainBasisLabel = displayPeriodAmount === null ? null :
     showFallback || range === 0 ? "Total recorded gain/loss" :
       active ? `${ranges.find(([days]) => days === range)?.[1]} range · to selected date` : rangeNames[range];
-  const idlePeriodAmount = portfolioPeriodGain({ history: state.history, days: range,
-    currentGainPhp, currentComplete: complete && currentRecordedCostPhp != null && currentGainPhp != null });
-  // Keep the line stable while scrubbing; the marker and headline reflect the selected point.
-  const graphTone = idlePeriodAmount === null ? "unknown" : displayedGain(idlePeriodAmount, null).tone;
+  // Line, fill and marker describe the same metric as the displayed amount.
+  const graphTone = selectedGain?.tone ?? "unknown";
   const highValue = plotted.length ? Math.max(...plotted.map(point => point.plotValue)) : 0;
   const lowValue = plotted.length ? Math.min(...plotted.map(point => point.plotValue)) : 0;
   const spread = highValue - lowValue;
