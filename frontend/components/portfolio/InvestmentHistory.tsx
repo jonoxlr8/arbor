@@ -6,7 +6,7 @@ import InvestmentIdentity from "../InvestmentIdentity";
 import ProviderIdentity from "../ProviderIdentity";
 import { datedInvestmentEntries, investmentEntryAction, investmentEntryCost, investmentEntryUnits } from "@/lib/portfolioActivity";
 
-export default function InvestmentHistory({userId,onManage,canManage,month,holdingId}: {userId:string;onManage?:(entry:InvestmentEntry)=>void;canManage?:(entry:InvestmentEntry)=>boolean;month?:string;holdingId?:string}) {
+export default function InvestmentHistory({userId,onManage,canManage,month,holdingId}: {userId:string;onManage?:(entry:InvestmentEntry, action:"edit"|"delete")=>void;canManage?:(entry:InvestmentEntry)=>boolean;month?:string;holdingId?:string}) {
   const [entries,setEntries]=useState<InvestmentEntry[]>([]);
   const [page,setPage]=useState(0);
   const [hasMore,setHasMore]=useState(false);
@@ -23,7 +23,7 @@ export default function InvestmentHistory({userId,onManage,canManage,month,holdi
   const visibleEntries=datedInvestmentEntries(entries);
   return <section className="mt-6" aria-label="All investment activity"><h3 className="text-lg font-semibold">Dated investment activity</h3>
     <p className="mt-2 text-sm text-slate-600">Includes positions no longer in current holdings. Investment dates are separate from the time you recorded them in Arbor.</p>
-    {visibleEntries.map(e=><div className="activity-entry investment-line" key={e.id}><InvestmentIdentity product={e.product_id}/><div><strong>{e.investment_date} · {investmentEntryAction(e)} {investmentIdentity(e.product_id).shortName}</strong><ProviderIdentity provider={e.provider}/><small>{investmentEntryUnits(e)} · {investmentEntryCost(e)}</small>{onManage && canManage?.(e) && <button type="button" className="entry-link min-h-11" onClick={()=>onManage(e)}>Edit or delete</button>}</div></div>)}
+    {visibleEntries.map(e=><div className="activity-entry investment-line" key={e.id}><InvestmentIdentity product={e.product_id}/><div><strong>{e.investment_date} · {investmentEntryAction(e)} {investmentIdentity(e.product_id).shortName}</strong><ProviderIdentity provider={e.provider}/><small>{investmentEntryUnits(e)} · {investmentEntryCost(e)}</small>{onManage && canManage?.(e) && <div className="activity-actions"><button type="button" className="entry-link min-h-11" aria-haspopup="dialog" onClick={()=>onManage(e,"edit")}>Edit</button><button type="button" className="entry-link min-h-11" aria-haspopup="dialog" onClick={()=>onManage(e,"delete")}>Delete</button></div>}</div></div>)}
     {!visibleEntries.length && !error && <p className="mt-3 text-sm text-slate-600">No dated additions recorded yet.</p>}
     {hasMore && <button type="button" className="entry-secondary mt-3 min-h-11 w-full" disabled={busy} onClick={()=>void more()}>Show more activity</button>}
     {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}

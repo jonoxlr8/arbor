@@ -13,23 +13,24 @@ import { needsShareBasis, shareBasisLabel, type ShareBasis } from "@/lib/shareBa
 const field = "mt-1 min-h-11 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900";
 type Page = { entries: InvestmentEntry[]; page: number; has_more: boolean };
 
-export default function HoldingActivity({ holding, userId, onChanged }: { holding: PortfolioHolding; userId: string; onChanged: () => void }) {
+export default function HoldingActivity({ holding, userId, onChanged, selectedEntry, selectedAction, onActionClose }: { holding: PortfolioHolding; userId: string; onChanged: () => void; selectedEntry?: InvestmentEntry; selectedAction?: "edit" | "delete"; onActionClose?: () => void }) {
   const [pages, setPages] = useState<Page[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [editing, setEditing] = useState<InvestmentEntry | null>(null);
-  const [voiding, setVoiding] = useState<InvestmentEntry | null>(null);
-  const [date, setDate] = useState("");
-  const [units, setUnits] = useState("");
-  const [paid, setPaid] = useState("");
-  const [basis, setBasis] = useState<ShareBasis | null>(null);
+  const [editing, setEditing] = useState<InvestmentEntry | null>(selectedAction === "edit" ? selectedEntry ?? null : null);
+  const [voiding, setVoiding] = useState<InvestmentEntry | null>(selectedAction === "delete" ? selectedEntry ?? null : null);
+  const [date, setDate] = useState(selectedEntry?.investment_date ?? "");
+  const [units, setUnits] = useState(selectedEntry?.units ?? "");
+  const [paid, setPaid] = useState(selectedEntry?.amount_paid_php ?? "");
+  const [basis, setBasis] = useState<ShareBasis | null>(selectedEntry?.share_basis ?? null);
   const [review, setReview] = useState(false);
   useEffect(() => {
+    if (selectedEntry) return;
     const controller = new AbortController();
     portfolioApi.activity(userId, holding.id, 0, controller.signal).then(p => setPages([p]))
       .catch(() => { if (!controller.signal.aborted) setError("Investment activity is temporarily unavailable."); });
     return () => controller.abort();
-  }, [userId, holding.id]);
+  }, [userId, holding.id, selectedEntry]);
   async function more() {
     setBusy(true);
     try { const next = await portfolioApi.activity(userId, holding.id, pages.length); setPages(p => [...p, next]); }
@@ -38,6 +39,7 @@ export default function HoldingActivity({ holding, userId, onChanged }: { holdin
   function start(entry: InvestmentEntry) {
     setVoiding(null); setEditing(entry); setBasis(entry.share_basis ?? null); setDate(entry.investment_date); setUnits(entry.units); setPaid(entry.amount_paid_php ?? ""); setReview(false); setError("");
   }
+  function closeAction() { setEditing(null); setVoiding(null); setError(""); onActionClose?.(); }
   const basisRequired = needsShareBasis(holding.product_id, date);
   const valid = (!basisRequired || !!basis) && /^\d{1,12}(?:\.\d{1,12})?$/.test(units) && /[1-9]/.test(units) &&
     /^\d{4}-\d{2}-\d{2}$/.test(date) && date <= manilaInvestmentToday() &&
@@ -58,6 +60,7 @@ export default function HoldingActivity({ holding, userId, onChanged }: { holdin
   }
   const visibleEntries = datedInvestmentEntries(pages.flatMap(page => page.entries));
   return <section className="holding-activity" aria-label="Investment activity">
+    {!selectedEntry && <>
     <h3 className="text-lg font-semibold">Investment activity</h3>
     <p className="mt-1 text-sm text-slate-600">These are dated additions you recorded in Arbor, not broker transactions.</p>
     {holding.opening_units && Number(holding.opening_units) > 0 && <div className="activity-entry"><strong>Opening recorded position</strong><small>Acquisition date unknown · {decimalText(holding.opening_units)} units · {holding.opening_cost_php == null ? "Cost unknown" : `Known cost ${formatContributionMoney(holding.opening_cost_php,"PHP")}`}</small></div>}
@@ -69,7 +72,8 @@ export default function HoldingActivity({ holding, userId, onChanged }: { holdin
     </div>)}
     {!visibleEntries.length && <p className="mt-4 text-sm text-slate-600">No dated additions recorded yet.</p>}
     {pages.at(-1)?.has_more && <button type="button" className="entry-secondary mt-3 min-h-11 w-full" disabled={busy} onClick={() => void more()}>Show more activity</button>}
-    {editing && <Sheet title="Edit investment" busy={busy} focusOnOpen="first-field" onClose={() => {setEditing(null);setError("");}}><p className="holding-action-identity"><strong>{investmentIdentity(holding.product_id).fullName}</strong> · {editing.investment_date} · {decimalText(editing.units)} units</p><form className="holding-action-form space-y-3" onSubmit={e => {e.preventDefault();if (!review) setReview(true); else void saveEdit();}}><h4 className="font-semibold">Correct dated addition</h4>
+    </>}
+    {editing && <Sheet title="Edit investment" busy={busy} focusOnOpen="first-field" onClose={closeAction}><p className="holding-action-identity"><strong>{investmentIdentity(holding.product_id).fullName}</strong> · {editing.investment_date} · {decimalText(editing.units)} units</p><form className="holding-action-form space-y-3" onSubmit={e => {e.preventDefault();if (!review) setReview(true); else void saveEdit();}}><h4 className="font-semibold">Correct dated addition</h4>
       <label className="block text-sm">Investment date<input type="date" className={field} max={manilaInvestmentToday()} value={date} onChange={e => {setDate(e.target.value);setBasis(null);setReview(false);}}/></label>
       <label className="block text-sm">Units received<input className={field} inputMode="decimal" value={units} onChange={e => {setUnits(e.target.value);setReview(false);}}/></label>
       {basisRequired && <ShareBasisField value={basis} onChange={next => {setBasis(next);setReview(false);}}/>}
@@ -77,8 +81,8 @@ export default function HoldingActivity({ holding, userId, onChanged }: { holdin
       {review && basisRequired && <p>{shareBasisLabel(basis)}. PHP cost is not multiplied by the split.</p>}
       {review && <p className="text-sm">Change {editing.investment_date} / {decimalText(editing.units)} units / {editing.amount_paid_php === null ? "cost unknown" : formatContributionMoney(editing.amount_paid_php,"PHP")} to {date} / {units} units / {paid === "" ? "cost unknown" : formatContributionMoney(paid,"PHP")}. The position total will be reconciled atomically.</p>}
       <button className="entry-primary min-h-11 w-full" disabled={!valid || busy}>{review ? "Confirm correction" : "Review correction"}</button>
-      <button type="button" className="entry-link min-h-11" disabled={busy} onClick={() => {setEditing(null);setError("");}}>Cancel</button>{error && <p role="alert" className="text-sm text-red-700">{error}</p>}</form></Sheet>}
-    {voiding && <Sheet title="Delete investment?" busy={busy} focusOnOpen="heading" onClose={() => {setVoiding(null);setError("");}}><div className="holding-action-form space-y-3" role="group" aria-label="Delete investment"><p className="holding-action-identity"><strong>{investmentIdentity(holding.product_id).fullName}</strong> · {voiding.investment_date} · {decimalText(voiding.units)} units</p><p className="text-sm">This removes {decimalText(voiding.units)} units from your Arbor record, recalculates your portfolio and history, and hides this investment from activity. It does not sell or change anything at your provider.</p><button type="button" className="entry-secondary min-h-11 w-full" disabled={busy} onClick={() => {setVoiding(null);setError("");}}>Cancel</button><button type="button" className="entry-primary min-h-11 w-full" disabled={busy} onClick={() => void saveVoid()}>Delete investment</button>{error && <p role="alert" className="text-sm text-red-700">{error}</p>}</div></Sheet>}
+      <button type="button" className="entry-link min-h-11" disabled={busy} onClick={closeAction}>Cancel</button>{error && <p role="alert" className="text-sm text-red-700">{error}</p>}</form></Sheet>}
+    {voiding && <Sheet title="Delete investment?" busy={busy} focusOnOpen="heading" onClose={closeAction}><div className="holding-action-form space-y-3" role="group" aria-label="Delete investment"><p className="holding-action-identity"><strong>{investmentIdentity(holding.product_id).fullName}</strong> · {voiding.investment_date} · {decimalText(voiding.units)} units</p><p className="text-sm">This removes {decimalText(voiding.units)} units from your Arbor record, recalculates your portfolio and history, and hides this investment from activity. It does not sell or change anything at your provider.</p><button type="button" className="entry-secondary min-h-11 w-full" disabled={busy} onClick={closeAction}>Cancel</button><button type="button" className="entry-primary min-h-11 w-full" disabled={busy} onClick={() => void saveVoid()}>Delete investment</button>{error && <p role="alert" className="text-sm text-red-700">{error}</p>}</div></Sheet>}
     {error && !editing && !voiding && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
   </section>;
 }
