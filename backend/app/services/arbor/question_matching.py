@@ -19,7 +19,16 @@ class QuestionMatch:
     advice: bool = False
 
 # Anchored meanings; a stray keyword never selects a personal-data answer.
+MONTHLY_BUDGET_QUESTION = "How much remains to reach my monthly investment target?"
+
+def is_monthly_budget_question(question: str) -> bool:
+    return question.casefold().strip(" ?.!") == MONTHLY_BUDGET_QUESTION.casefold().rstrip("?")
+
 PARAPHRASES = (
+    (r"magkano (?:pa )?(?:ang |yung )?kulang ko sa (?:monthly )?investment budget ngayong buwan", MONTHLY_BUDGET_QUESTION),
+    (r"(?:magkano|gaano kalaki) (?:pa )?(?:ang |yung )?(?:kulang|natitira) (?:ko )?(?:sa|para sa) (?:monthly budget ko|budget ko ngayong buwan|buwanang investment budget ko)", MONTHLY_BUDGET_QUESTION),
+    (r"(?:how much (?:more|is left)|what remains) (?:do i need |to reach )?(?:for |toward )?my (?:monthly investment budget|monthly investment target|investment budget this month)", MONTHLY_BUDGET_QUESTION),
+
     (r"(?:where (?:can|do) i (?:invest|buy investments)|where are my (?:chosen|saved) (?:investments|providers))", "Where can I invest?"),
     (r"(?:saan (?:ako|ko) (?:pwedeng |puwedeng |pwede |puwede )?mag[ -]?(?:invest|i[ -]?invest)|saan (?:ako|ko) (?:pwedeng |puwedeng |pwede |puwede )?mamuhunan|(?:ano|anong) (?:ang |yung )?(?:pinili kong investments|saved investment choices ko|providers sa chosen plan ko))", "Where can I invest?"),
     (r"(?:ano|anong) (?:ang |yung )?(?:allocation|pagkahati) (?:ng |sa )?portfolio ko (?:kumpara sa|versus) (?:chosen plan ko|plan ko|targets ko)", "How does my portfolio compare with my plan?"),
@@ -76,6 +85,8 @@ def match_question(question: str) -> QuestionMatch:
         return QuestionMatch(GAP_QUESTIONS[gap])
     if re.fullmatch(r"(?:which|what|aling|anong) (?:investments?|holdings?|asset classes|sleeves?)(?: in my portfolio| sa portfolio ko)? (?:is|are|ang) (?:most |pinaka[ -]?)?(?:overweight|underweight|above target|below target)(?: (?:and|at) (?:most |pinaka[ -]?)?(?:overweight|underweight|above target|below target))?", q):
         return QuestionMatch(q, "Do you mean the asset classes above or below your chosen plan targets? Arbor can compare recorded asset-class allocations with those targets; it does not assign a target to each investment.")
+    if re.fullmatch(r"magkano (?:pa )?(?:ang |yung )?kulang ko sa monthly investment", q):
+        return QuestionMatch(q, "Do you mean the amount left to reach your monthly investment budget, or an estimated contribution split? Ask about your budget or split so I can use the right records.")
     rewritten = _rewrite(q)
     if rewritten:
         return QuestionMatch(rewritten)

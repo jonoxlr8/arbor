@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from app.services.implementation.products import PRODUCTS
 from app.services.strategy_v2 import AssetRole
 from app.services.entitlements import Entitlements, subscription_explanation
-from .question_matching import match_question
+from .question_matching import match_question, is_monthly_budget_question
 from .v2_context import V2ChatContext, build_v2_context
 from .portfolio_explanation import is_target_comparison
 from .instrument_education import instrument_question, explain_instruments
@@ -49,6 +49,8 @@ def classify_v2_question(question: str) -> tuple[str, str]:
         return "investment", "decision_boundary"
     if matched.clarification:
         return "product_support", "clarification"
+    if is_monthly_budget_question(question):
+        return "product_support", "monthly_checkin"
     if instrument_question(question) is not None:
         return "investment", "implementation"
     # Match whole questions so extra advice requests keep their existing boundary.

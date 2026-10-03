@@ -10,7 +10,7 @@ from app.services.ask_usage import ask_usage, check_quota
 from app.services.arbor.education import explain_education
 from app.services.arbor.instrument_education import instrument_question, explain_instruments
 
-from app.services.arbor.question_matching import match_question
+from app.services.arbor.question_matching import match_question, is_monthly_budget_question
 from app.services.arbor.allocation_questions import allocation_gap_request
 from app.services.arbor.answer_presentation import present_answer,next_action_destination
 from app.services.arbor.v2_explanations import DECISION
@@ -155,7 +155,7 @@ def chat(request: ChatRequest, user_id: str = Depends(get_current_user_id), auth
                     if error.status_code not in (409, 422, 503):
                         raise
                     result["reply"] = "I can't show a complete future projection yet. Add an exact goal date and make sure all recorded holdings have usable values. Short-term or readiness paths may pause long-term contribution guidance. I won't substitute your old onboarding starting estimate."
-            if intent in ("next_action", "monthly_checkin") and "monthly_contribution_planner" in entitlements.features:
+            if intent in ("next_action", "monthly_checkin") and "monthly_contribution_planner" in entitlements.features and not is_monthly_budget_question(question):
                 from app.services.monthly_checkin import read_monthly, explain_monthly
                 from app.services.next_action import get_next_action
                 monthly = read_monthly(user_id, authorization, plan, entitlements)
@@ -166,10 +166,29 @@ def chat(request: ChatRequest, user_id: str = Depends(get_current_user_id), auth
                     action_key = next_action_destination(action)
                     destination = "Home → Invest this month" if action.key == "review_monthly_contribution" and action.destination == "portfolio" else action.destination.replace('_', ' ')
                     result["reply"] = f"{action.title}. {action.explanation} Open {destination}."
+            if intent == "monthly_checkin" and is_monthly_budget_question(question) and "monthly_contribution_planner" in entitlements.features:
+                from fastapi import Response
+                from app.routes.live_portfolio import get_monthly_review
+                from app.services.monthly_review import review_window
+                from app.services.arbor.monthly_budget_explanation import explain_monthly_budget
+                try:
+                    current_month = review_window()[1]
+                    review = get_monthly_review(Response(), month=current_month, user_id=user_id, authorization=authorization)
+                    if review["month"] != review["current_month"]:
+                        raise HTTPException(409, "The Philippine month changed. Refresh your review.")
+                    result["reply"] = explain_monthly_budget(review)
+                except HTTPException as error:
+                    if error.status_code not in (409, 503):
+                        raise
+                    result["reply"] = "Your current monthly budget progress is temporarily unavailable. I won’t show a partial remaining amount. Open Portfolio insights to refresh the monthly review."
+                action_key = "portfolio"
         except (KeyError, ValueError, TypeError):
             raise HTTPException(503, "Your saved plan could not be loaded for this explanation. Please retry.") from None
     elif plan.get("strategy_engine_version") not in (None, "1.0"):
         raise HTTPException(409, "This plan version is not supported by Ask Arbor yet.")
+    elif is_monthly_budget_question(question):
+        result = {"reply": "Current monthly budget progress is unavailable for this older plan. I won’t treat a saved projection contribution as recorded purchases or invent a remaining amount. Review your budget and dated investment records in Arbor.",
+                  "category": "product_support", "intent": "monthly_checkin"}
     elif question.casefold().strip(" ?.!") == "where can i invest":
         result = {"reply": ("Your older Arbor plan does not store a verified provider choice. I won’t infer one from its target investments. "
                   "Arbor supports a curated set of products through GFunds, Gotrade and DragonFi, and Bitcoin paths through GCrypto, Coins.ph or PDAX. "
