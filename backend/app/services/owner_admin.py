@@ -12,7 +12,7 @@ def call(authorization,name,params,model):
         return model.model_validate(result)
     except Exception as error:
         code=getattr(error,"code","")
-        if name in ("arbor_admin_access_v1", "arbor_admin_deletion_access_v1") and code in("42883","PGRST202"):
+        if name in ("arbor_admin_access_v1", "arbor_admin_deletion_access_v1", "arbor_admin_ask_feedback_access_v1") and code in("42883","PGRST202"):
             return AdminAccess(allowed=False) # Prepared schema not yet activated.
         messages={"PT401":(401,"Sign in again to use Owner Admin."),"PT403":(403,"Owner Admin access is unavailable for this account."),
                   "PT404":(404,"This request is no longer available."),
@@ -38,3 +38,10 @@ def deletions(authorization,offset):
 def deletion_detail(authorization,id):
     from app.schemas.admin_deletion_review import DeletionReview
     return call(authorization,"arbor_admin_deletion_v1",{"p_request":str(id)},DeletionReview)
+
+# Separate read capability; no identity, financial projection or mutation.
+def feedback_access(authorization):
+    return call(authorization,"arbor_admin_ask_feedback_access_v1",{},AdminAccess)
+def feedback(authorization,offset):
+    from app.schemas.admin_ask_feedback import FeedbackPage
+    return call(authorization,"arbor_admin_ask_feedback_v1",{"p_limit":50,"p_offset":offset},FeedbackPage)

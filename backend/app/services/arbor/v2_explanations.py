@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from app.services.implementation.products import PRODUCTS
 from app.services.strategy_v2 import AssetRole
 from app.services.entitlements import Entitlements, subscription_explanation
+from .question_matching import match_question
 from .v2_context import V2ChatContext, build_v2_context
 from .portfolio_explanation import is_target_comparison
 from .instrument_education import instrument_question, explain_instruments
@@ -37,11 +38,17 @@ ROLES = {
 
 
 def classify_v2_question(question: str) -> tuple[str, str]:
+    matched = match_question(question)
+    question = matched.question
     q = question.casefold()
     has = lambda pattern: re.search(pattern, q) is not None
     # Out-of-scope tasks win even when mixed with investment keywords.
     if has(r"\b(python|javascript|code|coding|recipe|cook|vacation|travel|basketball|football|trivia|poem|joke)\b|ignore.*instructions|system prompt"):
         return "out_of_scope", "out_of_scope"
+    if matched.advice:
+        return "investment", "decision_boundary"
+    if matched.clarification:
+        return "product_support", "clarification"
     if instrument_question(question) is not None:
         return "investment", "implementation"
     # Match whole questions so extra advice requests keep their existing boundary.
@@ -214,8 +221,12 @@ def explain(c: V2ChatContext, question: str, intent: str) -> str:
 
 
 def explain_v2(question: str, saved: dict, entitlements: Entitlements | None = None) -> V2ChatReply:
-    context = build_v2_context(saved)
+    matched = match_question(question)
     category, intent = classify_v2_question(question)
+    question = matched.question
+    context = build_v2_context(saved)
+    if intent == "clarification":
+        return V2ChatReply(reply=matched.clarification,category=category,intent=intent)
     if intent == "plus" and entitlements is not None:
         return V2ChatReply(reply=subscription_explanation(entitlements), category=category, intent=intent)
     if intent == "next_action":

@@ -1,6 +1,7 @@
 "use client";
+import { HOLDINGS_SORT_OPTIONS, isHoldingsSort, sortedHoldings, type HoldingsSort } from "@/lib/holdingsSort";
 import AlignmentOverTime from "./AlignmentOverTime";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {canCorrectManualFundUnits, validCorrectedFundUnits} from "@/lib/manualFundUnits";
 import type { PlanV2 } from "@/lib/types/planV2";
 import { portfolioApi, portfolioReadError, validHolding, freshnessText, supportsManualValue, type HoldingDraft, type LivePortfolioData, type PortfolioHolding, type PortfolioProduct } from "@/lib/livePortfolio";
@@ -56,6 +57,8 @@ export function PortfolioGain({ portfolio }: { portfolio: LivePortfolioData }) {
 }
 
 export default function LivePortfolio({ value, userId, section = "", onPlanChange, reviewMonth, onReviewMonthChange }: { value: PlanV2; userId: string; section?: string; onPlanChange?: (value:PlanV2)=>void;reviewMonth?:string;onReviewMonthChange?:(month:string)=>void }) {
+  const sortDescription = useId();
+  const [holdingsSort,setHoldingsSort] = useState<HoldingsSort>("highest_value");
   const [portfolio, setPortfolio] = useState<LivePortfolioData | null>(null);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
@@ -120,10 +123,13 @@ export default function LivePortfolio({ value, userId, section = "", onPlanChang
     {portfolio && <div className="portfolio-value"><PortfolioSummary portfolio={portfolio} /></div>}
     {portfolio && <>
       {historyError && <p role="status" className="text-sm text-slate-600">Current values are available, but today’s history could not be recorded. Please retry later.</p>}
-      <section id="section-holdings" aria-label="Holdings"><h2 className="mb-4 text-xl font-semibold text-slate-900">Holdings</h2>
+      <section id="section-holdings" aria-label="Holdings"><div className="holdings-heading"><h2 className="text-xl font-semibold text-slate-900">Holdings</h2>
+        {portfolio.holdings.length>0 && <select aria-label="Sort holdings" aria-describedby={sortDescription} className="holdings-sort" value={holdingsSort} onChange={e=>{if(isHoldingsSort(e.target.value))setHoldingsSort(e.target.value);}}>{HOLDINGS_SORT_OPTIONS.map(([key,label])=><option key={key} value={key}>{label}</option>)}</select>}
+        <span id={sortDescription} className="sr-only">Gain percentages compare with recorded cost and are not annualized returns. Unavailable values or percentages remain at the end of value or gain sorting.</span>
+      </div>
         {!portfolio.holdings.length ? <>
           <div className="portfolio-empty"><h3>No investments recorded yet.</h3><p>Record an investment you own to see it here.</p></div>
-        </> : <div className="holdings-list">{portfolio.holdings.map(h => <button type="button" className="holding-row" key={h.id} aria-label={`View ${investmentIdentity(h.product_id,h.display_name).fullName}`} onClick={() => setDetail(h)}>
+        </> : <div className="holdings-list">{sortedHoldings(portfolio.holdings,holdingsSort).map(h => <button type="button" className="holding-row" key={h.id} aria-label={`View ${investmentIdentity(h.product_id,h.display_name).fullName}`} onClick={() => setDetail(h)}>
           <AssetIdentity product={h.product_id} sleeve={h.sleeve}/><span className="holding-copy"><strong>{investmentIdentity(h.product_id,h.display_name).fullName}</strong><span className="holding-provider mt-1 block"><ProviderBrand provider={h.provider} name={h.provider_name}/></span><small className="holding-row-facts">{h.share_basis_required ? "Share count basis needed" : h.units === null ? "Units not recorded" : `${decimalText(h.product_id === "gotrade_vgt" ? h.effective_units ?? h.units : h.units)} ${h.sleeve === "crypto" ? "BTC" : supportsManualValue(h) ? "units" : "shares"}`} · {h.unit_price && h.unit_price_currency ? investmentUnitPrice(h.product_id, h.unit_price, h.unit_price_currency) : "Unit price unavailable"}</small></span><span className="holding-money">{h.value_php === null ? "Value unavailable" : money(h.value_php)}<small><RecordedGain holding={h} mobileLines/></small></span><span className="row-chevron" aria-hidden="true">›</span>
         </button>)}</div>}
       </section>

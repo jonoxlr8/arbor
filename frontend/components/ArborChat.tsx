@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { chatPlanKey, chatPrompts, chatErrorMessage, createChatSession } from "@/lib/chatSession";
+import AskFeedback from "./AskFeedback";
+import { askFeedback } from "@/lib/askFeedback";
+import { ASK_ACTIONS, type AskPresentation } from "@/lib/askPresentation";
 import { askArbor } from "@/lib/api";
 import type { AccountPlan } from "@/lib/types/planV2";
 import { ArborMark } from "@/components/Logo";
@@ -15,7 +18,8 @@ type ArborChatProps = {
   requestedDraft?: { text: string; id: number } | null;
 };
 
-type Message = {
+type Message = AskPresentation & {
+  feedbackId?: string;
   role: "user" | "arbor";
   text: string;
 };
@@ -144,10 +148,14 @@ function ArborResponse({ text }: { text: string }) {
   );
 }
 
-function ArborMessage({ text }: { text: string }) {
-  return (
-    <div className="chat-answer-row"><span className="chat-avatar"><ArborMark className="h-7 w-7"/><span className="sr-only">Arbor</span></span><div className="chat-reply"><ArborResponse text={providerDisplayText(text)} /></div></div>
-  );
+function ArborMessage({ message, feedbackAvailable }: { message: Message; feedbackAvailable: boolean }) {
+  const action = message.action ? ASK_ACTIONS[message.action] : null;
+  return <div className="chat-answer-row"><span className="chat-avatar"><ArborMark className="h-7 w-7"/><span className="sr-only">Arbor</span></span><div className="chat-reply">
+    <ArborResponse text={providerDisplayText(message.summary ?? message.text)} />
+    {message.summary && <details className="ask-answer-details"><summary>More detail</summary><ArborResponse text={providerDisplayText(message.text)}/></details>}
+    {action && <a className="entry-link ask-answer-action" href={action.href}>{action.label} →</a>}
+    {feedbackAvailable && message.feedback_context && message.feedbackId && <AskFeedback id={message.feedbackId} context={message.feedback_context}/>}
+  </div></div>;
 }
 
 export default function ArborChat({ plan, requestedDraft }: ArborChatProps) {
@@ -157,6 +165,12 @@ export default function ArborChat({ plan, requestedDraft }: ArborChatProps) {
 function PlanChat({ v2, preProfile, requestedDraft }: { v2: boolean; preProfile: boolean; requestedDraft?: { text: string; id: number } | null }) {
   const access = useAccountAccess();
   const updateUsage = access?.updateUsage;
+  const [feedbackAvailable, setFeedbackAvailable] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    askFeedback.access(controller.signal).then(available => {if (!controller.signal.aborted) setFeedbackAvailable(available);}).catch(() => {if (!controller.signal.aborted) setFeedbackAvailable(false);});
+    return () => controller.abort();
+  }, []);
   const [usage, setUsage] = useState<AskUsage | null>(null);
   const [question, setQuestion] = useState("");
   const [seenDraft, setSeenDraft] = useState<number | null>(null);
@@ -178,7 +192,7 @@ function PlanChat({ v2, preProfile, requestedDraft }: { v2: boolean; preProfile:
       setError(state.status === "error" ? chatErrorMessage(state.error) : "");
       if (state.status === "ready") {
         if (state.data.ask_usage) { setUsage(state.data.ask_usage); updateUsage?.(state.data.ask_usage); }
-        setMessages(previous => [...previous, { role: "user", text: state.data.question }, { role: "arbor", text: state.data.reply }]);
+        setMessages(previous => [...previous, { role: "user", text: state.data.question }, { role: "arbor", text: state.data.reply, summary: state.data.summary, action: state.data.action, feedback_context: state.data.feedback_context, feedbackId: crypto.randomUUID() }]);
         setQuestion("");
       }
     });
@@ -254,7 +268,7 @@ function PlanChat({ v2, preProfile, requestedDraft }: { v2: boolean; preProfile:
           <div role="log" aria-label="Conversation with Arbor" aria-live="polite" className="chat-messages mt-8 space-y-4 break-words">
             {messages.map((message, index) =>
               message.role === "arbor" ? (
-                <ArborMessage key={index} text={message.text} />
+                <ArborMessage key={index} message={message} feedbackAvailable={feedbackAvailable} />
               ) : (
                 <div key={index} className="chat-user">
                   <p className="sr-only">You</p>

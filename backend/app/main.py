@@ -43,12 +43,14 @@ def root():
     return {"app": "Arbor", "version": "0.1.0", "status": "online"}
 
 from app.routes.owner_admin import router as owner_admin_router
+from app.routes.ask_feedback import router as ask_feedback_router
 app.include_router(owner_admin_router)
+app.include_router(ask_feedback_router)
 
 @app.middleware("http")
 async def admin_no_store(request, call_next):
     response = await call_next(request)
-    if request.url.path.startswith("/v2/admin/"):
+    if request.url.path.startswith(("/v2/admin/", "/ask/feedback/")):
         response.headers["Cache-Control"] = "private, no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
     return response

@@ -1,3 +1,4 @@
+import { parseAskPresentation, type AskPresentation } from "./askPresentation";
 import type { Plan } from "@/lib/types/plan";
 import { getAccessToken } from "./auth";
 import { InvalidSessionError, withDeadline } from "./accountRecovery";
@@ -125,7 +126,7 @@ export function createProfileCreator(
   };
 }
 
-export type ArborChatResponse = {
+export type ArborChatResponse = AskPresentation & {
   reply: string;
   ask_usage?: import("./entitlements").AskUsage;
 };
@@ -150,7 +151,7 @@ export function createChatReader(headers = getAuthHeaders, request: typeof fetch
     if (!body || typeof body !== "object" || !("reply" in body) || typeof body.reply !== "string" || !body.reply.trim() || body.reply.length > 12000) {
       throw new Error("The explanation was incomplete. Please retry.");
     }
-    return { reply: body.reply, ...("ask_usage" in body && isAskUsage(body.ask_usage) ? { ask_usage: body.ask_usage } : {}) };
+    return { reply: body.reply, ...parseAskPresentation(body as Record<string,unknown>,body.reply), ...("ask_usage" in body && isAskUsage(body.ask_usage) ? { ask_usage: body.ask_usage } : {}) };
   }, signal, timeoutMs);
 }
 export const askArbor = createChatReader();

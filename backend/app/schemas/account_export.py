@@ -3,6 +3,8 @@ import re
 import json
 from datetime import datetime
 from app.services.account_export import SECTIONS
+from app.services.arbor.answer_presentation import FEEDBACK_INTENTS, ANSWER_VERSION
+from uuid import UUID
 
 
 def validate_export(value, owner):
@@ -70,6 +72,17 @@ def validate_export(value, owner):
             or not isinstance(row['provider'],str) or not 1<=len(row['provider'])<=80
             or any(not isinstance(row[k],str) or datetime.fromisoformat(row[k]).tzinfo is None for k in ('received_at','updated_at'))):
             raise ValueError('Invalid request review export')
+    feedback=value.get('ask_feedback',[])
+    if not isinstance(feedback,list) or len(feedback)>10000:
+        raise ValueError('Invalid Ask feedback export')
+    for row in feedback:
+        if (not isinstance(row,dict) or set(row)!={'id','helpful','reason','intent','answer_version','created_at'}
+            or type(row['helpful']) is not bool or row['reason'] not in (None,'unclear','not_my_question','numbers_look_wrong','missing_detail')
+            or row['intent'] not in FEEDBACK_INTENTS or row['answer_version'] != ANSWER_VERSION
+            or not isinstance(row['id'],str) or not isinstance(row['created_at'],str)
+            or datetime.fromisoformat(row['created_at']).tzinfo is None):
+            raise ValueError('Invalid Ask feedback export')
+        UUID(row['id'])
     for row in value.get('erasure_operations', []):
         if not isinstance(row.get('holds'), list) or len(row['holds']) > 12:
             raise ValueError('Invalid erasure holds')

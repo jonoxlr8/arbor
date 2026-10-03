@@ -10,7 +10,7 @@ router=APIRouter(prefix="/v2/admin",tags=["Owner request review"])
 def admission(request:Request,response:Response,authorization:str|None=Header(default=None),owner:str=Depends(get_current_user_id)):
     response.headers["Cache-Control"]="private, no-store"
     response.headers["X-Content-Type-Options"]="nosniff"
-    if any(k!="offset" or not request.url.path in ("/v2/admin/requests", "/v2/admin/deletions") for k in request.query_params) or(len(request.query_params.getlist('offset'))>1):
+    if any(k!="offset" or not request.url.path in ("/v2/admin/requests", "/v2/admin/deletions", "/v2/admin/ask-feedback") for k in request.query_params) or(len(request.query_params.getlist('offset'))>1):
         raise HTTPException(400,"Admin does not accept account selectors.")
     return authorization
 
@@ -30,3 +30,8 @@ def deletion_access(authorization=Depends(admission)):return service.deletion_ac
 def deletions(offset:int=Query(default=0,ge=0,le=10000),authorization=Depends(admission)):return service.deletions(authorization,offset)
 @router.get('/deletions/{id}',response_model=DeletionReview)
 def deletion_detail(id:UUID,authorization=Depends(admission)):return service.deletion_detail(authorization,id)
+
+@router.get('/ask-feedback/access',response_model=AdminAccess)
+def feedback_access(authorization=Depends(admission)):return service.feedback_access(authorization)
+@router.get('/ask-feedback')
+def feedback(offset:int=Query(default=0,ge=0,le=10000),authorization=Depends(admission)):return service.feedback(authorization,offset)

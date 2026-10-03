@@ -1,5 +1,6 @@
+import type { ArborChatResponse } from "./api";
 import type { AccountPlan } from "./types/planV2";
-import { FREE_LIMIT_MESSAGE, type AskUsage } from "./entitlements";
+import { FREE_LIMIT_MESSAGE } from "./entitlements";
 import { createLatestRequest, type RequestState } from "./dashboardConsistency";
 
 export function chatPlanKey(plan: AccountPlan) {
@@ -20,8 +21,8 @@ export function chatErrorMessage(error: unknown) {
 
 /** One context per mounted chat. Disposing prevents late replies and errors. */
 export function createChatSession(
-  request: (message: string, signal: AbortSignal) => Promise<{ reply: string; ask_usage?: AskUsage }>,
-  onState: (state: RequestState<{ question: string; reply: string; ask_usage?: AskUsage }>) => void,
+  request: (message: string, signal: AbortSignal) => Promise<ArborChatResponse>,
+  onState: (state: RequestState<ArborChatResponse & { question: string }>) => void,
   timeoutMs = 12000,
 ) {
   const latest = createLatestRequest(onState, timeoutMs);

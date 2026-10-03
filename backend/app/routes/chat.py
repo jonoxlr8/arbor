@@ -10,6 +10,10 @@ from app.services.ask_usage import ask_usage, check_quota
 from app.services.arbor.education import explain_education
 from app.services.arbor.instrument_education import instrument_question, explain_instruments
 
+from app.services.arbor.question_matching import match_question
+from app.services.arbor.answer_presentation import present_answer,next_action_destination
+from app.services.arbor.v2_explanations import DECISION
+
 router = APIRouter()
 
 
@@ -28,19 +32,26 @@ class ChatRequest(BaseModel):
 @router.post("/chat")
 def chat(request: ChatRequest, user_id: str = Depends(get_current_user_id), authorization: str | None = Header(default=None)):
     entitlements = get_entitlements(user_id)
+    matched = match_question(request.message)
+    question = matched.question
+    action_key = None
+    if (matched.advice or matched.clarification) and classify_v2_question(question)[1] != "out_of_scope":
+        return present_answer({"reply":DECISION if matched.advice else matched.clarification,
+            "category":"investment" if matched.advice else "product_support",
+            "intent":"decision_boundary" if matched.advice else "clarification"},entitlements)
 
     # General education is available before onboarding. No owner data is read,
     # and successful answers alone enter the existing (currently non-public) meter.
-    instrument = instrument_question(request.message)
-    education = (explain_instruments(instrument, brief="brief" in request.message.casefold())
+    instrument = instrument_question(question)
+    education = (explain_instruments(instrument, brief="brief" in question.casefold())
                  if instrument is not None and not instrument.needs_plan
-                 else None if instrument is not None else explain_education(request.message))
+                 else None if instrument is not None else explain_education(question))
     if education is not None:
         check_quota(ask_usage(entitlements, authorization))
         usage = ask_usage(entitlements, authorization, consume=True)
         check_quota(usage)
-        return {"reply": education, "category": "investment", "intent": "instrument_education" if instrument is not None else "education",
-                **({"ask_usage": usage} if usage is not None else {})}
+        return present_answer({"reply": education, "category": "investment", "intent": "instrument_education" if instrument is not None else "education",
+                **({"ask_usage": usage} if usage is not None else {})},entitlements)
 
     # Reuse the authenticated canonical plan path. Client-supplied plans are rejected.
     try:
@@ -55,15 +66,15 @@ def chat(request: ChatRequest, user_id: str = Depends(get_current_user_id), auth
         check_quota(ask_usage(entitlements, authorization))
         usage = ask_usage(entitlements, authorization, consume=True)
         check_quota(usage)
-        return {"reply": explain_instruments(instrument), "category": "investment",
+        return present_answer({"reply": explain_instruments(instrument), "category": "investment",
                 "intent": "instrument_education",
-                **({"ask_usage": usage} if usage is not None else {})}
+                **({"ask_usage": usage} if usage is not None else {})},entitlements)
     if plan.get("strategy_engine_version") == "2.0":
         try:
-            result = explain_v2(request.message, plan, entitlements).model_dump()
+            result = explain_v2(question, plan, entitlements).model_dump()
             intent = result["intent"]
             portfolio = None
-            basic_worth = request.message.casefold().strip(" ?.!") in ("what is my portfolio worth", "what is my current portfolio worth", "how much is my portfolio worth")
+            basic_worth = question.casefold().strip(" ?.!") in ("what is my portfolio worth", "what is my current portfolio worth", "how much is my portfolio worth")
             if intent == "actual_holdings" and "ask_arbor_full" not in entitlements.features and not basic_worth:
                 result["reply"] = ("Your recorded holdings and current value are available in Portfolio. "
                                    "Portfolio allocation and comparisons with your targets are part of Arbor Plus.")
@@ -84,7 +95,8 @@ def chat(request: ChatRequest, user_id: str = Depends(get_current_user_id), auth
                 from app.services.monthly_plan import explain_monthly_plan
                 try:
                     monthly_plan = owner_monthly_plan(user_id, authorization, saved=plan)
-                    result["reply"] = explain_monthly_plan(request.message, monthly_plan)
+                    result["reply"] = explain_monthly_plan(question, monthly_plan)
+                    if monthly_plan.status == "not_applicable": action_key = "saved_plan"
                 except HTTPException as error:
                     if error.status_code not in (409, 503):
                         raise
@@ -112,9 +124,9 @@ def chat(request: ChatRequest, user_id: str = Depends(get_current_user_id), auth
                         else:
                             result["reply"] = f"Known recorded value is PHP {portfolio.known_value_php:,.2f}. {portfolio.unavailable_count} holding(s) need an updated value before I can give you a complete total. Missing values are not zero."
                     else:
-                        result["reply"] = explain_portfolio(request.message, portfolio)
+                        result["reply"] = explain_portfolio(question, portfolio)
                 elif intent == "recorded_cost":
-                    result["reply"] = explain_portfolio(request.message, portfolio) if portfolio and portfolio.holdings else result["reply"]
+                    result["reply"] = explain_portfolio(question, portfolio) if portfolio and portfolio.holdings else result["reply"]
                 elif intent == "goal_progress":
                     from app.services.arbor.goal_explanation import explain_goal_progress
                     result["reply"] = explain_goal_progress(plan, portfolio)
@@ -122,6 +134,7 @@ def chat(request: ChatRequest, user_id: str = Depends(get_current_user_id), auth
                     result["reply"] = "Open Portfolio → Add Investment and choose a supported investment. Funds can use the current PHP value shown in your provider app; units are optional. ETFs use shares and Bitcoin uses its amount. Editing or deleting a record changes Arbor only, not your provider account."
                 elif intent == "next_action":
                     action = get_next_action(plan, entitlements, portfolio)
+                    action_key = next_action_destination(action)
                     destination = "Home → Invest this month" if action.key == "review_monthly_contribution" and action.destination == "portfolio" else action.destination.replace('_', ' ')
                     result["reply"] = f"{action.title}. {action.explanation} Open {destination}."
                 elif intent == "overlap":
@@ -149,22 +162,23 @@ def chat(request: ChatRequest, user_id: str = Depends(get_current_user_id), auth
                     result["reply"] = explain_monthly(monthly)
                 elif monthly is not None:
                     action = get_next_action(plan, entitlements, portfolio, monthly)
+                    action_key = next_action_destination(action)
                     destination = "Home → Invest this month" if action.key == "review_monthly_contribution" and action.destination == "portfolio" else action.destination.replace('_', ' ')
                     result["reply"] = f"{action.title}. {action.explanation} Open {destination}."
         except (KeyError, ValueError, TypeError):
             raise HTTPException(503, "Your saved plan could not be loaded for this explanation. Please retry.") from None
     elif plan.get("strategy_engine_version") not in (None, "1.0"):
         raise HTTPException(409, "This plan version is not supported by Ask Arbor yet.")
-    elif classify_v2_question(request.message)[1] == "plus":
+    elif classify_v2_question(question)[1] == "plus":
         result = {"reply": subscription_explanation(entitlements), "category": "product_support", "intent": "plus"}
     else:
-        result = {"reply": ask_arbor(request.message, plan)}
+        result = {"reply": ask_arbor(question, plan)}
     if not isinstance(result.get("reply"), str) or not result["reply"].strip():
         raise HTTPException(503, "We couldn’t explain your plan. Please retry.")
     if result.get("intent") in ("out_of_scope", "decision_boundary"):
-        return result
+        return present_answer(result,entitlements,action_key)
     # Compute first; atomically admit only successful responses. Racing requests
     # can calculate concurrently, but at most ten are admitted per UTC month.
     usage = ask_usage(entitlements, authorization, consume=True)
     check_quota(usage)
-    return {**result, **({"ask_usage": usage} if usage is not None else {})}
+    return present_answer({**result, **({"ask_usage": usage} if usage is not None else {})},entitlements,action_key)

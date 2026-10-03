@@ -687,3 +687,63 @@
 .admin-review-sections button{padding:10px 14px;border-radius:8px;text-align:left}
 .admin-review-sections button[aria-pressed="true"]{background:var(--feature-surface);color:var(--foreground);font-weight:650}
 .admin-access-feedback{margin-bottom:16px}
+
+.ask-answer-action { display:inline-flex; align-items:center; min-height:44px; margin-top:8px; }
+.ask-answer-details { margin-top:12px; }
+.ask-answer-details > summary,.ask-feedback summary { color:var(--v3-muted); cursor:pointer; font-size:12px; min-height:32px; display:flex; align-items:center; }
+.ask-feedback { border-top:1px solid var(--line); margin-top:14px; padding-top:10px; color:var(--v3-muted); font-size:12px; }
+.ask-feedback-votes { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.ask-feedback-votes > span { flex-basis:100%; }
+.app-shell .ask-feedback button { min-height:44px; padding:8px 12px; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--foreground); font-size:12px; }
+.app-shell .ask-feedback button[aria-pressed="true"] { border-color:var(--v3-green); color:var(--v3-green); }
+.ask-feedback label { display:grid; gap:6px; }
+.ask-feedback select { min-height:44px; max-width:100%; margin-bottom:8px; border:1px solid var(--line); border-radius:8px; padding:8px; background:var(--surface); color:var(--foreground); }
+.ask-feedback p { margin:6px 0; line-height:1.5; }
+
+/* Local Admin presentation review; permissions and request behavior stay unchanged. */
+.admin-review-sections,.owner-admin { max-width:1100px; }
+.admin-review-sections { gap:6px; padding:6px; border-radius:var(--v3-radius); }
+.admin-review-sections button { flex:1 1 auto; min-height:44px; padding:10px 16px; text-align:center; color:var(--v3-muted); }
+.admin-review-sections button[aria-pressed="true"] { color:var(--v3-green); }
+.owner-admin > h2 { line-height:1.2; letter-spacing:-.025em; }
+.owner-admin .admin-intro { font-size:14px; line-height:1.6; margin:8px 0 20px; }
+.owner-admin .admin-card { border-radius:var(--v3-radius); }
+.owner-admin .admin-card h3 { line-height:1.3; letter-spacing:-.015em; }
+.owner-admin .admin-table-head { padding:10px 12px; }
+.owner-admin .admin-request-row { margin:6px 0; padding:14px 12px; border:1px solid var(--line); border-radius:10px; background:var(--surface); color:var(--foreground); }
+.owner-admin .admin-request-row:hover { background:var(--muted-surface); }
+.owner-admin .admin-request-row:hover strong { color:var(--v3-green); }
+.owner-admin .admin-request-row > span:not(.admin-badge),.owner-admin .admin-request-row time { color:var(--v3-muted); }
+.owner-admin .admin-badge { min-height:28px; display:inline-flex; align-items:center; justify-content:center; font-weight:600; }
+.owner-admin .admin-new { background:var(--muted-surface); }
+.owner-admin .admin-reviewing { background:var(--feature-surface); }
+.owner-admin .admin-resolved { background:var(--feature-surface); }
+.owner-admin .admin-pagination { gap:12px; margin-top:12px; }
+.owner-admin .admin-card > p:not(.admin-note) { font-size:14px; line-height:1.6; }
+.owner-admin > p[role="status"] { margin:14px 0; padding:14px 16px; border:1px solid var(--line); border-radius:10px; background:var(--muted-surface); color:var(--v3-muted); font-size:14px; }
+.owner-admin .admin-card dl > div:last-child { border-bottom:0; }
+@media(max-width:700px) {
+ .admin-review-sections { gap:4px; }
+ .admin-review-sections button { padding:10px 9px; font-size:12px; }
+ .owner-admin .admin-request-row { padding:13px 12px; gap:6px 10px; }
+ .owner-admin .admin-detail-layout { gap:12px; }
+}
+
+.feedback-topic-list,.feedback-vote-list{list-style:none;padding:0;margin:16px 0 0}
+.feedback-topic-list li{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.feedback-topic-list span,.feedback-vote-list time{font-size:12px;color:var(--muted)}
+.feedback-vote-list li{padding:14px 0;border-bottom:1px solid var(--line)}
+.feedback-vote-list li>div{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.feedback-vote-list p{margin:6px 0 0}
+@media(max-width:600px){.feedback-topic-list li{flex-direction:column;gap:5px}.admin-review-sections{flex-wrap:wrap}}
+
+/* Admin tabs need button padding, rather than the shared text-link reset. */
+.app-shell .admin-review-sections{padding:8px;gap:8px;margin-bottom:20px}
+.app-shell .admin-review-sections button.entry-link{padding:12px 20px;min-height:48px;line-height:1.4;text-align:center}
+@media(max-width:600px){.app-shell .admin-review-sections button.entry-link{padding:12px 16px;flex:1 1 100%}}
+
+.holdings-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+.holdings-heading h2 { min-width:0; }
+.holdings-sort { max-width:160px; min-width:0; min-height:44px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--foreground); font-size:12px; }
+.holdings-sort:focus-visible { outline:2px solid var(--v3-green); outline-offset:3px; }
+@media(max-width:390px) { .holdings-heading { gap:8px; } .holdings-sort { max-width:145px; padding:8px; font-size:11px; } }

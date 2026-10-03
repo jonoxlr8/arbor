@@ -1,4 +1,6 @@
 'use client';
+import AskFeedbackReview from './AskFeedbackReview';
+import {adminFeedbackApi} from '@/lib/adminAskFeedback';
 import DeletionReview from './DeletionReview';
 import {deletionReviewApi} from '@/lib/adminDeletionReview';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -112,6 +114,9 @@ function InvestmentRequestAdmin({ userId }: {
 }
 
 export default function OwnerAdmin({userId}:{userId:string}){
+ const [feedbackAllowed,setFeedbackAllowed]=useState(false);
+ const [feedbackOpen,setFeedbackOpen]=useState(false);
+ useEffect(()=>{let active=true;const c=new AbortController();adminFeedbackApi.access(userId,c.signal).then(v=>{if(active)setFeedbackAllowed(v);}).catch(()=>{if(active)setFeedbackAllowed(false);});return()=>{active=false;c.abort();};},[userId]);
  const [deletionAllowed,setDeletionAllowed]=useState<boolean|null>(null);
  const [deletionOpen,setDeletionOpen]=useState(false);
  const [accessError,setAccessError]=useState('');
@@ -127,12 +132,13 @@ export default function OwnerAdmin({userId}:{userId:string}){
  },[userId,attempt]);
  return <>
   <nav className="admin-review-sections" aria-label="Admin request sections">
-   <button className="entry-link min-h-11" aria-pressed={!deletionOpen} onClick={()=>setDeletionOpen(false)}>Investment requests</button>
-   {deletionAllowed===true&&<button className="entry-link min-h-11" aria-pressed={deletionOpen} onClick={()=>setDeletionOpen(true)}>Account-deletion requests</button>}
+   <button className="entry-link min-h-11" aria-pressed={!deletionOpen&&!feedbackOpen} onClick={()=>{setDeletionOpen(false);setFeedbackOpen(false);}}>Investment requests</button>
+   {deletionAllowed===true&&<button className="entry-link min-h-11" aria-pressed={deletionOpen} onClick={()=>{setDeletionOpen(true);setFeedbackOpen(false);}}>Account-deletion requests</button>}
+   {feedbackAllowed&&<button className="entry-link min-h-11" aria-pressed={feedbackOpen} onClick={()=>{setFeedbackOpen(true);setDeletionOpen(false);}}>Ask Arbor feedback</button>}
   </nav>
   {deletionAllowed===null&&!accessError&&<p role="status" className="admin-note">Checking account-deletion access…</p>}
   {accessError&&<div className="admin-access-feedback"><p role="alert">{accessError}</p><button className="entry-link min-h-11" onClick={()=>{setAccessError('');setDeletionAllowed(null);setAttempt(n=>n+1);}}>Check deletion access again</button></div>}
   {deletionAllowed===false&&<p role="status" className="admin-note">Account-deletion review is unavailable for this account.</p>}
-  {deletionOpen?<DeletionReview key={userId} userId={userId} onBack={()=>setDeletionOpen(false)}/>:<InvestmentRequestAdmin key={userId} userId={userId}/>}
+  {feedbackOpen?<AskFeedbackReview key={userId} userId={userId}/>:deletionOpen?<DeletionReview key={userId} userId={userId} onBack={()=>setDeletionOpen(false)}/>:<InvestmentRequestAdmin key={userId} userId={userId}/>}
  </>;
 }

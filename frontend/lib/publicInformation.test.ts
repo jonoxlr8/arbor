@@ -33,3 +33,11 @@ test("privacy and beta pages preserve known account and availability boundaries"
   assert.match(terms, /Philippine law governs/);
   assert.match(terms, /Acceptance is recorded only after an explicit action/);
 });
+
+test("feedback notice states exact stored metadata, owner read projection and manual retention",()=>{
+ const privacy=renderToStaticMarkup(createElement(PublicInformation,{page:"privacy"}));
+ assert.match(privacy,/random feedback ID for edits and retries/);
+ assert.match(privacy,/20 feedback records per UTC day/);
+ assert.match(privacy,/without customer identity or portfolio access/);
+ assert.match(privacy,/No automatic cleanup or exact deletion deadline/);
+});
