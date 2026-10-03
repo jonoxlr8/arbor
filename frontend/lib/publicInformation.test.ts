@@ -20,7 +20,9 @@ test("privacy and beta pages preserve known account and availability boundaries"
   assert.match(privacy, /retains an audit record/);
   assert.match(privacy, /Missing-investment requests/);
   assert.match(privacy, /account ID.*received date.*two identifiers for receipts and retries/);
-  assert.match(privacy, /other customers cannot read them/);
+  assert.match(privacy, /other customers cannot read them/i);
+  assert.match(privacy, /owner-only Admin view/);
+  assert.match(privacy, /Review status follows the request’s retention and is included in your data export/);
   assert.match(privacy, /after 90 days through reviewed manual cleanup, so removal may occur later/);
   assert.match(privacy, /Reviewed account erasure can remove them earlier/);
   assert.match(privacy, /no self-service whole-account deletion/);

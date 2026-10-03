@@ -116,3 +116,10 @@ def test_investment_request_export_is_optional_and_contains_requested_fields_onl
     validate_export({**body(),'investment_requests':[receipt]}, A)
     for invalid in (None,[{**receipt,'user_id':'B'}],[{**receipt,'received_at':'2026-10-02T01:00:00'}],[{**receipt,'investment_name':''}],[{**receipt,'provider':'x'*81}]):
         with pytest.raises(ValueError):validate_export({**body(),'investment_requests':invalid}, A)
+
+
+def test_review_metadata_export_is_owner_only_and_excludes_internal_fields():
+    row={'investment_name':'Sample Fund','provider':'Sample Provider','received_at':'2026-10-02T00:00:00Z','status':'reviewing','updated_at':'2026-10-02T01:00:00Z'}
+    validate_export({**body(),'investment_request_reviews':[row]},A)
+    for invalid in [{**row,'user_id':A},{**row,'revision':1},{**row,'status':'invalid'},{**row,'updated_at':'2026-10-02'}]:
+        with pytest.raises(ValueError):validate_export({**body(),'investment_request_reviews':[invalid]},A)

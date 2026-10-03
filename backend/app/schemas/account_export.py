@@ -60,6 +60,16 @@ def validate_export(value, owner):
                 or not isinstance(row['received_at'], str)
                 or datetime.fromisoformat(row['received_at']).tzinfo is None):
             raise ValueError('Invalid investment request export')
+    reviews=value.get('investment_request_reviews',[])
+    if not isinstance(reviews,list) or len(reviews)>10000:
+        raise ValueError('Invalid request review export')
+    for row in reviews:
+        if (not isinstance(row,dict) or set(row)!={'investment_name','provider','received_at','status','updated_at'}
+            or row['status'] not in ('new','reviewing','resolved')
+            or not isinstance(row['investment_name'],str) or not 1<=len(row['investment_name'])<=120
+            or not isinstance(row['provider'],str) or not 1<=len(row['provider'])<=80
+            or any(not isinstance(row[k],str) or datetime.fromisoformat(row[k]).tzinfo is None for k in ('received_at','updated_at'))):
+            raise ValueError('Invalid request review export')
     for row in value.get('erasure_operations', []):
         if not isinstance(row.get('holds'), list) or len(row['holds']) > 12:
             raise ValueError('Invalid erasure holds')

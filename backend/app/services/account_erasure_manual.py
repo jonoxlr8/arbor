@@ -9,7 +9,7 @@ from datetime import datetime,timedelta,timezone
 from uuid import UUID
 
 PHASES=('review','begin','sessions_ready','database','auth_ready','auth_confirm','complete')
-TABLES={'arbor_investment_requests','arbor_investment_entries','arbor_portfolio_holdings','arbor_portfolio_snapshots','arbor_portfolio_history_changes','arbor_monthly_checkins','arbor_pending_investment_recordings','arbor_pending_recording_reminders','holdings','profiles','arbor_ask_usage_monthly'}
+TABLES={'admin_owner','arbor_investment_request_reviews','arbor_investment_requests','arbor_investment_entries','arbor_portfolio_holdings','arbor_portfolio_snapshots','arbor_portfolio_history_changes','arbor_monthly_checkins','arbor_pending_investment_recordings','arbor_pending_recording_reminders','holdings','profiles','arbor_ask_usage_monthly'}
 @dataclass(frozen=True)
 class Binding:
     project_ref:str
@@ -84,7 +84,7 @@ BEGIN
   IF EXISTS(SELECT 1 FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid
    JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public'
    AND c.relkind IN ('r','p','v','m') AND a.attname IN ('user_id','owner_id') AND NOT a.attisdropped
-   AND c.relname NOT IN ('arbor_investment_requests','arbor_investment_entries','arbor_portfolio_holdings','arbor_portfolio_snapshots','arbor_portfolio_history_changes','arbor_monthly_checkins','arbor_pending_investment_recordings','arbor_pending_recording_reminders','holdings','profiles','arbor_ask_usage_monthly','arbor_budget_versions','arbor_plan_versions','arbor_portfolio_history','arbor_investment_entry_values','arbor_portfolio_observed_history_status','arbor_portfolio_holding_ledger_values','arbor_portfolio_holding_values'))
+   AND c.relname NOT IN ('arbor_investment_request_reviews','arbor_investment_requests','arbor_investment_entries','arbor_portfolio_holdings','arbor_portfolio_snapshots','arbor_portfolio_history_changes','arbor_monthly_checkins','arbor_pending_investment_recordings','arbor_pending_recording_reminders','holdings','profiles','arbor_ask_usage_monthly','arbor_budget_versions','arbor_plan_versions','arbor_portfolio_history','arbor_investment_entry_values','arbor_portfolio_observed_history_status','arbor_portfolio_holding_ledger_values','arbor_portfolio_holding_values'))
   THEN RAISE EXCEPTION 'manual_unreviewed_owner_surface'; END IF;
   -- Histories are read-only owner surfaces erased through the profile FK.
   -- Keep the legacy inventory's category counts; this is supplemental coverage.
@@ -162,6 +162,36 @@ BEGIN
  OR has_table_privilege('service_role','public.arbor_investment_requests','SELECT,INSERT,UPDATE,DELETE,TRUNCATE')
  OR NOT EXISTS(SELECT 1 FROM pg_trigger g WHERE g.tgrelid='public.arbor_investment_requests'::regclass AND g.tgname='arbor_lifecycle_write' AND g.tgenabled IN ('O','A') AND g.tgfoid='arbor_private.guard_lifecycle_write()'::regprocedure)
  THEN RAISE EXCEPTION 'manual_request_security_changed'; END IF;
+ -- Explicit new Admin surfaces; unknown-surface denial remains above.
+ IF to_regclass('public.arbor_investment_request_reviews') IS NULL
+ OR NOT EXISTS(SELECT 1 FROM pg_class WHERE oid='public.arbor_investment_request_reviews'::regclass AND relkind='r' AND relrowsecurity)
+ OR (SELECT count(*) FROM pg_attribute WHERE attrelid='public.arbor_investment_request_reviews'::regclass AND attnum>0 AND NOT attisdropped)<>5
+ OR (SELECT count(*) FROM pg_attribute WHERE attrelid='public.arbor_investment_request_reviews'::regclass AND attnum>0 AND NOT attisdropped AND attname IN ('request_'||'id','user_id','status','revision','updated_at'))<>5
+ OR EXISTS(SELECT 1 FROM pg_policy WHERE polrelid='public.arbor_investment_request_reviews'::regclass)
+ OR NOT EXISTS(SELECT 1 FROM pg_class WHERE oid='public.arbor_investment_request_reviews'::regclass AND relowner=(SELECT proowner FROM pg_proc WHERE oid='arbor_private.erasure_data(uuid)'::regprocedure))
+ OR has_any_column_privilege('authenticated','public.arbor_investment_request_reviews','SELECT,INSERT,UPDATE,REFERENCES')
+ OR has_any_column_privilege('anon','public.arbor_investment_request_reviews','SELECT,INSERT,UPDATE,REFERENCES')
+ OR has_any_column_privilege('service_role','public.arbor_investment_request_reviews','SELECT,INSERT,UPDATE,REFERENCES')
+ OR has_table_privilege('authenticated','public.arbor_investment_request_reviews','SELECT,INSERT,UPDATE,DELETE,TRUNCATE')
+ OR has_table_privilege('anon','public.arbor_investment_request_reviews','SELECT,INSERT,UPDATE,DELETE,TRUNCATE')
+ OR has_table_privilege('service_role','public.arbor_investment_request_reviews','SELECT,INSERT,UPDATE,DELETE,TRUNCATE')
+ OR NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.arbor_investment_request_reviews'::regclass AND confrelid='public.arbor_investment_requests'::regclass AND contype='f' AND confdeltype='c' AND convalidated)
+ OR NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.arbor_investment_request_reviews'::regclass AND confrelid='auth.users'::regclass AND contype='f' AND confdeltype='c' AND convalidated)
+ OR EXISTS(SELECT 1 FROM public.arbor_investment_request_reviews w JOIN public.arbor_investment_requests r ON r.id=w.request_id WHERE w.user_id<>r.user_id)
+ OR to_regclass('arbor_private.admin_owner') IS NULL
+ OR NOT EXISTS(SELECT 1 FROM pg_class WHERE oid='arbor_private.admin_owner'::regclass AND relkind='r' AND relrowsecurity)
+ OR (SELECT count(*) FROM pg_attribute WHERE attrelid='arbor_private.admin_owner'::regclass AND attnum>0 AND NOT attisdropped)<>2
+ OR (SELECT count(*) FROM pg_attribute WHERE attrelid='arbor_private.admin_owner'::regclass AND attnum>0 AND NOT attisdropped AND attname IN ('user_id','singleton'))<>2
+ OR EXISTS(SELECT 1 FROM pg_policy WHERE polrelid='arbor_private.admin_owner'::regclass)
+ OR NOT EXISTS(SELECT 1 FROM pg_class WHERE oid='arbor_private.admin_owner'::regclass AND relowner=(SELECT proowner FROM pg_proc WHERE oid='arbor_private.erasure_data(uuid)'::regprocedure))
+ OR has_any_column_privilege('authenticated','arbor_private.admin_owner','SELECT,INSERT,UPDATE,REFERENCES')
+ OR has_any_column_privilege('anon','arbor_private.admin_owner','SELECT,INSERT,UPDATE,REFERENCES')
+ OR has_any_column_privilege('service_role','arbor_private.admin_owner','SELECT,INSERT,UPDATE,REFERENCES')
+ OR has_table_privilege('authenticated','arbor_private.admin_owner','SELECT,INSERT,UPDATE,DELETE,TRUNCATE')
+ OR has_table_privilege('anon','arbor_private.admin_owner','SELECT,INSERT,UPDATE,DELETE,TRUNCATE')
+ OR has_table_privilege('service_role','arbor_private.admin_owner','SELECT,INSERT,UPDATE,DELETE,TRUNCATE')
+ OR NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='arbor_private.admin_owner'::regclass AND confrelid='auth.users'::regclass AND contype='f' AND confdeltype='c' AND convalidated)
+ THEN RAISE EXCEPTION 'manual_admin_security_changed'; END IF;
  IF phase IN ('auth_ready','auth_confirm','complete') AND EXISTS(SELECT 1 FROM jsonb_each(current_counts) e WHERE e.value<>'null'::jsonb AND e.value<>'0'::jsonb) THEN RAISE EXCEPTION 'manual_primary_rows_remain'; END IF;
  IF clock_timestamp()>=expiry THEN RAISE EXCEPTION 'manual_approval_expired'; END IF;
  IF phase='review' THEN PERFORM arbor_private.erasure_review(owner_id,request_id,request_version,operation_id,true,'[]'::jsonb);

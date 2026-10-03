@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import OwnerAdmin,{AdminEntry} from "./admin/OwnerAdmin";
 import AccountPrivacy from "./account/AccountPrivacy";
 import AppShell from "@/components/app/AppShell";
 import HomeOverview from "@/components/app/HomeOverview";
 import { AppearanceSettings } from "@/components/app/Appearance";
-import { subscribeNavigation, navigationSnapshot, serverNavigationSnapshot } from "@/lib/appNavigation";
+import { subscribeNavigation, navigationSnapshot, serverNavigationSnapshot, sectionSnapshot } from "@/lib/appNavigation";
 import HeroSection, { GoalProgress } from "@/components/dashboard/HeroSection";
 import PortfolioSection from "@/components/dashboard/PortfolioSection";
 import ProjectionSection from "@/components/dashboard/ProjectionSection";
@@ -42,6 +43,7 @@ function LegacyDashboard({
   onSignOut, signingOut, logoutError,
 }: ResultsDashboardProps) {
   const active = useSyncExternalStore(subscribeNavigation, navigationSnapshot, serverNavigationSnapshot);
+  const section = useSyncExternalStore(subscribeNavigation, sectionSnapshot,()=>"");
   const [saveNotice, setSaveNotice] = useState("");
   const [plan, setPlan] = useState(initialPlan);
   const [editing, setEditing] = useState(false);
@@ -76,7 +78,7 @@ function LegacyDashboard({
     : undefined;
 
   return (
-    <AppShell active={active} name={plan.profile.full_name} onSignOut={onSignOut} signingOut={signingOut} logoutError={logoutError}>
+    <AppShell active={active} pageTitle={active === "settings" && section === "admin" ? "Admin" : undefined} name={plan.profile.full_name} onSignOut={onSignOut} signingOut={signingOut} logoutError={logoutError}>
       {plan.profile_warning && <p role="alert" className="mb-5 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">{plan.profile_warning} <a href="#settings" onClick={() => setEditing(true)} className="underline">Review profile</a></p>}
 
       {/* Keep these destinations mounted: navigation must not discard drafts,
@@ -121,6 +123,8 @@ function LegacyDashboard({
       </div>
 
       <div hidden={active !== "settings"} className="app-destination space-y-6">
+        {section==="admin"&&userId?<OwnerAdmin key={userId} userId={userId}/>:<>
+        {userId&&<AdminEntry key={userId} userId={userId}/>}
         <AccountPlans />
         <AppearanceSettings />
         {userId && <AccountPrivacy key={userId} userId={userId}/>}
@@ -143,6 +147,7 @@ function LegacyDashboard({
           onUpdated={updatedPlan => { setPlan(updatedPlan); setEditing(false); setSaveNotice("Profile saved. Your plan and projections are up to date."); }}
           onCancel={() => setEditing(false)}
         /></PlusFeature>}
+        </>}
       </div>
     </AppShell>
   );

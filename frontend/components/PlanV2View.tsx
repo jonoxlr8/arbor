@@ -1,4 +1,5 @@
 "use client";
+import OwnerAdmin,{AdminEntry} from "./admin/OwnerAdmin";
 import AccountPrivacy from "./account/AccountPrivacy";
 import ChangePassword from "./ChangePassword";
 import { useEffect, useState, useSyncExternalStore } from "react";
@@ -63,10 +64,10 @@ function PlanV2Shell({ value, userId, onSignOut, signingOut, logoutError, onPlan
     setPreviousDestination(active);
     setChoosing(false);
   }
-  return <AppShell active={active} pageTitle={(active === "home" && section === "monthly") || (active === "portfolio" && section === "contribution") ? "Investment breakdown" : active === "portfolio" && section === "what-if" ? "What-if" : undefined} name={value.profile.full_name} onSignOut={onSignOut} signingOut={signingOut} logoutError={logoutError}>
+  return <AppShell active={active} pageTitle={active === "settings" && section === "admin" ? "Admin" : (active === "home" && section === "monthly") || (active === "portfolio" && section === "contribution") ? "Investment breakdown" : active === "portfolio" && section === "what-if" ? "What-if" : undefined} name={value.profile.full_name} onSignOut={onSignOut} signingOut={signingOut} logoutError={logoutError}>
     {choosing && userId && onPlanChange ? <PlusFeature feature="profile_rebuild" title="Review and rebuild your investment profile" onBack={() => setChoosing(false)}><InvestmentProfileEditor value={value} userId={userId} initialMode={editMode} onCancel={() => setChoosing(false)} onSaved={plan => { onPlanChange(plan); setChoosing(false); }} /></PlusFeature> : <>
       {((active === "home" && section === "monthly") || (active === "portfolio" && section === "contribution")) && userId && onPlanChange ? <div className="monthly-page"><MonthlyPendingRecording userId={userId}/><PlusFeature feature="monthly_contribution_planner" title="Investment breakdown"><MonthlyInvesting value={value} userId={userId} onPlanChange={onPlanChange} backHref={active==="home"?"#home":"#portfolio"}/></PlusFeature></div> : active === "home" && <V2Home value={value} userId={userId} section={section} onPlanChange={onPlanChange}/>}
-      {active === "settings" && userId && onPlanChange && <section id="section-investment" className="settings-list" aria-label="Account and plan settings">
+      {active === "settings" && section !== "admin" && userId && onPlanChange && <section id="section-investment" className="settings-list" aria-label="Account and plan settings">
         <p className="settings-group-label">Account</p>
         <div className="settings-account-header"><span aria-hidden="true">{value.profile.full_name.trim().slice(0,1)}</span><div><strong>{value.profile.full_name}</strong><small>Your Arbor account</small></div></div>
         <details><summary><SettingsIcon kind="account"/><span>Account details</span></summary><dl className="mt-4 space-y-3 text-sm text-slate-700"><div><dt>Name</dt><dd className="font-semibold">{value.profile.full_name}</dd></div><div><dt>Country</dt><dd className="font-semibold">{value.profile.country}</dd></div><div><dt>Planning currency</dt><dd className="font-semibold">{value.profile.currency}</dd></div></dl></details>
@@ -98,7 +99,9 @@ export function V2Destination({ value, active, userId, section = "", onPlanChang
     </>}
     {value.plan.path === "short_term" || value.plan.plan_basis !== "user_selected" ? <p className="text-sm leading-6 text-slate-600">{value.plan.path === "short_term" ? "Long-term monthly investing is paused on your short-term path." : "Your historical plan remains saved. Explicitly choose an approach before exploring monthly investing."} <a className="entry-link" href="#settings/investment">Review investment profile</a></p> : null}
   </div>;
+  if (active === "settings" && section === "admin" && userId) return <OwnerAdmin key={userId} userId={userId}/>;
   if (active === "settings") return <div className="settings-list">
+    {userId&&<AdminEntry key={userId} userId={userId}/>}
     <p className="settings-group-label">Subscription</p>
     <details id="section-plus" className={access?.value?.effective_tier === "plus" ? "settings-plus-access" : undefined} open={section === "plus"}><summary><SettingsIcon kind="plus"/><span>{access?.value?accountPlanLabel(access.value):"Your Arbor access"}<small className="block mt-1">{access?.value?.effective_tier==="plus"&&access.value.status==="trial" ? access.value.private_beta?"Private beta · No card or billing date":"Trial access" : access?.value?.effective_tier === "free" ? "Your current plan · Compare access" : "Active access · Your current plan"}</small></span></summary><AccountPlans /></details>
     <p className="settings-group-label">Appearance</p>
