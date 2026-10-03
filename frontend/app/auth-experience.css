@@ -26,3 +26,5 @@
   :root:not([data-theme="light"]) :is(.public-auth,.auth-experience) {background:#000;}
   :root:not([data-theme="light"]) :is(.public-auth,.auth-experience) .auth-emblem {background:transparent;box-shadow:none;color:#86dfb3;}
 }
+/* The light auth emblem also uses the canonical mark without a tile or halo. */
+:is(.public-auth,.auth-experience) .auth-emblem {background:transparent;box-shadow:none;color:#0f5132;}
