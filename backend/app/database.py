@@ -2,6 +2,7 @@ import os
 
 from dotenv import load_dotenv
 from supabase import create_client
+from app.authenticated_data import AuthenticatedDataClient
 
 load_dotenv()
 
@@ -12,6 +13,6 @@ supabase = create_client(supabase_url, supabase_key)
 
 
 def get_authenticated_client(access_token: str):
-    client = create_client(supabase_url, supabase_key)
-    client.postgrest.auth(access_token)
-    return client
+    if not access_token:
+        raise ValueError("Authenticated data access requires an access token")
+    return AuthenticatedDataClient(supabase_url, supabase_key, access_token)

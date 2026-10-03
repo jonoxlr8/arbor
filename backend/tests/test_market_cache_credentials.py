@@ -161,3 +161,23 @@ def test_historical_nav_conflict_is_reported_without_raw_response(capsys):
         with pytest.raises(MarketDataError, match="^historical_nav_conflict$"):
             SharedCache(client, URL, MODERN).write_history([item])
     assert "do-not-expose-provider-data" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("result,expected", [
+    ({"toap":"unchanged_observation"},0),
+    ({"btc":"updated","fx":"cached","bpi":"unchanged_observation","atram":"cooldown"},0),
+    ({"old":"older_data_ignored","off":"disabled_by_config"},0),
+    ({"toap":"unchanged_observation","btc":"fetch_failed"},1),
+    ({"source":"unrecognized_status"},1),
+])
+def test_refresh_exit_status_includes_unchanged_but_keeps_failures(result,expected,monkeypatch):
+    monkeypatch.setattr(cli,"load_dotenv",lambda:None)
+    monkeypatch.setenv("SUPABASE_URL",URL)
+    monkeypatch.setenv("SUPABASE_MARKET_DATA_KEY",MODERN)
+    monkeypatch.setattr(cli,"refresh",lambda *a,**k:result)
+    monkeypatch.setattr(cli.sys,"argv",["market_data","refresh"])
+    # Fail the test if the mocked refresh accidentally reaches any vendor/cache.
+    real=httpx.Client
+    def blocked(request): pytest.fail("unexpected external request")
+    monkeypatch.setattr(cli.httpx,"Client",lambda:real(transport=httpx.MockTransport(blocked)))
+    assert cli.main()==expected

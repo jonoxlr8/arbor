@@ -50,7 +50,7 @@ def main():
                 TOAP(client, "atram_nav", toap_enabled, toap_gate), TOAP(client, "bpi_nav", toap_enabled, toap_gate)], **history_options)
             for source, status in results.items():
                 print(f"{source}: {status}")
-            return int(any(v not in ("cached", "cooldown", "updated", "older_data_ignored", "disabled_by_config") for v in results.values()))
+            return int(any(v not in ("cached", "cooldown", "updated", "unchanged_observation", "older_data_ignored", "disabled_by_config") for v in results.values()))
     except (MarketDataError, ValueError, TypeError, DecimalException):
         print("Reference-data operation failed. Check server configuration, migration and verified input; existing cache retained.", file=sys.stderr)
         return 1
