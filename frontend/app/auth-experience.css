@@ -19,3 +19,10 @@
 /* Consent stays a compact checkbox; unavailable actions remain visibly disabled. */
 .auth-content input[type="checkbox"] {width:20px;height:20px;min-height:20px;padding:0;flex:none;box-shadow:none;accent-color:light-dark(#087c52,#86dfb3);}
 .auth-content button:not(.entry-link):disabled {background:light-dark(#e2eaf0,#262626);color:light-dark(#526782,#b8b8b8);cursor:not-allowed;}
+/* Dark auth uses the canonical mint mark directly on solid black. */
+:root[data-theme="dark"] :is(.public-auth,.auth-experience) {background:#000;}
+:root[data-theme="dark"] :is(.public-auth,.auth-experience) .auth-emblem {background:transparent;box-shadow:none;color:#86dfb3;}
+@media(prefers-color-scheme:dark) {
+  :root:not([data-theme="light"]) :is(.public-auth,.auth-experience) {background:#000;}
+  :root:not([data-theme="light"]) :is(.public-auth,.auth-experience) .auth-emblem {background:transparent;box-shadow:none;color:#86dfb3;}
+}

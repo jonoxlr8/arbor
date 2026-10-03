@@ -284,3 +284,10 @@
 .m-contact-arrow {color:var(--m-green);}
 /* The final section's logo margin must not shift the button arrow. */
 .m-final .m-start-arrow .action-arrow {margin:0;display:block;}
+
+/* A vector contact arrow keeps the green stroke consistent across phone fonts. */
+.m-faq .m-contact-arrow {display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;margin-left:4px;vertical-align:middle;color:#087c52;}
+.m-faq .m-contact-arrow .action-arrow {display:block;width:18px;height:18px;margin:0;color:inherit;transform:rotate(-45deg);}
+
+:root[data-theme="dark"] .m-faq .m-contact-arrow {color:#86dfb3;}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .m-faq .m-contact-arrow {color:#86dfb3;}}
