@@ -162,16 +162,14 @@
 .portfolio-chart[data-currency="USD"] .chart-gain > span:not(.sr-only):not(.chart-gain-currency),
 .portfolio-chart[data-currency="USD"] .chart-gain > strong { white-space:nowrap; flex-shrink:0; }
 .chart-gain .chart-gain-currency { order:1; flex-basis:100%; color:var(--v3-muted); font-size:11px; font-weight:500; }
-.chart-selected-date { display:block; min-height:18px; margin-top:4px; color:var(--v3-muted); font-size:13px; line-height:18px; }
 .compact-chart .chart-gain { font-size:14px; }
 .compact-chart .chart-gain > strong { font-size:12px; }
-.compact-chart .chart-selected-date { font-size:11px; }
 .portfolio-chart .chart-status,.portfolio-chart .chart-usd-limitation { margin-top:6px; color:var(--v3-muted); font-size:11px; line-height:1.4; }
 .portfolio-chart .chart-range { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); width:100%; margin:8px auto 0; padding:0; gap:2px; background:transparent; }
 .app-shell .portfolio-chart .chart-range button { justify-self:center; width:auto; min-width:36px; min-height:36px; padding:4px 10px; border-radius:24px; color:var(--v3-muted); font-size:12px; }
 .app-shell .portfolio-chart .chart-range button:focus-visible { outline:2px solid var(--v3-green); outline-offset:2px; }
 .app-shell .portfolio-chart .chart-range button[aria-pressed="true"] { background:var(--muted-surface); color:var(--foreground); box-shadow:none; font-weight:700; }
-.portfolio-chart .chart-plot { position:relative; touch-action:pan-y; cursor:crosshair; color:var(--chart-positive); background:none; }
+.portfolio-chart .chart-plot { position:relative; margin-top:10px; touch-action:pan-y; cursor:crosshair; color:var(--chart-positive); background:none; }
 .portfolio-chart[data-gain="negative"] .chart-plot { color:var(--chart-negative); }
 .portfolio-chart[data-gain="zero"] .chart-plot,.portfolio-chart[data-gain="unknown"] .chart-plot { color:var(--chart-zero); }
 .chart-extrema { position:absolute; inset:0; z-index:1; color:var(--v3-muted); font-size:11px; pointer-events:none; }

@@ -179,7 +179,7 @@ export default function PortfolioHistoryChart({ history, knownValue = "0", curre
         ]}/>
         {gainBasisLabel && <span className={`chart-gain-basis-label${showFallback ? " chart-gain-fallback-label" : ""}`}>{gainBasisLabel}</span>}
       </div>}
-      <div className="chart-selected-date" data-selected={inspection ? "true" : "false"} aria-hidden={!inspection}>
+      <div className="chart-selected-date sr-only" data-selected={inspection ? "true" : "false"} aria-hidden={!inspection}>
         {inspection?.kind === "current" ? <>Current value{currentStaleCount > 0 && <span> · Includes cached values</span>}</> : active ? <><time dateTime={active.day}>{dateLabel(active.day)}</time>
           {active.origin && <span> · {active.origin === "reconstructed" ? "Reconstructed" : "Observed"}</span>}</> : "\u00a0"}
       </div>

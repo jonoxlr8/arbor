@@ -318,7 +318,7 @@ test("Portfolio chart color follows selected-period recorded-cost gain, never co
   const current={history:rising,knownValue:"15000.00",holdingsCount:1,currentRecordedCostPhp:"12000.00",currentGainPhp:"3000.00",currentGainPercentage:"25.00"};
   const positive=html(createElement(PortfolioHistoryChart,current));
   assert.match(positive,/data-gain="positive"/);assert.match(positive,/\+₱3,000\.00/);assert.doesNotMatch(positive,/\+25\.00%/);
-  assert.match(positive,/chart-selected-date" data-selected="false"/);
+  assert.match(positive,/chart-selected-date sr-only" data-selected="false"/);
   assert.match(positive,/chart-extreme-high" style="top:calc\(/);
   assert.match(positive,/chart-extreme-high.*₱15,000\.00/);assert.match(positive,/chart-extreme-low.*₱10,000\.00/);
   assert.doesNotMatch(positive,/>High|>Low|Portfolio value change/);

@@ -7,7 +7,7 @@ import {mkdir} from 'node:fs/promises';
 import {readFileSync} from 'node:fs';
 const termsDocument=JSON.parse(readFileSync(new URL('../../lib/termsDocument.json',import.meta.url),'utf8'));
 const origin=process.env.ARBOR_REVIEW_ORIGIN ?? 'http://127.0.0.1:3143';
-const output='/tmp/arbor-chart-touch-captures';await mkdir(output,{recursive:true});
+const output='/tmp/arbor-chart-caption-captures';await mkdir(output,{recursive:true});
 let exportStatus=200;
 
 
@@ -138,6 +138,13 @@ await withAuthenticatedBrowser(async ({browser})=>{
    for(const name of ['1W','1M','3M','6M','1Y','5Y','All']){
     await page.getByRole('button',{name:name+' portfolio history',exact:true}).first().click();
     await plot.focus();await page.keyboard.press('ArrowRight');assert.equal(await page.locator('.chart-inspection').count(),1);assert.match(await page.locator('.chart-inspection').textContent(),/Estimate · last available/);
+    const caption=page.locator('.chart-selected-date').first();
+    assert.match(await caption.getAttribute('class'),/sr-only/);
+    const captionBox=await caption.boundingBox();assert.ok(captionBox.width<=1 && captionBox.height<=1);
+    assert.match(await caption.textContent(),/Reconstructed/);
+    assert.ok(await page.locator('.chart-gain-basis-label').first().isVisible());
+    const basisBox=await page.locator('.chart-gain-basis-label').first().boundingBox();
+    const plotBox=await plot.boundingBox();assert.ok(basisBox.y+basisBox.height<=plotBox.y-4,'basis label clears focused plot');
     const tip=await page.locator('.chart-inspection').boundingBox(),box=await plot.boundingBox();
     assert.ok(tip.x>=box.x && tip.x+tip.width<=box.x+box.width+1);
     await page.keyboard.press('Escape');assert.equal(await page.locator('.chart-inspection').count(),0);
