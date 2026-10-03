@@ -193,7 +193,13 @@ def explain(c: V2ChatContext, question: str, intent: str) -> str:
                   for role, product in choices.items() if c.target and c.target.weight(AssetRole(role)) > 0]
         introduction = ("You chose these investments: " + "; ".join(chosen) + ". Your targets do not change when you change provider. "
                         "Open Portfolio → Ways to invest to review choices and official provider links. Arbor does not rank providers.") if chosen else IMPLEMENTATION
-        return introduction + ("\n\nCatalog facts, not personalized selections:\n" + facts if facts else " Supported non-Bitcoin options are GFunds, DragonFi and Gotrade. Bitcoin choices are independently GCrypto, Coins.ph or PDAX; none is selected automatically. These choices do not change your plan targets.") + "\n\nCatalog information is static; confirm current terms in the provider app. Arbor does not place trades."
+        if facts:
+            catalog_info = "\n\nCatalog facts, not personalized selections:\n" + facts
+        elif chosen:
+            catalog_info = ""
+        else:
+            catalog_info = " Supported non-Bitcoin options are GFunds, DragonFi and Gotrade. Bitcoin choices are independently GCrypto, Coins.ph or PDAX; none is selected automatically. These choices do not change your plan targets."
+        return introduction + catalog_info + "\n\nCatalog information is static; confirm current terms in the provider app. Arbor does not place trades."
     starting = f"{c.currency} {c.starting_assumption:,.2f}" if c.starting_assumption is not None else "Not set yet"
     monthly = f"{c.currency} {c.monthly_assumption:,.2f}" if c.monthly_assumption is not None else "Not set yet"
     assumptions = f"Saved horizon: {HORIZONS[c.horizon]}. Starting balance assumption: {starting}. Monthly contribution assumption: {monthly}. " + (f"Goal in nominal future {c.currency}: {c.goal:,.2f}." if c.goal is not None else "No goal amount is saved.")

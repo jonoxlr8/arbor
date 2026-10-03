@@ -24,7 +24,7 @@ def present_answer(result, entitlements, action_override=None):
     if not qualified and len(text)>360 and summary!=text and len(summary)<=360:
         value['summary']=summary
     action = action_override or {
-        'actual_holdings':'portfolio','recorded_cost':'portfolio','goal_progress':'goal',
+        'actual_holdings':'portfolio','recorded_cost':'portfolio','goal_progress':'goal','implementation':'portfolio',
         'holdings_help':'portfolio','pending_recording':'portfolio','monthly_checkin':'monthly_plan',
         'monthly_plan':'monthly_plan','contribution':'monthly_plan','projection':'what_if',
         'plan':'saved_plan','assessment':'saved_plan','readiness':'saved_plan','preferences':'saved_plan',

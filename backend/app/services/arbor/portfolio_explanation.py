@@ -1,6 +1,7 @@
 """Explain computed facts only. No model arithmetic or trade instructions."""
 import re
 from app.services.live_portfolio import Portfolio
+from .allocation_questions import allocation_gap_request
 
 LABELS = {"global_equity": "Global Equity", "defensive": "Defensive", "technology_tilt": "Technology", "crypto": "Bitcoin"}
 # Presentation aliases only; canonical provider IDs and valuation data stay unchanged.
@@ -9,6 +10,8 @@ PROVIDER_DISPLAY_OVERRIDES = {"gcash": "GFunds", "gcrypto": "GCrypto"}
 
 def is_target_comparison(question: str) -> bool:
     """Bounded comparison wording, shared by routing and factual presentation."""
+    if allocation_gap_request(question):
+        return True
     subject = r"(?:portfolio|(?:global equity|defensive|technology|tech|bitcoin|btc|crypto) allocation)"
     return re.fullmatch(
         rf"\s*(?:how does my {subject} compare (?:with|to) my (?:targets?|plan)"
@@ -27,6 +30,9 @@ def explain_portfolio(question: str, portfolio: Portfolio | None) -> str:
         if is_target_comparison(question):
             return "No holdings are recorded yet. Add investments you already own in Portfolio before Arbor can compare your current portfolio with your chosen targets. Plan targets are not evidence of ownership."
         return "No holdings are recorded yet. Add investments you already own in Portfolio. Your plan targets are not evidence of ownership."
+    gap_request = allocation_gap_request(question)
+    if gap_request:
+        return explain_largest_target_gaps(gap_request, portfolio)
     if re.search(r"recorded cost|cost basis|gain|loss|profit", question, re.I):
         named = [holding for holding in portfolio.holdings if
                  re.search(r"(?<!\w)" + re.escape(holding.display_name) + r"(?!\w)", question, re.I)
@@ -118,3 +124,32 @@ def explain_portfolio(question: str, portfolio: Portfolio | None) -> str:
                 prefix += f" versus {s.target_percentage}% plan target ({s.difference_pp:+.2f} percentage points)"
         prefix += ". "
     return prefix + "These are recorded holdings and reference values, not execution quotes or instructions to trade."
+
+
+def explain_largest_target_gaps(direction: str, portfolio: Portfolio) -> str:
+    """Rank supplied Decimal gaps; do not calculate or invent product targets."""
+    if not portfolio.complete:
+        return "Target-gap comparisons are unavailable until every recorded holding has a usable value. Missing value is not zero; I won’t rank only the known holdings."
+    eligible = [s for s in portfolio.sleeves if s.current_percentage is not None and s.target_percentage is not None and s.difference_pp is not None]
+    if not eligible:
+        return "A current allocation comparison is unavailable until recorded holdings have a positive total value and saved asset-class targets. I won’t substitute plan targets for holdings or invent individual-investment targets."
+    summaries, facts = [], []
+    for side in ("above", "below"):
+        if direction not in ("both", side):
+            continue
+        candidates = [s for s in eligible if (s.difference_pp > 0 if side == "above" else s.difference_pp < 0)]
+        if not candidates:
+            summaries.append(f"No asset class is {side} its target.")
+            continue
+        extreme = (max if side == "above" else min)(s.difference_pp for s in candidates)
+        tied = [s for s in candidates if s.difference_pp == extreme]
+        labels = " and ".join(LABELS[s.sleeve.value] for s in tied)
+        tie = " (tied)" if len(tied) > 1 else ""
+        summaries.append(f"Most {side} target: {labels}{tie}, {abs(extreme):.2f} percentage points {side}.")
+        for s in tied:
+            facts.append(f"{LABELS[s.sleeve.value]}: {s.current_percentage:.2f}% current allocation versus {s.target_percentage}% plan target.")
+    lead = " ".join(summaries) + " These are asset-class targets, not individual-investment targets."
+    detail = " ".join(facts)
+    if portfolio.stale_count:
+        detail += f" {portfolio.stale_count} holding(s) use clearly dated cached reference prices."
+    return lead + "\n\n" + detail + " Based on recorded holdings and reference values, not execution quotes or instructions to trade."

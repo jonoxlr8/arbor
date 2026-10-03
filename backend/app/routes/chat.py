@@ -11,6 +11,7 @@ from app.services.arbor.education import explain_education
 from app.services.arbor.instrument_education import instrument_question, explain_instruments
 
 from app.services.arbor.question_matching import match_question
+from app.services.arbor.allocation_questions import allocation_gap_request
 from app.services.arbor.answer_presentation import present_answer,next_action_destination
 from app.services.arbor.v2_explanations import DECISION
 
@@ -169,6 +170,14 @@ def chat(request: ChatRequest, user_id: str = Depends(get_current_user_id), auth
             raise HTTPException(503, "Your saved plan could not be loaded for this explanation. Please retry.") from None
     elif plan.get("strategy_engine_version") not in (None, "1.0"):
         raise HTTPException(409, "This plan version is not supported by Ask Arbor yet.")
+    elif question.casefold().strip(" ?.!") == "where can i invest":
+        result = {"reply": ("Your older Arbor plan does not store a verified provider choice. I won’t infer one from its target investments. "
+                  "Arbor supports a curated set of products through GFunds, Gotrade and DragonFi, and Bitcoin paths through GCrypto, Coins.ph or PDAX. "
+                  "These are supported options, not providers selected for you. Review the supported options in Portfolio and confirm current eligibility, fees and terms with the provider. Arbor does not place trades."),
+                  "category": "investment", "intent": "implementation"}
+    elif allocation_gap_request(question):
+        result = {"reply": "A current target-gap comparison is unavailable for this older plan. Historical plan targets are not actual holdings, and I won’t infer individual-investment targets or rank holdings from them. Review your saved plan and recorded investments in Portfolio.",
+                  "category": "investment", "intent": "actual_holdings"}
     elif classify_v2_question(question)[1] == "plus":
         result = {"reply": subscription_explanation(entitlements), "category": "product_support", "intent": "plus"}
     else:

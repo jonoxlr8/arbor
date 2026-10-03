@@ -6,6 +6,7 @@ not guessed. The original classifier retains its advice and entitlement checks.
 from dataclasses import dataclass
 import re
 import unicodedata
+from .allocation_questions import allocation_gap_request, GAP_QUESTIONS
 
 CLARIFICATION = ("Do you mean your recorded portfolio value, recorded cost or gain/loss, "
                  "or progress toward your goal? Ask about one of these so I can use the right records. "
@@ -19,11 +20,16 @@ class QuestionMatch:
 
 # Anchored meanings; a stray keyword never selects a personal-data answer.
 PARAPHRASES = (
+    (r"(?:where (?:can|do) i (?:invest|buy investments)|where are my (?:chosen|saved) (?:investments|providers))", "Where can I invest?"),
+    (r"(?:saan (?:ako|ko) (?:pwedeng |puwedeng |pwede |puwede )?mag[ -]?(?:invest|i[ -]?invest)|saan (?:ako|ko) (?:pwedeng |puwedeng |pwede |puwede )?mamuhunan|(?:ano|anong) (?:ang |yung )?(?:pinili kong investments|saved investment choices ko|providers sa chosen plan ko))", "Where can I invest?"),
+    (r"(?:ano|anong) (?:ang |yung )?(?:allocation|pagkahati) (?:ng |sa )?portfolio ko (?:kumpara sa|versus) (?:chosen plan ko|plan ko|targets ko)", "How does my portfolio compare with my plan?"),
+    (r"(?:what is|show me) (?:my )?(?:chosen investment plan|saved investment plan)", "Explain my investment plan"),
+    (r"(?:how much is|what is) (?:my )?(?:monthly budget|saved monthly budget)", "What is my saved monthly contribution assumption?"),
     (r"(?:magkano|how much)(?: na| na ba| ba)? (?:ang |yung |ung )?(?:value|halaga|worth|total value) (?:ng |of )?(?:portfolio ko|my portfolio)", "What is my portfolio worth?"),
     (r"(?:magkano|ano)(?: na| na ba| ba)? (?:ang |yung |ung )?portfolio ko(?: ngayon| today| now)?", "What is my portfolio worth?"),
     (r"(?:show|tell)(?: me)? (?:the )?(?:current|recorded|total) (?:value|worth) (?:of )?my portfolio", "What is my portfolio worth?"),
     (r"how much is my portfolio worth(?: now| today)?", "What is my portfolio worth?"),
-    (r"(?:paki ?explain|ipaliwanag|explain|ano) (?:ang |yung |ung )?(?:arbor )?(?:plan ko|investment plan ko|my saved plan|my chosen plan)", "Explain my investment plan"),
+    (r"(?:paki ?explain|ipaliwanag|explain|ano) (?:ang |yung |ung )?(?:arbor )?(?:plan ko|plano ko|investment plan ko|my saved plan|my chosen plan)", "Explain my investment plan"),
     (r"(?:aligned ba|tugma ba|malapit ba) (?:ang |yung |ung )?portfolio ko (?:sa |with )?(?:plan ko|targets ko|chosen plan ko)", "How does my portfolio compare with my plan?"),
     (r"(?:how far|gaano kalayo|malapit na ba) (?:na )?(?:ako |am i )?(?:sa |from |to )?(?:goal ko|my goal)", "How far am I from my goal?"),
     (r"(?:ano|kamusta|kumusta) (?:na )?(?:ang |yung )?(?:goal progress ko|progress ko sa goal)", "What is my goal progress?"),
@@ -65,6 +71,11 @@ def match_question(question: str) -> QuestionMatch:
     # Native-language decision requests must not fall through to named-product facts.
     if re.search(r"\b(?:bilhin|bumili|ibenta|magbenta|irekomenda|rekomendasyon)\b|\b(?:dapat|pwede ba).*\b(?:mag invest|mag-invest|maginvest|mag hold|mag-hold)\b|(?:pinaka|mas).*(?:best|okay|maganda).*(?:provider|broker|para sa akin|para sakin)|\b(?:pinakamaganda(?:ng)?|pinaka magandang|alin.*(?:pipiliin|bibilhin)|sulit ba)\b", q):
         return QuestionMatch(q, advice=True)
+    gap = allocation_gap_request(q)
+    if gap:
+        return QuestionMatch(GAP_QUESTIONS[gap])
+    if re.fullmatch(r"(?:which|what|aling|anong) (?:investments?|holdings?|asset classes|sleeves?)(?: in my portfolio| sa portfolio ko)? (?:is|are|ang) (?:most |pinaka[ -]?)?(?:overweight|underweight|above target|below target)(?: (?:and|at) (?:most |pinaka[ -]?)?(?:overweight|underweight|above target|below target))?", q):
+        return QuestionMatch(q, "Do you mean the asset classes above or below your chosen plan targets? Arbor can compare recorded asset-class allocations with those targets; it does not assign a target to each investment.")
     rewritten = _rewrite(q)
     if rewritten:
         return QuestionMatch(rewritten)
