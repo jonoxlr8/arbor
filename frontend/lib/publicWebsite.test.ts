@@ -41,12 +41,17 @@ test("beta presentation has no active-looking pricing or invented social proof",
 });
 
 test("V3 demo images are local and explicitly synthetic", () => {
-  for (const name of ["home-desktop", "home-mobile", "portfolio-history", "portfolio-mobile", "ways-detail", "monthly-desktop", "monthly-mobile"]) {
-    assert.ok(statSync(`public/product/v3-demo/${name}.png`).size < 250_000);
-    assert.ok(html.includes(name));
+  for (const name of ["home-desktop", "home-mobile", "portfolio-desktop", "portfolio-mobile", "ways-desktop", "monthly-desktop", "monthly-mobile", "review-mobile", "alignment-desktop", "ask-desktop", "ask-mobile"]) {
+    for (const theme of ["light", "dark"]) {
+      assert.ok(statSync(`public/product/website-sync-oct3/${name}-${theme}.png`).size < 250_000);
+      assert.ok(html.includes(`${name}-${theme}.png`));
+    }
   }
   assert.match(html, /Illustrative demo—not actual investment performance/);
-  assert.match(html, /Illustrative lesson preview/);
+  assert.match(html, /Actual app capture with synthetic records/);
+  assert.match(html, /help Filipinos invest simply and for the long term/);
+  assert.match(html, /Monthly Review/);
+  assert.match(html, /plan valid at each date/);
   assert.doesNotMatch(html, /@example\.com|sb_secret_|service_role|Codex/i);
 });
 

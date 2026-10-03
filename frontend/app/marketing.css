@@ -1,8 +1,8 @@
 /* Website presentation is scoped to .marketing-site. Existing auth styles are preserved. */
 .marketing-site, .public-auth {
-  --m-ink: light-dark(#14233b, #f2f2f2); --m-muted: light-dark(#53647c, #b8b8b8);
-  --m-bg: light-dark(#f7f9fc, #000000); --m-surface: light-dark(#fff, #141414);
-  --m-line: light-dark(#dbe3ed, #383838); --m-green: light-dark(#0e6546, #86dfb3);
+  --m-ink: light-dark(#10213b, #f2f2f2); --m-muted: light-dark(#526782, #b8b8b8);
+  --m-bg: light-dark(#f3f7fb, #000000); --m-surface: light-dark(#fff, #141414);
+  --m-line: light-dark(#e2eaf0, #383838); --m-green: light-dark(#087c52, #86dfb3);
   color: var(--m-ink); background: var(--m-bg);
 }
 .marketing-site { font-size:16px; line-height:1.65; overflow:clip; }
@@ -262,3 +262,21 @@
 .m-information footer a { min-height:44px; display:inline-flex; align-items:center; }
 
 .m-start-arrow{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:color-mix(in srgb,currentColor 12%,transparent);}.m-start-arrow .action-arrow{width:19px;height:19px;color:inherit;}
+
+/* Current native product captures follow the resolved Appearance setting. */
+.m-product-capture {display:block;}
+.marketing-site .m-capture-dark {display:none;}
+:root[data-theme="dark"] .marketing-site .m-capture-light {display:none;}
+:root[data-theme="dark"] .marketing-site .m-capture-dark {display:block;}
+@media (prefers-color-scheme:dark) {
+  :root:not([data-theme="light"]) .marketing-site .m-capture-light {display:none;}
+  :root:not([data-theme="light"]) .marketing-site .m-capture-dark {display:block;}
+}
+.m-recorded-previews {grid-column:1 / -1;display:grid;grid-template-columns: minmax(0,352px) minmax(0,1fr);gap:28px;align-items:start;margin-top:32px;}
+.m-recorded-previews figure {background:var(--m-surface);border:1px solid var(--m-line);border-radius:14px;overflow:hidden;}
+.m-recorded-previews figcaption {padding:12px 16px;}
+.m-learning-panel figure,.m-learning-panel {margin:0;}
+@media(max-width:768px){.m-recorded-previews{grid-template-columns:1fr;gap:20px;}}
+
+.m-ask-mobile {display:none;}
+@media(max-width:768px){.m-ask-desktop{display:none;}.m-ask-mobile{display:block;}}

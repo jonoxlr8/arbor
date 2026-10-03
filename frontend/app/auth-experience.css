@@ -1,5 +1,5 @@
 /* One quiet setup language across signup, recovery, confirmation and account security. */
-.auth-experience,.public-auth {--surface:light-dark(#fff,#192431);--line:light-dark(#dce5ec,#344556);color:var(--foreground);background:radial-gradient(ellipse at 30% 10%,light-dark(#e4f2eb,#183c32),transparent 48%),radial-gradient(ellipse at 95% 85%,light-dark(#eceafb,#292c45),transparent 50%),light-dark(#f7f9fc,#101821);min-height:100dvh;display:flex;flex-direction:column;}
+.auth-experience,.public-auth {--surface:light-dark(#fff,#141414);--line:light-dark(#e2eaf0,#383838);color:var(--foreground);background:radial-gradient(ellipse at 30% 10%,light-dark(#e4f2eb,#13251b),transparent 48%),light-dark(#f3f7fb,#000000);min-height:100dvh;display:flex;flex-direction:column;}
 .auth-navigation {display:flex;align-items:center;justify-content:space-between;width:100%;max-width:1200px;padding:28px 32px;margin:auto;}
 .auth-navigation .arbor-logo-color svg {width:34px;height:30px;}.auth-navigation .arbor-logo-color span {font-size:18px;}
 .auth-main,.public-auth > main {width:100%;flex:1;display:grid;place-items:center;padding:42px 24px 64px;margin:0 auto;}
@@ -16,3 +16,6 @@
 .auth-content .auth-success-mark {color:light-dark(#16845b,#99d8b4);font-size:30px;margin-bottom:14px;}
 .account-password {padding:20px 0 8px;max-width:390px;text-align:left;}.account-password h3 {font-size:21px;font-weight:600;}.account-password .auth-emblem {width:58px;height:58px;margin:0 0 20px;}.account-password .auth-emblem svg {width:38px;}
 @media(max-width:480px){.auth-navigation{padding:20px;}.auth-main,.public-auth > main{padding:28px 24px 48px;}.auth-footer{padding:20px;flex-wrap:wrap;}.auth-emblem{width:72px;height:72px;border-radius:22px;}.auth-content h1{font-size:30px;}}
+/* Consent stays a compact checkbox; unavailable actions remain visibly disabled. */
+.auth-content input[type="checkbox"] {width:20px;height:20px;min-height:20px;padding:0;flex:none;box-shadow:none;accent-color:light-dark(#087c52,#86dfb3);}
+.auth-content button:not(.entry-link):disabled {background:light-dark(#e2eaf0,#262626);color:light-dark(#526782,#b8b8b8);cursor:not-allowed;}
