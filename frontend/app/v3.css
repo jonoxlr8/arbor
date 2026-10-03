@@ -684,3 +684,8 @@
 .admin-hold p {margin-top:4px;color:var(--v3-muted)}
 .admin-receipt {margin-top:18px;padding:14px;border:1px solid var(--feature-line);border-radius:10px;background:var(--feature-surface);overflow-wrap:anywhere;font-size:13px}
 .admin-receipt p {margin-top:8px}
+
+.admin-review-sections{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px;padding:4px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.admin-review-sections button{padding:10px 14px;border-radius:8px;text-align:left}
+.admin-review-sections button[aria-pressed="true"]{background:var(--feature-surface);color:var(--foreground);font-weight:650}
+.admin-access-feedback{margin-bottom:16px}
