@@ -280,3 +280,7 @@
 
 .m-ask-mobile {display:none;}
 @media(max-width:768px){.m-ask-desktop{display:none;}.m-ask-mobile{display:block;}}
+
+.m-contact-arrow {color:var(--m-green);}
+/* The final section's logo margin must not shift the button arrow. */
+.m-final .m-start-arrow .action-arrow {margin:0;display:block;}
