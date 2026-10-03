@@ -12,7 +12,7 @@ def call(authorization,name,params,model):
         return model.model_validate(result)
     except Exception as error:
         code=getattr(error,"code","")
-        if name=="arbor_admin_access_v1" and code in("42883","PGRST202"):
+        if name in ("arbor_admin_access_v1", "arbor_admin_deletion_access_v1") and code in("42883","PGRST202"):
             return AdminAccess(allowed=False) # Prepared schema not yet activated.
         messages={"PT401":(401,"Sign in again to use Owner Admin."),"PT403":(403,"Owner Admin access is unavailable for this account."),
                   "PT404":(404,"This request is no longer available."),
@@ -26,3 +26,15 @@ def access(authorization):return call(authorization,"arbor_admin_access_v1",{},A
 def listing(authorization,offset):return call(authorization,"arbor_admin_requests_v1",{"p_limit":50,"p_offset":offset},RequestPage)
 def detail(authorization,id):return call(authorization,"arbor_admin_request_v1",{"p_id":str(id)},RequestReview)
 def change(authorization,id,body):return call(authorization,"arbor_admin_request_status_v1",{"p_id":str(id),"p_status":body.status,"p_expected_revision":body.expected_revision},RequestReview)
+
+# Separate capability: the investment-request owner grant does not grant this read.
+def deletion_access(authorization):
+    return call(authorization,"arbor_admin_deletion_access_v1",{},AdminAccess)
+
+def deletions(authorization,offset):
+    from app.schemas.admin_deletion_review import DeletionPage
+    return call(authorization,"arbor_admin_deletions_v1",{"p_limit":50,"p_offset":offset},DeletionPage)
+
+def deletion_detail(authorization,id):
+    from app.schemas.admin_deletion_review import DeletionReview
+    return call(authorization,"arbor_admin_deletion_v1",{"p_request":str(id)},DeletionReview)
