@@ -22,6 +22,7 @@
 .marketing-site .m-fine,.marketing-site figcaption { font-size:12px; line-height:1.65; color:var(--m-muted); }
 .m-header { position:sticky; top:0; z-index:50; background:color-mix(in srgb,var(--m-bg) 94%,transparent); backdrop-filter:blur(18px); border-bottom:1px solid color-mix(in srgb,var(--m-line) 65%,transparent); }
 .m-nav-wrap { max-width:1440px; min-height:80px; padding:12px 48px; display:flex; justify-content:space-between; align-items:center; gap:32px; margin:auto; }
+.marketing-site .arbor-logo-color { color:light-dark(#0f5132,var(--m-green)); }
 .m-logo { flex-shrink:0; display:flex; align-items:center; }
 .m-logo svg,.m-footer .arbor-logo-color svg { width:37px; height:32px; }
 .m-logo span,.m-footer .arbor-logo-color span { font-size:20px; letter-spacing:.065em; }
