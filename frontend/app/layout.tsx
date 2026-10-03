@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  icons: { icon: { url: "/icon.svg", type: "image/svg+xml" } },
+  // File-based icons provide content-versioned URLs for browser cache refresh.
   metadataBase: new URL("https://arbor.ph"),
   title: publicMetadata.title,
   description: publicMetadata.description,

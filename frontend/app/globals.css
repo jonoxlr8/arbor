@@ -98,7 +98,7 @@ body {
 /* Hidden tooltips can retain a desktop translation after a mobile resize. */
 .recharts-tooltip-wrapper[style*="visibility: hidden"] { transform: none !important; }
 .recharts-cartesian-grid line { stroke: var(--line); }
-.arbor-logo-color { color: light-dark(#0F5132, #A7D3A0); }
+.arbor-logo-color { color: light-dark(#0F5132, #86DFB3); }
 .planning-amount { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .home-goal-meter { appearance: none; background: #ffffff33; border-radius: 999px; overflow: hidden; }
 .home-goal-meter::-webkit-meter-bar { background: transparent; border: 0; height: 100%; }
