@@ -678,3 +678,9 @@
 
 /* Dark sheets keep the same neutral black canvas behind the focused action. */
 .arbor-sheet::backdrop { background:light-dark(#0e1c3266,#00000099); }
+
+/* Canonical deletion review is read only; no destructive action styles. */
+.admin-hold {padding:12px 0;border-bottom:1px solid var(--line);font-size:13px}
+.admin-hold p {margin-top:4px;color:var(--v3-muted)}
+.admin-receipt {margin-top:18px;padding:14px;border:1px solid var(--feature-line);border-radius:10px;background:var(--feature-surface);overflow-wrap:anywhere;font-size:13px}
+.admin-receipt p {margin-top:8px}

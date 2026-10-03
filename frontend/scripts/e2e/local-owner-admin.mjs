@@ -10,6 +10,7 @@ const intercepted=async context=>{await setup(context);await context.route('**/v
  const request=route.request(),path=new URL(request.url()).pathname;
  const json=(body,status=200)=>route.fulfill({json:body,status,headers});
  if(request.method()==='OPTIONS')return route.fulfill({status:204,headers});
+ if(path==='/v2/admin/deletions/access')return json({allowed:false});
  if(path.endsWith('/access')){if(delay)await new Promise(r=>setTimeout(r,delay));return json({allowed});}
  if(!allowed)return json({detail:'denied'},403);
  if(path.endsWith('/status')){writes++;const body=request.postDataJSON();assert.deepEqual(Object.keys(body).sort(),['expected_revision','status']);if(failure){const status=failure;failure=0;return json({detail:'synthetic failure'},status);}assert.equal(body.expected_revision,row.revision);row={...row,status:body.status,revision:row.revision+1,updated_at:'2026-10-02T02:00:00Z'};return json(row);}
