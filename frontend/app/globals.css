@@ -10,13 +10,13 @@
 
 :root {
   color-scheme: light dark;
-  --background: light-dark(#F7F8F5, #090B0A);
-  --foreground: light-dark(#1F2937, #e4ede7);
-  --surface: light-dark(#fff, #121714);
-  --muted-surface: light-dark(#f1f5f9, #1b231e);
-  --line: light-dark(#e2e8f0, #2b3730);
-  --feature-surface: light-dark(#edf4ee, #142019);
-  --feature-line: light-dark(#d9e6dc, #2d4134);
+  --background: light-dark(#F7F8F5, #000000);
+  --foreground: light-dark(#1F2937, #f2f2f2);
+  --surface: light-dark(#fff, #141414);
+  --muted-surface: light-dark(#f1f5f9, #202020);
+  --line: light-dark(#e2e8f0, #383838);
+  --feature-surface: light-dark(#edf4ee, #13251b);
+  --feature-line: light-dark(#d9e6dc, #383838);
 }
 
 :root[data-theme="light"] { color-scheme: light; }
@@ -64,10 +64,10 @@ body {
 @layer utilities {
   .bg-white, .focus\:bg-white:focus { background-color: var(--surface); }
   .bg-white\/95 { background-color: color-mix(in srgb, var(--surface) 95%, transparent); }
-  .bg-slate-50, .hover\:bg-slate-50:hover { background-color: light-dark(#f8fafc, #19211c); }
+  .bg-slate-50, .hover\:bg-slate-50:hover { background-color: light-dark(#f8fafc, #202020); }
   .bg-slate-100 { background-color: var(--muted-surface); }
-  .bg-slate-200 { background-color: light-dark(#e2e8f0, #3b5043); }
-  .bg-slate-300 { background-color: light-dark(#cbd5e1, #445d4d); }
+  .bg-slate-200 { background-color: light-dark(#e2e8f0, #383838); }
+  .bg-slate-300 { background-color: light-dark(#cbd5e1, #484848); }
   .bg-emerald-50, .bg-green-50, .hover\:bg-emerald-50:hover { background-color: light-dark(#ecfdf5, #213a2b); }
   .bg-emerald-100 { background-color: light-dark(#d1fae5, #2c4936); }
   .bg-amber-50 { background-color: light-dark(#fffbeb, #3c3220); }
@@ -75,12 +75,12 @@ body {
   .bg-purple-50 { background-color: light-dark(#faf5ff, #33283e); }
   .text-slate-900, .text-slate-800 { color: var(--foreground); }
   /* SVG annotations use fill, not the HTML color property. Keep light fills unchanged. */
-  .fill-slate-900 { fill: light-dark(#0f172a, #e4ede7); }
-  .fill-slate-500 { fill: light-dark(#64748b, #a1b4aa); }
-  .text-slate-700 { color: light-dark(#334155, #d3e0d8); }
-  .text-slate-600 { color: light-dark(#475569, #bdcdc3); }
-  .text-slate-500 { color: light-dark(#64748b, #a1b4aa); }
-  .text-slate-400 { color: light-dark(#64748b, #98aba0); }
+  .fill-slate-900 { fill: light-dark(#0f172a, #f2f2f2); }
+  .fill-slate-500 { fill: light-dark(#64748b, #b8b8b8); }
+  .text-slate-700 { color: light-dark(#334155, #d8d8d8); }
+  .text-slate-600 { color: light-dark(#475569, #b8b8b8); }
+  .text-slate-500 { color: light-dark(#64748b, #b8b8b8); }
+  .text-slate-400 { color: light-dark(#64748b, #b8b8b8); }
   .text-forest, .hover\:text-forest:hover { color: light-dark(#0F5132, #afd8b9); }
   .text-emerald-600, .text-emerald-700, .text-emerald-800 { color: light-dark(#047857, #a4d9b4); }
   .text-red-600, .text-red-700, .text-red-800 { color: light-dark(#b91c1c, #ffb7bd); }
@@ -92,7 +92,7 @@ body {
 }
 
 :focus-visible { outline-color: light-dark(#0F5132, #a7d3a0); }
-.recharts-text { fill: light-dark(#64748b, #bdcdc3); }
+.recharts-text { fill: light-dark(#64748b, #b8b8b8); }
 .recharts-default-tooltip { background: var(--surface) !important; border-color: var(--line) !important; color: var(--foreground); }
 .recharts-tooltip-item { color: var(--foreground) !important; }
 /* Hidden tooltips can retain a desktop translation after a mobile resize. */

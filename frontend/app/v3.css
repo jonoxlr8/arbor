@@ -1,14 +1,14 @@
 /* Arbor V3 presentation. The existing APIs, chart-state logic and forms remain
    authoritative; these shared tokens and surfaces define the visual language. */
 .app-shell, .arbor-sheet, .onboarding-consumer, .plan-created, .auth-experience, .public-auth {
-  --background: light-dark(#f3f7fb, #0d1724);
-  --foreground: light-dark(#10213b, #eef5f5);
-  --surface: light-dark(#fff, #172535);
-  --muted-surface: light-dark(#f0f5f8, #213446);
-  --line: light-dark(#e2eaf0, #344a5c);
-  --feature-surface: light-dark(#eaf5f0, #19372f);
-  --feature-line: light-dark(#d6e9df, #355849);
-  --v3-muted: light-dark(#526782, #b4c6d4);
+  --background: light-dark(#f3f7fb, #000000);
+  --foreground: light-dark(#10213b, #f2f2f2);
+  --surface: light-dark(#fff, #141414);
+  --muted-surface: light-dark(#f0f5f8, #202020);
+  --line: light-dark(#e2eaf0, #383838);
+  --feature-surface: light-dark(#eaf5f0, #13251b);
+  --feature-line: light-dark(#d6e9df, #383838);
+  --v3-muted: light-dark(#526782, #b8b8b8);
   --v3-green: light-dark(#087c52, #86dfb3);
   --v3-green-strong: light-dark(#006747, #135d43);
   --v3-positive: light-dark(#087d48, #8ce2ab);
@@ -25,7 +25,7 @@
 .app-shell > aside > a span { font-size:17px; letter-spacing:.075em; }
 .app-shell > aside nav { margin-top:34px; display:grid; gap:4px; }
 .app-shell > aside nav a { min-height:44px; border-radius:9px; padding:10px 12px; font-size:13px; }
-.app-shell nav a[aria-current="page"] { color:light-dark(#075d40,#a9efd0); background:light-dark(#e4f3ed,#224537); }
+.app-shell nav a[aria-current="page"] { color:light-dark(#075d40,#a9efd0); background:light-dark(#e4f3ed,#13251b); }
 .app-shell nav a[aria-current="page"] svg { stroke-width:2; }
 .app-shell .account-chip { padding:8px 6px; border-top:1px solid var(--line); }
 .app-shell .account-chip > span { width:32px; height:32px; }
@@ -277,7 +277,7 @@
 .chat-answer-row { display:flex; align-items:flex-start; gap:12px; max-width:94%; }
 .chat-avatar { display:grid; place-items:center; flex:none; width:36px; height:36px; border-radius:50%; background:var(--feature-surface); border:1px solid var(--feature-line); }
 .chat-canvas .chat-reply { border:1px solid var(--line); border-radius:4px 16px 16px 16px; background:var(--muted-surface); box-shadow:none; padding:12px 15px; }
-.chat-canvas .chat-user { border-radius:16px 16px 4px 16px; background:light-dark(#e2f3ec,#1e4a38); color:light-dark(#075d40,#eef5f5); padding:12px 15px; }
+.chat-canvas .chat-user { border-radius:16px 16px 4px 16px; background:light-dark(#e2f3ec,#1e4a38); color:light-dark(#075d40,#f2f2f2); padding:12px 15px; }
 .chat-canvas .chat-user p { color:inherit; }
 .chat-canvas .chat-suggestions { gap:8px; }
 .chat-canvas .chat-suggestions button { border-radius:var(--v3-radius-small); background:var(--muted-surface); }
@@ -334,7 +334,7 @@
 .settings-list .settings-row > span:last-child { color:var(--v3-muted); }
 .settings-account-header { padding:16px; }
 .settings-list .settings-row:hover, .settings-list > details:hover { border-color:var(--feature-line); }
-.auth-experience, .public-auth { background:radial-gradient(ellipse at 15% 10%,light-dark(#e8f5ee,#18392f),transparent 52%),var(--background); }
+.auth-experience, .public-auth { background:radial-gradient(ellipse at 15% 10%,light-dark(#e8f5ee,#00000000),transparent 52%),var(--background); }
 .auth-content input { border-radius:var(--v3-radius-small); }
 .auth-content button:not(.entry-link) { border-radius:var(--v3-radius-small); }
 .settings-account-header, .settings-list .settings-row, .settings-list > details,
@@ -646,7 +646,7 @@
 @media(min-width:360px) and (max-width:999px){.home-dashboard .home-plan .allocation-ring{width:124px;height:124px;padding:13px}.home-dashboard .home-plan .allocation-layout{gap:12px}}
 
 /* Existing dated allocation gaps, shown on one 0–100 percentage-point scale. */
-.alignment-over-time {--gap-track:#eaf0f3;--gap-fill:#6eaa92;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px 26px;color:var(--v3-muted)}
+.alignment-over-time {--gap-track:light-dark(#eaf0f3,#202020);--gap-fill:light-dark(#6eaa92,#74ae97);background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px 26px;color:var(--v3-muted)}
 .alignment-over-time h3 {font-size:23px;font-weight:650;line-height:1.25;letter-spacing:-.03em}
 .alignment-gap-subtitle {font-size:13px;margin:8px 0 24px}
 .alignment-gap-comparison {margin-bottom:20px}
@@ -664,7 +664,6 @@
 .alignment-gap-scale {display:flex;justify-content:space-between;gap:12px;font-size:10px;margin-top:9px}
 .alignment-gap-takeaway {border:1px solid var(--feature-line);background:var(--feature-surface);border-radius:10px;padding:12px 14px;color:var(--foreground);font-size:14px;font-weight:600;line-height:1.5}
 .alignment-over-time>details {margin-top:16px;border-top:1px solid var(--line)}
-@media(prefers-color-scheme:dark){.alignment-over-time{--gap-track:#263d4f;--gap-fill:#74ae97}}
 @media(max-width:700px){.alignment-over-time{padding:18px 17px}.alignment-over-time h3{font-size:20px;line-height:1.3}.alignment-gap-subtitle{font-size:12px;margin:7px 0 22px}.alignment-gap-heading>div>strong{font-size:13px}.alignment-gap-heading time{font-size:10px}.alignment-gap-number{font-size:25px}.alignment-gap-number>span{font-size:13px}.alignment-gap-track{height:13px}.alignment-gap-zero-marker{width:11px;height:11px}.alignment-gap-scale{font-size:9px}.alignment-gap-takeaway{padding:11px 12px;font-size:13px}}
 
 /* Keep the shared price disclosure aligned with Home and Portfolio content. */
@@ -676,3 +675,6 @@
 .admin-entry small{display:block;font-size:12px;font-weight:400;color:var(--v3-muted);margin-top:4px}
 .owner-admin{max-width:1100px}.owner-admin>h2{font-size:26px;font-weight:650;margin-top:8px}.admin-intro{color:var(--v3-muted);margin:8px 0 18px}.admin-card{padding:22px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}.admin-card h3{font-size:18px;font-weight:650;margin-bottom:14px}.admin-detail-layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px;margin-top:12px}.admin-card dl>div{padding:14px 0;border-bottom:1px solid var(--line)}.admin-card dt,.admin-note{font-size:12px;color:var(--v3-muted)}.admin-card dd{margin-top:6px;overflow-wrap:anywhere}.admin-note{margin-top:16px;line-height:1.6}.admin-table-head,.admin-request-row{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) 145px 95px;gap:18px;align-items:center}.admin-table-head{font-size:11px;color:var(--v3-muted);padding:10px 0}.admin-request-row{width:100%;text-align:left;min-height:70px;padding:16px 0;border-top:1px solid var(--line);font-size:13px}.admin-request-row strong,.admin-request-row span{overflow-wrap:anywhere}.admin-request-row:hover{color:var(--v3-green)}.admin-badge{font-size:11px;border:1px solid var(--line);border-radius:20px;padding:5px 9px;width:max-content}.admin-resolved{color:var(--v3-green)}.admin-statuses{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.admin-statuses button{min-height:44px;padding:9px 14px;border:1px solid var(--line);border-radius:8px}.admin-statuses button[aria-pressed=true]{background:var(--feature-surface);border-color:var(--v3-green);color:var(--v3-green);opacity:1}.admin-pagination{display:flex;justify-content:space-between}.owner-admin [role=alert]{padding:14px;border:1px solid var(--line);border-radius:10px;margin-top:14px}.owner-admin :focus-visible{outline:2px solid var(--v3-green);outline-offset:3px}
 @media(max-width:700px){.admin-detail-layout{grid-template-columns:1fr}.admin-card{padding:18px 16px}.admin-table-head{display:none}.admin-request-row{grid-template-columns:minmax(0,1fr) auto;gap:8px}.admin-request-row strong{grid-column:1/-1}.admin-request-row time{font-size:11px;color:var(--v3-muted)}.admin-request-row .admin-badge{grid-column:2;grid-row:2/4}.owner-admin>h2{font-size:23px}}
+
+/* Dark sheets keep the same neutral black canvas behind the focused action. */
+.arbor-sheet::backdrop { background:light-dark(#0e1c3266,#00000099); }
