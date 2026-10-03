@@ -15,7 +15,7 @@
 .chat-canvas .chat-intro-bubble {background:var(--muted-surface);border:1px solid var(--line);border-radius:20px;display:flex;gap:12px;align-items:center;padding:16px;}
 .chat-canvas .chat-intro-bubble p {font-size:14px;line-height:1.55;}
 .chat-canvas .chat-suggestions {display:flex;flex-wrap:wrap;gap:8px;max-width:640px;margin-bottom:18px;}
-.chat-canvas .chat-suggestions button {background:var(--surface);border:1px solid var(--line);padding:10px 14px;border-radius:999px;min-height:42px;font-size:13px;}
+.chat-canvas .chat-suggestions button {background:var(--surface);border:1px solid var(--line);padding:10px 14px;border-radius:999px;min-height:44px;font-size:13px;}
 .chat-canvas .chat-composer {z-index:2;bottom:16px;margin-top:auto;background:var(--surface);border:1px solid var(--line);border-radius:24px;box-shadow:0 8px 25px #10281913;}
 .chat-canvas .chat-composer textarea {background:transparent;color:var(--foreground);field-sizing:content;min-height:46px;max-height:150px;overflow-y:auto;}
 .chat-canvas .chat-composer .entry-primary {background:light-dark(#00875c,#16845c);color:white;}

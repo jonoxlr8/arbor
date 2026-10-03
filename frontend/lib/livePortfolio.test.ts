@@ -61,9 +61,12 @@ test("one genuine observation stays inspectable while its value holds visually",
 });
 test("a first investment at unchanged value has zero gain; empty portfolios show none",()=>{
   const first={...portfolioFixture,known_value_php:"10000.00",total_value_php:"10000.00",recorded_cost_php:"10000.00",recorded_gain_php:"0.00",recorded_gain_percentage:"0"};
-  assert.match(html(createElement(PortfolioSummary,{portfolio:first})),/Period gain\/loss unavailable/);
+  const markup=html(createElement(PortfolioSummary,{portfolio:first}));
+  assert.match(markup,/Total recorded gain\/loss/);
+  assert.match(markup,/data-gain="zero"/);
+  assert.match(markup,/>₱0\.00</);
   const empty={...first,holdings:[]};
-  assert.doesNotMatch(html(createElement(PortfolioSummary,{portfolio:empty})),/Gain\/loss against recorded cost/);
+  assert.doesNotMatch(html(createElement(PortfolioSummary,{portfolio:empty})),/class="chart-gain"|chart-gain-fallback-label/);
 });
 for (const [status, code] of [[401,"portfolio_auth"],[403,"portfolio_entitlement"],[404,"portfolio_unavailable"],[500,"portfolio_server"],[503,"portfolio_server"]] as const) test(`read classifies ${status} without exposing body`, async () => {
   const api = createPortfolioApi(async()=>"fixture",async()=>Response.json({detail:"private database URL and payload"},{status}));

@@ -203,6 +203,7 @@ export function DataAttribution({ sources }: { sources: string[] }) {
 export function PortfolioSummary({ portfolio: p }: { portfolio: LivePortfolioData }) {
   return <section><PortfolioHistoryChart history={p.history} knownValue={p.known_value_php} currentUsdValue={p.total_value_usd}
     currentDisplayFx={p.display_fx}
+    currentValuedAt={p.valued_at} currentStaleCount={p.stale_count}
     currentRecordedCostPhp={p.recorded_cost_php} currentGainPhp={p.recorded_gain_php} currentGainPercentage={p.recorded_gain_percentage}
     complete={p.complete} holdingsCount={p.holdings.length}/>
     {p.unavailable_count > 0 && <p role="status" className="mt-2 text-sm text-slate-600">Plus {p.unavailable_count} unavailable holding(s). This is not the complete portfolio value.</p>}

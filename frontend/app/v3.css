@@ -142,12 +142,13 @@
 .home-dashboard .home-portfolio .compact-chart .chart-plot:has(.chart-single-observation) { height:180px; background:transparent; }
 .portfolio-value .chart-history-details { margin-top:2px; }
 .app-shell .portfolio-value .chart-history-details > summary { min-height:32px; }
-.portfolio-chart { min-width:0; --chart-positive:var(--v3-positive); --chart-negative:var(--v3-negative); --chart-zero:var(--v3-muted); --chart-unknown:var(--v3-muted); }
+.portfolio-chart { min-width:0; container-type:inline-size; --chart-positive:var(--v3-positive); --chart-negative:var(--v3-negative); --chart-zero:var(--v3-muted); --chart-unknown:var(--v3-muted); }
 .chart-known-label { display:block; color:var(--v3-muted); font-size:11px; }
 .chart-value-line { display:flex; align-items:baseline; gap:8px; min-width:0; }
 .portfolio-chart .chart-value { min-width:0; color:var(--foreground); line-height:1.1; letter-spacing:-.055em; overflow-wrap:anywhere; }
 .portfolio-value .portfolio-chart .chart-value { font-size:clamp(38px,4.6vw,58px); }
-.app-shell .portfolio-chart .chart-currency { flex:none; border:0; padding:3px 5px; background:transparent; color:var(--v3-muted); font-size:13px; font-weight:650; white-space:nowrap; }
+.app-shell .portfolio-chart .chart-currency { flex:none; align-self:center; min-height:44px; min-width:66px; border:0; border-radius:8px; padding:6px 8px; background:transparent; color:var(--v3-muted); font-size:14px; font-weight:650; white-space:nowrap; }
+.app-shell .portfolio-chart .chart-currency:focus-visible { outline:2px solid var(--v3-green); outline-offset:2px; }
 .chart-currency span { margin-left:2px; font-size:18px; }
 .app-shell .portfolio-chart .chart-currency:disabled { opacity:.45; cursor:not-allowed; }
 .chart-gain { display:flex; align-items:baseline; gap:8px; margin-top:6px; color:var(--v3-muted); font-size:18px; font-weight:600; }
@@ -155,6 +156,8 @@
 .chart-gain[data-gain="negative"] { color:var(--v3-negative); }
 .chart-gain[data-gain="zero"] { color:var(--foreground); }
 .chart-gain > strong { padding:2px 7px; border-radius:6px; background:color-mix(in srgb,currentColor 11%,transparent); font-size:15px; }
+.chart-gain:has(.chart-gain-basis-label) { flex-wrap:wrap; }
+.chart-gain .chart-gain-basis-label { order:2; flex-basis:100%; color:var(--v3-muted); font-size:11px; font-weight:500; }
 .portfolio-chart[data-currency="USD"] .chart-gain { flex-wrap:wrap; }
 .portfolio-chart[data-currency="USD"] .chart-gain > span:not(.sr-only):not(.chart-gain-currency),
 .portfolio-chart[data-currency="USD"] .chart-gain > strong { white-space:nowrap; flex-shrink:0; }
@@ -164,8 +167,12 @@
 .compact-chart .chart-gain > strong { font-size:12px; }
 .compact-chart .chart-selected-date { font-size:11px; }
 .portfolio-chart .chart-status,.portfolio-chart .chart-usd-limitation { margin-top:6px; color:var(--v3-muted); font-size:11px; line-height:1.4; }
-.portfolio-chart .chart-range { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); width:100%; margin:8px auto 0; padding:0; gap:2px; background:transparent; }
-.app-shell .portfolio-chart .chart-range button { justify-self:center; width:auto; min-width:36px; min-height:36px; padding:4px 10px; border-radius:24px; color:var(--v3-muted); font-size:12px; }
+.portfolio-chart .chart-range { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); width:100%; margin:8px auto 0; padding:0; gap:4px; background:transparent; }
+.app-shell .portfolio-chart .chart-range button { justify-self:center; width:auto; min-width:44px; min-height:44px; padding:6px 10px; border-radius:24px; color:var(--v3-muted); font-size:13px; }
+.app-shell .portfolio-chart .chart-range button:focus-visible { outline:2px solid var(--v3-green); outline-offset:2px; }
+@container (max-width:331px) {
+  .portfolio-chart .chart-range { grid-template-columns:repeat(4,minmax(0,1fr)); }
+}
 .app-shell .portfolio-chart .chart-range button[aria-pressed="true"] { background:var(--muted-surface); color:var(--foreground); box-shadow:none; font-weight:700; }
 .portfolio-chart .chart-plot { position:relative; touch-action:pan-y; cursor:crosshair; color:var(--chart-positive); background:none; }
 .portfolio-chart[data-gain="negative"] .chart-plot { color:var(--chart-negative); }
@@ -442,7 +449,7 @@
   .home-dashboard .home-projection .projection-facts { grid-template-columns:1fr; }
   .portfolio-value .value-number { font-size:31px; }
   .portfolio-value .portfolio-chart .chart-value, .home-dashboard .home-portfolio .chart-value { font-size:28px; }
-  .app-shell .portfolio-chart .chart-currency { font-size:11px; }
+  .app-shell .portfolio-chart .chart-currency { font-size:13px; }
 }
 @media (prefers-reduced-motion:reduce) {
   .chat-thread * { scroll-behavior:auto; }

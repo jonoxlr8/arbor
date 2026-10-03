@@ -89,6 +89,7 @@ function HomePortfolio({ userId, onLoaded }: { userId: string; onLoaded: (portfo
     {portfolio.holdings.length ? <>
       <PortfolioHistoryChart history={portfolio.history} knownValue={portfolio.known_value_php} currentUsdValue={portfolio.total_value_usd}
         currentDisplayFx={portfolio.display_fx}
+        currentValuedAt={portfolio.valued_at} currentStaleCount={portfolio.stale_count}
         currentRecordedCostPhp={portfolio.recorded_cost_php} currentGainPhp={portfolio.recorded_gain_php} currentGainPercentage={portfolio.recorded_gain_percentage}
         complete={portfolio.complete} holdingsCount={portfolio.holdings.length} compact/>
       {!portfolio.complete && <a className="entry-link" href="#portfolio">Some values are unavailable · Review →</a>}

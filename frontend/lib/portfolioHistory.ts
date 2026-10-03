@@ -28,7 +28,7 @@ export const historyValue = (point: PortfolioHistory, currency: ChartCurrency) =
 export function supportedHistoryPoints(points: PortfolioHistory[], currency: ChartCurrency) {
   return currency === "PHP" ? points : points.filter(point => point.value_usd != null);
 }
-// Display coordinates only. Boundary holds are never history, hover targets, or gain inputs.
+// Display coordinates only. Boundary holds are never history or gain inputs.
 export function historyChartSeries(history: PortfolioHistory[], days: number, currency: ChartCurrency,
   today = new Date().toISOString().slice(0, 10), currentValue?: string | null) {
   const supported = supportedHistoryPoints(historyRange(history, 0, today), currency);
@@ -43,6 +43,23 @@ export function historyChartSeries(history: PortfolioHistory[], days: number, cu
   if (coordinates.length && coordinates[coordinates.length - 1].day < today)
     coordinates.push({ day: today, value: currentValue ?? coordinates[coordinates.length - 1].value });
   return coordinates.map(point => ({ timestamp: Date.parse(`${point.day}T00:00:00Z`), plotValue: Number(point.value) }));
+}
+export type ChartInspection = { kind: "history"; day: string; value: string; point: PortfolioHistory }
+  | { kind: "current"; day: string; value: string };
+// An explicitly supplied current endpoint is selectable, but never a snapshot.
+// Today's supported record already owns its coordinate: do not duplicate it.
+export function chartInspectionPoints(history: PortfolioHistory[], days: number, currency: ChartCurrency,
+  today = new Date().toISOString().slice(0, 10), currentValue?: string | null): ChartInspection[] {
+  const points: ChartInspection[] = supportedHistoryPoints(historyRange(history, days, today), currency)
+    .map(point => ({ kind: "history", day: point.day, value: historyValue(point, currency)!, point }));
+  const plotted = historyChartSeries(history, days, currency, today, currentValue);
+  const end = plotted.at(-1);
+  if (currentValue != null && /^\d+(?:\.\d+)?$/.test(currentValue) && Number.isFinite(Number(currentValue)) &&
+    end?.timestamp === Date.parse(`${today}T00:00:00Z`) && end.plotValue === Number(currentValue) &&
+    !points.some(point => point.day === today)) {
+    points.push({ kind: "current", day: today, value: currentValue });
+  }
+  return points;
 }
 export function historicalRecordedGain(point: PortfolioHistory): string | null {
   return (point.origin === "reconstructed" || point.cost_context_captured) && point.cost_complete &&
@@ -74,6 +91,14 @@ export function portfolioPeriodGain(input: { history: PortfolioHistory[]; days: 
     .findLast(point => point.day < boundary && historicalRecordedGain(point) !== null);
   const baselineGain = baseline ? historicalRecordedGain(baseline) : null;
   return baselineGain === null ? null : subtractDecimal(endGain, baselineGain);
+}
+export function portfolioGainForDisplay(input: Parameters<typeof portfolioPeriodGain>[0]) {
+  const period = portfolioPeriodGain(input);
+  if (period !== null) return { amount: period, fallback: false };
+  // Same canonical endpoint/cost context as All; never invent an inception date,
+  // zero baseline, or today's gain beside an older selected value.
+  const total = portfolioPeriodGain({ ...input, days: 0 });
+  return { amount: total, fallback: total !== null };
 }
 function valueChange(firstPoint: PortfolioHistory, lastPoint: PortfolioHistory, currency: ChartCurrency) {
   const firstValue = historyValue(firstPoint, currency), lastValue = historyValue(lastPoint, currency);
