@@ -25,7 +25,7 @@ test("Plus gate labels planning without rendering Plus content to Free", () => {
 test("Monthly pending is outside the Plus gate and absent from Home", () => {
   const shell = source("components/PlanV2View.tsx");
   const home = source("components/app/V2Home.tsx");
-  assert.match(shell, /<MonthlyPendingRecording userId=\{userId\}\/><PlusFeature feature="monthly_contribution_planner"/);
+  assert.match(shell, /<MonthlyPendingRecording userId=\{userId\}\/>\}\s*<PlusFeature feature="monthly_contribution_planner"/);
   assert.doesNotMatch(home,/PendingRecordingResume|pendingToRecord/);
   assert.match(source("components/contributions/MonthlyInvesting.tsx"),/className="eyebrow plus-eyebrow">Arbor Plus/);
   assert.match(source("components/contributions/PendingRecordingResume.tsx"),/Finish recording your investment/);

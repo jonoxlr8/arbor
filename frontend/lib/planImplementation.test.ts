@@ -133,12 +133,12 @@ for(const plus of [false,true])for(const available of [false,true])test(`Portfol
   else {assert.match(html,/Ways to invest/);assert.match(html,/Open GFunds/);assert.doesNotMatch(html,/\+ Add Investment|Loading your portfolio/);}
   if(!available)assert.match(html,/tracking is temporarily unavailable/i);
 });
-test("feature-OFF Portfolio keeps education primary; Home has one Portfolio planning shortcut", () => {
+test("feature-OFF Portfolio keeps education primary; Home has one shared planning Sheet shortcut", () => {
   const html=withAccess(true,false,createElement(V2Destination,{value:plan(),userId:"test",active:"portfolio"}));
   assert.match(html,/Ways to invest/);
   assert.doesNotMatch(html,/contribution-secondary|Contribution amount \(PHP\)|Review this month/);
   const home=withAccess(true,false,createElement(V2Home,{value:plan(),userId:"test"}));
-  assert.match(home,/href="#portfolio\/contribution"/);
+  assert.match(home,/href="#home\/monthly"/);
 });
 test("explicit final allocation drives Ways to invest without changing the core",()=>{
   const value=plan();if(value.plan.path!=="long_term")throw Error("Expected long term");

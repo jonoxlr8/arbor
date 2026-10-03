@@ -45,7 +45,7 @@ export default function V2Home({ value, userId, section = "", onPlanChange }: { 
       <HomePlanContext value={value}/>
     </div>
     </div>
-      <a className="home-next-investment" href="#portfolio/contribution"><span className="eyebrow plus-eyebrow">Arbor Plus</span><div><strong>Plan your next investment</strong><ActionArrow/></div><p>{plusMonthly?"Choose an amount and see your investment breakdown.":"Explore a breakdown for the investments and targets you choose."}</p></a>
+      <a className="home-next-investment" href="#home/monthly" aria-haspopup="dialog"><span className="eyebrow plus-eyebrow">Arbor Plus</span><div><strong>Plan your next investment</strong><ActionArrow/></div><p>{plusMonthly?"Choose an amount and see your investment breakdown.":"Explore a breakdown for the investments and targets you choose."}</p></a>
     <div className="home-bottom"><HomeActivity error={entriesError} entries={entries}/></div>
     </div>
     {portfolio && <div className="home-data-attribution"><PriceDataDetails sources={portfolio.data_sources ?? []}/></div>}

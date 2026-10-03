@@ -108,9 +108,9 @@ test("Portfolio hierarchy places ways before Plus insights and activity before f
 });
 test("sheet URLs preserve Back navigation and a direct-link close fallback", () => {
   const navigation=readFileSync("lib/appNavigation.ts","utf8");
-  assert.match(navigation,/sheetOpeningHash/);
+  assert.match(navigation,/window\.history\.state\?\.arborSheet/);
   assert.match(navigation,/window\.history\.back\(\)/);
-  assert.match(navigation,/window\.history\.replaceState/);
+  assert.match(navigation,/sheetFallbackHash\(target\)/);
 });
 test("dated investment action is present without a client feature override", () => {
   const source=readFileSync("components/portfolio/LivePortfolio.tsx","utf8");

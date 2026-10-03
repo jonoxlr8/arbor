@@ -18,6 +18,7 @@ import ChatSection from "./dashboard/ChatSection";
 import { AccountAccessProvider, AccountPlans, PlusFeature, AccessLoading, useAccountAccess, accountPlanLabel } from "./AccountAccess";
 import PlanImplementation, { TrackingAvailability } from "./portfolio/PlanImplementation";
 import { planTargets } from "@/lib/planImplementation";
+import { GoalSheet } from "./app/HomeGoal";
 import V2Home from "./app/V2Home";
 import Allocation from "./portfolio/Allocation";
 import { formatContributionMoney } from "@/lib/contributions";
@@ -40,8 +41,14 @@ function PlanV2Shell({ value, userId, onSignOut, signingOut, logoutError, onPlan
   const [choosing, setChoosing] = useState(false);
   const [editMode,setEditMode]=useState<"profile"|"plan">("profile");
   const [previousDestination, setPreviousDestination] = useState(active);
+  const breakdownOpen = !choosing && ((active === "home" && section === "monthly") || (active === "portfolio" && section === "contribution"));
+  const whatIfOpen = !choosing && active === "portfolio" && section === "what-if";
+  const [breakdownVisited,setBreakdownVisited] = useState(false);
+  const [whatIfVisited,setWhatIfVisited] = useState(false);
+  if (breakdownOpen && !breakdownVisited) setBreakdownVisited(true);
+  if (whatIfOpen && !whatIfVisited) setWhatIfVisited(true);
   useEffect(() => {
-    if (!section || (active === "home" && section === "plan")) return;
+    if (!section || ["plan","monthly","contribution","what-if"].includes(section) || (active === "settings" && section === "goal")) return;
     const target = document.getElementById(`section-${section}`);
     target?.scrollIntoView({ block: "start" });
     if (active !== "home" || (section !== "goal" && section !== "chosen-plan") || !target) return;
@@ -64,23 +71,29 @@ function PlanV2Shell({ value, userId, onSignOut, signingOut, logoutError, onPlan
     setPreviousDestination(active);
     setChoosing(false);
   }
-  return <AppShell active={active} pageTitle={active === "settings" && section === "admin" ? "Admin" : (active === "home" && section === "monthly") || (active === "portfolio" && section === "contribution") ? "Investment breakdown" : active === "portfolio" && section === "what-if" ? "What-if" : undefined} name={value.profile.full_name} onSignOut={onSignOut} signingOut={signingOut} logoutError={logoutError}>
+  return <AppShell active={active} pageTitle={active === "settings" && section === "admin" ? "Admin" : undefined} name={value.profile.full_name} onSignOut={onSignOut} signingOut={signingOut} logoutError={logoutError}>
     {choosing && userId && onPlanChange ? <PlusFeature feature="profile_rebuild" title="Review and rebuild your investment profile" onBack={() => setChoosing(false)}><InvestmentProfileEditor value={value} userId={userId} initialMode={editMode} onCancel={() => setChoosing(false)} onSaved={plan => { onPlanChange(plan); setChoosing(false); }} /></PlusFeature> : <>
-      {((active === "home" && section === "monthly") || (active === "portfolio" && section === "contribution")) && userId && onPlanChange ? <div className="monthly-page"><MonthlyPendingRecording userId={userId}/><PlusFeature feature="monthly_contribution_planner" title="Investment breakdown"><MonthlyInvesting value={value} userId={userId} onPlanChange={onPlanChange} backHref={active==="home"?"#home":"#portfolio"}/></PlusFeature></div> : active === "home" && <V2Home value={value} userId={userId} section={section} onPlanChange={onPlanChange}/>}
+      {active === "home" && <V2Home value={value} userId={userId} section={section} onPlanChange={onPlanChange}/>}
       {active === "settings" && section !== "admin" && userId && onPlanChange && <section id="section-investment" className="settings-list" aria-label="Account and plan settings">
         <p className="settings-group-label">Account</p>
         <div className="settings-account-header"><span aria-hidden="true">{value.profile.full_name.trim().slice(0,1)}</span><div><strong>{value.profile.full_name}</strong><small>Your Arbor account</small></div></div>
         <details><summary><SettingsIcon kind="account"/><span>Account details</span></summary><dl className="mt-4 space-y-3 text-sm text-slate-700"><div><dt>Name</dt><dd className="font-semibold">{value.profile.full_name}</dd></div><div><dt>Country</dt><dd className="font-semibold">{value.profile.country}</dd></div><div><dt>Planning currency</dt><dd className="font-semibold">{value.profile.currency}</dd></div></dl></details>
         <p className="settings-group-label">Plan</p>
-        <a className="settings-row" href="#home/chosen-plan"><SettingsIcon kind="plan"/><span>Your plan<small className="block mt-1">{value.plan.path === "short_term" ? "Short-term path" : value.plan.selected_strategy}</small></span><span aria-hidden="true">›</span></a>
-        <a className="settings-row" href="#home/goal"><SettingsIcon kind="plan"/><span>Your goal<small className="block mt-1">View or edit your primary goal</small></span><span aria-hidden="true">›</span></a>
+        <a className="settings-row" href="#settings/plan" aria-haspopup="dialog"><SettingsIcon kind="plan"/><span>Your plan<small className="block mt-1">{value.plan.path === "short_term" ? "Short-term path" : value.plan.selected_strategy}</small></span><span aria-hidden="true">›</span></a>
+        <a className="settings-row" href="#settings/goal" aria-haspopup="dialog"><SettingsIcon kind="plan"/><span>Your goal<small className="block mt-1">View or edit your primary goal</small></span><span aria-hidden="true">›</span></a>
         <button className="settings-row" aria-label="Edit investment profile" onClick={() => {setEditMode("profile");setChoosing(true);}}><SettingsIcon kind="plan"/><span>Investment profile<small className="block mt-1">Review or change your answers · Arbor Plus</small></span><span aria-hidden="true">›</span></button>
         <button className="settings-row" onClick={()=>{setEditMode("plan");setChoosing(true);}}><SettingsIcon kind="plan"/><span>Change plan<small className="block mt-1">Changes targets, not investments · Arbor Plus</small></span><span aria-hidden="true">›</span></button>
         <a className="settings-row" href="#portfolio/ways"><SettingsIcon kind="plan"/><span>Your investment choices<small className="block mt-1">Ways to invest your plan</small></span><span aria-hidden="true">›</span></a>
       </section>}
-      {active !== "home" && active !== "ask" && !(active==="portfolio"&&section==="contribution") && <V2Destination key={`${active}:${JSON.stringify(value)}`} value={value} active={active} userId={userId} section={section} onPlanChange={onPlanChange} reviewMonth={reviewMonth} onReviewMonthChange={setReviewMonth}/>}
+      {active !== "home" && active !== "ask" && <V2Destination key={`${active}:${JSON.stringify(value)}`} value={value} active={active} userId={userId} section={section} onPlanChange={onPlanChange} reviewMonth={reviewMonth} onReviewMonthChange={setReviewMonth}/>}
     </>}
-    {active === "home" && section === "plan" && !choosing && <Sheet title="Your plan" wide onClose={closePortfolioSheet}><V2PlanContent value={value} expanded/></Sheet>}
+    {(active === "home" || active === "settings") && section === "plan" && !choosing && <Sheet title="Your plan" wide focusOnOpen="heading" onClose={closePortfolioSheet}><V2PlanContent value={value} expanded/></Sheet>}
+    {active === "settings" && section === "goal" && !choosing && userId && onPlanChange && <GoalSheet value={value} userId={userId} onPlanChange={onPlanChange} onClose={closePortfolioSheet}/>}
+    {breakdownVisited && userId && onPlanChange && <Sheet title="Investment breakdown" wide open={breakdownOpen} focusOnOpen="heading" onClose={closePortfolioSheet}>
+      {breakdownOpen && <MonthlyPendingRecording userId={userId}/>}
+      <PlusFeature feature="monthly_contribution_planner" title="Investment breakdown"><MonthlyInvesting value={value} userId={userId} onPlanChange={onPlanChange} active={breakdownOpen} inSheet/></PlusFeature>
+    </Sheet>}
+    {whatIfVisited && userId && <Sheet title="What-if" wide open={whatIfOpen} focusOnOpen="heading" onClose={closePortfolioSheet}><PlusFeature feature="future_projection" title="What-if exploration"><PortfolioWhatIf value={value} userId={userId} active={whatIfOpen} inSheet/></PlusFeature></Sheet>}
     {chatVisited && <div hidden={active !== "ask" || choosing}><ChatSection key={`${userId}:${JSON.stringify(value)}`} plan={value} /></div>}
   </AppShell>;
 }
@@ -90,7 +103,6 @@ export function V2Destination({ value, active, userId, section = "", onPlanChang
   if (active === "ask") return <ChatSection key={userId} plan={value} />;
   if (active === "portfolio" && userId && !access?.value) return <AccessLoading />;
   const tracking = access?.value?.availability?.live_portfolio === true && access.value.features.includes("live_portfolio");
-  if(active==="portfolio"&&section==="what-if"&&userId)return <PlusFeature feature="future_projection" title="What-if exploration"><PortfolioWhatIf value={value} userId={userId}/></PlusFeature>;
   if (active === "portfolio") return <div className="space-y-5">
     {tracking && userId ? <LivePortfolio key={section === "add" ? "add" : "portfolio"} value={value} userId={userId} section={section} onPlanChange={onPlanChange} reviewMonth={reviewMonth} onReviewMonthChange={onReviewMonthChange}/> : <>
       <PlanImplementation value={value} userId={userId} onPlanChange={onPlanChange}/>

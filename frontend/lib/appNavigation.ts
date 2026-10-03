@@ -13,44 +13,39 @@ export function destinationFromHash(hash: string): Destination {
     ? candidate as Destination : "home";
 }
 
-// Hash navigation deliberately keeps the authenticated owner and its requests alive.
-// No session values or financial information are placed in the URL.
+// Keep each sheet's opener on its history entry, including nested sheets.
+export function isSheetHash(hash: string) {
+  return ["#portfolio/insights","#portfolio/allocation","#portfolio/ways","#portfolio/history","#portfolio/what-if","#portfolio/contribution","#home/monthly","#home/activity","#home/plan","#settings/plan","#settings/goal","#plan","#portfolio/plan"].includes(hash);
+}
+export function sheetFallbackHash(hash: string) {
+  return hash.startsWith("#settings/") ? "#settings" : hash.startsWith("#home/") || hash === "#plan" || hash === "#portfolio/plan" ? "#home" : "#portfolio";
+}
 export function subscribeNavigation(callback: () => void) {
   const listener = (event: Event) => {
     if ("newURL" in event && "oldURL" in event) {
       const change = event as HashChangeEvent;
       const next = new URL(change.newURL).hash;
-      if (next === "#portfolio/insights" || next === "#portfolio/allocation" || next === "#portfolio/ways" || next === "#portfolio/history" || next === "#home/activity" || next === "#home/plan" || next === "#plan" || next === "#portfolio/plan") {
-        sheetOpeningHash = new URL(change.oldURL).hash;
-        sheetTargetHash = next;
-      } else {
-        sheetOpeningHash = null;
-        sheetTargetHash = null;
+      if (isSheetHash(next) && window.history.state?.arborSheet?.target !== next) {
+        window.history.replaceState({...window.history.state,arborSheet:{target:next,opener:new URL(change.oldURL).hash}}, "");
       }
     }
     callback();
   };
-  window.addEventListener("hashchange", listener);
-  return () => window.removeEventListener("hashchange", listener);
+  window.addEventListener("hashchange",listener);
+  return () => window.removeEventListener("hashchange",listener);
 }
-let sheetOpeningHash: string | null = null;
-let sheetTargetHash: string | null = null;
-
 export function closePortfolioSheet() {
   const target = window.location.hash;
-  const opener = sheetTargetHash === target ? sheetOpeningHash : null;
-  if (opener !== null) {
-    window.history.back();
-    window.setTimeout(() => {
-      const launcher = document.querySelector<HTMLElement>(`[href="${target === "#portfolio/allocation" ? "#portfolio/insights" : target === "#plan" || target === "#portfolio/plan" ? "#home/plan" : target}"]`);
-      launcher?.focus({ preventScroll: true });
-    }, 50);
-    return;
+  const saved = window.history.state?.arborSheet;
+  const launcherHash = target === "#portfolio/allocation" ? "#portfolio/insights" : target === "#plan" || target === "#portfolio/plan" ? "#home/plan" : target;
+  const focusLauncher = () => document.querySelector<HTMLElement>(`[href="${launcherHash}"]`)?.focus({preventScroll:true});
+  if (saved?.target === target && typeof saved.opener === "string") {
+    window.history.back();window.setTimeout(focusLauncher,50);return;
   }
-  // A direct bookmarked sheet has no in-app opener to return to.
-  window.history.replaceState(window.history.state, "", target.startsWith("#home/") || target === "#plan" || target === "#portfolio/plan" ? "#home" : "#portfolio");
-  window.dispatchEvent(new HashChangeEvent("hashchange", { oldURL: window.location.href, newURL: window.location.href }));
-  window.setTimeout(()=>document.querySelector<HTMLElement>(`[href="${target === "#portfolio/allocation" ? "#portfolio/insights" : target === "#plan" || target === "#portfolio/plan" ? "#home/plan" : target}"]`)?.focus({preventScroll:true}),50);
+  const oldURL = window.location.href;
+  window.history.replaceState({...window.history.state,arborSheet:null}, "",sheetFallbackHash(target));
+  window.dispatchEvent(new HashChangeEvent("hashchange",{oldURL,newURL:window.location.href}));
+  window.setTimeout(focusLauncher,50);
 }
 export function navigationSnapshot() { return destinationFromHash(window.location.hash); }
 export function serverNavigationSnapshot(): Destination { return "home"; }

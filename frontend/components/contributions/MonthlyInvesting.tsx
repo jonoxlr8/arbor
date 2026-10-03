@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { PlanV2 } from "@/lib/types/planV2";
 import type { Sleeve } from "@/lib/types/contributions";
 import { monthlyPlanApi, monthlyMoney, monthlyPlanConflictCopy, MonthlyPlanConflictError, type MonthlyPlan, type MonthlyPlanInput } from "@/lib/monthlyPlan";
@@ -18,7 +18,7 @@ import MonthlyMinimumNotice from "./MonthlyMinimumNotice";
 
 const money=monthlyMoney;
 const emptyValues={global_equity:"0",defensive:"0",technology_tilt:"0",crypto:"0"};
-export default function MonthlyInvesting({value,userId,onPlanChange,backHref="#portfolio"}:{value:PlanV2;userId:string;onPlanChange:(value:PlanV2)=>void;backHref?:"#home"|"#portfolio"}) {
+export default function MonthlyInvesting({value,userId,onPlanChange,backHref="#portfolio",active=true,inSheet=false}:{value:PlanV2;userId:string;onPlanChange:(value:PlanV2)=>void;backHref?:"#home"|"#portfolio";active?:boolean;inSheet?:boolean}) {
   const access=useAccountAccess();
   const tracking=access?.value?.availability?.live_portfolio===true && access.value.features.includes("live_portfolio");
   const [amount,setAmount]=useState(String(value.profile.monthly_investment ?? ""));
@@ -31,7 +31,11 @@ export default function MonthlyInvesting({value,userId,onPlanChange,backHref="#p
   const [choosing,setChoosing]=useState<Sleeve|null>(null);
   const request=useRef<AbortController|null>(null);
   useEffect(()=>()=>request.current?.abort(),[]);
-  function invalidate(){request.current?.abort();request.current=null;setResult(null);setRecording(false);setBusy(false);setError("");setReviewPortfolio(false);}
+  const invalidate=useCallback(()=>{request.current?.abort();request.current=null;setResult(null);setRecording(false);setBusy(false);setError("");setReviewPortfolio(false);},[]);
+  const [wasActive,setWasActive]=useState(active);
+  if(wasActive!==active){setWasActive(active);if(!active){setResult(null);setRecording(false);setChoosing(null);setBusy(false);setError("");setReviewPortfolio(false);}}
+  useEffect(()=>{if(!active){request.current?.abort();request.current=null;}},[active]);
+  useEffect(()=>{const changed=()=>invalidate();window.addEventListener("arbor-investment-recorded",changed);return()=>window.removeEventListener("arbor-investment-recorded",changed);},[invalidate]);
   async function calculate(){
     if(request.current)return;
     if(!/^\d+(\.\d{1,2})?$/.test(amount)||Number(amount)<=0){setError("Enter a positive PHP contribution with up to two decimal places.");return;}
@@ -49,9 +53,9 @@ export default function MonthlyInvesting({value,userId,onPlanChange,backHref="#p
     }
     finally{if(request.current===controller)request.current=null;if(!controller.signal.aborted)setBusy(false);}
   }
-  if(value.plan.path!=="long_term"||value.plan.plan_basis!=="user_selected"||!value.plan.readiness.actionable_contribution_guidance_allowed)return <section className="monthly-investing"><a className="entry-link monthly-back" href={backHref}>‹ {backHref==="#home"?"Home":"Portfolio"}</a><h2>{!value.plan.readiness.actionable_contribution_guidance_allowed?"Foundation First":value.plan.path==="short_term"?"Your short-term path":"Choose your plan first"}</h2><p className="mt-4 text-sm text-slate-600">Monthly investing is paused for your current path. Your saved plan stays unchanged.</p><a className="entry-link mt-4 inline-flex" href="#settings/investment">Review investment profile</a></section>;
+  if(value.plan.path!=="long_term"||value.plan.plan_basis!=="user_selected"||!value.plan.readiness.actionable_contribution_guidance_allowed)return <section className="monthly-investing">{!inSheet && <a className="entry-link monthly-back" href={backHref}>‹ {backHref==="#home"?"Home":"Portfolio"}</a>}<h2>{!value.plan.readiness.actionable_contribution_guidance_allowed?"Foundation First":value.plan.path==="short_term"?"Your short-term path":"Choose your plan first"}</h2><p className="mt-4 text-sm text-slate-600">Monthly investing is paused for your current path. Your saved plan stays unchanged.</p><a className="entry-link mt-4 inline-flex" href="#settings/investment">Review investment profile</a></section>;
   return <section className="monthly-investing" aria-label="Invest this month">
-    <a className="entry-link monthly-back" href={backHref}>‹ {backHref==="#home"?"Home":"Portfolio"}</a>
+    {!inSheet && <a className="entry-link monthly-back" href={backHref}>‹ {backHref==="#home"?"Home":"Portfolio"}</a>}
     <header><p className="eyebrow plus-eyebrow">Arbor Plus</p><h2>Plan your next investment</h2><p>Choose an amount. See how it fits the targets and investments you chose.</p></header>
     <form className="monthly-amount-form" onSubmit={e=>{e.preventDefault();void calculate();}}>
       <label>Amount to split<span className="monthly-amount-input"><span aria-hidden="true">₱</span><input aria-label="Amount to split (PHP)" inputMode="decimal" required value={amount} onChange={e=>{invalidate();setAmount(e.target.value);}} aria-describedby={error?"monthly-plan-error":undefined}/></span></label>
@@ -86,7 +90,7 @@ export default function MonthlyInvesting({value,userId,onPlanChange,backHref="#p
       <div className="monthly-handoff"><p>Review the investment and actual price in your provider app before deciding. Arbor does not place trades or move money.</p><small>After investing through your provider, record the actual units and PHP amount you paid. Planned PHP amounts never become investment cost automatically.</small></div>
     </section>}
     <MonthlyCheckin value={value} userId={userId} scenarioAmount={result?.recordable_amount&&Number(result.recordable_amount)>0?result.recordable_amount:undefined} recordingPrimary onRecordInvestment={tracking?()=>setRecording(true):undefined}/>
-    {tracking && <MonthlyInvestmentFollowup key={JSON.stringify(result)} userId={userId} plan={result} completed={false} recording={recording} onRecordingClose={()=>setRecording(false)}/>}
-    {choosing&&<ImplementationPicker value={value} userId={userId} sleeve={choosing} onClose={()=>setChoosing(null)} onSaved={plan=>{invalidate();onPlanChange(plan);void calculate();}}/>}
+    {tracking && active && <MonthlyInvestmentFollowup userId={userId} plan={result} completed={false} recording={recording} onRecordingClose={()=>setRecording(false)}/>}
+    {active&&choosing&&<ImplementationPicker value={value} userId={userId} sleeve={choosing} onClose={()=>setChoosing(null)} onSaved={plan=>{invalidate();onPlanChange(plan);void calculate();}}/>}
   </section>;
 }
