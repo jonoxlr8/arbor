@@ -20,6 +20,8 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://arbor.ph"),
   title: publicMetadata.title,
   description: publicMetadata.description,
+  applicationName: "Arbor",
+  other: { "apple-mobile-web-app-title": "Arbor" },
   alternates: { canonical: "https://arbor.ph" },
   openGraph: { type: "website", siteName: "Arbor", locale: "en_PH", url: "https://arbor.ph", ...publicMetadata },
   twitter: { card: "summary_large_image", ...publicMetadata },
